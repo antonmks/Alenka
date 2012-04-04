@@ -4,7 +4,7 @@ The TPC Benchmark (TPC-H) is a decision support benchmark. It consists of a suit
 that can be used to measure the processing power of a system.
 Lets compare top results achieved using Sun Fire with results obtained using a GPU.
 We will use a scale of 100 which means that the size of database is around 100GB and the largest table 
-consists of 600000000 records.
+consists of 600 million records.
 
 System configuration 1 : 
    SunFire X4270 with
@@ -15,6 +15,7 @@ Software : Sybase IQ 15.1
 Total cost : $61,000 
    
 System configuration 2 : 
+   My home PC with
    Pentium G620 2.6GHz 2 core CPU
    16 GB memory
    1 x 120GB internal SSD
@@ -23,7 +24,7 @@ Software : Alenka  ( https://github.com/antonmks/Alenka  - free and open source)
 Total cost : $700
 
 Results in seconds of queries 1 and 3 (the first query is a full table scan and a group operation , 
-the next is a join between 3 large tables followed by a group operation).
+the other query is a join between 3 large tables followed by a group operation).
 
     SunFire     GTX260
 Q1    35s        31s
@@ -54,14 +55,14 @@ compile alenka from source
 ( nvcc.exe -arch sm_13 -L "C:\Program Files\Microsoft Visual Studio 10.0\VC\lib\amd64" -lcuda C:\alenka\bison.cu -o alenka )
 
 run alenka scripts to create data files (load_lineitem.sql, load_customer.sql and load_orders.sql)
-using segment size of 10000000 (-l 10000000)
+with segment size of 10000000 : alenka.exe -l 10000000 load_lineitem.sql
 
 run queries q1.sql and q3.sql 
 
 see the results in mytest.txt file.
 
 I have tested alenka only on 64 bit Windows 7, it reads data in a background process when using Windows
-so results may differ under Linux.
+so timings may differ under Linux.
 
 Anton K
 antonmks@gmail.com
