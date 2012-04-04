@@ -19,7 +19,7 @@ System configuration 2 :
    16 GB memory
    1 x 120GB internal SSD
    1 Nvidia 260 GPU
-Software : Alenka  ( https://sourceforge.net/projects/alenka/files/  - free and open source) 
+Software : Alenka  ( https://github.com/antonmks/Alenka  - free and open source) 
 Total cost : $700
 
 Results in seconds of queries 1 and 3 (the first query is a full table scan and a group operation , 
