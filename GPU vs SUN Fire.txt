@@ -40,11 +40,11 @@ So what makes it fast ?
 Original table takes 74 GB of data. Lets see how we can get it down to a manageable size.
 
 1.Alenka is a columnar database. Which means that it needs to read from the disk only the columns that are actually used in a query.
-  Different columns are stored in different files. Column that we use take only 24 GB of data.
+  Different columns are stored in different files. The columns used in a query take only 24 GB of data.
 2.Compression. Original 24 GB of column data are compressed to 4.5 GB using frame-of-reference and dictionary compression.
-  Decompression, like compression is done in GPU and achieves the speed tens of gigabytes per second.
+  Decompression, like compression is done in GPU and achieves the speed of tens of gigabytes per second.
   Data are kept compressed in memory. No need to buy several hundred gigabytes of memory just to load a 100GB database.
-3.Vector processing. The operations can be performed on all data at once unlike traditional databases such as MS SQL Server and Oracle.
+3.Vector processing. The operations can be performed on all data at once unlike in traditional databases such as MS SQL Server and Oracle.
 4.No need to create and maintain indexes. Alenka uses Netezza-style zone maps for data segments. 
 
 Technical details needed to repeat results :
