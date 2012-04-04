@@ -1,0 +1,57 @@
+Analytical queries : Nvidia GTX 260 vs. Sun Fire 
+
+The TPC Benchmark (TPC-H) is a decision support benchmark. It consists of a suite of business oriented queries that
+can be used to measure the processing power of a system. Lets compare top results achieved using Sun Fire with results obtained 
+using a GPU.
+We will use a scale of 100 which means that the size of database is around 100GB and the largest table consists of 600000000 records.
+
+System configuration 1 : 
+   SunFire X4270 with
+   2 Intel Xeon 5570 2.93 GHz Quad Core processors
+   120 GB memory
+   1x 146GB SAS internal disk (10K RPM)
+   8 x 32GB internal SSDs
+Software : Sybase IQ 15.1
+Total cost : $61,000 
+   
+System configuration 2 : 
+   Pentium G620 2.6GHz 2 core CPU
+   16 GB memory
+   1 x 120GB internal SSD
+   1 Nvidia 260 GPU
+Software : Alenka  ( https://sourceforge.net/projects/alenka/files/  - free and open source) 
+Total cost : $700
+
+Results in seconds of queries 1 and 3 (the first query is a full table scan and a group operation , 
+the next is a join between 3 large tables followed by a group operation).
+
+    SunFire     GTX260
+Q1    35s        31s
+Q3     7s        29s 
+
+Predictably, query 3 runs slower on GPU because we lack the memory to do the entire table joins and have to process the data piece by piece.
+Although query 1 runs faster on GPU which is interesting given the difference in price between configurations. 
+Alenka excels at scanning large tables and when using a modern GPU with large amount of memory it is capable of outperforming
+large servers that use a state of the art database software.
+
+So what makes it fast ? 
+
+Original table takes 74 GB of data. Lets see how we can get it down to a manageable size.
+
+1.Alenka is a columnar database. Which means that it needs to read from the disk only the columns that are actually used in a query.
+  Different columns are stored in different files. Column that we use take only 24 GB of data.
+2.Compression. Original 24 GB of column data are compressed to 4.5 GB using frame-of-reference and dictionary compression.
+  Decompression, like compression is done in GPU and achieves the speed tens of gigabytes per second.
+  Data are kept compressed in memory. No need to buy several hundred gigabytes of memory just to load a 100GB database.
+3.Vector processing. The operations can be performed on all data at once unlike traditional databases such as MS SQL Server and Oracle.
+4.No need to create and maintain indexes. Alenka uses Netezza-style zone maps for data segments. 
+
+Technical details needed to repeat results :
+use dbgen to generate TPCH data with needed scale
+run alenka scripts to create data files (load_lineitem.sql, load_customer.sql and load_orders.sql) using segment size of 10000000 (-l 10000000)
+run queries q1.sql and q3.sql 
+see the results in mytest.txt file.
+
+I have tested alenka only on 64 bit Windows 7, it reads data in a background process when using Windows so results may differ under Linux.
+
+
