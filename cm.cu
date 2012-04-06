@@ -466,7 +466,7 @@ public:
             for(int i = mColumnCount-1; i >= 0; i--) {
                 thrust::device_ptr<char> dev_ptr(d_columns[i]);
 
-                thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+                thrust::counting_iterator<unsigned int, thrust::device_system_tag> begin(0);
 
                 cmp_functor ff(thrust::raw_pointer_cast(dev_ptr),
                                thrust::raw_pointer_cast(output),
@@ -838,7 +838,7 @@ public:
 	
 
 
-    int_type copy_filter(CudaSet* b, bool* v, bool del_source)
+    int_type copy_filter(CudaSet* b, bool* v, bool del_source, unsigned int segment)
     {
 
         thrust::device_ptr<bool> dev_ptr(v);		
@@ -859,6 +859,13 @@ public:
 
             for(unsigned int i=0; i < mColumnCount; i++) {
 			    //cout << "copy_filter " << i << " " << b->offsets[i] << " " << newRecCount << " " << type[i] << endl;
+				
+			    if (!d_columns[i]) {
+			        allocColumnOnDevice(i, maxRecs);
+				    CopyColumnToGpu(i, segment);
+			    };	
+				
+				
                 if (type[i] == 0 ) {
                     thrust::device_ptr<int_type> src((int_type*)(d_columns)[i]);
                     thrust::device_ptr<int_type> dest((int_type*)d);
@@ -900,6 +907,7 @@ public:
                     b->offsets[i] = pfor_dict_compress(s->d_columns, s->mColumnCount, NULL, newRecCount, cmp, b->offsets[i]);
 					s1->compressed = (char*)cmp;					
                 };
+				deAllocColumnOnDevice(i);
             };
             b->mRecCount = b->mRecCount + newRecCount;
             cudaFree(d);		   

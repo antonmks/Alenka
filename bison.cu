@@ -2717,7 +2717,7 @@ void emit_join(char *s, char *j1)
 			
   	    std::clock_t start2 = std::clock();
 		
-		cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
+		//cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
 
         //cout << "right col is unique : " << right->isUnique(colInd2) << endl;
 
@@ -3411,12 +3411,12 @@ void emit_filter(char *s, char *f, int e)
         printf("emit filter : %s %s \n", s, f);		
 		std::clock_t start1 = std::clock();			
 		
-        if (a->d_columns[0] == 0) 
-            a->allocOnDevice(a->maxRecs);
-        else
+        if (a->d_columns[0]) 
+        //    a->allocOnDevice(a->maxRecs);
+        //else
             in_gpu = true;			
 			
-//		cout << "filter in gpu " << in_gpu << endl;	
+		cout << "filter in gpu " << in_gpu << endl;	
 		
         if (lc == 1 || (varNames.find(s) == varNames.end()))
        		b = a->copyDeviceStruct();
@@ -3426,10 +3426,32 @@ void emit_filter(char *s, char *f, int e)
         int_type old_reccount = a->mRecCount;	
         bool del_source = (stat[f] == statement_count);		
 		
+		
+        queue<string> op_v(op_value);
+		queue<unsigned int> field_names;
+        map<string,int>::iterator it;
+        while(!op_v.empty()) {
+		    it = a->columnNames.find(op_v.front());
+            if(it != a->columnNames.end() && !in_gpu) {
+                field_names.push(it->second);
+			    a->allocColumnOnDevice(it->second, a->maxRecs);
+			};	
+		    op_v.pop();
+		};   
+		
+		
         for(unsigned int i = 0; i < a->segCount; i++) {
-            if(!in_gpu)
-                a->CopyToGpu(i); // segment i		
-            filter(op_type,op_value,op_nums, op_nums_f,a,b,del_source);				
+          //  if(!in_gpu)
+          //      a->CopyToGpu(i); // segment i		
+    	    queue<unsigned int> f(field_names);
+			while(!f.empty()) {
+			    cout << "copying " << f.front() << " " << i << endl;
+                a->CopyColumnToGpu(f.front(), i); // segment i
+				cout << "copied " << f.front() << " " << i << endl;
+				f.pop(); 
+			};		
+		  
+            filter(op_type,op_value,op_nums, op_nums_f,a,b,del_source,i);				
 			//cout << "seg filter is finished " << b->mRecCount << endl; 
         };				
 		//cout << "filter is finished " << b->mRecCount << endl; 
