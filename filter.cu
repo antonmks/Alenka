@@ -15,7 +15,8 @@
 
 #include "cm.h"
 
-unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, CudaSet* b, bool del_source)
+unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+                    CudaSet* b, bool del_source, unsigned int segment)
 {
 
     stack<string> exe_type;
@@ -23,16 +24,16 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
     stack<int_type*> exe_vectors;
     stack<float_type*> exe_vectors_f;
     stack<int_type> exe_nums;
-	stack<bool*> bool_vectors;
+    stack<bool*> bool_vectors;
     stack<float_type> exe_nums_f;
     string  s1, s2, s1_val, s2_val;
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
-	
-    for(int i=0; !op_type.empty(); ++i, op_type.pop()) {	
-	    
+
+    for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
+
         string ss = op_type.front();
-		
+
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
                 || ss.compare("STRING") == 0) {
 
@@ -107,8 +108,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s1_val = exe_value.top();
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
-                    exe_nums_f.pop();					
-					
+                    exe_nums_f.pop();
+
                     exe_type.push("VECTOR F");
 
                     if (a->type[(a->columnNames)[s1_val]] == 1) {
@@ -126,7 +127,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
+
                     exe_type.push("VECTOR F");
 
                     if (a->type[(a->columnNames)[s2_val]] == 1) {
@@ -143,8 +144,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
-					
-					if (a->type[(a->columnNames)[s1_val]] == 1) {
+
+                    if (a->type[(a->columnNames)[s1_val]] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(t,(float_type)n1,ss,1));
@@ -161,8 +162,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
-					
+
+
                     if (a->type[(a->columnNames)[s2_val]] == 1) {
                         float_type* t = a->get_float_type_by_name(s2_val);
                         exe_type.push("VECTOR F");
@@ -421,8 +422,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                 exe_type.pop();
                 s2 = exe_type.top();
                 exe_type.pop();
-				
-				
+
+
 
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
@@ -444,7 +445,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     n2 = exe_nums.top();
-                    exe_nums.pop();					
+                    exe_nums.pop();
                     exe_type.push("VECTOR");
                     bool_vectors.push(a->compare(n1_f,float_type(n2),cmp_type));
                 }
@@ -452,20 +453,20 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     n2 = exe_nums.top();
-                    exe_nums.pop();					
-                    exe_type.push("VECTOR");					
+                    exe_nums.pop();
+                    exe_type.push("VECTOR");
                     bool_vectors.push(a->compare(n1_f,float_type(n2),cmp_type));
                 }
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-				    
+
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
+
                     unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
-                    CudaChar* cc = (CudaChar*)(a->h_columns)[colIndex1];
+                    CudaChar* cc = (a->h_columns_cuda_char)[a->type_index[colIndex1]];
                     exe_type.push("VECTOR");
                     bool_vectors.push(cc->cmpStr(s1_val));
                 }
@@ -476,7 +477,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
 
                     unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
-                    CudaChar* cc = (CudaChar*)(a->h_columns)[colIndex1];
+                    CudaChar* cc = (a->h_columns_cuda_char)[a->type_index[colIndex1]];
                     exe_type.push("VECTOR");
                     bool_vectors.push(cc->cmpStr(s2_val));
                 }
@@ -523,7 +524,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums_f.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-					
+
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
@@ -815,8 +816,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
         };
     };
     bool* sv = bool_vectors.top();
-    unsigned int count = a->copy_filter(b, sv, del_source);	
-	
+    unsigned int count = a->copy_filter(b, sv, del_source, segment);
+
     cudaFree(sv);
     return count;
 

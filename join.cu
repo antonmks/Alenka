@@ -46,8 +46,10 @@ struct join_head_flag_predicate1
 
 struct minus2 : public thrust::unary_function<unsigned int, unsigned int>
 {
-  __host__ __device__
-  unsigned int operator()(unsigned int x) { return x-2; }
+    __host__ __device__
+    unsigned int operator()(unsigned int x) {
+        return x-2;
+    }
 };
 
 
@@ -81,14 +83,14 @@ struct join_functor
     __host__ __device__
     void operator()(const IndexType & i) {
 
-    //    for(unsigned int j = 0; j < upperbound[i]-lowerbound[i]; j++)
-      //  {
-            //output[address[i] + j] = i;
-            //output1[address[i] + j] = lowerbound[i]+j;
-			if (upperbound[i] != lowerbound[i]) {
-                output[address[i] ] = i;
-                output1[address[i] ] = lowerbound[i]+2;
-			};	
+        //    for(unsigned int j = 0; j < upperbound[i]-lowerbound[i]; j++)
+        //  {
+        //output[address[i] + j] = i;
+        //output1[address[i] + j] = lowerbound[i]+j;
+        if (upperbound[i] != lowerbound[i]) {
+            output[address[i] ] = i;
+            output1[address[i] ] = lowerbound[i]+2;
+        };
 
         //};
     }
@@ -100,55 +102,55 @@ void join(int_type* d_input,int_type* d_values,
           unsigned int bRecCount, unsigned int aRecCount, bool isUnique)
 {
 
-	
-	//float time;
+
+    //float time;
     //cudaEvent_t start, stop;
-	
-	
- //cudaEventCreate(&start);
- //cudaEventCreate(&stop) ;
- //cudaEventRecord(start, 0) ;
 
 
-    
-    thrust::device_ptr<unsigned int> d_output1 = thrust::device_malloc<unsigned int>(bRecCount);   	
-		
+//cudaEventCreate(&start);
+//cudaEventCreate(&stop) ;
+//cudaEventRecord(start, 0) ;
+
+
+
+    thrust::device_ptr<unsigned int> d_output1 = thrust::device_malloc<unsigned int>(bRecCount);
+
     thrust::device_ptr<int_type> d_i(d_input);
     thrust::device_ptr<int_type> d_v(d_values);
 
-    if (!isUnique) {							
-	
-	    thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
+    if (!isUnique) {
+
+        thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
         thrust::lower_bound(d_i, d_i+aRecCount,
                             d_v, d_v+bRecCount,
-                            d_output);				
-	
-	    thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(bRecCount);
-		
+                            d_output);
+
+        thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(bRecCount);
+
         thrust::upper_bound(d_i, d_i+aRecCount,
                             d_v, d_v+bRecCount,
                             d_output1);
-						
-				
-	
-        thrust::transform(d_output1, d_output1+bRecCount, d_output, d_output2, thrust::minus<unsigned int>());	
-	
-	    unsigned int sz =  thrust::reduce(d_output2, d_output2+bRecCount, 0, thrust::plus<unsigned int>());	
 
-	//    cout << "join end " << sz << endl;	
 
-        thrust::exclusive_scan(d_output2, d_output2+bRecCount, d_output2);  // addresses		
-		
+
+        thrust::transform(d_output1, d_output1+bRecCount, d_output, d_output2, thrust::minus<unsigned int>());
+
+        unsigned int sz =  thrust::reduce(d_output2, d_output2+bRecCount, 0, thrust::plus<unsigned int>());
+
+        //    cout << "join end " << sz << endl;
+
+        thrust::exclusive_scan(d_output2, d_output2+bRecCount, d_output2);  // addresses
+
         thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-	
+
         d_res1.resize(sz);
         d_res2.resize(sz);
-	
-	    if (sz != 0 ) {
-	
-	        thrust::fill(d_res1.begin(), d_res1.end(), (unsigned int)0);
-	        thrust::fill(d_res2.begin(), d_res2.end(), (unsigned int)1);
-		
+
+        if (sz != 0 ) {
+
+            thrust::fill(d_res1.begin(), d_res1.end(), (unsigned int)0);
+            thrust::fill(d_res2.begin(), d_res2.end(), (unsigned int)1);
+
             join_functor ff(thrust::raw_pointer_cast(d_output),
                             thrust::raw_pointer_cast(d_output1),
                             thrust::raw_pointer_cast(d_output2),
@@ -156,54 +158,54 @@ void join(int_type* d_input,int_type* d_values,
                             thrust::raw_pointer_cast(&d_res2[0]));
 
 
-            thrust::for_each(begin, begin + bRecCount, ff);	
-	
-	
-	        thrust::inclusive_scan_by_key(d_res1.begin(), d_res1.end(), d_res1.begin(), d_res1.begin(), join_head_flag_predicate<unsigned int>(), thrust::maximum<unsigned int>()); // in-place scan
+            thrust::for_each(begin, begin + bRecCount, ff);
+
+
+            thrust::inclusive_scan_by_key(d_res1.begin(), d_res1.end(), d_res1.begin(), d_res1.begin(), join_head_flag_predicate<unsigned int>(), thrust::maximum<unsigned int>()); // in-place scan
             thrust::inclusive_scan_by_key(d_res2.begin(), d_res2.end(), d_res2.begin(), d_res2.begin(), join_head_flag_predicate1<unsigned int>(), thrust::plus<unsigned int>()); // in-place scan
-	        thrust::transform(d_res2.begin(), d_res2.end(), d_res2.begin(), minus2());		
-		
-	    };	
-		thrust::device_free(d_output2);	
-		thrust::device_free(d_output);	
-	}
+            thrust::transform(d_res2.begin(), d_res2.end(), d_res2.begin(), minus2());
+
+        };
+        thrust::device_free(d_output2);
+        thrust::device_free(d_output);
+    }
     else {  // DW style join with unique dimension keys
-  	    
+
         thrust::binary_search(d_i, d_i+aRecCount,
                               d_v, d_v+bRecCount,
-                              d_output1);		
-							
-	/*cudaEventRecord(stop, 0) ;
-cudaEventSynchronize(stop) ;
- cudaEventElapsedTime(&time, start, stop);
- cudaEventRecord(start, 0);
+                              d_output1);
 
-printf("Time to generate2:  %3.1f ms \n", time);
-		*/					
-							
-        unsigned int sz =  thrust::reduce(d_output1, d_output1+bRecCount);								
+        /*cudaEventRecord(stop, 0) ;
+        cudaEventSynchronize(stop) ;
+        cudaEventElapsedTime(&time, start, stop);
+        cudaEventRecord(start, 0);
+
+        printf("Time to generate2:  %3.1f ms \n", time);
+        	*/
+
+        unsigned int sz =  thrust::reduce(d_output1, d_output1+bRecCount);
         d_res1.resize(sz);
         d_res2.resize(sz);
-		
 
 
-		
-		if(sz) { 		
-		    thrust::counting_iterator<unsigned int> seq(0);
-		    thrust::copy_if(seq,seq+bRecCount,d_output1,d_res1.begin(),nzj());				
-		
-	        thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
-            thrust::lower_bound(d_i, d_i+aRecCount, d_v, d_v+bRecCount,  d_output);						
-		
-		    thrust::copy_if(d_output,d_output+bRecCount,d_output1,d_res2.begin(),nzj());
-			thrust::device_free(d_output);	
-		};			
 
-        cout << "fast join end " << sz << endl;
-    };		
-    
-    thrust::device_free(d_output1);	
-    
+
+        if(sz) {
+            thrust::counting_iterator<unsigned int> seq(0);
+            thrust::copy_if(seq,seq+bRecCount,d_output1,d_res1.begin(),nzj());
+
+            thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
+            thrust::lower_bound(d_i, d_i+aRecCount, d_v, d_v+bRecCount,  d_output);
+
+            thrust::copy_if(d_output,d_output+bRecCount,d_output1,d_res2.begin(),nzj());
+            thrust::device_free(d_output);
+        };
+
+        //cout << "fast join end " << sz << endl;
+    };
+
+    thrust::device_free(d_output1);
+
 
 }
 
@@ -222,15 +224,13 @@ void join(CudaChar* d_input,CudaChar* d_values,
     thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(d_values->mRecCount);
 
 
-    thrust::device_ptr<char> d_i((d_input->d_columns)[0]);
-    thrust::device_ptr<char> d_v((d_values->d_columns)[0]);
 
-    thrust::lower_bound(d_i, d_i + d_input->mRecCount,
-                        d_v, d_v+ d_values->mRecCount,
+    thrust::lower_bound(d_input->d_columns[0].begin(), d_input->d_columns[0].begin() + d_input->mRecCount,
+                        d_values->d_columns[0].begin(), d_values->d_columns[0].begin()+ d_values->mRecCount,
                         d_output);
 
-    thrust::upper_bound(d_i, d_i + d_input->mRecCount,
-                        d_v, d_v+ d_values->mRecCount,
+    thrust::upper_bound(d_input->d_columns[0].begin(), d_input->d_columns[0].begin() + d_input->mRecCount,
+                        d_values->d_columns[0].begin(), d_values->d_columns[0].begin() + d_values->mRecCount,
                         d_output1);
 
 
@@ -246,10 +246,10 @@ void join(CudaChar* d_input,CudaChar* d_values,
     d_res2.resize(sz);
 
     join_functor ff(thrust::raw_pointer_cast(d_output),
-                           thrust::raw_pointer_cast(d_output1),
-                           thrust::raw_pointer_cast(d_output2),
-                           thrust::raw_pointer_cast(&d_res1[0]),
-                           thrust::raw_pointer_cast(&d_res2[0]));
+                    thrust::raw_pointer_cast(d_output1),
+                    thrust::raw_pointer_cast(d_output2),
+                    thrust::raw_pointer_cast(&d_res1[0]),
+                    thrust::raw_pointer_cast(&d_res2[0]));
 
     thrust::for_each(begin, begin + d_values->mRecCount, ff);
 
@@ -278,23 +278,26 @@ void join(CudaChar* d_input,CudaChar* d_values,
 
     for(int i=1; i< cc; i++) {
         thrust::device_ptr<char> d_ii;
-        if (d_input->mColumnCount >= i+1)
-            d_ii = thrust::device_pointer_cast((d_input->d_columns)[i]); // check if columns actually exist
-        else
+        if (d_input->mColumnCount < i+1)
             d_ii = thrust::device_pointer_cast(d_blanks);
 
         thrust::device_ptr<char> d_vv;
-        if (d_values->mColumnCount >= i+1)
-            d_vv = thrust::device_pointer_cast((d_values->d_columns)[i]);
-        else
+        if (d_values->mColumnCount < i+1)
             d_vv = thrust::device_pointer_cast(d_blanks);
 
         thrust::device_ptr<char> d_out = thrust::device_malloc<char>(new_sz);
         thrust::device_ptr<char> d_out1 = thrust::device_malloc<char>(new_sz);
         thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(new_sz);
 
-        thrust::gather(d_res2.begin(), d_res2.end(), d_ii, d_out);
-        thrust::gather(d_res1.begin(), d_res1.end(), d_vv, d_out1);
+        if (d_input->mColumnCount >= i+1)
+            thrust::gather(d_res2.begin(), d_res2.end(), d_input->d_columns[i].begin(), d_out);
+        else
+            thrust::gather(d_res2.begin(), d_res2.end(), d_ii, d_out);
+
+        if (d_values->mColumnCount >= i+1)
+            thrust::gather(d_res1.begin(), d_res1.end(), d_values->d_columns[i].begin(), d_out1);
+        else
+            thrust::gather(d_res1.begin(), d_res1.end(), d_vv, d_out1);
 
         thrust::transform(d_out, d_out+new_sz, d_out1, v, thrust::equal_to<char>());
         new_sz =  thrust::reduce(v, v+new_sz, 0);
