@@ -73,10 +73,10 @@ bool fact_file_loaded = 0;
 bool buffersEmpty = 0;
 
 
-map<string,queue<string>> top_type;
-map<string,queue<string>> top_value;
-map<string,queue<int_type>> top_nums;
-map<string,queue<float_type>> top_nums_f;
+map<string,queue<string> > top_type;
+map<string,queue<string> > top_value;
+map<string,queue<int_type> > top_nums;
+map<string,queue<float_type> > top_nums_f;
 
 
 template <typename HeadFlagType>
@@ -227,6 +227,7 @@ struct cmp_functor
 
 
 void LoadBuffers(void* file_name);
+void* LoadBuffers1(void* file_name);
 class CudaSet;
 unsigned int findSegmentCount(char* file_name);
 CudaSet *th;
@@ -383,7 +384,7 @@ public:
                 dev_str[z] = str[z];
 
             for(int i = mColumnCount-1; i >= 0; i--) {
-                thrust::counting_iterator<unsigned int, thrust::device_system_tag> begin(0);
+                thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
                 cmp_functor ff(thrust::raw_pointer_cast(d_columns[i].data()),
                                thrust::raw_pointer_cast(output),
                                thrust::raw_pointer_cast(dev_str),
@@ -1559,7 +1560,7 @@ public:
 #else
         pthread_t thread1;
         if (mRecCount != diff)
-            pthread_create( &thread1, NULL, LoadBuffers, (void*) file_name);
+            pthread_create( &thread1, NULL, LoadBuffers1, (void*) file_name);
 #endif
     }
 
@@ -2372,6 +2373,12 @@ size_t getFreeMem()
     return free;
 } ;
 
+void* LoadBuffers1(void* file_name)
+{
+    void* p = 0;
+    LoadBuffers(file_name);
+	return p; 
+}
 
 void LoadBuffers(void* file_name)
 {

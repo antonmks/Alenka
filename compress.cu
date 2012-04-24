@@ -233,7 +233,8 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     thrust::device_ptr<unsigned long long int> dest = thrust::device_malloc<unsigned long long int>(orig_recCount);
 
 
-    thrust::counting_iterator<unsigned int, thrust::device_system_tag> begin(0);
+    //thrust::counting_iterator<unsigned int, thrust::device_system_tag> begin(0);
+	thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)thrust::raw_pointer_cast(dest), (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
 
