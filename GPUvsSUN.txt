@@ -61,9 +61,6 @@ run queries q1.sql and q3.sql
 
 see the results in mytest.txt file.
 
-I have tested alenka only on 64 bit Windows 7, it reads data in a background process when using Windows
-so timings may differ under Linux.
-
 Anton K
 antonmks@gmail.com
 
