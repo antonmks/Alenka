@@ -47,7 +47,11 @@ Notice the difference between STREAM load and regular LOAD statements : file loa
 
 To compile alenka you need to download NVidia's CUDA. 
 Install it and run the following commands to compile alenka executable : 
+For wIn64 :
   nvcc.exe -arch sm_13 -L "C:\Program Files\Microsoft Visual Studio 10.0\VC\lib\amd64" -lcuda C:\GnuWin32\bin\bison.cu -o alenka
+For Linux :
+  nvcc -arch sm_13 -lcuda ./bison.cu -o ./alenka
+
 if you compile for Win64 platform.
 I tested Alenka on Windows7, the results on other platforms may vary :-)
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
