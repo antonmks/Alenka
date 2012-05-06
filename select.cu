@@ -42,6 +42,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
     bool one_line = 0;
+	std::clock_t start1 = std::clock();
 
 
     if (a->columnGroups.empty() && a->mRecCount != 0)
@@ -682,9 +683,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
+	
+	
 
-    std::clock_t start1 = std::clock();
-
+    
     b->grp_type = new unsigned int[colCount];
 
     for(int j=0; j<colCount; j++) {

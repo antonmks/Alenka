@@ -815,10 +815,50 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
         };
     };
-    bool* sv = bool_vectors.top();
-    unsigned int count = a->copy_filter(b, sv, del_source, segment);
+    b->prm = bool_vectors.top();
+	//thrust::device_ptr<bool> bp((bool*)sv);
+    unsigned int count = a->copy_filter(b, b->prm, del_source, segment);
+	//b->mRecCount = a->mRecCount;
+	//b->permuted = 1;
+	//b->filter_ref = a;
+	/*unsigned int count = thrust::count(bp, bp+a->mRecCount,1);
+	
+	b->prm.resize(count);			
+	//convert bool vector to unsigned int prm	
+	thrust::copy_if(a->prm.begin(), a->prm.end(), bp, b->prm.begin(), nz<bool>());
+	b->permuted = 1;
+	
+	if(del_source) {
+	
+	    if (!a->keep) {
+	    // move columns from a to b
+	     
+		    a->d_columns_int.swap(b->d_columns_int); 
+		    a->d_columns_float.swap(b->d_columns_float); 
+		    a->h_columns_int.swap(b->h_columns_int); 
+		    a->h_columns_float.swap(b->h_columns_float); 		
+		    a->h_columns_cuda_char.swap(b->h_columns_cuda_char); 
+		    a->type_index.swap(b->type_index);		
+		}	
+		else {
+            b->d_columns_int = a->d_columns_int; 
+		    b->d_columns_float = a->d_columns_float; 
+		    b->h_columns_int = a->h_columns_int; 
+		    b->h_columns_float = a->h_columns_float; 		
+		    b->h_columns_cuda_char = a->h_columns_cuda_char; 
+		    b->type_index = a->type_index;				
+			b->keep = 1;
+		};
+		
+	}
+	else {
+	    // copy columns from a to b
+		
+		
+	};
+	*/
 
-    cudaFree(sv);
-    return count;
+    cudaFree(b->prm);
+    return b->mRecCount;
 
 }

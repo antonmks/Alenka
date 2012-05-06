@@ -174,7 +174,8 @@ struct decompress_functor_float
 
 
 
-long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, FILE* f, bool mode, unsigned int mColumnCount, unsigned int offset)
+long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, FILE* f, bool mode, unsigned int mColumnCount, 
+                                   unsigned int offset, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount, grp_count;
@@ -215,12 +216,12 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     else
         cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)compressed + 1), cnt*8, cudaMemcpyHostToDevice);
 
-    void* d_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+    //void* d_v;
+    //CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
-    void* s_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+    //void* s_v;
+    //CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
 
@@ -231,15 +232,12 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     dd_v[2] = bit_count;
 
     thrust::device_ptr<unsigned long long int> dest = thrust::device_malloc<unsigned long long int>(orig_recCount);
-
-
-    //thrust::counting_iterator<unsigned int, thrust::device_system_tag> begin(0);
 	thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)thrust::raw_pointer_cast(dest), (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
 
-    cudaFree(d_v);
-    cudaFree(s_v);
+    //cudaFree(d_v);
+    //cudaFree(s_v);
     thrust::device_free(decomp);
 
 
@@ -248,9 +246,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
         thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
 
         for(unsigned int i = 0; i < mColumnCount; i++) {
-            //thrust::device_ptr<char> d_col((char*)d_columns[i] + offset);
             if(f)
-                //cudaMemcpy( (void*)thrust::raw_pointer_cast(dict), (void*)(h_columns[i] + offset) , grp_count, cudaMemcpyHostToDevice);
                 thrust::copy(h_columns[i].begin()+offset, h_columns[i].begin()+offset+grp_count,dict);
             else
                 cudaMemcpy( (void*)thrust::raw_pointer_cast(dict), (void*)((char*)compressed + 8*cnt + 16 + i*grp_count) , grp_count, cudaMemcpyHostToDevice);
@@ -263,10 +259,8 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
         thrust::device_ptr<char> d_col = thrust::device_malloc<char>(orig_recCount);
 
         for(unsigned int i = 0; i < mColumnCount; i++) {
-            //cudaMemcpy( (void*)thrust::raw_pointer_cast(dict), (void*)(h_columns[i] + offset), grp_count, cudaMemcpyHostToDevice);
             thrust::copy(h_columns[i].begin()+offset, h_columns[i].begin()+offset+grp_count,dict);
             thrust::gather(dest, dest+orig_recCount,dict, d_col);
-            //cudaMemcpy((void*)(h_columns[i] +offset), thrust::raw_pointer_cast(d_col), orig_recCount, cudaMemcpyDeviceToHost);
             thrust::copy(d_col, d_col+orig_recCount,h_columns[i].begin() +offset);
         }
         thrust::device_free(dict);
@@ -283,7 +277,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
 
 
 
-long long int pfor_decompress(void* destination, void* host, unsigned int* mRecCount, bool tp, FILE* f)
+long long int pfor_decompress(void* destination, void* host, unsigned int* mRecCount, bool tp, FILE* f, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount;
@@ -325,12 +319,12 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
     else
         cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
 
-    void* d_v;
-    cudaMalloc((void **) &d_v, 12);
+//    void* d_v;
+//    cudaMalloc((void **) &d_v, 12);
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
-    void* s_v;
-    cudaMalloc((void **) &s_v, 8);
+//    void* s_v;
+//    cudaMalloc((void **) &s_v, 8);
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
     dd_sv[0] = orig_lower_val;
@@ -360,8 +354,8 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
         };
 
     };
-    cudaFree(d_v);
-    cudaFree(s_v);
+//    cudaFree(d_v);
+//    cudaFree(s_v);
     thrust::device_free(decomp);
     return 1;
 
@@ -623,7 +617,6 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
     thrust::device_ptr<unsigned long long int> s_copy1((unsigned long long int*)d);
 
     // make an addition  sequence
-    //thrust::device_ptr<unsigned long long int> add_seq = thrust::device_malloc<unsigned long long int>(source_len);
     thrust::constant_iterator< long long int> iter(fit_count);
     thrust::sequence(permutation_final, permutation_final + source_len, 0, 1);
     thrust::transform(permutation_final, permutation_final + source_len, iter, permutation_final, thrust::divides<long long int>());
@@ -637,9 +630,7 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
     //cout << "fin seq " << cnt << " " << source_len <<  endl;
 
     thrust::reduce_by_key(permutation_final, permutation_final+source_len,s_copy1,thrust::make_discard_iterator(), fin_seq);
-    //thrust::device_free(add_seq);
     orig_lower_val = 0;
-
 
     if (file_name) {
         cudaMemcpy( host.data(), (void *)thrust::raw_pointer_cast(fin_seq), cnt*8, cudaMemcpyDeviceToHost);
@@ -656,7 +647,6 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
         // create dictionary
         thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
         for(unsigned int j=0; j < mColumnCount; j++) {
-            //thrust::device_ptr<char> d_col(d_columns[j]);
             thrust::transform(d_grp, d_grp+source_len, d_grp_int, bool_to_int());
             thrust::copy_if(d_columns[j].begin(),d_columns[j].begin()+source_len,d_grp_int, dict, nz<unsigned int>());
             cudaMemcpy( host.data(), (void *)thrust::raw_pointer_cast(dict), grp_count, cudaMemcpyDeviceToHost);
@@ -675,7 +665,6 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
     }
     else {
         char* hh;
-        //resize_compressed(host, sz, cnt*8 + mColumnCount*grp_count + 14*4, 0);
         host.resize(sz+cnt*8 + mColumnCount*grp_count + 14*4);
         hh = (host.data() + sz);
         ((unsigned int*)hh)[0] = cnt;
@@ -688,7 +677,6 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
         // create dictionary
         thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
         for(unsigned int j=0; j < mColumnCount; j++) {
-            //thrust::device_ptr<char> d_col(d_columns[j]);
             thrust::transform(d_grp, d_grp+source_len, d_grp_int, bool_to_int());
             thrust::copy_if(d_columns[j].begin(),d_columns[j].begin()+source_len,d_grp_int, dict, nz<unsigned int>());
             cudaMemcpy( (void*)(hh+16+cnt*8+j*grp_count), (void *)thrust::raw_pointer_cast(dict), grp_count, cudaMemcpyDeviceToHost);
@@ -840,7 +828,6 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     else {
         char* hh;
         // resize host to sz + cnt*8 + 15
-        //resize_compressed(host, sz, cnt*8 + 15*4, 0);
         host.resize(sz+cnt+8);
         hh = (char*)(host.data() + sz);
         ((unsigned int*)hh)[0] = cnt;

@@ -609,7 +609,7 @@ void emit_join(char *s, char *j1)
     string f2 = op_value.front();
     op_value.pop();
 
-    printf("emit join: %s %s  \n", s, j1);
+    cout << "join: " << s << " " << j1 << endl;;
 
     std::clock_t start1 = std::clock();
     CudaSet* c;
@@ -711,12 +711,13 @@ void emit_join(char *s, char *j1)
 
         std::clock_t start2 = std::clock();
 
-        //cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
+        cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
 
         //cout << "right col is unique : " << right->isUnique(colInd2) << endl;
 
 
         if ((left->type)[colInd1] == 0 && (right->type)[colInd2]  == 0) {
+		   
             join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()),
                  d_res1, d_res2, left->mRecCount, right->mRecCount, right->isUnique(colInd2));
         }
@@ -863,12 +864,15 @@ void emit_join(char *s, char *j1)
         }
 
         cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
-        //std::cout<< "join1 time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+        std::cout<< "join1 time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         if(i == 0)
             c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
-        if (d_res1.size() != 0)
+        if (d_res1.size() != 0) {
+		    std::clock_t start2 = std::clock();
             c->gather(right,left,d_res2,d_res1, i, op_sel);
+			std::cout<< "jgather time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+		};	
 
         //cout << " ctotal " << c->mRecCount << endl;
     };  // end of join piece cycle
@@ -995,7 +999,7 @@ void emit_order(char *s, char *f, int e, int ll)
 
     stack<string> exe_type, exe_value;
 
-    printf("emit order: %s %s \n", s, f);
+    cout << "order: " << s << " " << f << endl;;
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop(),op_value.pop()) {
         if ((op_type.front()).compare("NAME") == 0) {
@@ -1065,14 +1069,10 @@ void emit_order(char *s, char *f, int e, int ll)
         };
 
         if (a->type[i] == 0 ) {
-            //thrust::device_ptr<int_type> src((int_type*)(a->d_columns)[i]);
-            //thrust::device_ptr<int_type> dest((int_type*)(b->d_columns)[i]);
             thrust::copy(a->d_columns_int[a->type_index[i]].begin(), a->d_columns_int[a->type_index[i]].begin() + a->mRecCount, b->d_columns_int[b->type_index[i]].begin());
             apply_permutation(thrust::raw_pointer_cast((b->d_columns_int[b->type_index[i]]).data()), raw_ptr, b->mRecCount, (int_type*)temp);
         }
         else if (a->type[i] == 1 ) {
-            //thrust::device_ptr<float_type> src((float_type*)(a->d_columns)[i]);
-            //thrust::device_ptr<float_type> dest((float_type*)(b->d_columns)[i]);
             thrust::copy(a->d_columns_float[a->type_index[i]].begin(), a->d_columns_float[a->type_index[i]].begin() + a->mRecCount, b->d_columns_float[b->type_index[i]].begin());
             apply_permutation(thrust::raw_pointer_cast((b->d_columns_float[b->type_index[i]]).data()), raw_ptr, b->mRecCount, (float_type*)temp);
         }
@@ -1148,8 +1148,8 @@ void emit_select(char *s, char *f, int ll)
 
 
     CudaSet *a;
-    a = varNames.find(f)->second;
-
+	a = varNames.find(f)->second;
+	
     if (a->fact_table == 0 && lc > 1)
         return;
 
@@ -1164,7 +1164,6 @@ void emit_select(char *s, char *f, int ll)
 
         if (a->fact_table == 1 && fact_file_loaded == 1) {
             if (ll != 0 ) {
-                printf("emit select final merge %s %s \n", s, f);
                 CudaSet *c;
                 if(varNames.find(s) == varNames.end())
                     c = new CudaSet(0,1);
@@ -1203,7 +1202,7 @@ void emit_select(char *s, char *f, int ll)
 
 
 
-    printf("emit select %s %s \n", s, f);
+    cout << "select " << s  << endl;
 
     std::clock_t start1 = std::clock();
 
@@ -1239,15 +1238,9 @@ void emit_select(char *s, char *f, int ll)
 
     CudaSet* b;
     CudaSet* c;
-
-
-//    int_type copy_count = chunkCount;
-//    int_type old_reccount = a->mRecCount;
-
-
+	
     for(unsigned int i = 0; i < a->segCount; i++) {          // MAIN CYCLE
 
-//        if(ll == 0 && one_line && varNames.find(s) != varNames.end())
         if(ll == 0 && varNames.find(s) != varNames.end())
             b = varNames[s];
         else {
@@ -1255,20 +1248,17 @@ void emit_select(char *s, char *f, int ll)
         };
         b->mRecCount = 0;
 
-
         if(!in_gpu)
-            for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it)
-                a->CopyColumnToGpu(a->columnNames[*it], i);
-
+            for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) 
+                a->CopyColumnToGpu(a->columnNames[*it], i);			
+				
         if (ll != 0) {
             thrust::device_ptr<unsigned int> perm = order_inplace(a,op_v2,field_names);
             thrust::device_free(perm);
             a->GroupBy(op_v3);
         };
-
         select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);
-        cout << "select result " << b->mRecCount << endl;
-
+		
         if (ll != 0) {
 
             if(lc > 1 && varNames.find(s) != varNames.end()) {
@@ -1289,7 +1279,7 @@ void emit_select(char *s, char *f, int ll)
                 }
                 else
                     c->resize(b->mRecCount);
-            };
+            };			
             add(c,b,op_v3, op_v2);
         };
         b->deAllocOnDevice();
@@ -1398,23 +1388,21 @@ void emit_filter(char *s, char *f, int e)
         if(a->readyToProcess == 0 || (a->fact_table == 0 && lc > 1))
             return;
 
-        printf("emit filter : %s %s \n", s, f);
+        cout << "filter " <<  s <<  endl;
         std::clock_t start1 = std::clock();
 
         if (a->onDevice(0))
-            //    a->allocOnDevice(a->maxRecs);
-            //else
             in_gpu = true;
 
 //		cout << "filter on gpu " <<  in_gpu << endl;
+        bool del_source = (stat[f] == statement_count);
 
         if (lc == 1 || (varNames.find(s) == varNames.end()))
             b = a->copyDeviceStruct();
         else
             b = varNames.find(s)->second;
 
-        int_type old_reccount = a->mRecCount;
-        bool del_source = (stat[f] == statement_count);
+        int_type old_reccount = a->mRecCount;        
 
         queue<string> op_v(op_value);
         queue<unsigned int> field_names;
@@ -1462,7 +1450,7 @@ void emit_filter(char *s, char *f, int e)
         b->free();
         varNames.erase(s);
     };
-    if(stat[f] == statement_count && ((a->fact_table == 0 || fact_file_loaded == 1 || fact_file_exists == 0) || a->keep == 0)) {
+    if(stat[f] == statement_count && ((a->fact_table == 0 || fact_file_loaded == 1 || fact_file_exists == 0) || !a->keep)) {
         a->free();
         varNames.erase(f);
     };
@@ -1491,7 +1479,7 @@ void emit_store(char *s, char *f, char* sep)
     if(a->readyToProcess == 0)
         return;
 
-    printf("emit store: %s %s %s \n", s, f, sep);
+    cout << "store: " << s << " " << f << " " << sep << endl;
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -1533,7 +1521,7 @@ void emit_store_binary(char *s, char *f)
     if(a->readyToProcess == 0)
         return;
 
-    printf("emit store: %s %s \n", s, f);
+    cout << "store: " << s << " " << f << endl;
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -1570,8 +1558,8 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
         return;
     };
 
-    printf("emit binary load: %s %s \n", s, f);
-
+    cout << "binary load: " << s << " " << f << endl;
+	
     CudaSet *a;
     unsigned int segCount, maxRecs;
     char f1[100];
@@ -1580,9 +1568,17 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
     char col_pos[3];
     itoaa(cols.front(),col_pos);
     strcat(f1,col_pos);
+	
+	FILE* ff = fopen(f1, "rb");
+	fseeko(ff, -16, SEEK_END);
+	fread((char *)&totalRecs, 8, 1, ff);
+	fread((char *)&segCount, 4, 1, ff);
+	fread((char *)&maxRecs, 4, 1, ff);
+    fclose(ff);		
+	
 
     if (!stream && lc==1) {
-        a = new CudaSet(namevars, typevars, sizevars, cols, findRecordCount(f1, namevars.size(), segCount, maxRecs), f);
+        a = new CudaSet(namevars, typevars, sizevars, cols,totalRecs, f);
         a->segCount = segCount;
         a->maxRecs = maxRecs;
         a->fact_table = 0;
@@ -1592,18 +1588,15 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
         fact_file_loaded = 0;
         if (lc == 1) {
             fact_file_name = f;
-            fact_file_exists = 1;
-            totalRecs = findRecordCount(f1, namevars.size(), segCount, maxRecs);
-            cout << "total " << totalRecs << " " << segCount << " " << maxRecs << endl;
+            fact_file_exists = 1;			
+			cout << "total " << totalRecs << " " << segCount << " " << maxRecs << endl;		
             a = new CudaSet(namevars, typevars, sizevars, cols, maxRecs);
             a->keep = true;
             a->name = s;
             a->maxRecs = maxRecs;
             buffersLoaded = 0;
             th = a;
-//#ifdef _WIN64
             LoadBuffers(f);
-//#endif
         }
         else
             a =  varNames[s];
@@ -1647,7 +1640,7 @@ void emit_load(char *s, char *f, int d, char* sep, bool stream)
     };
 
 
-    printf("emit load: %s %s %d  %s \n", s, f, d, sep);
+    cout << "emit load: " << s << " " << f << " " << d << " " << sep << endl;
 
     CudaSet *a;
 
@@ -1659,6 +1652,8 @@ void emit_load(char *s, char *f, int d, char* sep, bool stream)
         }
         else {
             a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
+            a->mRecCount = 0;
+            a->resize(process_count);  						
             a->fact_table = 1;
             a->LoadFile(f, sep);
             a->fact_table = 0;
@@ -1672,6 +1667,8 @@ void emit_load(char *s, char *f, int d, char* sep, bool stream)
 
         if (lc == 1) {
             a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
+            a->mRecCount = 0;
+            a->resize(process_count);  			
             a->keep = true;
         }
         else
@@ -1790,9 +1787,9 @@ int main(int ac, char **av)
         statement_count = 0;
 
         if(!yyparse())
-            printf("SQL scan parse worked\n");
+            cout << "SQL scan parse worked" << endl;
         else
-            printf("SQL scan parse failed\n");
+            cout << "SQL scan parse failed" << endl;
         fclose(yyin);
         std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     }
