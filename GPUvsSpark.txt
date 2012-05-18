@@ -62,7 +62,7 @@ compile alenka from source
 run alenka scripts to create data files (load_lineitem.sql)
 using segment size of 10000000 (option -l 10000000)
 
-run queries q1.sql
+run alenka query q1.sql : ./alenka q1.sql
 
 see the results in mytest.txt file.
 
