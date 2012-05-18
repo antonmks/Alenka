@@ -75,6 +75,8 @@ bool buffersEmpty = 0;
 unsigned long long int total_count = 0;
 unsigned int total_segments = 0;
 unsigned int total_max;
+void* d_v;
+void* s_v;
 
 
 map<string,queue<string> > top_type;
@@ -492,14 +494,16 @@ public:
     unsigned int segCount, maxRecs;
     char* name;
 	bool permuted;
-	CudaSet* filter_ref;
-
+	//CudaSet* filter_ref;
+	char* load_file_name;
+	
     unsigned int* type; // 0 - integer, 1-float_type, 2-char
     bool* decimal; // column is decimal - affects only compression
     unsigned int* grp_type; // type of group : SUM, AVG, COUNT etc
     unsigned int* cols; // column positions in a file
     unsigned int grp_count;
     int readyToProcess;
+	bool partial_load;
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs)
         : mColumnCount(0),
@@ -509,6 +513,7 @@ public:
         keep = false;
         offsets = 0;
 		permuted = 0;
+		partial_load = 0;
     }
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs, char* file_name)
@@ -519,6 +524,7 @@ public:
         keep = false;
         offsets = 0;
 		permuted = 0;
+		partial_load = 1;
     }
 
 
@@ -529,6 +535,7 @@ public:
         keep = false;
         offsets = 0;
 		permuted = 0;
+		partial_load = 0;
     };
 
 
@@ -538,6 +545,7 @@ public:
         initialize(a,b,Recs, op_sel, op_sel_as);
         keep = false;
 		permuted = 0;
+		partial_load = 0;
     };
 
 
@@ -698,7 +706,7 @@ public:
             CUDA_SAFE_CALL(cudaMalloc((void **) &d, newRecCount*float_size));
 
             for(unsigned int i=0; i < mColumnCount; i++) {
-                //cout << "copy_filter " << i << " " << b->offsets[i] << " " << newRecCount << " " << type[i] << endl;
+//                cout << "copy_filter " << i << " " << b->offsets[i] << " " << newRecCount << " " << type[i] << endl;
                 bool allocated = 0;
 
                 if(!onDevice(i))
@@ -706,12 +714,13 @@ public:
                     allocColumnOnDevice(i, maxRecs);
                     CopyColumnToGpu(i, segment);
                     allocated = 1;
-                };
+                };	
 
                 if (type[i] == 0 ) {
                     thrust::device_ptr<int_type> dest((int_type*)d);
                     thrust::copy_if(d_columns_int[type_index[i]].begin(), d_columns_int[type_index[i]].begin()+mRecCount,
                                     dev_ptr,dest,nz<int_type>());
+									
                     b->offsets[i] = pfor_compress(d, newRecCount*int_size, NULL, b->h_columns_int[b->type_index[i]], 0, b->offsets[i]);
                 }
                 else if (type[i] == 1 ) {
@@ -775,8 +784,8 @@ public:
                           thrust::copy_if(h_columns_cuda_char[type_index[i]]->d_columns[j].begin(),h_columns_cuda_char[type_index[i]]->d_columns[j].begin()+mRecCount,dev_ptr,
                                           b->h_columns_cuda_char[b->type_index[i]]->d_columns[j].begin(),nz<int_type>());
 										  
-                if(del_source)
-                    deAllocColumnOnDevice(i);
+                //if(del_source)
+                //    deAllocColumnOnDevice(i);
             };
             b->mRecCount = newRecCount;
         };
@@ -920,6 +929,80 @@ public:
         mRecCount = mRecCount + d_res1.size();
 
     }
+	
+	unsigned long long int readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
+	{
+		char f1[100];
+        strcpy(f1, load_file_name);
+        strcat(f1,".");
+        char col_pos[3];
+        itoaa(cols[colIndex],col_pos);
+        strcat(f1,col_pos); 
+		FILE* f;
+		int cnt, grp_count;
+		int offset = 0;		
+
+        f = fopen (f1 , "rb" );
+		//cout << "file " << f1 << " " << segNum << endl;
+
+        for(int i = 0; i < segNum; i++) {				
+		
+		    if(type[colIndex] != 2) {			    
+		        fread((char *)&cnt, 4, 1, f);	
+		        offset = offset + cnt + 8;			
+                fseeko(f, offset*8 , SEEK_SET);						
+			}			
+     	    else {	
+		        fread((char *)&cnt, 4, 1, f);	
+		        offset = offset + cnt*8 + 8;			
+                fseeko(f, offset , SEEK_SET);							            
+				fread((char *)&grp_count, 4, 1, f);	                
+				CudaChar* c = h_columns_cuda_char[type_index[colIndex]];
+                offset = offset + 11*4 + grp_count*c->mColumnCount;
+				fseeko(f, offset , SEEK_SET);						
+            };			
+		};	
+		// find out how much we need to read and rewind back to the start of the segment
+		if(type[colIndex] != 2) {			    
+		    fread((char *)&cnt, 4, 1, f);				
+            fseeko(f, -4 , SEEK_CUR);			
+		}
+        else {
+		    fread((char *)&cnt, 4, 1, f);
+		    offset = cnt*8 + 8;						
+            fseeko(f, offset , SEEK_CUR);
+		    fread((char *)&grp_count, 4, 1, f);	   			
+            fseeko(f, -(cnt*8+16) , SEEK_CUR);						
+        };  		
+		
+		// resize the host arrays if necessary
+		// and read the segment from a file
+
+        if(type[colIndex] == 0) {
+		  if(h_columns_int[type_index[colIndex]].size() < cnt+9) {
+		      resize(cnt+9-d_columns_int[type_index[colIndex]].size());		
+		  }; 	  
+	      fread(h_columns_int[type_index[colIndex]].data(),(cnt+8)*8,1,f);			 
+		}
+        else if(type[colIndex] == 1) {
+		  if(h_columns_float[type_index[colIndex]].size() < cnt+9)
+		      resize(cnt+9-d_columns_int[type_index[colIndex]].size());		
+		  fread(h_columns_float[type_index[colIndex]].data(),(cnt+8)*8,1,f);			 
+		}
+		else {
+		    
+	    	CudaChar* c = h_columns_cuda_char[type_index[colIndex]];
+		    if(c->compressed.size() < cnt*8 + 14*4 + grp_count*c->mColumnCount) 
+			    c->compressed.resize(cnt*8 + 14*4 + grp_count*c->mColumnCount);			
+
+            fread(c->compressed.data(), cnt*8 + 14*4 + grp_count*c->mColumnCount,1,f);			  
+			
+		};	
+		fclose(f);
+		return 0;
+	  
+	
+	}
 
 
     unsigned long long int readSegments(unsigned int segNum, unsigned int colIndex) // read segNum number of segments and return the offset of the next segment
@@ -1011,8 +1094,13 @@ public:
             };
         }
         else {
-//		    cout << "start " << type[colIndex] << " " << segment << endl;
-            unsigned long long int data_offset = readSegments(segment,colIndex);
+		    //cout << "start " << colIndex << " " << type[colIndex] << " " << segment << endl;
+			unsigned long long int data_offset;
+			if (partial_load)
+                data_offset = readSegmentsFromFile(segment,colIndex);
+			else
+                data_offset = readSegments(segment,colIndex);
+			//cout << "data offset " << data_offset << endl;
 			
             void* d_v;
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
@@ -1067,10 +1155,15 @@ public:
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
             void* s_v;
             CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+			cout << "cpy " << colIndex << " " << segCount << endl;
 
             for(unsigned int i = 0; i < segCount; i++) {
 
-                data_offset = readSegments(i,colIndex);
+				if (partial_load)
+                    data_offset = readSegmentsFromFile(i,colIndex);
+				else	
+				    data_offset = readSegments(i,colIndex);
+				cout << "data offset " << data_offset << endl;
                 switch(type[colIndex]) {
                 case 0 :
                     pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, 0, NULL, d_v, s_v);
@@ -1119,7 +1212,11 @@ public:
             unsigned int start_seg, seg_num, grp_count, data_len, mCount;
             start_seg = offset/segCount; // starting segment
             seg_num = count/segCount;    // number of segments that we need
-            long long int data_offset = readSegments(start_seg,colIndex);
+			long long int data_offset;
+			if(partial_load)
+                data_offset = readSegmentsFromFile(start_seg,colIndex);
+			else
+                data_offset = readSegments(start_seg,colIndex);			
 			
             void* d_v;
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
@@ -1160,6 +1257,8 @@ public:
             cudaFree(s_v);			
         };
     }
+	
+	
 
     void CopyColumnToHost(int colIndex, unsigned int offset, unsigned int RecCount)
     {
@@ -1535,6 +1634,7 @@ public:
 					binary_file.write((char *)&total_max, 4);
                     binary_file.close();
 				};
+				
             };			
 			
 
@@ -1554,25 +1654,23 @@ public:
         char str[100];
         char col_pos[3];
 
-        if (!onDevice(0))
+		std::clock_t start1 = std::clock();
+        if (!onDevice(0)) {
             allocOnDevice(mRecCount);
+            CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+            CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));			
+		};	
         th = this;
 
-//		std::clock_t start1 = std::clock();
 cout << "start waiting " << endl;
         while(!buffersLoaded);
-//std::cout<< "waiting time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+std::cout<< "waiting time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         if(buffersEmpty) {
             fact_file_loaded = 1;
             mRecCount = 0;
             return;
-        };
-		
-	    void* d_v;
-        CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-        void* s_v;
-        CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+        };		
 
         for(int i = 0; i< mColumnCount; i++) {
 
@@ -1599,8 +1697,8 @@ cout << "start waiting " << endl;
 	//		std::cout<< "decomp " << i << " " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         };
 		
-        cudaFree(d_v);
-        cudaFree(s_v);
+        //cudaFree(d_v);
+        //cudaFree(s_v);
  		
         buffersLoaded = 0;
 //		std::cout<< "decompress time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
@@ -2174,16 +2272,19 @@ protected: // methods
         type = new unsigned int[mColumnCount];
         cols = new unsigned int[mColumnCount];
         decimal = new bool[mColumnCount];
-        file_p = NULL;
-        long long int sz;
+		unsigned int cnt, grp_count;
+        file_p = NULL;        
         FILE* f;
         char f1[100];
 
         readyToProcess = 1;
         mRecCount = Recs;
+		load_file_name = file_name;
+		
 		
         for(unsigned int i=0; i < mColumnCount; i++) {
 
+		    std::clock_t start1 = std::clock();
             columnNames[nameRef.front()] = i;
             cols[i] = colsRef.front();
             seq = 0;
@@ -2192,44 +2293,43 @@ protected: // methods
             strcat(f1,".");
             char col_pos[3];
             itoaa(colsRef.front(),col_pos);
-            strcat(f1,col_pos); // read the size of the file
+            strcat(f1,col_pos); // read the size of a segment
+			
 
-            f = fopen (f1 , "rb" );
-            fseeko(f, 0, SEEK_END);
-            sz = ftello(f);
-            fseeko(f, 0, SEEK_SET);
-
+            f = fopen (f1 , "rb" );			
+		    fread((char *)&cnt, 4, 1, f);			
+			
             if ((typeRef.front()).compare("int") == 0) {
                 type[i] = 0;
                 decimal[i] = 0;
-                h_columns_int.push_back(thrust::host_vector<int_type>(sz/int_size + 1));
+                h_columns_int.push_back(thrust::host_vector<int_type>(cnt + 9));
                 d_columns_int.push_back(thrust::device_vector<int_type>());
                 type_index[i] = h_columns_int.size()-1;
-                fread(h_columns_int[type_index[i]].data(),sz,1,f);
             }
             else if ((typeRef.front()).compare("float") == 0) {
                 type[i] = 1;
                 decimal[i] = 0;
-                h_columns_float.push_back(thrust::host_vector<float_type>(sz/float_size + 1));
+                h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
-                fread(h_columns_float[type_index[i]].data(),sz,1,f);
             }
             else if ((typeRef.front()).compare("decimal") == 0) {
                 type[i] = 1;
-                decimal[i] = 1;
-                h_columns_float.push_back(thrust::host_vector<float_type>(sz/float_size + 1));
+                decimal[i] = 1;				
+                h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));				
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
-                fread(h_columns_float[type_index[i]].data(),sz,1,f);
             }
             else {
                 type[i] = 2;
-                decimal[i] = 0;
-                h_columns_cuda_char.push_back(new CudaChar(sizeRef.front(), Recs, 0, sz));
+                decimal[i] = 0;				
+				fseeko(f, cnt*8 + 12, SEEK_SET);
+				fread((char *)&grp_count, 4, 1, f);				
+                h_columns_cuda_char.push_back(new CudaChar(sizeRef.front(), Recs, 0, cnt*8 + 14*4 + grp_count*sizeRef.front()));				
                 type_index[i] = h_columns_cuda_char.size()-1;
-                fread(h_columns_cuda_char[type_index[i]]->compressed.data(),sz,1,f);
             };
+			
+			std::cout<< "vector creation time " <<  " " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
             fclose(f);
             nameRef.pop();
@@ -2237,6 +2337,7 @@ protected: // methods
             sizeRef.pop();
             colsRef.pop();
         };
+		
     };
 
 

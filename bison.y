@@ -609,7 +609,9 @@ void emit_join(char *s, char *j1)
     string f2 = op_value.front();
     op_value.pop();
 
-    cout << "join: " << s << " " << j1 << endl;;
+    //cout << "join: " << s << " " << j1 << endl;;
+    printf("join: %s %s  \n", s, j1);
+
 
     std::clock_t start1 = std::clock();
     CudaSet* c;
@@ -656,6 +658,7 @@ void emit_join(char *s, char *j1)
         right->allocColumnOnDevice(colInd2, right->mRecCount);
         right->CopyColumnToGpu(colInd2);
     };
+	
 
     if(lc == 1 || right->fact_table) {
 
@@ -711,7 +714,7 @@ void emit_join(char *s, char *j1)
 
         std::clock_t start2 = std::clock();
 
-        cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
+        //cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
 
         //cout << "right col is unique : " << right->isUnique(colInd2) << endl;
 
@@ -863,15 +866,13 @@ void emit_join(char *s, char *j1)
                 left->deAllocColumnOnDevice(colInd1);
         }
 
-        cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
-        std::cout<< "join1 time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+        //cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
+        //std::cout<< "join1 time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         if(i == 0)
             c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
         if (d_res1.size() != 0) {
-		    std::clock_t start2 = std::clock();
             c->gather(right,left,d_res2,d_res1, i, op_sel);
-			std::cout<< "jgather time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 		};	
 
         //cout << " ctotal " << c->mRecCount << endl;
@@ -999,7 +1000,9 @@ void emit_order(char *s, char *f, int e, int ll)
 
     stack<string> exe_type, exe_value;
 
-    cout << "order: " << s << " " << f << endl;;
+    //cout << "order: " << s << " " << f << endl;;
+    printf("order: %s %s \n", s, f);
+
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop(),op_value.pop()) {
         if ((op_type.front()).compare("NAME") == 0) {
@@ -1202,7 +1205,9 @@ void emit_select(char *s, char *f, int ll)
 
 
 
-    cout << "select " << s  << endl;
+    //cout << "select " << s  << endl;
+    printf("select %s %s \n", s, f);
+
 
     std::clock_t start1 = std::clock();
 
@@ -1387,14 +1392,16 @@ void emit_filter(char *s, char *f, int e)
 
         if(a->readyToProcess == 0 || (a->fact_table == 0 && lc > 1))
             return;
+			
+        //cout << "filter " <<  getFreeMem() <<  endl;
+        printf("emit filter : %s %s \n", s, f);		
 
-        cout << "filter " <<  s <<  endl;
         std::clock_t start1 = std::clock();
 
         if (a->onDevice(0))
             in_gpu = true;
 
-//		cout << "filter on gpu " <<  in_gpu << endl;
+		//cout << "filter on gpu " <<  in_gpu << endl;
         bool del_source = (stat[f] == statement_count);
 
         if (lc == 1 || (varNames.find(s) == varNames.end()))
@@ -1415,9 +1422,10 @@ void emit_filter(char *s, char *f, int e)
             };
             op_v.pop();
         };
+		
 
         for(unsigned int i = 0; i < a->segCount; i++) {
-            queue<unsigned int> f(field_names);
+			queue<unsigned int> f(field_names);
             while(!f.empty()) {
                 a->CopyColumnToGpu(f.front(), i); // segment i
                 f.pop();
@@ -1479,7 +1487,9 @@ void emit_store(char *s, char *f, char* sep)
     if(a->readyToProcess == 0)
         return;
 
-    cout << "store: " << s << " " << f << " " << sep << endl;
+    //cout << "store: " << s << " " << f << " " << sep << endl;
+	    printf("emit store: %s %s %s \n", s, f, sep);
+
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -1521,7 +1531,9 @@ void emit_store_binary(char *s, char *f)
     if(a->readyToProcess == 0)
         return;
 
-    cout << "store: " << s << " " << f << endl;
+    //cout << "store: " << s << " " << f << endl;
+    printf("emit store: %s %s \n", s, f);
+
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -1558,7 +1570,8 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
         return;
     };
 
-    cout << "binary load: " << s << " " << f << endl;
+    printf("emit binary load: %s %s \n", s, f);
+
 	
     CudaSet *a;
     unsigned int segCount, maxRecs;
@@ -1640,7 +1653,7 @@ void emit_load(char *s, char *f, int d, char* sep, bool stream)
     };
 
 
-    cout << "emit load: " << s << " " << f << " " << d << " " << sep << endl;
+    printf("emit load: %s %s %d  %s \n", s, f, d, sep);
 
     CudaSet *a;
 

@@ -817,6 +817,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
     };
     b->prm = bool_vectors.top();
 	//thrust::device_ptr<bool> bp((bool*)sv);
+	
     unsigned int count = a->copy_filter(b, b->prm, del_source, segment);
 	//b->mRecCount = a->mRecCount;
 	//b->permuted = 1;

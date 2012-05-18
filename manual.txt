@@ -47,13 +47,9 @@ Notice the difference between STREAM load and regular LOAD statements : file loa
 
 To compile alenka you need to download NVidia's CUDA. 
 Install it and run the following commands to compile alenka executable : 
-For Win64 {if alenka source is in C:\GnuWin32\bin} :
   nvcc.exe -arch sm_13 -L "C:\Program Files\Microsoft Visual Studio 10.0\VC\lib\amd64" -lcuda C:\GnuWin32\bin\bison.cu -o alenka
-For Linux :
-  nvcc -arch sm_13 -lcuda ./bison.cu -o ./alenka
-
 if you compile for Win64 platform.
-I tested Alenka on Windows7, the results on other platforms may vary :-)
+Alenka have been tested on a 64bit Windows7 and Linux.
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
 I tested alenka on first six TPC-H queries with scale 100 (600 million records) and on all Star Query Benchmarks with scale 1000(6 billion records).
 
