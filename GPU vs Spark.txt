@@ -59,7 +59,7 @@ use dbgen to generate TPCH data with needed scale
 compile alenka from source
 ( nvcc -arch sm_20 -lcuda ./bison.cu -o ./alenka )
 
-run alenka scripts to create data files (load_lineitem.sql, load_customer.sql and load_orders.sql)
+run alenka scripts to create data files (load_lineitem.sql)
 using segment size of 10000000 (option -l 10000000)
 
 run queries q1.sql
