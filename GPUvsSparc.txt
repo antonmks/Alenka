@@ -2,7 +2,7 @@ Analytical queries : Nvidia GPU vs. SPARC Server
 
 The TPC Benchmark (TPC-H) is a decision support benchmark. It consists of a suite of business oriented queries
 that can be used to measure the processing power of a system.
-Lets compare top results achieved using Sun Fire with results obtained using a GPU.
+Lets compare top results achieved using SPARC T4-4 server with results obtained using a GPU.
 We will use a scale of 1000 which means that the size of database is around 1000GB and the largest table 
 consists of 6 billion records.
 
@@ -19,7 +19,7 @@ System configuration 2 :
    16 GB memory
    1 x 120GB internal SSD
    1 Nvidia C2050 GPU
-Software : Alenka GPU database 
+Software : Alenka GPU database [2]
 Total cost : $2350 
 
 SQL for test query looks like this :
@@ -69,4 +69,4 @@ see the results in mytest.txt file.
 Alenka have been tested on 64bit Windows7 and Linux.
 
 [1] http://www.tpc.org/tpch/results/tpch_result_detail.asp?id=111092601
-
+[2] https://github.com/antonmks/Alenka 
