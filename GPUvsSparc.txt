@@ -48,7 +48,7 @@ Original lineitem table takes 740 GB of data. Lets see how we can get it down to
 1.Alenka is a columnar database. Which means that it needs to read from the disk only the columns that are actually used in a query.
   Different columns are stored in different files. Columns that we use take only 240 GB of data.
 2.Compression. Original 240 GB of column data are compressed to 45 GB using frame-of-reference and dictionary compression.
-  Decompression, like compression is done in GPU and achieves the speed tens of gigabytes per second.
+  Decompression, like compression is done in GPU and achieves the speed of tens of gigabytes per second.
   Alenka keeps data in memory compressed. No need to buy several hundred gigabytes of memory just to load a 1000GB database.
 3.Vector processing. The operations can be performed on all data at once unlike traditional databases such as MS SQL Server and Oracle.
 4.No need to create and maintain indexes. Alenka uses Netezza-style zone maps for data segments. 
