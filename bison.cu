@@ -2717,16 +2717,42 @@ void emit_join(char *s, char *j1)
             left->CopyColumnToGpu(colInd1, i);
 
         std::clock_t start2 = std::clock();
+		
 
         //cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
-
         //cout << "right col is unique : " << right->isUnique(colInd2) << endl;
 
 
         if ((left->type)[colInd1] == 0 && (right->type)[colInd2]  == 0) {
-		   
-            join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()),
-                 d_res1, d_res2, left->mRecCount, right->mRecCount, right->isUnique(colInd2));
+		
+		    //lets add a quick check for non-zero result by using a vectorized hash join
+		    //hopefully later I will change a slow binary search to a faster hash join
+		    //although it might not work so great on columns with very wide value's range
+		
+		    thrust::constant_iterator<bool> one(1);
+		    if(right->hash_vector.size() == 0) {		       
+                right->min = right->d_columns_int[right->type_index[colInd2]][thrust::min_element(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].end()) - right->d_columns_int[right->type_index[colInd2]].begin()];
+                right->max = right->d_columns_int[right->type_index[colInd2]][thrust::max_element(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].end()) - right->d_columns_int[right->type_index[colInd2]].begin()];				
+				right->hash_vector.resize((right->max - right->min) + 1);                
+                thrust::sequence(right->hash_vector.begin(),right->hash_vector.end(),0,0); 
+                thrust::scatter(one,one+right->d_columns_int[right->type_index[colInd2]].size(), right->d_columns_int[right->type_index[colInd2]].begin(),right->hash_vector.begin()- right->min);					
+		    };
+			left->hash_vector.resize(right->hash_vector.size());
+			thrust::sequence(left->hash_vector.begin(),left->hash_vector.end(),0,0); 
+            thrust::scatter(one,one+left->d_columns_int[left->type_index[colInd1]].size(),left->d_columns_int[left->type_index[colInd1]].begin(),left->hash_vector.begin()-right->min);
+
+            thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(left->hash_vector.begin(), right->hash_vector.begin())), 
+                             thrust::make_zip_iterator(thrust::make_tuple(left->hash_vector.end(),   right->hash_vector.end())),
+                             tuple_check());
+            int count = thrust::reduce(left->hash_vector.begin(),left->hash_vector.end()); 	
+            left->hash_vector.resize(0);
+			left->hash_vector.shrink_to_fit();
+			cout << "hash check end " << count << endl;		
+           std::cout<< "hash check time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
+		
+		   if(count)
+                join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()),
+                     d_res1, d_res2, left->mRecCount, right->mRecCount, right->isUnique(colInd2));
         }
         else if ((left->type)[colInd1] == 2 && (right->type)[colInd2]  == 2)
             join(right->h_columns_cuda_char[right->type_index[colInd2]], left->h_columns_cuda_char[left->type_index[colInd1]], d_res1, d_res2);
@@ -3418,6 +3444,7 @@ void emit_filter(char *s, char *f, int e)
         queue<string> op_v(op_value);
         queue<unsigned int> field_names;
         map<string,int>::iterator it;
+		
         while(!op_v.empty()) {
             it = a->columnNames.find(op_v.front());
             if(it != a->columnNames.end() && !in_gpu) {
@@ -3426,9 +3453,8 @@ void emit_filter(char *s, char *f, int e)
             };
             op_v.pop();
         };
-		
 
-        for(unsigned int i = 0; i < a->segCount; i++) {
+        for(unsigned int i = 0; i < a->segCount; i++) {		   		
 			queue<unsigned int> f(field_names);
             while(!f.empty()) {
                 a->CopyColumnToGpu(f.front(), i); // segment i

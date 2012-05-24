@@ -84,6 +84,16 @@ map<string,queue<string> > top_value;
 map<string,queue<int_type> > top_nums;
 map<string,queue<float_type> > top_nums_f;
 
+struct tuple_check
+{
+    template <typename Tuple>
+    __host__ __device__
+    void operator()(Tuple t)
+    {
+        // D[i] = A[i] + B[i] * C[i];
+        thrust::get<0>(t) = thrust::get<0>(t) && thrust::get<1>(t);
+    }
+};
 
 template <typename HeadFlagType>
 struct head_flag_predicate
@@ -475,6 +485,8 @@ public:
 
     std::vector<thrust::device_vector<int_type> > d_columns_int;
     std::vector<thrust::device_vector<float_type> > d_columns_float;
+	
+	thrust::device_vector<bool> hash_vector;
 
     map<unsigned int, unsigned int> type_index;
 
@@ -496,6 +508,7 @@ public:
 	bool permuted;
 	//CudaSet* filter_ref;
 	char* load_file_name;
+	int min,max; // for hash join check
 	
     unsigned int* type; // 0 - integer, 1-float_type, 2-char
     bool* decimal; // column is decimal - affects only compression
@@ -942,9 +955,10 @@ public:
 		int cnt, grp_count;
 		int offset = 0;		
 
+		std::clock_t start1 = std::clock();
         f = fopen (f1 , "rb" );
 		//cout << "file " << f1 << " " << segNum << endl;
-
+		
         for(int i = 0; i < segNum; i++) {				
 		
 		    if(type[colIndex] != 2) {			    
@@ -954,13 +968,14 @@ public:
 			}			
      	    else {	
 		        fread((char *)&cnt, 4, 1, f);	
-		        offset = offset + cnt*8 + 8;			
+		        offset = offset + cnt*8 + 12;			
                 fseeko(f, offset , SEEK_SET);							            
 				fread((char *)&grp_count, 4, 1, f);	                
 				CudaChar* c = h_columns_cuda_char[type_index[colIndex]];
                 offset = offset + 11*4 + grp_count*c->mColumnCount;
-				fseeko(f, offset , SEEK_SET);						
-            };			
+				fseeko(f, offset , SEEK_SET);	
+            };		
+
 		};	
 		// find out how much we need to read and rewind back to the start of the segment
 		if(type[colIndex] != 2) {			    
@@ -974,7 +989,7 @@ public:
 		    fread((char *)&grp_count, 4, 1, f);	   			
             fseeko(f, -(cnt*8+16) , SEEK_CUR);						
         };  		
-		
+	
 		// resize the host arrays if necessary
 		// and read the segment from a file
 
@@ -990,13 +1005,10 @@ public:
 		  fread(h_columns_float[type_index[colIndex]].data(),(cnt+8)*8,1,f);			 
 		}
 		else {
-		    
 	    	CudaChar* c = h_columns_cuda_char[type_index[colIndex]];
 		    if(c->compressed.size() < cnt*8 + 14*4 + grp_count*c->mColumnCount) 
 			    c->compressed.resize(cnt*8 + 14*4 + grp_count*c->mColumnCount);			
-
             fread(c->compressed.data(), cnt*8 + 14*4 + grp_count*c->mColumnCount,1,f);			  
-			
 		};	
 		fclose(f);
 		return 0;
@@ -2284,7 +2296,7 @@ protected: // methods
 		
         for(unsigned int i=0; i < mColumnCount; i++) {
 
-		    std::clock_t start1 = std::clock();
+		    //std::clock_t start1 = std::clock();
             columnNames[nameRef.front()] = i;
             cols[i] = colsRef.front();
             seq = 0;
@@ -2329,7 +2341,7 @@ protected: // methods
                 type_index[i] = h_columns_cuda_char.size()-1;
             };
 			
-			std::cout<< "vector creation time " <<  " " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+			//std::cout<< "vector creation time " <<  " " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
             fclose(f);
             nameRef.pop();
