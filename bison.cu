@@ -2727,7 +2727,7 @@ void emit_join(char *s, char *j1)
 		
 		    //lets add a quick check for non-zero result by using a vectorized hash join
 		    //hopefully later I will change a slow binary search to a faster hash join
-		    //although it might not work so great on columns with very wide value's range
+		    //although it might not work so great on columns with very wide range of values 
 		
 		    thrust::constant_iterator<bool> one(1);
 		    if(right->hash_vector.size() == 0) {		       
@@ -2747,10 +2747,10 @@ void emit_join(char *s, char *j1)
             int count = thrust::reduce(left->hash_vector.begin(),left->hash_vector.end()); 	
             left->hash_vector.resize(0);
 			left->hash_vector.shrink_to_fit();
-			cout << "hash check end " << count << endl;		
-           std::cout<< "hash check time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
+			//cout << "hash check end " << count << endl;		
+            //std::cout<< "hash check time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 		
-		   if(count)
+		    if(count)
                 join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()),
                      d_res1, d_res2, left->mRecCount, right->mRecCount, right->isUnique(colInd2));
         }
@@ -3613,10 +3613,12 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
     strcat(f1,col_pos);
 	
 	FILE* ff = fopen(f1, "rb");
+	cout << "file " << f1 << endl;
 	fseeko(ff, -16, SEEK_END);
 	fread((char *)&totalRecs, 8, 1, ff);
 	fread((char *)&segCount, 4, 1, ff);
 	fread((char *)&maxRecs, 4, 1, ff);
+	//cout << "ZZ " << totalRecs << " " << segCount << " " << maxRecs << endl;
     fclose(ff);		
 	
 

@@ -1175,7 +1175,7 @@ public:
                     data_offset = readSegmentsFromFile(i,colIndex);
 				else	
 				    data_offset = readSegments(i,colIndex);
-				cout << "data offset " << data_offset << endl;
+				//cout << "data offset " << data_offset << endl;
                 switch(type[colIndex]) {
                 case 0 :
                     pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, 0, NULL, d_v, s_v);
@@ -1484,8 +1484,27 @@ public:
 
     void Store(char* file_name, char* sep, int limit, bool binary )
     {
-        if (mRecCount == 0)
-            return;
+        if (mRecCount == 0) {
+		
+			if(binary == 1 && fact_file_loaded) { // write tails
+                char str[100];
+                char col_pos[3];
+				
+ 		        for(int i = 0; i< mColumnCount; i++) {
+                    strcpy(str, file_name);
+                    strcat(str,".");
+                    itoaa(cols[i],col_pos);
+                    strcat(str,col_pos);
+				
+				    fstream binary_file(str,ios::out|ios::binary|ios::app);
+                    binary_file.write((char *)&total_count, 8);
+				    binary_file.write((char *)&total_segments, 4);
+					binary_file.write((char *)&total_max, 4);
+                    binary_file.close();
+				};	
+			};		
+            return;			
+		};	
 
         unsigned int mCount;
 
@@ -1503,7 +1522,6 @@ public:
             char buffer [33];
             if(onDevice(0)) {
 
-
                 if(h_columns_int.size() == 0 && h_columns_float.size() == 0) {
                     for(unsigned int i = 0; i< mColumnCount; i++)
                         if(type[i] == 0)
@@ -1511,7 +1529,6 @@ public:
                         else if(type[i] == 1)
                             h_columns_float.push_back(thrust::host_vector<float_type>(mCount));
                 };
-
 
                 resize(mCount+1);
                 bool ch = 0;
@@ -1660,7 +1677,8 @@ public:
 
         }
     }
-
+	
+	
     void LoadBigBinaryFile(char* file_name,  long long int diff)
     {
         char str[100];
