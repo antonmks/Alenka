@@ -969,7 +969,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
 					
                     unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
-                    CudaChar* cc = (CudaChar*)(a->h_columns)[colIndex1];
+                    CudaChar* cc = a->h_columns_cuda_char[a->type_index[colIndex1]];
 					string str1, str2;
 					cc->findMinMax(str1,str2);
 					bool* bv = (bool*)malloc(2*sizeof(bool));		
@@ -991,7 +991,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
 
                     unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
-                    CudaChar* cc = (CudaChar*)(a->h_columns)[colIndex1];
+                    CudaChar* cc = a->h_columns_cuda_char[a->type_index[colIndex1]];
 					string str1, str2;
 					cc->findMinMax(str1,str2);
 					bool* bv = (bool*)malloc(2*sizeof(bool));		
