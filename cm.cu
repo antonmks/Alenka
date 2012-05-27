@@ -883,7 +883,8 @@ public:
 
 
     void gather(CudaSet* a, CudaSet* b , thrust::device_vector<unsigned int>& d_res1,
-                thrust::device_vector<unsigned int>& d_res2, unsigned int segment, queue<string> op_sel)
+                thrust::device_vector<unsigned int>& d_res2, unsigned int segment, queue<string> op_sel, unsigned int colInd2,
+				thrust::device_vector<unsigned int>& cc)
     {
         int_type RecCount = d_res1.size();
         bool alloc;
@@ -892,6 +893,7 @@ public:
         resizeDevice(RecCount);
 
         for(unsigned int i=0; i < mColumnCount; i++) {
+		    
             alloc = 0;
             it = a->columnNames.find(op_sel.front());
             if(it !=  a->columnNames.end()) {
@@ -903,14 +905,28 @@ public:
                     alloc = 1;
                 };
 
-                if (type[i] == 0 )
-                    thrust::gather(d_res1.begin(), d_res1.end(), a->d_columns_int[a->type_index[index]].begin(), d_columns_int[type_index[i]].begin() + mRecCount);
-                else if (type[i] == 1 )
-                    thrust::gather(d_res1.begin(), d_res1.end(), a->d_columns_float[a->type_index[index]].begin(), d_columns_float[type_index[i]].begin() + mRecCount);
-                else  //CudaChar
-                    for(unsigned int j=0; j < (a->h_columns_cuda_char[a->type_index[index]])->mColumnCount; j++)
-                        thrust::gather(d_res1.begin(), d_res1.end(), (a->h_columns_cuda_char[a->type_index[index]])->d_columns[j].begin(),
-                                       (h_columns_cuda_char[type_index[i]])->d_columns[j].begin() + mRecCount);
+				if(index != colInd2) {
+                    if (type[i] == 0 )
+                        thrust::gather(d_res1.begin(), d_res1.end(), a->d_columns_int[a->type_index[index]].begin(), d_columns_int[type_index[i]].begin() + mRecCount);
+                    else if (type[i] == 1 )
+                        thrust::gather(d_res1.begin(), d_res1.end(), a->d_columns_float[a->type_index[index]].begin(), d_columns_float[type_index[i]].begin() + mRecCount);
+                    else  //CudaChar
+                        for(unsigned int j=0; j < (a->h_columns_cuda_char[a->type_index[index]])->mColumnCount; j++)
+                            thrust::gather(d_res1.begin(), d_res1.end(), (a->h_columns_cuda_char[a->type_index[index]])->d_columns[j].begin(),
+                                           (h_columns_cuda_char[type_index[i]])->d_columns[j].begin() + mRecCount);
+				}
+                else {
+                    if (type[i] == 0 )
+                        thrust::gather(cc.begin(), cc.end(), a->d_columns_int[a->type_index[index]].begin(), d_columns_int[type_index[i]].begin() + mRecCount);
+                    else if (type[i] == 1 )
+                        thrust::gather(cc.begin(), cc.end(), a->d_columns_float[a->type_index[index]].begin(), d_columns_float[type_index[i]].begin() + mRecCount);
+                    else  //CudaChar
+                        for(unsigned int j=0; j < (a->h_columns_cuda_char[a->type_index[index]])->mColumnCount; j++)
+                            thrust::gather(cc.begin(), cc.end(), (a->h_columns_cuda_char[a->type_index[index]])->d_columns[j].begin(),
+                                           (h_columns_cuda_char[type_index[i]])->d_columns[j].begin() + mRecCount);
+
+                };									   
+									   
                 if (alloc)
                     a->deAllocColumnOnDevice(index);
 
@@ -938,9 +954,8 @@ public:
 
             };
             op_sel.pop();
-        };
+		};	
         mRecCount = mRecCount + d_res1.size();
-
     }
 	
 	unsigned long long int readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
@@ -957,8 +972,7 @@ public:
 
 		std::clock_t start1 = std::clock();
         f = fopen (f1 , "rb" );
-		//cout << "file " << f1 << " " << segNum << endl;
-		
+				
         for(int i = 0; i < segNum; i++) {				
 		
 		    if(type[colIndex] != 2) {			    
@@ -1106,13 +1120,12 @@ public:
             };
         }
         else {
-		    //cout << "start " << colIndex << " " << type[colIndex] << " " << segment << endl;
+
 			unsigned long long int data_offset;
 			if (partial_load)
                 data_offset = readSegmentsFromFile(segment,colIndex);
 			else
                 data_offset = readSegments(segment,colIndex);
-			//cout << "data offset " << data_offset << endl;
 			
             void* d_v;
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
@@ -1167,7 +1180,6 @@ public:
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
             void* s_v;
             CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
-			cout << "cpy " << colIndex << " " << segCount << endl;
 
             for(unsigned int i = 0; i < segCount; i++) {
 
@@ -1175,7 +1187,7 @@ public:
                     data_offset = readSegmentsFromFile(i,colIndex);
 				else	
 				    data_offset = readSegments(i,colIndex);
-				//cout << "data offset " << data_offset << endl;
+					
                 switch(type[colIndex]) {
                 case 0 :
                     pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, 0, NULL, d_v, s_v);
@@ -1725,10 +1737,7 @@ std::cout<< "waiting time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER
                 pfor_dict_decompress(a->compressed.data(), a->h_columns, a->d_columns, &mRecCount, filePointers[str], 0, a->mColumnCount, 0, d_v, s_v);
             };
 	//		std::cout<< "decomp " << i << " " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
-        };
-		
-        //cudaFree(d_v);
-        //cudaFree(s_v);
+        };		
  		
         buffersLoaded = 0;
 //		std::cout<< "decompress time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
@@ -2549,7 +2558,6 @@ size_t getFreeMem()
     size_t free, total;
 
     cuMemGetInfo(&free, &total);
-//  cout << "Free memory " << free/(1024 * 1024) << " Mbytes out of " << total/(1024 * 1024) << " Mbytes" << endl;
     return free;
 } ;
 
@@ -2586,7 +2594,7 @@ void LoadBuffers(void* file_name)
                 counts[i] = cnt;
                 fread(&lower_val, 8, 1, f);
                 fread(&upper_val, 8, 1, f);
-                //cout << "segment upper lower " << upper_val << " " << lower_val << endl;
+
                 if (th->type[i] == 0) {				    
 				    if(cnt > th->h_columns_int[th->type_index[i]].size()) 
 					    th->h_columns_int[th->type_index[i]].resize(cnt);

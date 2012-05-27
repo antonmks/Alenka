@@ -649,8 +649,8 @@ void emit_join(char *s, char *j1)
 
 
     // check if already sorted
-    //cout << "alloced " << left->maxRecs << " " << right->mRecCount << endl;
-    //cout << "seg counts " << left->segCount << " " << right->segCount << endl;
+    cout << "alloced " << left->maxRecs << " " << right->mRecCount << endl;
+    cout << "seg counts " << left->segCount << " " << right->segCount << endl;
 
     //right->Store("f1.txt","|",1000000,0);
 
@@ -660,60 +660,30 @@ void emit_join(char *s, char *j1)
     };
 	
 
+	thrust::device_ptr<unsigned int> perm;
+	bool p = 0;	
+
     if(lc == 1 || right->fact_table) {
-
-        //thrust::device_ptr<int_type> r((int_type*)(right->d_columns[colInd2]));
         if(!thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + right->mRecCount)) {
-
-            thrust::device_ptr<unsigned int> perm = order_inplace(right, exe_type, field_names);
-            unsigned int* raw_ptr = thrust::raw_pointer_cast(perm);
-            void* temp;
-            cudaMalloc((void **) &temp, right->mRecCount*float_size);
-
-            for(int i = 0; i < right->mColumnCount; i++) {
-
-                if(i != colInd2 && !right_in_gpu) {
-                    right->allocColumnOnDevice(i, right->mRecCount);
-                    right->CopyColumnToGpu(i);
-                };
-
-                if ((right->type)[i] == 0 && i != colInd2)
-                    apply_permutation(thrust::raw_pointer_cast((right->d_columns_int[right->type_index[i]]).data()), raw_ptr, right->mRecCount, (int_type*)temp);
-                else if ((right->type)[i] == 1 && i != colInd2)
-                    apply_permutation(thrust::raw_pointer_cast((right->d_columns_float[right->type_index[i]]).data()), raw_ptr, right->mRecCount, (float_type*)temp);
-                else if (i != colInd2) {
-                    CudaChar* c = right->h_columns_cuda_char[right->type_index[i]];
-                    for(int j=(c->mColumnCount)-1; j>=0 ; j--)
-                        apply_permutation_char((c->d_columns)[j], raw_ptr, right->mRecCount, (char*)temp);
-                };
-
-                if(i != colInd2 && !right_in_gpu) {
-                    right->CopyColumnToHost(i);
-                    right->deAllocColumnOnDevice(i);
-                };
-
-            };
-            thrust::device_free(perm);
-            cudaFree(temp);
+            perm = order_inplace(right, exe_type, field_names);		
+            p = 1;			
         };
     };
 
     if (!left_in_gpu)
         left->allocColumnOnDevice(colInd1, left->maxRecs);
-    //cout << "alloc max segment " << left->maxRecs << endl;
-
+    
     thrust::device_vector<unsigned int> d_res1;
     thrust::device_vector<unsigned int> d_res2;
 
     for(int i = 0; i < left->segCount; i ++) {  // Main piece cycle
 
-        //cout << "cycle start " << getFreeMem() << endl;
+        cout << "cycle start " << getFreeMem() << endl;
 
         if (!left_in_gpu )
             left->CopyColumnToGpu(colInd1, i);
-
-        std::clock_t start2 = std::clock();
-		
+	
+        std::clock_t start2 = std::clock();		
 
         //cout << "right:left " << right->mRecCount << " " << left->mRecCount << endl;
         //cout << "right col is unique : " << right->isUnique(colInd2) << endl;
@@ -749,6 +719,7 @@ void emit_join(char *s, char *j1)
 		    if(count)
                 join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()),
                      d_res1, d_res2, left->mRecCount, right->mRecCount, right->isUnique(colInd2));
+	 
         }
         else if ((left->type)[colInd1] == 2 && (right->type)[colInd2]  == 2)
             join(right->h_columns_cuda_char[right->type_index[colInd2]], left->h_columns_cuda_char[left->type_index[colInd1]], d_res1, d_res2);
@@ -892,17 +863,29 @@ void emit_join(char *s, char *j1)
                 left->deAllocColumnOnDevice(colInd1);
         }
 
-        //cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
-        //std::cout<< "join1 time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+        cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
+        std::cout<< "join1 time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         if(i == 0)
             c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
-        if (d_res1.size() != 0) {
-            c->gather(right,left,d_res2,d_res1, i, op_sel);
+        if (d_res1.size() != 0) {		    
+			if(p) {			                
+				thrust::device_vector<unsigned int> tmp(d_res1.size());
+		        thrust::gather(d_res2.begin(), d_res2.end(), perm, tmp.begin());			
+			    c->gather(right,left,tmp, d_res1, i, op_sel, colInd2, d_res2);	
+			}
+            else {
+		        //thrust::gather(d_res1.begin(), d_res1.end(), perm, tmp.begin());
+			    //thrust::copy(tmp.begin(), tmp.end(), d_res1.begin());
+                c->gather(right,left,d_res2,d_res1, i, op_sel, colInd2, d_res2);				
+            };			
+            //c->gather(right,left,d_res2,d_res1, i, op_sel, colInd2);
+			
 		};	
 
         //cout << " ctotal " << c->mRecCount << endl;
     };  // end of join piece cycle
+    thrust::device_free(perm);
 
     // if a and b are not fact tables then lets copy to host all result columns
     if(!c->fact_table) {
@@ -1230,11 +1213,7 @@ void emit_select(char *s, char *f, int ll)
     };
 
 
-
-    //cout << "select " << s  << endl;
     printf("select %s %s \n", s, f);
-
-
     std::clock_t start1 = std::clock();
 
     // here we need to determine the column count and composition
@@ -1557,9 +1536,7 @@ void emit_store_binary(char *s, char *f)
     if(a->readyToProcess == 0)
         return;
 
-    //cout << "store: " << s << " " << f << endl;
     printf("emit store: %s %s \n", s, f);
-
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -1608,13 +1585,11 @@ void emit_load_binary(char *s, char *f, int d, bool stream)
     itoaa(cols.front(),col_pos);
     strcat(f1,col_pos);
 	
-	FILE* ff = fopen(f1, "rb");
-	cout << "file " << f1 << endl;
+	FILE* ff = fopen(f1, "rb");	
 	fseeko(ff, -16, SEEK_END);
 	fread((char *)&totalRecs, 8, 1, ff);
 	fread((char *)&segCount, 4, 1, ff);
 	fread((char *)&maxRecs, 4, 1, ff);
-	//cout << "ZZ " << totalRecs << " " << segCount << " " << maxRecs << endl;
     fclose(ff);		
 	
 
@@ -1700,7 +1675,6 @@ void emit_load(char *s, char *f, int d, char* sep, bool stream)
             a->fact_table = 0;
             a->maxRecs = a->mRecCount;
             a->segCount = 1;
-            cout << "loaded " << a->maxRecs << endl;
         };
     };
 
