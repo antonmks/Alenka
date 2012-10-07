@@ -65,9 +65,9 @@ BINARY { return BINARY; }
 -?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atof(yytext) ;
 return APPROXNUM; }
 
-TRUE { yylval.intval = 1; return BOOL; }
-UNKNOWN { yylval.intval = -1; return BOOL; }
-FALSE { yylval.intval = 0; return BOOL; }
+TRUE { yylval.intval = 1; return BOOL1; }
+UNKNOWN { yylval.intval = -1; return BOOL1; }
+FALSE { yylval.intval = 0; return BOOL1; }
 
 \"(\\.|\"\"|[^"\n])*\" { yylval.strval = strdup(yytext); return STRING; }
 '(\\.|[^'\n])*$ { yyerror("Unterminated string %s", yytext); }
@@ -101,7 +101,7 @@ return FILENAME; }
 
 
 [ \t\n] 
-. { printf("mystery character '%c'", *yytext); }
+. {  }
 %%
 
 void PROC_FLUSH_BUF ( FILE * xFile )

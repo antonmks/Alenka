@@ -120,9 +120,9 @@
 
     bool* host_compare(int_type* column1, int_type d, int_type op_type)
     {
-        bool* temp = (bool*)malloc(2*sizeof(bool));		
+        bool* temp1 = (bool*)malloc(2*sizeof(bool));				
 		bool res = 1;
-		
+	
 		//cout << "comparing " << column1[0] << " " << column1[1] << " " << d << " " << op_type << endl;
 
         if (op_type == 2 && column1[1] <= d)  // >
@@ -136,9 +136,9 @@
         else if (op_type == 4 && column1[0] == d && column1[1] == d) // =
             res = 0;
 
-		temp[0] = res;
-		temp[1] = res;			
-        return temp;
+		temp1[0] = res;
+		temp1[1] = res;			
+        return temp1;
 
     }
 
@@ -216,15 +216,15 @@
         bool* temp = (bool*)malloc(2*sizeof(bool));		
 		bool res = 1;
         
-        if (op_type == 2 && fh_greater(column1[0],column2[1])) // >
+        if (op_type == 2 && fh_greater(column1[0], (float_type)(column2[1]))) // >
             res = 0;
-        else if (op_type == 1 && fh_less(column1[1],column2[0]))  // <
+        else if (op_type == 1 && fh_less(column1[1], (float_type)(column2[0])))  // <
             res = 0;
-        else if (op_type == 6 && fh_greater_equal_to(column1[0],column2[1])) // >=
+        else if (op_type == 6 && fh_greater_equal_to(column1[0], (float_type)(column2[1]))) // >=
             res = 0;
-        else if (op_type == 5 && fh_less_equal_to(column1[1],column2[0]))  // <=
+        else if (op_type == 5 && fh_less_equal_to(column1[1], (float_type)(column2[0])))  // <=
             res = 0;
-        else if (op_type == 4  && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1],column2[0])) // =
+        else if (op_type == 4  && fh_equal_to(column1[0], (float_type)(column2[1])) && fh_equal_to(column1[1], (float_type)(column2[0]))) // =
             res = 0;
 
 		temp[0] = res;
@@ -239,8 +239,8 @@
     {
 
         float_type* temp = (float_type*)malloc(2*float_size);
-		temp[0] = column1[0];
-		temp[1] = column1[1];
+		temp[0] = (float_type)column1[0];
+		temp[1] = (float_type)column1[1];
 		
         if(reverse == 0) {
             if (op_type.compare("MUL") == 0) {
@@ -424,8 +424,8 @@
     float_type* host_op(int_type* column1, float_type d, string op_type, int reverse)
     {
 		float_type* temp = (float_type*)malloc(2*float_size);		
-		temp[0] = column1[0];
-		temp[1] = column1[1];
+		temp[0] = (float_type)column1[0];
+		temp[1] = (float_type)column1[1];
 
 		float_type* temp1 = (float_type*)malloc(2*float_size);		
 
@@ -810,7 +810,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         float_type* s3 = exe_vectors_f.top();
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
-                        exe_vectors_f.push(host_op(s3,n1, ss,1));
+                        exe_vectors_f.push(host_op(s3,(float_type)n1, ss,1));
                         cudaFree(s3);
                     }
                 }
@@ -829,7 +829,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         float_type* s3 = exe_vectors_f.top();
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
-                        exe_vectors_f.push(host_op(s3,n1, ss,0));
+                        exe_vectors_f.push(host_op(s3,(float_type)n1, ss,0));
                         cudaFree(s3);
                     }
                 }
@@ -854,7 +854,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     }
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR") == 0) {
-                    n1_f = exe_nums.top();
+                    n1_f = (float_type)exe_nums.top();
                     exe_nums.pop();
 
                     if (s2.compare("VECTOR") == 0 ) {
@@ -1032,7 +1032,7 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					//cout << "comparing " << n1 << " and " << s2_val << endl;
+					//cout << "comparingg " << n1 << " and " << s2_val << endl;
 
                     if (a->type[(a->columnNames)[s2_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
@@ -1342,16 +1342,20 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
         };
     };
-    bool* sv = bool_vectors.top();
-	
-	if(sv[0] && sv[1]) {
-	    free(sv);		
+
+    
+    
+	//cout << bool_vectors.top()[0] << " " << bool_vectors.top()[1] << endl;
+		
+	if(bool_vectors.top()[0] && bool_vectors.top()[1]) {
+	    free(bool_vectors.top());		
         return 1;
 	}	
 	else {
-	    free(sv);		
+	    free(bool_vectors.top());		
         return 0;
     };
+	//bool_vectors.pop();
     
 
 }

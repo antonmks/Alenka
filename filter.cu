@@ -11,12 +11,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
+#include <thrust/device_vector.h>
 #include "cm.h"
 
 unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
-                    CudaSet* b, bool del_source, unsigned int segment)
+                    CudaSet* b, unsigned int segment, thrust::device_vector<unsigned int>& dev_p)
 {
 
     stack<string> exe_type;
@@ -815,51 +814,34 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
         };
     };
-    b->prm = bool_vectors.top();
-	//thrust::device_ptr<bool> bp((bool*)sv);
+    
+	thrust::device_ptr<bool> bp((bool*)bool_vectors.top());	
+
+	unsigned int count = thrust::count(bp, bp + a->mRecCount, 1);	
+	b->mRecCount = b->mRecCount + count;	
 	
-    unsigned int count = a->copy_filter(b, b->prm, del_source, segment);
-	//b->mRecCount = a->mRecCount;
-	//b->permuted = 1;
-	//b->filter_ref = a;
-	/*unsigned int count = thrust::count(bp, bp+a->mRecCount,1);
-	
-	b->prm.resize(count);			
-	//convert bool vector to unsigned int prm	
-	thrust::copy_if(a->prm.begin(), a->prm.end(), bp, b->prm.begin(), nz<bool>());
-	b->permuted = 1;
-	
-	if(del_source) {
-	
-	    if (!a->keep) {
-	    // move columns from a to b
-	     
-		    a->d_columns_int.swap(b->d_columns_int); 
-		    a->d_columns_float.swap(b->d_columns_float); 
-		    a->h_columns_int.swap(b->h_columns_int); 
-		    a->h_columns_float.swap(b->h_columns_float); 		
-		    a->h_columns_cuda_char.swap(b->h_columns_cuda_char); 
-		    a->type_index.swap(b->type_index);		
-		}	
-		else {
-            b->d_columns_int = a->d_columns_int; 
-		    b->d_columns_float = a->d_columns_float; 
-		    b->h_columns_int = a->h_columns_int; 
-		    b->h_columns_float = a->h_columns_float; 		
-		    b->h_columns_cuda_char = a->h_columns_cuda_char; 
-		    b->type_index = a->type_index;				
-			b->keep = 1;
-		};
-		
+	if(a->prm.size() == 0) {
+	    b->prm[a->name].push_back(new unsigned int[count]);
+    	b->prm_count[a->name].push_back(count);
+        thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
+	                    bp, dev_p.begin(), nz<bool>());   
+		cudaMemcpy((void**)b->prm[a->name][segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);		
 	}
 	else {
-	    // copy columns from a to b
+	    for ( map<string, std::vector<unsigned int*> >::iterator it=a->prm.begin() ; it != a->prm.end(); ++it ) {        
+            b->prm[(*it).first].push_back(new unsigned int[count]);			
+			b->prm_count[(*it).first].push_back(count);			
+			thrust::device_vector<unsigned int> p(count);
+			thrust::device_vector<unsigned int> p_a(a->prm_count[(*it).first][segment]);
+            thrust::copy_if(p_a.begin(), p_a.end(),
+	                        bp, dev_p.begin(), nz<bool>());						
+			cudaMemcpy((void**)b->prm[a->name][segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
+	    };
+    };		
 		
-		
-	};
-	*/
-
-    cudaFree(b->prm);
+    b->type_index = a->type_index;				
+    cudaFree(bool_vectors.top());	
+	
     return b->mRecCount;
 
 }

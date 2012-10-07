@@ -972,17 +972,17 @@ return APPROXNUM; }
 case 32:
 YY_RULE_SETUP
 #line 68 "fl.l"
-{ yylval.intval = 1; return BOOL; }
+{ yylval.intval = 1; return BOOL1; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
 #line 69 "fl.l"
-{ yylval.intval = -1; return BOOL; }
+{ yylval.intval = -1; return BOOL1; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
 #line 70 "fl.l"
-{ yylval.intval = 0; return BOOL; }
+{ yylval.intval = 0; return BOOL1; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
@@ -1103,7 +1103,7 @@ YY_RULE_SETUP
 case 56:
 YY_RULE_SETUP
 #line 104 "fl.l"
-{ printf("mystery character '%c'", *yytext); }
+{  }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP

@@ -1,15 +1,15 @@
-O := LOAD 'orders10' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, orderdate{5}:int, shippriority{8}:int);
-OFI := FILTER O BY orderdate < 19950315;
-C := LOAD 'customer10' BINARY AS (c_custkey{1}:int, mktsegment{7}:varchar(10));
-CF := FILTER C BY mktsegment == "BUILDING";
-L := STREAM 'lineitem10' BINARY AS (l_orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
+O := LOAD 'orders' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, o_orderdate{5}:int, o_shippriority{8}:int);
+OFI := FILTER O BY o_orderdate < 19950315;
+C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_mktsegment{7}:varchar(10));
+CF := FILTER C BY c_mktsegment == "BUILDING";
+L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
 LF := FILTER L BY shipdate > 19950315;
-OL := SELECT  o_orderkey AS o_orderkey, orderdate AS orderdate, shippriority AS shippriority
-      FROM OFI JOIN CF ON o_custkey = c_custkey;  
-OLC := SELECT o_orderkey AS o_orderkey, orderdate AS orderdate, shippriority AS shippriority, price AS price, discount AS discount 
+OL := SELECT  o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority
+      FROM OFI JOIN CF ON o_custkey = c_custkey;
+OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority, price AS price, discount AS discount 
        FROM LF JOIN OL ON l_orderkey = o_orderkey;
-F := SELECT o_orderkey AS o_orderkey, orderdate AS orderdate, 
-             SUM(price*(1-discount)) AS sum_revenue, shippriority AS shippriority, COUNT(o_orderkey) AS cnt  FROM OLC 
- 	  GROUP BY o_orderkey, orderdate, shippriority;			  
-RES := ORDER F BY sum_revenue DESC, orderdate ASC;	   
+F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, o_shippriority AS shippriority1,
+             SUM(price*(1-discount)) AS sum_revenue, COUNT(o_orderkey) AS cnt  FROM OLC 
+ 	  GROUP BY o_orderkey, o_orderdate, o_shippriority;			  
+RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	   
 STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;	   

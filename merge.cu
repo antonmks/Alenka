@@ -17,15 +17,16 @@
 
 head_flag_predicate<bool> binary_pred_l;
 
-void add(CudaSet* c, CudaSet* b, queue<string> op_v3, stack<string> op_v2)
+void add(CudaSet* c, CudaSet* b, queue<string> op_v3)
 {
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
-
-        map<string,int>::iterator it;
+        
         map<int,string> columnNames1;
-        for ( it=b->columnNames.begin() ; it != b->columnNames.end(); ++it ) {
-            c->columnNames[(*it).first] = (*it).second;
+		map<string,int>::iterator it;
+
+        for (  it=b->columnNames.begin() ; it != b->columnNames.end(); ++it ) {
+            c->columnNames[(*it).first] = (*it).second;			
             columnNames1[(*it).second] = (*it).first;
         };
 
@@ -71,7 +72,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, stack<string> op_v2)
 }
 
 
-void order_inplace(CudaSet* a, stack<string> exe_type)
+void order_inplace(CudaSet* a, stack<string> exe_type, map<string,string> aliases)
 {
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(a->mRecCount);
     thrust::sequence(permutation, permutation+(a->mRecCount));
@@ -82,12 +83,12 @@ void order_inplace(CudaSet* a, stack<string> exe_type)
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
 
-        if ((a->columnNames).find(exe_type.top()) ==  a->columnNames.end()) {
+        if ((a->columnNames).find(aliases[exe_type.top()]) ==  a->columnNames.end()) {
             cout << "Sort couldn't find field " << exe_type.top() << endl;
             exit(1);
         };
 
-        int colInd = (a->columnNames).find(exe_type.top())->second;
+        int colInd = (a->columnNames).find(aliases[exe_type.top()])->second;
 
         if(!a->onDevice(colInd) && a->type[colInd] < 2) {
             a->allocColumnOnDevice(colInd,a->mRecCount);
@@ -95,9 +96,9 @@ void order_inplace(CudaSet* a, stack<string> exe_type)
         };
 
         if ((a->type)[colInd] == 0)
-            update_permutation(thrust::raw_pointer_cast((a->d_columns_int[a->type_index[colInd]]).data()), raw_ptr, a->mRecCount, "ASC", (int_type*)temp);
+            update_permutation(a->d_columns_int[a->type_index[colInd]], raw_ptr, a->mRecCount, "ASC", (int_type*)temp);
         else if ((a->type)[colInd] == 1)
-            update_permutation(thrust::raw_pointer_cast((a->d_columns_float[a->type_index[colInd]]).data()), raw_ptr, a->mRecCount,"ASC", (float_type*)temp);
+            update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, a->mRecCount,"ASC", (float_type*)temp);
         else {
             CudaChar* c = a->h_columns_cuda_char[a->type_index[colInd]];
             thrust::device_ptr<char> tmp = thrust::device_malloc<char>(a->mRecCount);
@@ -105,7 +106,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type)
             for(int j=(c->mColumnCount)-1; j>=0 ; j--) {
                 c->d_columns[j].resize(a->mRecCount);
                 thrust::copy(c->h_columns[j].begin(), c->h_columns[j].begin() + a->mRecCount, c->d_columns[j].begin());
-                update_permutation_char(c->d_columns[j], raw_ptr, a->mRecCount, thrust::raw_pointer_cast(tmp), "ASC");
+                update_permutation(c->d_columns[j], raw_ptr, a->mRecCount, "ASC", thrust::raw_pointer_cast(tmp));
                 c->d_columns[j].resize(0);
                 c->d_columns[j].shrink_to_fit();
             };
@@ -115,22 +116,22 @@ void order_inplace(CudaSet* a, stack<string> exe_type)
     };
 
 
-    for(int i=0; i < a->mColumnCount; i++) {
+    for(unsigned int i=0; i < a->mColumnCount; i++) {
         if(!a->onDevice(i) && a->type[i] < 2) {
             a->allocColumnOnDevice(i,a->mRecCount);
             a->CopyColumnToGpu(i, 0, a->mRecCount);
         };
 
         if (a->type[i] == 0)
-            apply_permutation(thrust::raw_pointer_cast((a->d_columns_int[a->type_index[i]]).data()), raw_ptr, a->mRecCount, (int_type*)temp);
+            apply_permutation(a->d_columns_int[a->type_index[i]], raw_ptr, a->mRecCount, (int_type*)temp);
         else if (a->type[i] == 1)
-            apply_permutation(thrust::raw_pointer_cast((a->d_columns_float[a->type_index[i]]).data()), raw_ptr, a->mRecCount, (float_type*)temp);
+            apply_permutation(a->d_columns_float[a->type_index[i]], raw_ptr, a->mRecCount, (float_type*)temp);
         else {
             CudaChar* c = a->h_columns_cuda_char[a->type_index[i]];
             for(int j=(c->mColumnCount)-1; j>=0 ; j--) {
                 c->d_columns[j].resize(c->mRecCount);
                 thrust::copy(c->h_columns[j].begin(), c->h_columns[j].begin() + c->mRecCount, c->d_columns[j].begin());
-                apply_permutation_char(c->d_columns[j], raw_ptr, a->mRecCount, (char*)temp);
+                apply_permutation(c->d_columns[j], raw_ptr, a->mRecCount, (char*)temp);
                 thrust::copy(c->d_columns[j].begin(), c->d_columns[j].begin() + c->mRecCount, c->h_columns[j].begin());
                 c->d_columns[j].resize(0);
                 c->d_columns[j].shrink_to_fit();
@@ -146,7 +147,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type)
 
 
 
-CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2)
+CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2, map<string,string> aliases)
 {
     int countIndex;
     int avg_index = -1;
@@ -163,8 +164,14 @@ CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2)
     r->mRecCount = 0;
 
     if (c->mRecCount != 0) {
-        order_inplace(c,op_v2);
-        c->GroupBy(op_v3);
+        order_inplace(c,op_v2, aliases);		
+	
+		//change op_v3 to aliases
+		queue<string> op;
+		for(int i = 0; i < op_v3.size(); op_v3.pop())
+		    op.push(aliases[op_v3.front()]);		
+		
+        c->GroupBy(op);		
 
         thrust::device_ptr<bool> d_grp(c->grp);
 
@@ -257,7 +264,7 @@ CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2)
             thrust::transform(r->d_columns_int[r->type_index[countIndex]].begin(), r->d_columns_int[r->type_index[countIndex]].begin() + c->grp_count, count_d, long_to_float_type());
             r->deAllocColumnOnDevice(countIndex);
 
-            for(int k = 0; k < c->mColumnCount; k++)	{
+            for(unsigned int k = 0; k < c->mColumnCount; k++)	{
                 if(c->grp_type[k] == 1) {   // AVG
 
                     r->allocColumnOnDevice(k, c->grp_count);

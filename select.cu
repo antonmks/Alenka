@@ -53,8 +53,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     if (!(a->columnGroups).empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
+		
+		
 
-
+	
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -684,13 +686,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-	
-
+    //std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     
     b->grp_type = new unsigned int[colCount];
 
-    for(int j=0; j<colCount; j++) {
-
+    for(unsigned int j=0; j<colCount; j++) {
+	
         if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[colCount-j-1] = 0;
         else if ((grp_type1.top()).compare("AVG") == 0 )
@@ -764,10 +765,14 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {
                     b->h_columns_cuda_char.push_back(new CudaChar(((a->h_columns_cuda_char)[a->type_index[colIndex]])->mColumnCount, res_size));
                     b->type_index[colCount-j-1] = b->h_columns_cuda_char.size()-1;
-                    //cout << "setting index " << colCount-j-1 << " to " << b->h_columns_cuda_char.size()-1 << endl;
                     b->columnNames[col_val.top()] = colCount-j-1;
                     b->type[colCount-j-1] = 2;
-                };
+                }
+         		else {  // already exists, my need to resize it
+		            if(b->mRecCount < res_size)
+		            b->resizeDeviceColumn(colCount-j-1, res_size-b->mRecCount);
+		       };
+				
 
                 CudaChar *cc = a->h_columns_cuda_char[a->type_index[colIndex]];
                 CudaChar* nn = b->h_columns_cuda_char[b->type_index[colCount-j-1]];
@@ -816,9 +821,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         col_type.pop();
         col_val.pop();
         grp_type1.pop();
-
     };
-
+	
     if ((a->columnGroups).empty()) {
         if ( !one_line)
             b->mRecCount = b->mRecCount + a->mRecCount;

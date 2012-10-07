@@ -207,7 +207,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     };
     *mRecCount = orig_recCount;
 
-    //cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
+  //  cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
 
     thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
     unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
@@ -538,10 +538,10 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, source_len));
 
     for(int j=mColumnCount-1; j>=0 ; j--)
-        update_permutation_char(d_columns[j], raw_ptr, source_len, (char*)temp, "ASC");
+        update_permutation(d_columns[j], raw_ptr, source_len, "ASC", (char*)temp);
 
     for(int j=mColumnCount-1; j>=0 ; j--)
-        apply_permutation_char(d_columns[j], raw_ptr, source_len, (char*)temp);
+        apply_permutation(d_columns[j], raw_ptr, source_len, (char*)temp);
 
     cudaFree(temp);
 
@@ -794,7 +794,10 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     thrust::sequence(add_seq, add_seq + recCount, 0, 1);
     thrust::transform(add_seq, add_seq + recCount, iter, add_seq, thrust::divides<unsigned int>());
 
-    unsigned int cnt = (recCount)/fit_count;
+    unsigned int cnt = (recCount)/fit_count;	
+	if(cnt == 0)
+	    cnt = 1; // need at least 1
+	
     if (recCount%fit_count > 0)
         cnt++;
 
@@ -808,6 +811,7 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
     if(file_name) {
+	    cout << "writing " << cnt << endl;
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
         fstream binary_file(file_name,ios::out|ios::binary|ios::app);
         binary_file.write((char *)&cnt, 4);

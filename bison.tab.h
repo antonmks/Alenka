@@ -43,8 +43,8 @@
      NAME = 259,
      STRING = 260,
      INTNUM = 261,
-     DECIMAL = 262,
-     BOOL = 263,
+     DECIMAL1 = 262,
+     BOOL1 = 263,
      APPROXNUM = 264,
      USERVAR = 265,
      ASSIGN = 266,
@@ -95,7 +95,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 69 "bison.y"
+#line 67 "bison.y"
 
     int intval;
     float floatval;
