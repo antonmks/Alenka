@@ -1,6 +1,11 @@
 Short introduction :
-Alenka supports several data types : integers, floats, decimals(2 digits after a separator) and character strings.
-The difference between floats and decimals is that the latter will be compressed when written to a file.
+Alenka supports several data types : integers, floats, decimals and character strings.
+The difference between floats and decimals is that the latter are compressed when written to a file.
+
+Requirements : you need to have a Fermi GPU : models 400, 500 and 600 should do.
+Limitations : 
+A.  join ops supported only for integers and only for unique keys. I'll implement support for the other types shortly.
+B.  all column names in a script must be unique.
 
 Loading data for processing : 
 Alenka can read text files with fields separated by separators. But much faster way to read the data would be to load it into binary files as demonstrated by the following script :
@@ -18,40 +23,30 @@ Like all other oparations compression and decompression are done on the GPU.
 
 Once we created the data files we can do the data processing : 
 
-L := STREAM 'lineorder' BINARY AS (lo_partkey{4}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, lo_revenue{13}:decimal);
-D := LOAD 'date' BINARY AS (d_datekey{1}:int, d_year{5}:int);
-S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_region{6}:varchar(12));
-P := LOAD 'part' BINARY AS (p_partkey{1}:int,  p_category{4}:varchar(12),  p_brand1{5}:varchar(9));
+O := LOAD 'orders' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, o_orderdate{5}:int, o_shippriority{8}:int);
+OFI := FILTER O BY o_orderdate < 19950315;
+C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_mktsegment{7}:varchar(10));
+CF := FILTER C BY c_mktsegment == "BUILDING";
+L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
+LF := FILTER L BY shipdate > 19950315;
+OL := SELECT  o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority
+      FROM OFI JOIN CF ON o_custkey = c_custkey;
+OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority, price AS price, discount AS discount 
+       FROM LF JOIN OL ON l_orderkey = o_orderkey;
+F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, o_shippriority AS shippriority1,
+             SUM(price*(1-discount)) AS sum_revenue, COUNT(o_orderkey) AS cnt  FROM OLC 
+ 	  GROUP BY o_orderkey, o_orderdate, o_shippriority;			  
+RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	   
+STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;	
 
-PF := FILTER P BY p_category == "MFGR#12";
-SF := FILTER S BY s_region == "AMERICA";
 
-LS := SELECT lo_revenue AS lo_revenue,  lo_partkey AS lo_partkey, lo_orderdate as lo_orderdate,
-             lo_partkey AS lo_partkey
-      FROM L JOIN SF on lo_suppkey = s_suppkey;
+To compile alenka you need to download NVidia's CUDA. You will also need CUDPP library : see CUDPP project site for install instructions : http://code.google.com/p/cudpp/
+To compile alenka executable run the following command : 
+nvcc -arch sm_20 -L"cudpp_src_2.0/lib" -lcuda -lcudpp -lcudpp_hash  ./bison.cu -o ./alenka
 
-J := SELECT lo_revenue AS lo_revenue, p_brand1 AS p_brand1, lo_orderdate as lo_orderdate
-      FROM LS JOIN PF on lo_partkey = p_partkey;	  
-	  
-LD := SELECT lo_revenue AS lo_revenue, d_year AS d_year, p_brand1 AS p_brand1
-      FROM J JOIN D on lo_orderdate = d_datekey;	  
-	  
-R := SELECT SUM(lo_revenue) AS lo_revenue, d_year AS d_year, p_brand1 AS p_brand1 FROM LD
-     GROUP BY d_year, p_brand1;
-	 
-R1 := ORDER R BY d_year, p_brand1;	 
-	 
-STORE R1 INTO 'ss21.txt' USING ('|');
-
-Notice the difference between STREAM load and regular LOAD statements : file loaded with STREAM will be loaded and processed piece by piece. Files loaded by regular LOAD statement will be fully loaded into host memory.
-
-To compile alenka you need to download NVidia's CUDA. 
-Install it and run the following commands to compile alenka executable : 
-  nvcc.exe -arch sm_13 -L "C:\Program Files\Microsoft Visual Studio 10.0\VC\lib\amd64" -lcuda C:\GnuWin32\bin\bison.cu -o alenka
-if you compile for Win64 platform.
-Alenka have been tested on a 64bit Windows7 and Linux.
+Alenka have been tested on a 64bit Windows7 and Linux. Hash joins have beed tested on Linux only.
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
-I tested alenka on first six TPC-H queries with scale 100 (600 million records) and on all Star Query Benchmarks with scale 1000(6 billion records).
+
 
 Alenka is distributed under Apache 2 license.
 
