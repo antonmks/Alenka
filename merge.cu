@@ -21,12 +21,12 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3)
 {
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
-        
+
         map<int,string> columnNames1;
-		map<string,int>::iterator it;
+        map<string,int>::iterator it;
 
         for (  it=b->columnNames.begin() ; it != b->columnNames.end(); ++it ) {
-            c->columnNames[(*it).first] = (*it).second;			
+            c->columnNames[(*it).first] = (*it).second;
             columnNames1[(*it).second] = (*it).first;
         };
 
@@ -164,14 +164,14 @@ CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2, map<string,
     r->mRecCount = 0;
 
     if (c->mRecCount != 0) {
-        order_inplace(c,op_v2, aliases);		
-	
-		//change op_v3 to aliases
-		queue<string> op;
-		for(int i = 0; i < op_v3.size(); op_v3.pop())
-		    op.push(aliases[op_v3.front()]);		
-		
-        c->GroupBy(op);		
+        order_inplace(c,op_v2, aliases);
+
+        //change op_v3 to aliases
+        queue<string> op;
+        for(int i = 0; i < op_v3.size(); op_v3.pop())
+            op.push(aliases[op_v3.front()]);
+
+        c->GroupBy(op);
 
         thrust::device_ptr<bool> d_grp(c->grp);
 

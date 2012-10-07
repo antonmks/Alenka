@@ -174,7 +174,7 @@ struct decompress_functor_float
 
 
 
-long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, FILE* f, bool mode, unsigned int mColumnCount, 
+long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, FILE* f, bool mode, unsigned int mColumnCount,
                                    unsigned int offset, void* d_v, void* s_v)
 {
 
@@ -207,7 +207,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     };
     *mRecCount = orig_recCount;
 
-  //  cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
+    //  cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
 
     thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
     unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
@@ -232,7 +232,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     dd_v[2] = bit_count;
 
     thrust::device_ptr<unsigned long long int> dest = thrust::device_malloc<unsigned long long int>(orig_recCount);
-	thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)thrust::raw_pointer_cast(dest), (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
 
@@ -794,10 +794,10 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     thrust::sequence(add_seq, add_seq + recCount, 0, 1);
     thrust::transform(add_seq, add_seq + recCount, iter, add_seq, thrust::divides<unsigned int>());
 
-    unsigned int cnt = (recCount)/fit_count;	
-	if(cnt == 0)
-	    cnt = 1; // need at least 1
-	
+    unsigned int cnt = (recCount)/fit_count;
+    if(cnt == 0)
+        cnt = 1; // need at least 1
+
     if (recCount%fit_count > 0)
         cnt++;
 
@@ -811,7 +811,7 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
     if(file_name) {
-	    cout << "writing " << cnt << endl;
+        cout << "writing " << cnt << endl;
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
         fstream binary_file(file_name,ios::out|ios::binary|ios::app);
         binary_file.write((char *)&cnt, 4);

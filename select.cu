@@ -42,7 +42,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
     bool one_line = 0;
-	std::clock_t start1 = std::clock();
+    std::clock_t start1 = std::clock();
 
 
     if (a->columnGroups.empty() && a->mRecCount != 0)
@@ -53,10 +53,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     if (!(a->columnGroups).empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
-		
-		
 
-	
+
+
+
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -685,13 +685,13 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
-	
+
     //std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
-    
+
     b->grp_type = new unsigned int[colCount];
 
     for(unsigned int j=0; j<colCount; j++) {
-	
+
         if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[colCount-j-1] = 0;
         else if ((grp_type1.top()).compare("AVG") == 0 )
@@ -768,11 +768,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     b->columnNames[col_val.top()] = colCount-j-1;
                     b->type[colCount-j-1] = 2;
                 }
-         		else {  // already exists, my need to resize it
-		            if(b->mRecCount < res_size)
-		            b->resizeDeviceColumn(colCount-j-1, res_size-b->mRecCount);
-		       };
-				
+                else {  // already exists, my need to resize it
+                    if(b->mRecCount < res_size)
+                        b->resizeDeviceColumn(colCount-j-1, res_size-b->mRecCount);
+                };
+
 
                 CudaChar *cc = a->h_columns_cuda_char[a->type_index[colIndex]];
                 CudaChar* nn = b->h_columns_cuda_char[b->type_index[colCount-j-1]];
@@ -822,7 +822,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         col_val.pop();
         grp_type1.pop();
     };
-	
+
     if ((a->columnGroups).empty()) {
         if ( !one_line)
             b->mRecCount = b->mRecCount + a->mRecCount;
