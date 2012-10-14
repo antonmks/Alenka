@@ -240,6 +240,63 @@ struct long_to_float
     }
 };
 
+struct Uint2Sum
+{
+	__host__ __device__  uint2 operator()(uint2& a, uint2& b)
+	{
+		//a.x += b.x;
+		a.y += b.y;
+		return a;
+	}	
+};
+
+
+struct uint2_split
+{
+
+    const uint2* d_res;
+    unsigned int * output;
+
+    uint2_split(const uint2* _d_res, unsigned int * _output):
+        d_res(_d_res), output(_output) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+        output[i] = d_res[i].y;
+		
+    }
+};
+
+
+
+
+struct join_functor
+{
+
+    const uint2* d_res;
+	const unsigned int* d_addr;
+    unsigned int * output;
+    unsigned int * output1;	
+
+    join_functor(const uint2* _d_res, const unsigned int * _d_addr, unsigned int * _output, unsigned int * _output1):
+        d_res(_d_res), d_addr(_d_addr), output(_output), output1(_output1) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+	    if (d_res[i].x || d_res[i].y) {
+		    for(unsigned int z = 0; z < d_res[i].y; z++) {
+                output[d_addr[i] + z] = i;
+                output1[d_addr[i] + z] = d_res[i].x + z;
+			};	
+		};		
+    }
+};
+
+
 
 struct cmp_functor
 {

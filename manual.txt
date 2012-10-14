@@ -4,7 +4,7 @@ The difference between floats and decimals is that the latter are compressed whe
 
 Requirements : you need to have a Fermi GPU : models 400, 500 and 600 should do.
 Limitations : 
-A.  join ops supported only for integers and only for unique keys. I'll implement support for the other types shortly.
+A.  join ops supported only for integers. I'll implement support for the other types shortly.
 B.  all column names in a script must be unique.
 
 Loading data for processing : 
@@ -51,5 +51,4 @@ When you compiled alenka you can run it from a command line using a SQL script f
 Alenka is distributed under Apache 2 license.
 
 antonmks@gmail.com  
- 
 

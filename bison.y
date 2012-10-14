@@ -247,7 +247,6 @@ opt_limit: { /* nil */
 %%
 
 
-#include "join.cu"
 #include "filter.cu"
 #include "select.cu"
 #include "merge.cu"
@@ -582,8 +581,8 @@ void emit_join(char *s, char *j1)
     stack<string> exe_type;
     exe_type.push(f2);
     field_names.insert(f2);
-
-    unsigned int *A, *B;
+	
+	unsigned int *A, *B;
     unsigned int *devPtrA, *devPtrB;
     size_t memsize;
     unsigned int rcount = 0;
@@ -648,7 +647,17 @@ void emit_join(char *s, char *j1)
         // copy every segment to gpu then copy to host using host mapped memory
         copyGatherJoin(right, rr, cc.front(), i, cnt_r);
     };
-
+	//here we need to make sure that rr is ordered. If not then we order it and keep the permutation
+	
+	bool sorted = thrust::is_sorted(rr,rr+cnt_r);
+	
+    thrust::device_vector<unsigned int> v(cnt_r);
+	thrust::sequence(v.begin(),v.end(),0,1);
+    	
+	if(!sorted) {
+	    thrust::sort_by_key(rr,rr+cnt_r, v.begin());
+	};
+	
 
     varNames[setMap[f2]]->mRecCount = varNames[setMap[f2]]->oldRecCount;
 
@@ -674,18 +683,17 @@ void emit_join(char *s, char *j1)
 
 
     std::clock_t start2 = std::clock();
-    thrust::device_vector<unsigned int> res(left->mRecCount);
+    thrust::device_vector<uint2> res(left->mRecCount);
 
     if ((left->type)[colInd1] == 0 && (right->type)[colInd2]  == 0) {
-
+	
+	
         CUDPPHandle hash_table_handle;
 
         //cout << "creating hash table " << cnt_r << endl;
-        thrust::device_vector<unsigned int> v(cnt_r);
-        thrust::sequence(v.begin(),v.end(),0,1);
 
         CUDPPHashTableConfig config;
-        config.type = CUDPP_BASIC_HASH_TABLE;
+        config.type = CUDPP_MULTIVALUE_HASH_TABLE;
         config.kInputSize = right->mRecCount;
         config.space_usage = 1.5f;
         CUDPPResult result = cudppHashTable(theCudpp, &hash_table_handle, &config);
@@ -699,20 +707,32 @@ void emit_join(char *s, char *j1)
         cudppHashRetrieve(hash_table_handle, thrust::raw_pointer_cast(ll),
                           thrust::raw_pointer_cast(res.data()), cnt_l);
         cudppDestroyHashTable(theCudpp, hash_table_handle);
+		
         //if (result == CUDPP_SUCCESS)
         //    cout << "hash table destroyed " << endl;
 
-        unsigned int rr = thrust::count_if(res.begin(),res.end(),is_match());
+        //unsigned int rr = thrust::count_if(res.begin(),res.end(),is_match());
+		uint2 rr = thrust::reduce(res.begin(), res.end(), make_uint2(0,0), Uint2Sum());		
         //cout << "final res " << rr << endl;
 
-        if(rr) {
-            d_res1.resize(rr);
-            d_res2.resize(rr);
+        if(rr.y) {
+		
+		    thrust::device_vector<unsigned int> d_r(cnt_l);		
+	        thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+            uint2_split ff(thrust::raw_pointer_cast(res.data()),
+                           thrust::raw_pointer_cast(d_r.data()));
+            thrust::for_each(begin, begin + cnt_l, ff);							
+		
+		    thrust::exclusive_scan(d_r.begin(), d_r.end(), d_r.begin() );  // addresses				
+		
+            d_res1.resize(rr.y);
+            d_res2.resize(rr.y);
 
-            thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(left->mRecCount-1),
-                            res.begin(), d_res1.begin(), is_match());
-
-            thrust::copy_if(res.begin(), res.end(), d_res2.begin(), is_match());
+            join_functor ff1(thrust::raw_pointer_cast(res.data()),
+                             thrust::raw_pointer_cast(d_r.data()),
+	     					 thrust::raw_pointer_cast(d_res1.data()),
+		    				 thrust::raw_pointer_cast(d_res2.data()));
+            thrust::for_each(begin, begin + cnt_l, ff1);		
 
         };
     }
@@ -720,6 +740,7 @@ void emit_join(char *s, char *j1)
     c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
     bool left_check;
     thrust::device_vector<unsigned int> p(d_res1.size());
+	thrust::device_vector<unsigned int> res_tmp(left->mRecCount);
 
     //gather prm of left and right vectors
     while(!op_sel.empty()) {
@@ -750,16 +771,16 @@ void emit_join(char *s, char *j1)
                     unsigned int g_size = lr->prm_count[setMap[op_sel.front()]][i];
                     cudaMemcpy((void**)(thrust::raw_pointer_cast(lr->prm_d.data())), (void**)lr->prm[setMap[op_sel.front()]][i], 4*g_size, cudaMemcpyHostToDevice);
                     thrust::transform(lr->prm_d.begin(), lr->prm_d.begin() + g_size,
-                                      res.begin() + curr_count, _1+(i*t->maxRecs));
+                                      res_tmp.begin() + curr_count, _1+(i*t->maxRecs));
 
                     curr_count = curr_count + lr->prm_count[setMap[op_sel.front()]][i];
 
                 };
 
                 if(left_check)
-                    thrust::gather(d_res1.begin(), d_res1.end(), res.begin(), p.begin());
+                    thrust::gather(d_res1.begin(), d_res1.end(), res_tmp.begin(), p.begin());
                 else
-                    thrust::gather(d_res2.begin(), d_res2.end(), res.begin(), p.begin());
+                    thrust::gather(d_res2.begin(), d_res2.end(), res_tmp.begin(), p.begin());
 
                 cudaMemcpy((void**)c->prm[setMap[op_sel.front()]][0], (void**)(thrust::raw_pointer_cast(p.data())), 4*d_res1.size(), cudaMemcpyDeviceToHost);
             }
