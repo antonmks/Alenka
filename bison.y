@@ -620,7 +620,7 @@ void emit_join(char *s, char *j1)
     else
         rcount = varNames[setMap[f2]]->mRecCount;
 
-    memsize = ((rcount * sizeof(unsigned int) + 4095) / 4096) * 4096;
+    memsize = rcount * sizeof(unsigned int); // does not have to be aligned anymore
 
 #ifdef _WIN64
     B = (unsigned int*) VirtualAlloc(NULL, memsize, MEM_COMMIT, PAGE_READWRITE);
@@ -708,6 +708,7 @@ void emit_join(char *s, char *j1)
                           thrust::raw_pointer_cast(res.data()), cnt_l);
         cudppDestroyHashTable(theCudpp, hash_table_handle);
 		
+		
         //if (result == CUDPP_SUCCESS)
         //    cout << "hash table destroyed " << endl;
 
@@ -736,6 +737,17 @@ void emit_join(char *s, char *j1)
 
         };
     }
+
+    cudaHostUnregister(A);	
+    cudaHostUnregister(B);	
+#ifdef _WIN64
+	VirtualFree(A, 0, MEM_RELEASE);
+	VirtualFree(B, 0, MEM_RELEASE);
+#else
+    free(A);
+	free(B);
+#endif
+	
 
     c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
     bool left_check;
