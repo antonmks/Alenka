@@ -78,8 +78,8 @@ bool buffersEmpty = 0;
 unsigned long long int total_count = 0;
 unsigned int total_segments = 0;
 unsigned int total_max;
-void* d_v;
-void* s_v;
+void* d_v = NULL;
+void* s_v = NULL;
 unsigned int curr_segment = 0;
 
 
@@ -863,10 +863,10 @@ public:
         strcat(f1,col_pos);
         FILE* f;
         int cnt, grp_count;
-        int offset = 0;
+        unsigned long long int offset = 0;
 
         f = fopen (f1 , "rb" );
-        //cout << "file " << f1 << " " << segNum << endl;
+//        cout << "file " << f1 << " " << segNum << endl;
 
         for(unsigned int i = 0; i < segNum; i++) {
 
@@ -874,7 +874,7 @@ public:
                 fread((char *)&cnt, 4, 1, f);
                 offset = offset + cnt + 8;
                 fseeko(f, offset*8 , SEEK_SET);
-            }
+           }
             else {
                 fread((char *)&cnt, 4, 1, f);
                 offset = offset + cnt*8 + 12;
@@ -884,8 +884,8 @@ public:
                 offset = offset + 11*4 + grp_count*c->mColumnCount;
                 fseeko(f, offset , SEEK_SET);
             };
-
         };
+	
         // find out how much we need to read and rewind back to the start of the segment
         if(type[colIndex] != 2) {
             fread((char *)&cnt, 4, 1, f);
@@ -905,15 +905,19 @@ public:
         if(type[colIndex] == 0) {
 
             if(h_columns_int[type_index[colIndex]].size() < cnt+9) {
-                resize(cnt+9-d_columns_int[type_index[colIndex]].size());
+                //resize(cnt+9-h_columns_int[type_index[colIndex]].size());
+				h_columns_int[type_index[colIndex]].resize(cnt+9);
             };
             fread(h_columns_int[type_index[colIndex]].data(),(cnt+8)*8,1,f);
 
         }
         else if(type[colIndex] == 1) {
-            if(h_columns_float[type_index[colIndex]].size() < cnt+9)
-                resize(cnt+9-d_columns_int[type_index[colIndex]].size());
-            fread(h_columns_float[type_index[colIndex]].data(),(cnt+8)*8,1,f);
+            if(h_columns_float[type_index[colIndex]].size() < cnt+9) {
+                //resize(cnt+9-h_columns_int[type_index[colIndex]].size());
+				h_columns_float[type_index[colIndex]].resize(cnt+9);
+			};	
+            fread(h_columns_float[type_index[colIndex]].data(),(cnt+8)*8,1,f);		
+			
         }
         else {
             CudaChar* c = h_columns_cuda_char[type_index[colIndex]];
@@ -1023,10 +1027,12 @@ public:
             else
                 data_offset = readSegments(segment,colIndex);
 
-            void* d_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-            void* s_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+				
+            if(d_v == NULL)
+                CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+            if(s_v == NULL);
+                CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+			
 
             switch(type[colIndex]) {
             case 0 :
@@ -1048,8 +1054,8 @@ public:
                 grp_count = ((unsigned int*)(c->compressed.data() + data_offset + data_len*8 + 12))[0];
                 pfor_dict_decompress(c->compressed.data() + data_offset, c->h_columns , c->d_columns, &mRecCount, NULL,0, c->mColumnCount, 0, d_v, s_v);
             };
-            cudaFree(d_v);
-            cudaFree(s_v);
+            //cudaFree(d_v);
+            //cudaFree(s_v);
         };
     }
 
@@ -1072,10 +1078,10 @@ public:
         else {
             long long int data_offset;
             unsigned int totalRecs = 0;
-            void* d_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-            void* s_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+            if(d_v == NULL)
+                CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+            if(s_v == NULL);
+                CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 
             for(unsigned int i = 0; i < segCount; i++) {
 
@@ -1137,10 +1143,10 @@ public:
             else
                 data_offset = readSegments(start_seg,colIndex);
 
-            void* d_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-            void* s_v;
-            CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+            if(d_v == NULL)
+                CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+            if(s_v == NULL);
+                CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 
             switch(type[colIndex]) {
             case 0 :
@@ -2401,11 +2407,9 @@ int_type reverse_op(int_type op_type)
 
 size_t getFreeMem()
 {
-    size_t free, total;
-
-    cuMemGetInfo(&free, &total);
-//  cout << "Free memory " << free/(1024 * 1024) << " Mbytes out of " << total/(1024 * 1024) << " Mbytes" << endl;
-    return free;
+	size_t available, total;
+    cudaMemGetInfo(&available, &total); 
+    return available;
 } ;
 
 void* LoadBuffers1(void* file_name)
@@ -2786,7 +2790,6 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment)
 
             if (!a->isJoined) {
                 t->CopyColumnToGpu(t->columnNames[fields.front()], segment); // segment i
-
                 if (a != t)  {
                     gatherColumns(a, t, fields.front(), segment);
                 };

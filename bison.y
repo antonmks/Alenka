@@ -558,7 +558,7 @@ void emit_join(char *s, char *j1)
     string f2 = op_value.front();
     op_value.pop();
 
-    cout << "JOIN " << s <<  endl;;
+    cout << "JOIN " << s <<  " " <<  getFreeMem() <<  endl;;
 
 
     std::clock_t start1 = std::clock();
@@ -583,7 +583,9 @@ void emit_join(char *s, char *j1)
     field_names.insert(f2);
 	
 	unsigned int *A, *B;
+	uint2* R;
     unsigned int *devPtrA, *devPtrB;
+	uint2* *devPtrR;
     size_t memsize;
     unsigned int rcount = 0;
 
@@ -594,7 +596,7 @@ void emit_join(char *s, char *j1)
     else
         rcount = varNames[setMap[f1]]->mRecCount;
 
-    memsize = ((rcount * sizeof(unsigned int) + 4095) / 4096) * 4096;
+    memsize = rcount * sizeof(unsigned int);
 
 
 #ifdef _WIN64
@@ -635,6 +637,7 @@ void emit_join(char *s, char *j1)
     if (cudaSuccess != err)
         cout << cudaGetErrorString( err ) << endl;
     thrust::device_ptr<unsigned int> rr((unsigned int*)devPtrB);
+	cout << "A and B regged " <<   ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
 
     queue<string> cc;
@@ -675,7 +678,7 @@ void emit_join(char *s, char *j1)
     };
     varNames[setMap[f1]]->mRecCount = varNames[setMap[f1]]->oldRecCount;
 
-    cout << "successfully loaded l && r " << cnt_l << " " << cnt_r << endl;
+    cout << "successfully loaded l && r " << cnt_l << " " << cnt_r << " " << getFreeMem() << endl;
 
 
     thrust::device_vector<unsigned int> d_res1;
@@ -683,7 +686,29 @@ void emit_join(char *s, char *j1)
 
 
     std::clock_t start2 = std::clock();
-    thrust::device_vector<uint2> res(left->mRecCount);
+    memsize = cnt_l * sizeof(uint2);
+
+
+#ifdef _WIN64
+    R = (uint2*) VirtualAlloc(NULL, memsize, MEM_COMMIT, PAGE_READWRITE);
+#else
+    R = (uint2*) valloc(memsize);
+#endif
+
+
+    err = cudaHostRegister(R, memsize, cudaHostRegisterMapped);
+    if (cudaSuccess != err)
+        cout << cudaGetErrorString( err ) << endl;
+    cudaHostGetDevicePointer((void **) &devPtrR, (void *) R, 0);
+    if (cudaSuccess != err)
+        cout << cudaGetErrorString( err ) << endl;
+    thrust::device_ptr<uint2> res((uint2*)devPtrR);
+	
+	std::cout<< "join reg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+	
+	std::clock_t start3 = std::clock();
+	
+    //thrust::device_vector<uint2> res(left->mRecCount);
 
     if ((left->type)[colInd1] == 0 && (right->type)[colInd2]  == 0) {
 	
@@ -696,63 +721,93 @@ void emit_join(char *s, char *j1)
         config.type = CUDPP_MULTIVALUE_HASH_TABLE;
         config.kInputSize = right->mRecCount;
         config.space_usage = 1.5f;
+		
+		cout << "creating table with " << right->mRecCount << endl;
+		
+		
+		cout << "MEM " << getFreeMem() << endl;
+		
         CUDPPResult result = cudppHashTable(theCudpp, &hash_table_handle, &config);
-        //if (result == CUDPP_SUCCESS)
-        //    cout << "hash table created " << endl;
-        //cout << "INSERT " << cnt_r << " " << right->mRecCount << endl;
+				
+		std::cout<< "table creation time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+        if (result == CUDPP_SUCCESS)
+            cout << "hash table created " << getFreeMem() << endl;
+					
+        cout << "INSERT " << cnt_r << " " << right->mRecCount << " " << getFreeMem() << endl;
         result = cudppHashInsert(hash_table_handle, thrust::raw_pointer_cast(rr),
                                  thrust::raw_pointer_cast(v.data()), cnt_r);
-        //if (result == CUDPP_SUCCESS)
-        //    cout << "hash table inserted " << endl;
+								 
+		std::cout<< "table insert time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						 
+        if (result == CUDPP_SUCCESS)
+            cout << "hash table inserted " << getFreeMem() << endl;
+		for(int i = 0; i < 30;i++)	
         cudppHashRetrieve(hash_table_handle, thrust::raw_pointer_cast(ll),
-                          thrust::raw_pointer_cast(res.data()), cnt_l);
+                          thrust::raw_pointer_cast(res), cnt_l);
+        std::cout<< "table retrieve time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
         cudppDestroyHashTable(theCudpp, hash_table_handle);
+		std::cout<< "table destroy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 		
 		
-        //if (result == CUDPP_SUCCESS)
-        //    cout << "hash table destroyed " << endl;
+        if (result == CUDPP_SUCCESS)
+            cout << "hash table destroyed " << getFreeMem() << endl;
 
-        //unsigned int rr = thrust::count_if(res.begin(),res.end(),is_match());
-		uint2 rr = thrust::reduce(res.begin(), res.end(), make_uint2(0,0), Uint2Sum());		
-        //cout << "final res " << rr << endl;
+		cout << "reducing " << cnt_l << endl;	
+		std::cout<< "111 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
+		uint2 rr = thrust::reduce(res, res+cnt_l, make_uint2(0,0), Uint2Sum());		
+		std::cout<< "reduce time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 
         if(rr.y) {
 		
-		    thrust::device_vector<unsigned int> d_r(cnt_l);		
-	        thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-            uint2_split ff(thrust::raw_pointer_cast(res.data()),
-                           thrust::raw_pointer_cast(d_r.data()));
-            thrust::for_each(begin, begin + cnt_l, ff);							
+		    //thrust::device_vector<unsigned int> d_r(cnt_l);	
+            thrust::device_ptr<unsigned int> d_r = thrust::device_malloc<unsigned int>(cnt_l);			
+			std::cout<< "table malloc time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 		
-		    thrust::exclusive_scan(d_r.begin(), d_r.end(), d_r.begin() );  // addresses				
+	        thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+            uint2_split ff(thrust::raw_pointer_cast(res),thrust::raw_pointer_cast(d_r));
+            thrust::for_each(begin, begin + cnt_l, ff);							
+			std::cout<< "table split time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
+		
+		    thrust::exclusive_scan(d_r, d_r+cnt_l, d_r );  // addresses	
+std::cout<< "table scan time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  			
 		
             d_res1.resize(rr.y);
             d_res2.resize(rr.y);
+			std::cout<< "table resize time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 
-            join_functor ff1(thrust::raw_pointer_cast(res.data()),
-                             thrust::raw_pointer_cast(d_r.data()),
+            join_functor ff1(thrust::raw_pointer_cast(res),
+                             thrust::raw_pointer_cast(d_r),
 	     					 thrust::raw_pointer_cast(d_res1.data()),
 		    				 thrust::raw_pointer_cast(d_res2.data()));
-            thrust::for_each(begin, begin + cnt_l, ff1);		
+            thrust::for_each(begin, begin + cnt_l, ff1);	
+			std::cout<< "table foreach time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
+            thrust::device_free(d_r);			
 
         };
     }
 
     cudaHostUnregister(A);	
     cudaHostUnregister(B);	
+	cudaHostUnregister(R);	
+	std::cout<< "unregged time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 #ifdef _WIN64
 	VirtualFree(A, 0, MEM_RELEASE);
 	VirtualFree(B, 0, MEM_RELEASE);
+	VirtualFree(R, 0, MEM_RELEASE);	
 #else
     free(A);
 	free(B);
+	free(R);
 #endif
+
+    std::cout<< "table unreg time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 	
 
     c = new CudaSet(right,left,d_res1.size(),op_sel, op_sel_as);
     bool left_check;
     thrust::device_vector<unsigned int> p(d_res1.size());
 	thrust::device_vector<unsigned int> res_tmp(left->mRecCount);
+	
+	std::cout<< "bad malloc time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 
     //gather prm of left and right vectors
     while(!op_sel.empty()) {
@@ -771,6 +826,7 @@ void emit_join(char *s, char *j1)
 
             c->prm[setMap[op_sel.front()]].push_back(new unsigned int[d_res1.size()]);
             c->prm_count[setMap[op_sel.front()]].push_back(d_res1.size());
+			
             if(lr->prm.size() != 0) {
                 // join prm segments, add seg_num*maxRecs to values and gather the result
 
@@ -809,6 +865,7 @@ void emit_join(char *s, char *j1)
     };
 
     cout << "join final end " << d_res1.size() << "  " << getFreeMem() << endl;
+	std::cout<< "table unreg time1 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						  
 
     //right->d_res1
     //left->d_res2
@@ -1096,23 +1153,27 @@ void emit_select(char *s, char *f, int ll)
     //bck = a;
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
-        //cout << "cycle " << i << " select mem " << getFreeMem() << endl;
+        cout << "cycle " << i << " select mem " << getFreeMem() << endl;
         std::clock_t start2 = std::clock();
 
         if(i == 0)
             b = new CudaSet(0, col_count);
 
         copyColumns(a, op_vx, i);
+		std::cout<< "cpy time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
 
         CudaSet *t = varNames[setMap[op_vx.front()]];
 
         if (ll != 0) {
             thrust::device_ptr<unsigned int> perm = order_inplace(a,op_v2,field_names,i);
+			std::cout<< "order time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
             thrust::device_free(perm);
             a->GroupBy(op_v3);
+			std::cout<< "grp time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         };
         select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);
+		std::cout<< "select time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         if(i == 1) {
             for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -1125,8 +1186,9 @@ void emit_select(char *s, char *f, int ll)
                 c->fact_table = 1;
                 c->segCount = 1;
             }
-            else
+            else {
                 c->resize(b->mRecCount);
+			};	
             add(c,b,op_v3);
         };
     };
@@ -1235,7 +1297,6 @@ void emit_filter(char *s, char *f, int e)
         curr_segment = 100;
 
         for(unsigned int i = 0; i < cycle_count; i++) {
-            std::clock_t start2 = std::clock();
             copyColumns(a, op_value, i);
             filter(op_type,op_value,op_nums, op_nums_f,a, b, i, p);
         };
@@ -1264,7 +1325,7 @@ void emit_filter(char *s, char *f, int e)
         a->free();
         varNames.erase(f);
     };
-    std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+    std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 void emit_store(char *s, char *f, char* sep)
