@@ -29,6 +29,8 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
 
+
+
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -820,28 +822,17 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
     unsigned int count = thrust::count(bp, bp + a->mRecCount, 1);
     b->mRecCount = b->mRecCount + count;
 
-    if(a->prm.size() == 0) {
-        b->prm[a->name].push_back(new unsigned int[count]);
-        b->prm_count[a->name].push_back(count);
-        thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
-                        bp, dev_p.begin(), nz<bool>());
-        cudaMemcpy((void**)b->prm[a->name][segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
-    }
-    else {
-        for ( map<string, std::vector<unsigned int*> >::iterator it=a->prm.begin() ; it != a->prm.end(); ++it ) {
-            b->prm[(*it).first].push_back(new unsigned int[count]);
-            b->prm_count[(*it).first].push_back(count);
-            thrust::device_vector<unsigned int> p(count);
-            thrust::device_vector<unsigned int> p_a(a->prm_count[(*it).first][segment]);
-            thrust::copy_if(p_a.begin(), p_a.end(),
-                            bp, dev_p.begin(), nz<bool>());
-            cudaMemcpy((void**)b->prm[a->name][segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
-        };
-    };
+    b->prm.push_back(new unsigned int[count]);
+    b->prm_count.push_back(count);
+    b->prm_index.push_back('R');
+    thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
+                    bp, dev_p.begin(), nz<bool>());
+    cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
 
     b->type_index = a->type_index;
     cudaFree(bool_vectors.top());
-
     return b->mRecCount;
-
 }
+
+
+

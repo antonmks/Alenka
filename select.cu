@@ -61,7 +61,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
         string ss = op_type.front();
 
-
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
 
@@ -686,8 +685,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 
-    //std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
-
+    
     b->grp_type = new unsigned int[colCount];
 
     for(unsigned int j=0; j<colCount; j++) {

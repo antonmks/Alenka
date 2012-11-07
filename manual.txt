@@ -10,7 +10,7 @@ B.  all column names in a script must be unique.
 Loading data for processing : 
 Alenka can read text files with fields separated by separators. But much faster way to read the data would be to load it into binary files as demonstrated by the following script :
 
-C := STREAM 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int, d_yearmonth{7}:varchar(7), 
+C := LOAD 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int, d_yearmonth{7}:varchar(7), 
                                             d_weeknuminyear{12}:int);
 STORE C INTO 'date' BINARY;
 
@@ -41,14 +41,17 @@ STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;
 
 
 To compile alenka you need to download NVidia's CUDA. You will also need CUDPP library : see CUDPP project site for install instructions : http://code.google.com/p/cudpp/
-To compile alenka executable run the following command : 
-nvcc -arch sm_20 -L"cudpp_src_2.0/lib" -lcuda -lcudpp -lcudpp_hash  ./bison.cu -o ./alenka
 
-Alenka have been tested on a 64bit Windows7 and Linux. Hash joins have beed tested on Linux only.
+To compile alenka executable run the following command on Linux : 
+nvcc -arch sm_20 -L"Address of CUDPP library" -lcuda -lcudpp -lcudpp_hash  ./bison.cu -o ./alenka
+Run the following command if you have Windows64 :
+nvcc.exe --compiler-options /MD -arch sm_20 -L "Address of CUDPP library" -lcuda -lcudpp64 -lcudpp_hash64  bison.cu -o alenka
+Under Windows you have to specify /MD switch because CUDPP library is compiled with /MD switch so you have to do the same.
+
+Alenka have been tested on a 64bit Windows7 and Linux. 
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
 
 
 Alenka is distributed under Apache 2 license.
 
 antonmks@gmail.com  
-

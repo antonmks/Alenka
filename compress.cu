@@ -7,9 +7,13 @@
 #include <thrust/device_vector.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/extrema.h>
+#include "C:\Users\anton\Favorites\Downloads\cudpp_src_2.0\cudpp_src_2.0\include\cudpp_hash.h"
 #include "sorts.cu"
 
 using namespace std;
+
+unsigned long long int* raw_decomp = NULL;
+unsigned int raw_decomp_length = 0;
 
 struct bool_to_int
 {
@@ -207,23 +211,27 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     };
     *mRecCount = orig_recCount;
 
-    //  cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
+      //cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
 
-    thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
-    unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
+    //thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
+    //unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
+	
+	if(raw_decomp_length < cnt*8) {	
+	    if(raw_decomp != NULL) {
+	        cudaFree(raw_decomp);
+		};	
+	    cudaMalloc((void **) &raw_decomp, cnt*8);
+		raw_decomp_length = cnt*8;
+	};		
+	
     if (f)
-        cudaMemcpy( (void*)raw_decomp, (void*)compressed, cnt*8, cudaMemcpyHostToDevice);
+        cudaMemcpy( (void*)raw_decomp, compressed, cnt*8, cudaMemcpyHostToDevice);
     else
         cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)compressed + 1), cnt*8, cudaMemcpyHostToDevice);
 
-    //void* d_v;
-    //CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
-    //void* s_v;
-    //CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
-
 
 
     dd_sv[0] = orig_lower_val;
@@ -238,7 +246,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
 
     //cudaFree(d_v);
     //cudaFree(s_v);
-    thrust::device_free(decomp);
+    //thrust::device_free(decomp);
 
 
     if(mode == 0) {                   // keep results in gpu
@@ -308,23 +316,25 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
     };
     *mRecCount = orig_recCount;
 
-//	cout << "Decomp Header " << orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
-
-    thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
+	//cout << "Decomp Header " << f << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
 
-    unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
+	if(raw_decomp_length < cnt*8) {	
+	    if(raw_decomp != NULL) {
+	        cudaFree(raw_decomp);
+		};	
+	    cudaMalloc((void **) &raw_decomp, cnt*8);
+		raw_decomp_length = cnt*8;
+	};		
+
+	
     if(f)
         cudaMemcpy( (void*)raw_decomp, host, cnt*8, cudaMemcpyHostToDevice);
     else
         cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
 
-//    void* d_v;
-//    cudaMalloc((void **) &d_v, 12);
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
-//    void* s_v;
-//    cudaMalloc((void **) &s_v, 8);
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
     dd_sv[0] = orig_lower_val;
@@ -354,9 +364,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
         };
 
     };
-//    cudaFree(d_v);
-//    cudaFree(s_v);
-    thrust::device_free(decomp);
+    //thrust::device_free(decomp);
     return 1;
 
 }
@@ -425,13 +433,13 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
     thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
 
     fit_count = bit_count/bits;
-    void* d_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+    void* d_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v1, 12));
+    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v1);
 
-    void* s_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
-    thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
+    void* s_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v1, 8));
+    thrust::device_ptr<long long int> dd_sv((long long int*)s_v1);
 
     dd_sv[0] = orig_lower_val;
     dd_v[0] = bits;
@@ -448,11 +456,11 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
     //cout << "FF " << orig_lower_val << " " << bits << " " << fit_count << " " << bit_count << endl;
 
     if (tp == 0) {
-        compress_functor_int ff((int_type*)ss,(unsigned long long int*)source, (long long int*)s_v, (unsigned int*)d_v);
+        compress_functor_int ff((int_type*)ss,(unsigned long long int*)source, (long long int*)s_v1, (unsigned int*)d_v1);
         thrust::for_each(begin, begin + recCount, ff);
     }
     else {
-        compress_functor_float ff((long long int*)ss,(unsigned long long int*)source, (long long int*)s_v, (unsigned int*)d_v);
+        compress_functor_float ff((long long int*)ss,(unsigned long long int*)source, (long long int*)s_v1, (unsigned int*)d_v1);
         thrust::for_each(begin, begin + recCount, ff);
     };
 
@@ -469,6 +477,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
     unsigned int cnt = (recCount)/fit_count;
     if (recCount%fit_count > 0)
         cnt++;
+		
     thrust::device_ptr<unsigned long long int> fin_seq = thrust::device_malloc<unsigned long long int>(cnt);
 
     thrust::reduce_by_key(add_seq, add_seq+recCount,s_copy1,thrust::make_discard_iterator(),
@@ -519,8 +528,8 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
     thrust::device_free(fin_seq);
     cudaFree(ss);
-    cudaFree(d_v);
-    cudaFree(s_v);
+    cudaFree(d_v1);
+    cudaFree(s_v1);
     return sz + cnt + 8;
 }
 
@@ -536,6 +545,7 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
 
     void* temp;
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, source_len));
+	
 
     for(int j=mColumnCount-1; j>=0 ; j--)
         update_permutation(d_columns[j], raw_ptr, source_len, "ASC", (char*)temp);
@@ -587,13 +597,13 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
 
     unsigned int fit_count = 64/bits;
 
-    void* d_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+    void* d_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v1, 12));
+    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v1);
 
-    void* s_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
-    thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
+    void* s_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v1, 8));
+    thrust::device_ptr<long long int> dd_sv((long long int*)s_v1);
 
     dd_sv[0] = 0;
     dd_v[0] = bits;
@@ -608,11 +618,11 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
     thrust::device_ptr<char> dd((char*)d);
     thrust::fill(dd, dd+source_len,0);
 
-    compress_functor_int ff(thrust::raw_pointer_cast(permutation_final),(unsigned long long int*)d, (long long int*)s_v, (unsigned int*)d_v);
+    compress_functor_int ff(thrust::raw_pointer_cast(permutation_final),(unsigned long long int*)d, (long long int*)s_v1, (unsigned int*)d_v1);
     thrust::for_each(begin, begin + source_len, ff);
 
-    cudaFree(d_v);
-    cudaFree(s_v);
+    cudaFree(d_v1);
+    cudaFree(s_v1);
 
     thrust::device_ptr<unsigned long long int> s_copy1((unsigned long long int*)d);
 
@@ -627,11 +637,11 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
         cnt++;
     thrust::device_ptr<unsigned long long int> fin_seq = thrust::device_malloc<unsigned long long int>(cnt);
 
-    //cout << "fin seq " << cnt << " " << source_len <<  endl;
+    //cout << "fin seq " << cnt << " " << source_len <<  endl;	
 
     thrust::reduce_by_key(permutation_final, permutation_final+source_len,s_copy1,thrust::make_discard_iterator(), fin_seq);
     orig_lower_val = 0;
-
+	
     if (file_name) {
         cudaMemcpy( host.data(), (void *)thrust::raw_pointer_cast(fin_seq), cnt*8, cudaMemcpyDeviceToHost);
         //thrust::copy(fin_seq, fin_seq+cnt,host.begin());
@@ -724,12 +734,13 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
-        sorted = thrust::is_sorted(s, s+recCount);
+        sorted = thrust::is_sorted(s, s+recCount);		
     }
     else {
         thrust::device_ptr<long long int> s((long long int*)source);
         sorted = thrust::is_sorted(s, s+recCount);
     };
+	//cout << "file " << file_name << " is sorted " << sorted << endl;
 
     if(sorted)
         return pfor_delta_compress(source, source_len, file_name, host, tp, sz);
@@ -758,13 +769,13 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
 
     fit_count = bit_count/bits;
-    void* d_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+    void* d_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d_v1, 12));
+    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v1);
 
-    void* s_v;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
-    thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
+    void* s_v1;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &s_v1, 8));
+    thrust::device_ptr<long long int> dd_sv((long long int*)s_v1);
 
     dd_sv[0] = orig_lower_val;
     dd_v[0] = bits;
@@ -777,11 +788,11 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     thrust::fill(dd, dd+source_len,0);
 
     if (tp == 0) {
-        compress_functor_int ff((int_type*)source,(unsigned long long int*)d, (long long int*)s_v, (unsigned int*)d_v);
+        compress_functor_int ff((int_type*)source,(unsigned long long int*)d, (long long int*)s_v1, (unsigned int*)d_v1);
         thrust::for_each(begin, begin + recCount, ff);
     }
     else {
-        compress_functor_float ff((long long int*)source,(unsigned long long int*)d, (long long int*)s_v, (unsigned int*)d_v);
+        compress_functor_float ff((long long int*)source,(unsigned long long int*)d, (long long int*)s_v1, (unsigned int*)d_v1);
         thrust::for_each(begin, begin + recCount, ff);
     };
 
@@ -809,9 +820,10 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
+	
+	//cout << file_name << " CNT  " << cnt << endl;
 
     if(file_name) {
-        cout << "writing " << cnt << endl;
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
         fstream binary_file(file_name,ios::out|ios::binary|ios::app);
         binary_file.write((char *)&cnt, 4);
@@ -850,7 +862,7 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     thrust::device_free(add_seq);
     cudaFree(d);
-    cudaFree(d_v);
-    cudaFree(s_v);
+    cudaFree(d_v1);
+    cudaFree(s_v1);
     return sz + cnt + 8;
 }

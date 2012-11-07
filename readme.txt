@@ -10,7 +10,6 @@ Ultra fast compression and decompression performed directly inside GPU
 Column-based storage 
 Minimize disk I/O by only accessing the relevant data
   
-Fast database loads
-Data load times measured in minutes, not in hours.
+Support for zone maps. All columns have indexes allowing for better performance.
   
 Open source and free 
