@@ -43,9 +43,9 @@ STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;
 To compile alenka you need to download NVidia's CUDA. You will also need CUDPP library : see CUDPP project site for install instructions : http://code.google.com/p/cudpp/
 
 To compile alenka executable run the following command on Linux : 
-nvcc -arch sm_20 -L"Address of CUDPP library" -lcuda -lcudpp -lcudpp_hash  ./bison.cu -o ./alenka
+nvcc -O3  -arch sm_20 -L"Address of CUDPP library" -lcuda -lcudpp -lcudpp_hash  ./bison.cu -o ./alenka
 Run the following command if you have Windows64 :
-nvcc.exe --compiler-options /MD -arch sm_20 -L "Address of CUDPP library" -lcuda -lcudpp64 -lcudpp_hash64  bison.cu -o alenka
+nvcc.exe -O3 --compiler-options /MD -arch sm_20 -L "Address of CUDPP library" -lcuda -lcudpp64 -lcudpp_hash64  bison.cu -o alenka
 Under Windows you have to specify /MD switch because CUDPP library is compiled with /MD switch so you have to do the same.
 
 Alenka have been tested on a 64bit Windows7 and Linux. 
