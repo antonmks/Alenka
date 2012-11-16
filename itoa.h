@@ -1,5 +1,4 @@
- #include <string.h>
- 
+  
  /* reverse:  reverse string s in place */
  void reverse(char s[])
  {
@@ -32,3 +31,5 @@ void itoaa(int n, char s[])
      reverse(s);
  }
 
+
+ 

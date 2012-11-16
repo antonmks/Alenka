@@ -7,7 +7,13 @@
 #include <thrust/device_vector.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/extrema.h>
+
+#ifdef _WIN64
 #include "C:\Users\anton\Favorites\Downloads\cudpp_src_2.0\cudpp_src_2.0\include\cudpp_hash.h"
+#else
+#include "./cudpp_src_2.0/include/cudpp_hash.h"
+#endif
+
 #include "sorts.cu"
 
 using namespace std;
