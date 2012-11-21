@@ -1,0 +1,3 @@
+11/16/2012.
+    I have verified that the program runs correctly for 64bit values.
+    Because CUDPP Hash table supports only 32 bit keys I had to modify the hash join algorithm.
