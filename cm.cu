@@ -44,6 +44,7 @@
 #include "atof.h"
 #include "itoa.h"
 #include "compress.cu"
+//#include "strings.cu"
 
 
 #ifdef _WIN64
@@ -74,6 +75,11 @@ queue<string> op_type;
 queue<string> op_value;
 queue<int_type> op_nums;
 queue<float_type> op_nums_f;
+
+typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
+typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
+typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
+
 
 
 template <typename HeadFlagType>
@@ -427,6 +433,7 @@ public:
                 d_columns[i].resize(0);
                 d_columns[i].shrink_to_fit();
             };
+	
     };
 
 
@@ -582,6 +589,21 @@ public:
 
     std::vector<thrust::device_vector<int_type> > d_columns_int;
     std::vector<thrust::device_vector<float_type> > d_columns_float;
+	
+/*	std::vector<thrust::device_vector<StrT<1> > > d_columns_string1;
+	std::vector<thrust::device_vector<StrT<2> > > d_columns_string2;
+	std::vector<thrust::device_vector<StrT<3> > > d_columns_string3;
+	std::vector<thrust::device_vector<StrT<4> > > d_columns_string4;
+	std::vector<thrust::device_vector<StrT<5> > > d_columns_string5;
+	std::vector<thrust::device_vector<StrT<6> > > d_columns_string6;
+	std::vector<thrust::device_vector<StrT<7> > > d_columns_string7;
+	std::vector<thrust::device_vector<StrT<8> > > d_columns_string8;
+	std::vector<thrust::device_vector<StrT<9> > > d_columns_string9;
+	std::vector<thrust::device_vector<StrT<10> > > d_columns_string10;
+	
+	std::vector<unsigned int> d_columns_str_size;
+	*/
+	
     thrust::device_vector<unsigned int> prm_d;
     std::vector<unsigned int*> prm; //represents an op's permutation of original data vectors
     //string is a set name
@@ -711,6 +733,14 @@ public:
             cudaFree(grp);
             grp = NULL;
         };
+		if(prm.size()) { // free the sources
+		    string some_field; 
+			map<string,int>::iterator it=columnNames.begin();
+            some_field = (*it).first;		    
+		    CudaSet* t = varNames[setMap[some_field]]; 			
+			t->deAllocOnDevice();		
+		};
+		
     };
 
     void resizeDeviceColumn(unsigned int RecCount, unsigned int colIndex)
@@ -836,6 +866,8 @@ public:
 
     unsigned long long int readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
     {
+	
+	    std::clock_t start1 = std::clock();
         char f1[100];
         strcpy(f1, load_file_name);
         strcat(f1,".");
@@ -845,9 +877,12 @@ public:
         FILE* f;
         int cnt, grp_count;
         unsigned long long int offset = 0;
-
+		
         f = fopen (f1 , "rb" );
-//        cout << "file " << f1 << " " << segNum << endl;
+		
+		
+		//std::cout<< "open file " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+        //cout << "file " << f1 << " " << segNum << endl;
 
         for(unsigned int i = 0; i < segNum; i++) {
 
@@ -866,6 +901,7 @@ public:
                 fseeko(f, offset , SEEK_SET);
             };
         };
+		//std::cout<< "read1 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 	
         // find out how much we need to read and rewind back to the start of the segment
         if(type[colIndex] != 2) {
@@ -879,6 +915,7 @@ public:
             fread((char *)&grp_count, 4, 1, f);
             fseeko(f, -(cnt*8+16) , SEEK_CUR);
         };
+		//std::cout<< "read2 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
         // resize the host arrays if necessary
         // and read the segment from a file
@@ -886,18 +923,19 @@ public:
         if(type[colIndex] == 0) {
 
             if(h_columns_int[type_index[colIndex]].size() < cnt+9) {
-                //resize(cnt+9-h_columns_int[type_index[colIndex]].size());
-				h_columns_int[type_index[colIndex]].resize(cnt+9);
+            	h_columns_int[type_index[colIndex]].resize(cnt+9);				
             };
+			//std::cout<< "read2.5 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
             fread(h_columns_int[type_index[colIndex]].data(),(cnt+8)*8,1,f);
-
+			//std::cout<< "read2.8 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         }
         else if(type[colIndex] == 1) {
             if(h_columns_float[type_index[colIndex]].size() < cnt+9) {
-                //resize(cnt+9-h_columns_int[type_index[colIndex]].size());
 				h_columns_float[type_index[colIndex]].resize(cnt+9);
 			};	
+			//std::cout<< "read2.5 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
             fread(h_columns_float[type_index[colIndex]].data(),(cnt+8)*8,1,f);		
+            //std::cout<< "read2.8 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 			
         }
         else {
@@ -906,6 +944,7 @@ public:
                 c->compressed.resize(cnt*8 + 14*4 + grp_count*c->mColumnCount);
             fread(c->compressed.data(), cnt*8 + 14*4 + grp_count*c->mColumnCount,1,f);
         };
+		//std::cout<< "read3 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         fclose(f);
         return 0;
     }
@@ -976,19 +1015,21 @@ public:
         }
         else {
             //cout << "start " << colIndex << " " << type[colIndex] << " " << segment << " " << partial_load << endl;
+
             unsigned long long int data_offset;
             if (partial_load)
                 data_offset = readSegmentsFromFile(segment,colIndex);
             else
                 data_offset = readSegments(segment,colIndex);
 
+			
 				
             if(d_v == NULL)
                 CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
             if(s_v == NULL);
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 			
-            std::clock_t start1 = std::clock();  
+            //std::clock_t start1 = std::clock();  
             switch(type[colIndex]) {
             case 0 :	            
                 pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data()), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, 0, NULL, d_v, s_v);
@@ -1000,6 +1041,7 @@ public:
 					//std::cout<< "float decomp time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
                     thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()));
                     thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin(), long_to_float());
+					//std::cout<< "float decomp time1 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
                 }
                 //else // uncompressed float
                 //cudaMemcpy( d_columns[colIndex], (void *) ((float_type*)h_columns[colIndex] + offset), count*float_size, cudaMemcpyHostToDevice);
@@ -1047,6 +1089,7 @@ public:
                     data_offset = readSegmentsFromFile(i,colIndex);
                 else
                     data_offset = readSegments(i,colIndex);
+				
                 switch(type[colIndex]) {
                 case 0 :
                     pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, 0, NULL, d_v, s_v);
@@ -1096,11 +1139,12 @@ public:
             start_seg = offset/segCount; // starting segment
             seg_num = count/segCount;    // number of segments that we need
             long long int data_offset;
+			
             if(partial_load)
                 data_offset = readSegmentsFromFile(start_seg,colIndex);
             else
                 data_offset = readSegments(start_seg,colIndex);
-
+			
             if(d_v == NULL)
                 CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
             if(s_v == NULL);
@@ -1222,6 +1266,8 @@ public:
     {
         int grpInd, colIndex;
 
+		std::clock_t start1 = std::clock();
+		
         if(!columnGroups.empty())
             cudaFree(grp);
 
@@ -1231,6 +1277,8 @@ public:
         thrust::sequence(d_grp, d_grp+mRecCount, 0, 0);
 
         thrust::device_ptr<bool> d_group = thrust::device_malloc<bool>(mRecCount);
+		
+		std::cout<< "grp " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         d_group[mRecCount-1] = 1;
 
         for(int i = 0; i < columnRef.size(); columnRef.pop()) {
@@ -2132,6 +2180,44 @@ public:
 
 protected: // methods
 
+    /*void createDeviceStr(unsigned int i, insigned int idx) {
+
+        if(i == 1 ) {
+	        d_columns_string1.push_back(thrust::device_vector<StrT<1> >()) ;	
+            type_index[idx] = h_columns_cuda_char.size()-1;			
+	    }
+        else if(i == 2 ) {
+            d_columns_string2.push_back(thrust::device_vector<StrT<2> >()) ;	
+		}	
+        else if(i == 3 ) {
+	        d_columns_string3.push_back(thrust::device_vector<StrT<3> >()) ;		
+	    }
+        else if(i == 4 ) {
+            d_columns_string4.push_back(thrust::device_vector<StrT<4> >()) ;		
+	    }
+        else if(i == 5 ) {
+	        d_columns_string5.push_back(thrust::device_vector<StrT<5> >()) ;		
+	    }
+	    else if(i == 6 ) {
+            d_columns_string6.push_back(thrust::device_vector<StrT<6> >()) ;	
+	    }
+	    else if(i == 7 ) {
+            d_columns_string7.push_back(thrust::device_vector<StrT<7> >()) ;		
+	    }
+	    else if(i == 8 ) {
+	        d_columns_string8.push_back(thrust::device_vector<StrT<8> >()) ;		
+	    }
+	    else if(i == 9 ) {
+            d_columns_string9.push_back(thrust::device_vector<StrT<9> >()) ;		
+	    }
+	    else { //10
+            d_columns_string10.push_back(thrust::device_vector<StrT<10> >()) ;		
+	    };
+			
+	
+}*/
+	
+
 
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs, char* file_name) // compressed data for DIM tables
     {
@@ -2252,7 +2338,8 @@ protected: // methods
             else {
                 type[i] = 2;
                 decimal[i] = 0;
-                h_columns_cuda_char.push_back(new CudaChar(sizeRef.front(), Recs, 1));
+                h_columns_cuda_char.push_back(new CudaChar(sizeRef.front(), Recs, 1));				
+				//createDeviceStr(sizeRef.front(), i);
                 type_index[i] = h_columns_cuda_char.size()-1;
             };
             nameRef.pop();
@@ -2591,5 +2678,6 @@ void mycopy(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsig
         }
     };		
 };
+	
 	
 	
