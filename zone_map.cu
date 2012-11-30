@@ -42,195 +42,254 @@
         return (((y-x) > EPSILON) || (((x-y) < EPSILON) && ((x-y) > -EPSILON)));
     }
 	
-    bool* host_logical_and(bool* column1, bool* column2)
+    char host_logical_and(char column1, char column2)
     {
-		
-		column1[0] = column1[0] && column2[0];
-		column1[1] = column1[1] && column2[1];
-
-        free(column2);
-        return column1;
+		if (column1 == 'A' && column2 == 'A')
+		    return 'A';
+		else
+            return 'R';
 
     }
 
 
-    bool* host_logical_or(bool* column1, bool* column2)
+   char host_logical_or(char column1, char column2)
     {
 
-		column1[0] = column1[0] || column2[0];
-		column1[1] = column1[1] || column2[1];
-
-        free(column2);
-        return column1;
+		if (column1 == 'A' && column2 == 'A')
+		    return 'A';
+		else
+            return 'R';
 
     }
 	
 	
 
-    bool* host_compare(int_type s, int_type d, int_type op_type)
+    char host_compare(int_type s, int_type d, int_type op_type)
     {
-        bool res = 0;
+        char res = 'N';
 
         if (op_type == 2 && d>s ) // >
-            res = 1;
+            res = 'A';
         else if (op_type == 1 && d<s)  // <
-            res = 1;
+            res = 'A';
         else if (op_type == 6 && d>=s) // >=
-            res = 1;
+            res = 'A';
         else if (op_type == 5 && d<=s)  // <=
-            res = 1;
+            res = 'A';
         else if (op_type == 4 && d==s)// =
-            res = 1;
+            res = 'A';
         else // !=
-            if(d!=s) res = 1;
+            if(d!=s) res = 'A';
 
-		bool* temp = (bool*)malloc(2*sizeof(bool));		
-		temp[0] = res;
-		temp[1] = res;
-        return temp;
+        return res;
     }
 
 
-    bool* host_compare(float_type s, float_type d, int_type op_type)
+    char host_compare(float_type s, float_type d, int_type op_type)
     {
-        bool res = 0;
+        char res = 'N';
 
         if (op_type == 2 && (d-s) > EPSILON) // >
-            res = 1;
+            res = 'A';
         else if (op_type == 1 && (s-d) > EPSILON)  // <
-            res = 1;
+            res = 'A';
         else if (op_type == 6 && ((d-s) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON))) // >=
-            res = 1;
+            res = 'A';
         else if (op_type == 5 && ((s-d) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON)))  // <=
-            res = 1;
+            res = 'A';
         else if (op_type == 4 && ((d-s) < EPSILON) && ((d-s) > -EPSILON))// =
-            res = 1;
+            res = 'A';
         else // !=
-            if (!(((d-s) < EPSILON) && ((d-s) > -EPSILON))) res = 1;
+            if (!(((d-s) < EPSILON) && ((d-s) > -EPSILON))) res = 'A';
 
-
-		bool* temp = (bool*)malloc(2*sizeof(bool));		
-		temp[0] = res;
-		temp[1] = res;
-        return temp;
-
-
+        return res;
     }
 
 
-    bool* host_compare(int_type* column1, int_type d, int_type op_type)
+    char host_compare(int_type* column1, int_type d, int_type op_type)
     {
-        bool* temp1 = (bool*)malloc(2*sizeof(bool));				
-		bool res = 1;
+		char res = 'R';
 	
 		//cout << "comparing " << column1[0] << " " << column1[1] << " " << d << " " << op_type << endl;
 
-        if (op_type == 2 && column1[1] <= d)  // >
-		    res = 0;
-        else if (op_type == 1 && column1[0] >= d)  // <
-		    res = 0;			
-        else if (op_type == 6  && column1[1] < d) // >=
-            res = 0;			
-        else if (op_type == 5 && column1[0] > d)  // <=
-            res = 0;
-        else if (op_type == 4 && column1[0] == d && column1[1] == d) // =
-            res = 0;
+        if (op_type == 2) {   // >
+   		    if (column1[1] <= d)
+		       res = 'N';
+			else if (column1[0] > d)  
+		       res = 'A';   
+		}	
+        else if (op_type == 1) { // <
+ 		    if (column1[0] >= d)  
+		        res = 'N';			
+			else if (column1[1] < d)  
+		        res = 'A';				
+		}	
+        else if (op_type == 6) {  // >= 
+		    if (column1[1] < d) 
+                res = 'N';			
+			else if (column1[0] >= d)  
+		        res = 'A';								
+		}	
+        else if (op_type == 5) { // <=
+		   if (column1[0] > d)  
+              res = 'N';
+		   else if (column1[1] <= d)  
+		      res = 'A';
+		}	
+        else if (op_type == 4 && column1[0] == d && column1[1] == d) { // =
+            res = 'A';
+		};	
 
-		temp1[0] = res;
-		temp1[1] = res;			
-        return temp1;
-
+        return res;
     }
 
-    bool* host_compare(float_type* column1, float_type d, int_type op_type)
+    char host_compare(float_type* column1, float_type d, int_type op_type)
     {
-        bool* temp = (bool*)malloc(2*sizeof(bool));		
-		bool res = 1;
+		char res = 'R';
 
-        if (op_type == 2 && fh_less_equal_to(column1[1],d))  // >
-		    res = 0;
-        else if (op_type == 1 && fh_greater_equal_to(column1[0],d))  // <
-		    res = 0;			
-        else if (op_type == 6  && fh_less(column1[1],d)) // >=
-            res = 0;			
-        else if (op_type == 5 && fh_greater(column1[0],d))  // <=
-            res = 0;
+        if (op_type == 2) { // >
+		   if(fh_less_equal_to(column1[1],d)) { 
+		       res = 'N';
+		   }	
+		   else if(fh_greater(column1[0],d)) {
+		       res = 'A';
+		   };		   
+		}	
+        else if (op_type == 1) { // <
+		   if(fh_less(column1[1],d)) { 
+		       res = 'A';
+		   }	
+		   else if(fh_greater_equal_to(column1[0],d)) {
+		       res = 'N';
+		   };		   
+		}		
+        else if (op_type == 6) { // >=
+		   if(fh_greater_equal_to(column1[0],d)) { 
+		       res = 'A';
+		   }	
+		   else if(fh_less(column1[1],d)) {
+		       res = 'N';
+		   };		   
+		}			
+        else if (op_type == 5) { // <=
+		   if(fh_less_equal_to(column1[1],d)) { 
+		       res = 'A';
+		   }	
+		   else if(fh_greater(column1[0],d)) {
+		       res = 'N';
+		   };		   
+		}		
         else if (op_type == 4 && fh_equal_to(column1[0],d) && fh_equal_to(column1[1],d)) // =
-            res = 0;
+            res = 'A';
 
-		temp[0] = res;
-		temp[1] = res;			
-        return temp;
+        return res;
 
     }
 
 
-    bool* host_compare(int_type* column1, int_type* column2, int_type op_type)
+    char host_compare(int_type* column1, int_type* column2, int_type op_type)
     {
-        bool* temp = (bool*)malloc(2*sizeof(bool));		
-		bool res = 1;
+		char res = 'R';
 
-        if (op_type == 2 && column1[0] > column2[1]) // >
-            res = 0;
-        else if (op_type == 1 && column1[1] < column2[0])  // <
-            res = 0;
-        else if (op_type == 6 && column1[0] >= column2[1]) // >=
-            res = 0;
-        else if (op_type == 5 && column1[1] <= column2[0])  // <=
-            res = 0;
+        if (op_type == 2) { // >
+		    if(column1[0] > column2[1]) 
+                res = 'A';
+			else if(column1[1] <= column2[0]) 
+                res = 'N';
+        }			
+        else if (op_type == 1) { // <
+		    if(column1[1] < column2[0]) 
+                res = 'A';
+			else if(column1[0] >= column2[1]) 
+                res = 'N';
+        }			
+        else if (op_type == 6) { // >=
+		    if(column1[0] >= column2[1]) 
+                res = 'A';
+			else if(column1[1] < column2[0]) 
+                res = 'N';
+        }			
+        else if (op_type == 5) { // <=
+		    if(column1[1] <= column2[0]) 
+                res = 'A';
+			else if(column1[0] > column2[1]) 
+                res = 'N';
+        }			
         else if (op_type == 4  && column1[0] == column2[1] && column1[1] == column2[0]) // =
-            res = 0;
+            res = 'A';
 
-		temp[0] = res;
-		temp[1] = res;			
-        return temp;
+        return res;
 
 
     }
 
-    bool* host_compare(float_type* column1, float_type* column2, int_type op_type)
-    {
-        bool* temp = (bool*)malloc(2*sizeof(bool));		
-		bool res = 1;
+    char host_compare(float_type* column1, float_type* column2, int_type op_type)
+    {        
+		char res = 'R';
 
-        if (op_type == 2 && fh_greater(column1[0],column2[1])) // >
-            res = 0;
-        else if (op_type == 1 && fh_less(column1[1],column2[0]))  // <
-            res = 0;
-        else if (op_type == 6 && fh_greater_equal_to(column1[0],column2[1])) // >=
-            res = 0;
-        else if (op_type == 5 && fh_less_equal_to(column1[1],column2[0]))  // <=
-            res = 0;
+        if (op_type == 2) { // >
+		    if(fh_greater(column1[0],column2[1])) 
+                res = 'A';
+			else if(fh_less_equal_to(column1[1],column2[0])) 
+			    res = 'N';
+		}		               			
+        else if (op_type == 1) { // <
+		    if(fh_less(column1[1],column2[0])) 
+                res = 'A';
+			else if(fh_greater_equal_to(column1[0],column2[1])) 
+			    res = 'N';
+		}		
+        else if (op_type == 6) { // >=
+		    if(fh_greater_equal_to(column1[1],column2[0])) 
+                res = 'A';
+			else if(fh_less(column1[1],column2[0])) 
+			    res = 'N';
+		}		
+        else if (op_type == 5) { // <=
+		    if(fh_less_equal_to(column1[1],column2[0])) 
+                res = 'A';
+			else if(fh_greater(column1[0],column2[1])) 
+			    res = 'N';
+		}		
         else if (op_type == 4  && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1],column2[0])) // =
-            res = 0;
+            res = 'A';
 
-		temp[0] = res;
-		temp[1] = res;			
-        return temp;
+        return res;
     }
 
 
-    bool* host_compare(float_type* column1, int_type* column2, int_type op_type)
-    {
-	
-        bool* temp = (bool*)malloc(2*sizeof(bool));		
-		bool res = 1;
-        
-        if (op_type == 2 && fh_greater(column1[0], (float_type)(column2[1]))) // >
-            res = 0;
-        else if (op_type == 1 && fh_less(column1[1], (float_type)(column2[0])))  // <
-            res = 0;
-        else if (op_type == 6 && fh_greater_equal_to(column1[0], (float_type)(column2[1]))) // >=
-            res = 0;
-        else if (op_type == 5 && fh_less_equal_to(column1[1], (float_type)(column2[0])))  // <=
-            res = 0;
-        else if (op_type == 4  && fh_equal_to(column1[0], (float_type)(column2[1])) && fh_equal_to(column1[1], (float_type)(column2[0]))) // =
-            res = 0;
+    char host_compare(float_type* column1, int_type* column2, int_type op_type)
+    {        
+		char res = 'R';
+		
+        if (op_type == 2) { // >
+		    if(fh_greater(column1[0],(float_type)column2[1])) 
+                res = 'A';
+			else if(fh_less_equal_to(column1[1],(float_type)column2[0])) 
+			    res = 'N';
+		}		               			
+        else if (op_type == 1) { // <
+		    if(fh_less(column1[1],column2[0])) 
+                res = 'A';
+			else if(fh_greater_equal_to(column1[0],(float_type)column2[1])) 
+			    res = 'N';
+		}		
+        else if (op_type == 6) { // >=
+		    if(fh_greater_equal_to(column1[1],(float_type)column2[0])) 
+                res = 'A';
+			else if(fh_less(column1[1],(float_type)column2[0])) 
+			    res = 'N';
+		}		
+        else if (op_type == 5) { // <=
+		    if(fh_less_equal_to(column1[1],(float_type)column2[0])) 
+                res = 'A';
+			else if(fh_greater(column1[0],(float_type)column2[1])) 
+			    res = 'N';
+		}		
+        else if (op_type == 4  && fh_equal_to(column1[0],(float_type) column2[1]) && fh_equal_to(column1[1],(float_type)column2[0])) // =
+            res = 'A';
 
-		temp[0] = res;
-		temp[1] = res;			
-        return temp;
-
+        return res;
     }
 
 
@@ -524,7 +583,7 @@
 //We need to determine if this segment needs to be processed
 //The check takes place in host's memory
 
-bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a)
+char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment)
 {
 
     stack<string> exe_type;
@@ -532,11 +591,59 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     stack<int_type*> exe_vectors;
     stack<float_type*> exe_vectors_f;
     stack<int_type> exe_nums;
-	stack<bool*> bool_vectors;
+	stack<char> bool_vectors;
     stack<float_type> exe_nums_f;
     string  s1, s2, s1_val, s2_val;
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
+	
+	//first we need to set all host arrays [0] and [1] of t to min and max values of appropriate files
+    set<string> uniques;
+	queue<string> fields(op_value);
+	CudaSet *t;
+	FILE* f;
+	unsigned int colIndex, cnt;
+	char f1[100];
+	char col_pos[3];
+	
+	
+	while(!fields.empty()) {
+        if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
+            t = varNames[setMap[fields.front()]];
+			colIndex = t->columnNames[fields.front()];
+		    
+        // copy t min and max values to a only if int, decimal or float
+		    if(t->type[colIndex] <= 1) {				    
+					
+                strcpy(f1, t->load_file_name);
+                strcat(f1,".");                
+                itoaa(t->cols[colIndex],col_pos);
+                strcat(f1,col_pos);
+				strcat(f1,".");                
+				itoaa(segment,col_pos);
+				strcat(f1,col_pos);
+                f = fopen (f1 , "rb" );     
+                
+	            fread((char *)&cnt, 4, 1, f);
+                if (t->type[colIndex] == 0) {
+                    a->h_columns_int[a->type_index[colIndex]].resize(2);	
+                    fread((char *)&a->h_columns_int[a->type_index[colIndex]][0], 8, 1, f);
+				    fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);					
+					cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
+				}	
+                else  {					
+				    a->h_columns_float[a->type_index[colIndex]].resize(2);	
+                    fread((char *)&a->h_columns_float[a->type_index[colIndex]][0], 8, 1, f);
+				    fread((char *)&a->h_columns_float[a->type_index[colIndex]][1], 8, 1, f);										
+					cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+				};				                
+				fclose(f);						
+			};
+		};	
+        uniques.insert(fields.front());	   
+        fields.pop();		
+	};
+	
 	
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {	
 	    
@@ -963,48 +1070,13 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
 				    
-                    s1_val = exe_value.top();
-                    exe_value.pop();
-                    s2_val = exe_value.top();
-                    exe_value.pop();
-					
-                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
-                    CudaChar* cc = a->h_columns_cuda_char[a->type_index[colIndex1]];
-					string str1, str2;
-					cc->findMinMax(str1,str2);
-					bool* bv = (bool*)malloc(2*sizeof(bool));		
-					if(str1.compare(s1_val) == 0 && str2.compare(s1_val) == 0) {
-					  bv[0] = 1;
-					  bv[1] = 1;					
-					}
-					else {
-					  bv[0] = 0;
-					  bv[1] = 0;										
-					};					
+                   
                     exe_type.push("VECTOR");
-                    bool_vectors.push(bv);
+                    bool_vectors.push('R'); // later I plan to change implementation of char type so I will leave indexing of char off for now
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
-                    s1_val = exe_value.top();
-                    exe_value.pop();
-                    s2_val = exe_value.top();
-                    exe_value.pop();
-
-                    unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
-                    CudaChar* cc = a->h_columns_cuda_char[a->type_index[colIndex1]];
-					string str1, str2;
-					cc->findMinMax(str1,str2);
-					bool* bv = (bool*)malloc(2*sizeof(bool));		
-					if(str1.compare(s2_val) == 0 && str2.compare(s2_val) == 0) {
-					  bv[0] = 1;
-					  bv[1] = 1;					
-					}
-					else {
-					  bv[0] = 0;
-					  bv[1] = 0;										
-					};					
                     exe_type.push("VECTOR");
-                    bool_vectors.push(bv);					
+                    bool_vectors.push('R');					
                 }
 
 
@@ -1320,43 +1392,28 @@ bool zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
 
             else if (ss.compare("AND") == 0) {
-                bool* s3 = bool_vectors.top();
+                char s3 = bool_vectors.top();
                 bool_vectors.pop();
-                bool* s2 = bool_vectors.top();
+                char s2 = bool_vectors.top();
                 bool_vectors.pop();
                 exe_type.push("VECTOR");
                 bool_vectors.push(host_logical_and(s2,s3));
-                cudaFree(s3);
             }
             else if (ss.compare("OR") == 0) {
-                bool* s3 = bool_vectors.top();
+                char s3 = bool_vectors.top();
                 bool_vectors.pop();
-                bool* s2 = bool_vectors.top();
+                char s2 = bool_vectors.top();
                 bool_vectors.pop();
                 exe_type.push("VECTOR");
                 bool_vectors.push(host_logical_or(s2,s3));
-                cudaFree(s3);
             }
             else {
                 cout << "found nothing " << endl;
             }
         };
-    };
-
+    };    
     
-    
-	//cout << bool_vectors.top()[0] << " " << bool_vectors.top()[1] << endl;
-		
-	if(bool_vectors.top()[0] && bool_vectors.top()[1]) {
-	    free(bool_vectors.top());		
-        return 1;
-	}	
-	else {
-	    free(bool_vectors.top());		
-        return 0;
-    };
-	//bool_vectors.pop();
-    
+	return bool_vectors.top();   
 
 }
 

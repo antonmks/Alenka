@@ -2466,7 +2466,6 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     //cout << "order mem " << getFreeMem() << endl;
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
 	
-	std::cout<< "order_inplace " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
         int colInd = (a->columnNames).find(exe_type.top())->second;
@@ -2725,9 +2724,7 @@ void emit_join(char *s, char *j1)
 	    
 		cout << "segment " << i << " " << getFreeMem() << endl;				
 		cnt_l = 0;
-		 std::clock_t start10 = std::clock();
 		copyColumns(left, lc, i, cnt_l);
-		std::cout<< "join copy " <<  ( ( std::clock() - start10 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         if(left->prm.size() == 0) {
            //copy all records	    
 		    cnt_l = left->mRecCount;
@@ -3151,9 +3148,7 @@ void emit_select(char *s, char *f, int ll)
     a->mRecCount = ol_count;
     varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
 
-    //if(stat[f] == statement_count) {
         a->deAllocOnDevice();
-    //};
 
 
     if (ll != 0) {
@@ -3246,7 +3241,6 @@ void emit_filter(char *s, char *f, int e)
 
 
         for(unsigned int i = 0; i < cycle_count; i++) {		 
-		    cout << "cycle " << i << endl;
         	map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
 	        cout << "MAP CHECK " << map_check << endl;		
             if(map_check == 'R') {			
@@ -3384,9 +3378,10 @@ void emit_load_binary(char *s, char *f, int d)
     char col_pos[3];
     itoaa(cols.front(),col_pos);
     strcat(f1,col_pos);
+	strcat(f1,".header");
 
     FILE* ff = fopen(f1, "rb");
-    fseeko(ff, -16, SEEK_END);
+    //fseeko(ff, -16, SEEK_END);
     fread((char *)&totalRecs, 8, 1, ff);
     fread((char *)&segCount, 4, 1, ff);
     fread((char *)&maxRecs, 4, 1, ff);

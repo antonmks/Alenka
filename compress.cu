@@ -8,6 +8,7 @@
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/extrema.h>
 
+// YOU NEED TO MODIFY THE CUDPP PATH !!!!!
 #ifdef _WIN64
 #include "C:\Users\anton\Favorites\Downloads\cudpp_src_2.0\cudpp_src_2.0\include\cudpp_hash.h"
 #else
@@ -20,6 +21,10 @@ using namespace std;
 
 unsigned long long int* raw_decomp = NULL;
 unsigned int raw_decomp_length = 0;
+
+std::map<string, unsigned int> cnt_counts;
+string curr_file;
+
 
 struct bool_to_int
 {
@@ -184,43 +189,24 @@ struct decompress_functor_float
 
 
 
-long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, FILE* f, bool mode, unsigned int mColumnCount,
+long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_vector<char> >& h_columns, std::vector<thrust::device_vector<char> >& d_columns, unsigned int* mRecCount, unsigned int mColumnCount,
                                    unsigned int offset, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount, grp_count;
     long long int  orig_lower_val;
     unsigned int bit_count = 64;
-    unsigned int comp_type;
-    long long int start_val;
 
-
-    if (f) {
-        fread((char *)&grp_count, 4, 1, f);
-        fread((char *)&cnt, 4, 1, f);
-        fread((char *)&orig_recCount, 4, 1, f);
-        fread((char *)&bits, 4, 1, f);
-        fread((char *)&orig_lower_val, 8, 1, f);
-        fread((char *)&fit_count, 4, 1, f);
-        fread((char *)&start_val, 8, 1, f);
-        fread((char *)&comp_type, 4, 1, f);
-    }
-    else {
-        cnt = ((unsigned int*)compressed)[0];
-        grp_count = ((unsigned int*)((char*)compressed + 8*cnt + 12))[0];
-        orig_recCount = ((unsigned int*)((char*)compressed + 8*cnt +8))[0];
-        bits = ((unsigned int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 28))[0];
-        orig_lower_val = ((long long int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 32))[0];
-        fit_count = ((unsigned int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 40))[0];
-        start_val = ((long long int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 44))[0];
-        comp_type  = ((unsigned int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 52))[0];
-    };
+    cnt = ((unsigned int*)compressed)[0];
+    grp_count = ((unsigned int*)((char*)compressed + 8*cnt + 12))[0];
+    orig_recCount = ((unsigned int*)((char*)compressed + 8*cnt +8))[0];
+    bits = ((unsigned int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 28))[0];
+    orig_lower_val = ((long long int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 32))[0];
+    fit_count = ((unsigned int*)((char*)compressed + 8*cnt + mColumnCount*grp_count + 40))[0];
     *mRecCount = orig_recCount;
 
-      //cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " << start_val << " " << comp_type  << endl;
+      //cout << "DICT Decomp Header " << cnt << " " << grp_count << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << fit_count << " " <<  endl;
 
-    //thrust::device_ptr<unsigned long long int> decomp = thrust::device_malloc<unsigned long long int>(cnt);
-    //unsigned long long int* raw_decomp = thrust::raw_pointer_cast(decomp);
 	
 	if(raw_decomp_length < cnt*8) {	
 	    if(raw_decomp != NULL) {
@@ -230,10 +216,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
 		raw_decomp_length = cnt*8;
 	};		
 	
-    if (f)
-        cudaMemcpy( (void*)raw_decomp, compressed, cnt*8, cudaMemcpyHostToDevice);
-    else
-        cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)compressed + 1), cnt*8, cudaMemcpyHostToDevice);
+    cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)compressed + 1), cnt*8, cudaMemcpyHostToDevice);
 
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
@@ -249,38 +232,14 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
     thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)thrust::raw_pointer_cast(dest), (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
+    
+    thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
 
-    //cudaFree(d_v);
-    //cudaFree(s_v);
-    //thrust::device_free(decomp);
-
-
-    if(mode == 0) {                   // keep results in gpu
-
-        thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
-
-        for(unsigned int i = 0; i < mColumnCount; i++) {
-            if(f)
-                thrust::copy(h_columns[i].begin()+offset, h_columns[i].begin()+offset+grp_count,dict);
-            else
-                cudaMemcpy( (void*)thrust::raw_pointer_cast(dict), (void*)((char*)compressed + 8*cnt + 16 + i*grp_count) , grp_count, cudaMemcpyHostToDevice);
-            thrust::gather(dest, dest+orig_recCount,dict, d_columns[i].begin() + offset);
-        }
-        thrust::device_free(dict);
+    for(unsigned int i = 0; i < mColumnCount; i++) {
+        cudaMemcpy( (void*)thrust::raw_pointer_cast(dict), (void*)((char*)compressed + 8*cnt + 16 + i*grp_count) , grp_count, cudaMemcpyHostToDevice);
+        thrust::gather(dest, dest+orig_recCount,dict, d_columns[i].begin() + offset);
     }
-    else {
-        thrust::device_ptr<char> dict = thrust::device_malloc<char>(grp_count);
-        thrust::device_ptr<char> d_col = thrust::device_malloc<char>(orig_recCount);
-
-        for(unsigned int i = 0; i < mColumnCount; i++) {
-            thrust::copy(h_columns[i].begin()+offset, h_columns[i].begin()+offset+grp_count,dict);
-            thrust::gather(dest, dest+orig_recCount,dict, d_col);
-            thrust::copy(d_col, d_col+orig_recCount,h_columns[i].begin() +offset);
-        }
-        thrust::device_free(dict);
-        thrust::device_free(d_col);
-
-    };
+    thrust::device_free(dict);    
     thrust::device_free(dest);
 
     return 1;
@@ -288,10 +247,7 @@ long long int pfor_dict_decompress(void* compressed, std::vector<thrust::host_ve
 
 
 
-
-
-
-long long int pfor_decompress(void* destination, void* host, unsigned int* mRecCount, bool tp, FILE* f, void* d_v, void* s_v)
+long long int pfor_decompress(void* destination, void* host, unsigned int* mRecCount, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount;
@@ -300,29 +256,17 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
     unsigned int comp_type;
     long long int start_val;
 
-    if(f) {
-        fread((char *)&cnt, 4, 1, f);
-        fread((char *)&cnt, 4, 1, f);
-        fread((char *)&orig_recCount, 4, 1, f);
-        fread((char *)&bits, 4, 1, f);
-        fread((char *)&orig_lower_val, 8, 1, f);
-        fread((char *)&fit_count, 4, 1, f);
-        fread((char *)&start_val, 8, 1, f);
-        fread((char *)&comp_type, 4, 1, f);
-        fread((char *)&comp_type, 4, 1, f);
-    }
-    else {
-        cnt = ((unsigned int*)host)[0];
-        orig_recCount = ((unsigned int*)host + cnt*2)[7];
-        bits = ((unsigned int*)host + cnt*2)[8];
-        orig_lower_val = ((long long int*)((unsigned int*)host + cnt*2 + 9))[0];
-        fit_count = ((unsigned int*)host + cnt*2)[11];
-        start_val = ((long long int*)((unsigned int*)host + cnt*2 + 12))[0];
-        comp_type = ((unsigned int*)host + cnt*2)[14];
-    };
+    cnt = ((unsigned int*)host)[0];
+    orig_recCount = ((unsigned int*)host + cnt*2)[7];
+    bits = ((unsigned int*)host + cnt*2)[8];
+    orig_lower_val = ((long long int*)((unsigned int*)host + cnt*2 + 9))[0];
+    fit_count = ((unsigned int*)host + cnt*2)[11];
+    start_val = ((long long int*)((unsigned int*)host + cnt*2 + 12))[0];
+    comp_type = ((unsigned int*)host + cnt*2)[14];
+
     *mRecCount = orig_recCount;
 
-	//cout << "Decomp Header " << f << " " << orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
+	//cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
 
 	if(raw_decomp_length < cnt*8) {	
@@ -334,10 +278,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
 	};		
 
 	
-    if(f)
-        cudaMemcpy( (void*)raw_decomp, host, cnt*8, cudaMemcpyHostToDevice);
-    else
-        cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
+    cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
 
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 
@@ -350,27 +291,14 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
 
 
     thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-    if(tp == 0) {
-        decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
-        thrust::for_each(begin, begin + orig_recCount, ff1);
-        if(comp_type == 1) {
-            thrust::device_ptr<int_type> d_int((int_type*)destination);
-            d_int[0] = start_val;
-            thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
-        };
-    }
-    else {
-
-        decompress_functor_float ff1(raw_decomp,(long long int*)destination, (long long int*)s_v, (unsigned int*)d_v);
-        thrust::for_each(begin, begin + orig_recCount, ff1);
-        if(comp_type == 1) {
-            thrust::device_ptr<long long int> d_int((long long int*)destination);
-            d_int[0] = start_val;
-            thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
-        };
-
+    decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
+    thrust::for_each(begin, begin + orig_recCount, ff1);
+    if(comp_type == 1) {
+        thrust::device_ptr<int_type> d_int((int_type*)destination);
+        d_int[0] = start_val;
+        thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
     };
-    //thrust::device_free(decomp);
+
     return 1;
 
 }
@@ -392,7 +320,6 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
     void* ss;
     CUDA_SAFE_CALL(cudaMalloc((void **) &ss, recCount*float_size));
-
 
 
     if (tp == 0) {
@@ -512,6 +439,8 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
         binary_file.write((char *)&comp_type, 4);
         binary_file.write((char *)&comp_type, 4); //filler
         binary_file.close();
+		if(cnt_counts[curr_file] < cnt)
+		    cnt_counts[curr_file] = cnt;
     }
     else {
         char* hh;
@@ -678,6 +607,9 @@ unsigned long long int pfor_dict_compress(std::vector<thrust::device_vector<char
         binary_file.write((char *)&start_val, 8);
         binary_file.write((char *)&comp_type, 4);
         binary_file.close();
+		if(cnt_counts[curr_file] < (cnt*8 + 14*4 + grp_count*mColumnCount))
+		    cnt_counts[curr_file] = (cnt*8 + 14*4 + grp_count*mColumnCount);
+
     }
     else {
         char* hh;
@@ -846,6 +778,8 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         binary_file.write((char *)&comp_type, 4);
         binary_file.write((char *)&comp_type, 4); //filler
         binary_file.close();
+		if(cnt_counts[curr_file] < cnt)
+		    cnt_counts[curr_file] = cnt;		
     }
     else {
         char* hh;
