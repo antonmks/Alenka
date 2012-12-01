@@ -2608,13 +2608,12 @@ void emit_join(char *s, char *j1)
 	if(right->prm.size() == 0) {
        //copy all records	    
 	   for(unsigned int i = 0; i < right->mColumnCount; i++)
-	       right->CopyColumnToGpu(i);
-		   cnt_r = right->mRecCount;
+	       right->CopyColumnToGpu(i);		   
+	   cnt_r = right->mRecCount;
     }	
 	else { 
 	    //copy and gather all records					
          for(unsigned int i = 0; i < right->segCount; i++) {		 
-             //gatherJoin(right, f2, i, cnt_r);	
              copyColumns(right, cc, i, cnt_r);			  			 	 
 			 cnt_r = cnt_r + right->prm_count[i];
 		 };				
@@ -2633,23 +2632,26 @@ void emit_join(char *s, char *j1)
 	
     thrust::device_vector<unsigned int> v(cnt_r);
 	thrust::sequence(v.begin(),v.end(),0,1);
+	thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(tt);			
+
     	
 	if(!sorted) {
 	    thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
 		for(unsigned int i = 0; i < right->mColumnCount; i++) {
 		    if(i != colInd2) {
-			    if(right->type[i] == 0) {				
-                   thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(right->d_columns_int[right->type_index[i]].begin(), v.begin());				
-				   thrust::copy(iter, iter + cnt_r, right->d_columns_int[right->type_index[i]].begin());					
+			    if(right->type[i] == 0) {
+			        thrust::gather(v.begin(), v.end(), right->d_columns_int[right->type_index[i]].begin(), d_tmp);
+				    thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_int[right->type_index[i]].begin());					
 				}
 			    else if(right->type[i] == 1) {			
-                   thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(right->d_columns_float[right->type_index[i]].begin(), v.begin());
-				   thrust::copy(iter, iter + cnt_r, right->d_columns_float[right->type_index[i]].begin());
+			        thrust::gather(v.begin(), v.end(), right->d_columns_float[right->type_index[i]].begin(), d_tmp);
+				    thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[right->type_index[i]].begin());
 				}                				
 			};	
 		};
-		thrust::sequence(v.begin(),v.end(),0,1);
+		thrust::sequence(v.begin(),v.end(),0,1);		
 	};
+	thrust::device_free(d_tmp);	
 
 	
 	while(!cc.empty())
