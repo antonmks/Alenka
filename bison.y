@@ -943,7 +943,8 @@ void emit_order(char *s, char *f, int e, int ll)
     thrust::sequence(permutation, permutation+(a->mRecCount));
 
     unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
-    CudaSet *b = a->copyStruct(a->mRecCount);
+    CudaSet *b = a->copyDeviceStruct();
+	b->mRecCount = a->mRecCount;
 
     // find the largest mRecSize of all data sources
 
@@ -1119,51 +1120,50 @@ void emit_select(char *s, char *f, int ll)
 
     unsigned int ol_count = a->mRecCount, cnt;
     varNames[setMap[op_value.front()]]->oldRecCount = varNames[setMap[op_value.front()]]->mRecCount;
+	b = new CudaSet(0, col_count);	
+	bool b_set = 0, c_set = 0;
 	
 	
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "cycle " << i << " select mem " << getFreeMem() << endl;
         std::clock_t start2 = std::clock();
-        if(i == 0)
-            b = new CudaSet(0, col_count);			
-
-			cnt = 0;
-			
-            copyColumns(a, op_vx, i, cnt);		
-		    std::cout<< "copy time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
-			
+                    
+		cnt = 0;
+        copyColumns(a, op_vx, i, cnt);	
+		
+        if(a->mRecCount) { 			
 
             if (ll != 0) {
                 order_inplace(a,op_v2,field_names,i);
-				std::cout<< "order time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
                 a->GroupBy(op_v3);
-				std::cout<< "grp time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
             };
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);
+		
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);			
+		
+            if(!b_set) {
+                for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
+                    setMap[(*it).first] = s;
+				b_set = 1;	
+            };
 
-        if(i == 0) {
-            for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
-                setMap[(*it).first] = s;
-        };
-
-        if (ll != 0) {
-            if (i == 0) {
-                c = new CudaSet(b->mRecCount, col_count);
-                c->fact_table = 1;
-                c->segCount = 1;
-            }
-            else {
-                c->resize(b->mRecCount);
-			};	
-            add(c,b,op_v3);
-        };
-		    std::cout<< "cycle time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+            if (ll != 0) {
+                if (!c_set) {
+                    c = new CudaSet(b->mRecCount, col_count);
+                    c->fact_table = 1;
+                    c->segCount = 1;
+					c_set = 1;
+                }
+                else {
+                    c->resize(b->mRecCount);
+			    };	
+                add(c,b,op_v3);
+            };
+		};	
     };
+	
     a->mRecCount = ol_count;
     varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
-
-        a->deAllocOnDevice();
-
+    a->deAllocOnDevice();
 
     if (ll != 0) {
         CudaSet *r = merge(c,op_v3, op_v2, aliases);
@@ -1356,8 +1356,10 @@ void emit_store_binary(char *s, char *f)
         limit = op_nums.front();
         op_nums.pop();
     };
+	total_count = 0;
+    total_segments = 0;
+    fact_file_loaded = 0;	
 
-    fact_file_loaded = 0;
     while(!fact_file_loaded)	{
         cout << "LOADING " << f_file << " " << separator << endl;
         fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
@@ -1441,7 +1443,7 @@ void emit_load(char *s, char *f, int d, char* sep)
     a->resize(process_count);
     a->keep = true;
     a->fact_table = 1;
-    //a->LoadBigFile(f, sep);
+    
     string separator1(sep);
     separator = separator1;
     string ff(f);

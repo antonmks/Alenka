@@ -151,6 +151,7 @@ CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2, map<string,
 {
     int countIndex;
     int avg_index = -1;
+	
 
     for(unsigned int i = 0; i < c->mColumnCount; i++) {
         if(c->grp_type[i] == 0) // COUNT
@@ -159,7 +160,10 @@ CudaSet* merge(CudaSet* c, queue<string> op_v3, stack<string> op_v2, map<string,
             avg_index = i;
     };
 
-    CudaSet *r = c->copyStruct(c->mRecCount);
+    CudaSet *r = c->copyDeviceStruct();
+	if(!c->mRecCount) 
+	    return r; 
+	r->resize(c->mRecCount);
 
     r->mRecCount = 0;
 
