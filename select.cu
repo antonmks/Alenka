@@ -35,14 +35,13 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<string> exe_value1;
     stack<int_type*> exe_vectors1;
     stack<float_type*> exe_vectors1_d;
-    stack<float_type*> exe_vectors_d;
     stack<int_type> exe_nums1;
 
     stack<float_type*> exe_vectors_f;
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
     bool one_line = 0;
-    std::clock_t start1 = std::clock();
+    //std::clock_t start1 = std::clock();
 
 
     if (a->columnGroups.empty() && a->mRecCount != 0)
@@ -684,6 +683,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
+	
 
     
     b->grp_type = new unsigned int[colCount];
@@ -713,7 +713,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (!(a->columnGroups).empty()) {
                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                 thrust::device_ptr<bool> d_grp(a->grp);
-                thrust::copy_if(s,s+(a->mRecCount), d_grp, count_diff, nz<bool>());
+                thrust::copy_if(s,s+(a->mRecCount), d_grp, count_diff, thrust::identity<bool>());
                 b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , colCount-j-1, col_val.top(), res_size);
                 thrust::device_free(count_diff);
             }
@@ -727,14 +727,14 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
 
             if(a->type[colIndex] == 0) {
-                //thrust::device_ptr<int_type> s((int_type*)(a->d_columns)[colIndex]);
+
                 //modify what we push there in case of a grouping
                 if (!(a->columnGroups).empty()) {
                     thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                     thrust::device_ptr<bool> d_grp(a->grp);
 
                     thrust::copy_if(a->d_columns_int[a->type_index[colIndex]].begin(),a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount,
-                                    d_grp, count_diff, nz<bool>());
+                                    d_grp, count_diff, thrust::identity<bool>());
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , colCount-j-1, col_val.top(), res_size);
                     thrust::device_free(count_diff);
                 }
@@ -743,7 +743,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
             }
             else if(a->type[colIndex] == 1) {
-                //thrust::device_ptr<float_type> s((float_type*)(a->d_columns)[colIndex]);
 
                 //modify what we push there in case of a grouping
                 if (!(a->columnGroups).empty()) {
@@ -751,7 +750,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     thrust::device_ptr<bool> d_grp(a->grp);
 
                     thrust::copy_if(a->d_columns_float[a->type_index[colIndex]].begin(), a->d_columns_float[a->type_index[colIndex]].begin() + a->mRecCount,
-                                    d_grp, count_diff, nz<bool>());
+                                    d_grp, count_diff, thrust::identity<bool>());
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , colCount-j-1, col_val.top(), res_size);
                     thrust::device_free(count_diff);
                 }
@@ -761,8 +760,13 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             else if(a->type[colIndex] == 2) { //varchar
 
                 if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {
-                    b->h_columns_cuda_char.push_back(new CudaChar(((a->h_columns_cuda_char)[a->type_index[colIndex]])->mColumnCount, res_size));
-                    b->type_index[colCount-j-1] = b->h_columns_cuda_char.size()-1;
+                  
+					void *d;
+				    cudaMalloc((void **) &d, res_size*a->char_size[a->type_index[colIndex]]); 
+					b->d_columns_char.push_back((char*)d);	
+                    b->h_columns_char.push_back(NULL);					
+					b->char_size.push_back(a->char_size[a->type_index[colIndex]]);
+                    b->type_index[colCount-j-1] = b->d_columns_char.size()-1;
                     b->columnNames[col_val.top()] = colCount-j-1;
                     b->type[colCount-j-1] = 2;
                 }
@@ -771,24 +775,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         b->resizeDeviceColumn(colCount-j-1, res_size-b->mRecCount);
                 };
 
-
-                CudaChar *cc = a->h_columns_cuda_char[a->type_index[colIndex]];
-                CudaChar* nn = b->h_columns_cuda_char[b->type_index[colCount-j-1]];
-
                 //modify what we push there in case of a grouping
                 if (!(a->columnGroups).empty()) {
-
-                    nn->allocOnDevice(res_size);
                     thrust::device_ptr<bool> d_grp(a->grp);
-
-                    for(unsigned int k=0; k < (nn->mColumnCount); k++)
-                        thrust::copy_if(cc->d_columns[k].begin(),cc->d_columns[k].begin() + a->mRecCount, d_grp, nn->d_columns[k].begin(), nz<bool>());
-                }
+					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);                }
                 else {
                     //copy the cc to new
-                    for(unsigned int k=0; k < (nn->mColumnCount); k++)
-                        //cudaMemcpy((void *) (nn->h_columns[k] + b->mRecCount), (void *) (cc->d_columns)[k], a->mRecCount, cudaMemcpyDeviceToHost);
-                        thrust::copy(cc->d_columns[k].begin(), cc->d_columns[k].begin() + a->mRecCount, nn->h_columns[k].begin() + b->mRecCount);
+                    //for(unsigned int k=0; k < (nn->mColumnCount); k++)
+                    //    thrust::copy(cc->d_columns[k].begin(), cc->d_columns[k].begin() + a->mRecCount, nn->h_columns[k].begin() + b->mRecCount);
+					//cudaMemcpy( (void*)b->h_columns_char[b->type_index[colCount-j-1]], (void*)a->d_columns_char[a->type_index[colIndex]], sz*len, cudaMemcpyDeviceToDevice);		            
+					
                 }
             }
             exe_value1.pop();

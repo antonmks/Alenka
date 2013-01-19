@@ -1,3 +1,9 @@
+01/19/2013.
+    Major changes to the way the strings are stored and processed by the engine.
+    Implemented join on strings using Murmurhash library.
+    Implemented external sort.
+
+
 11/30/2012.
     Modified the database file structure for faster access to the database segments.
 

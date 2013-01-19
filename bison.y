@@ -272,7 +272,7 @@ string separator, f_file;
 			
 
 
-CUDPPHandle theCudpp;
+//CUDPPHandle theCudpp;
 
 using namespace thrust::placeholders;
 
@@ -374,15 +374,11 @@ void emit_cmp(int val)
     op_nums.push(val);
 }
 
-
-
-
 void emit(char *s, ...)
 {
 
 
 }
-
 
 void emit_var(char *s, int c, char *f)
 {
@@ -456,7 +452,7 @@ void emit_join_tab(char *s)
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, unsigned int segment)
 {
-    std::clock_t start1 = std::clock();
+    //std::clock_t start1 = std::clock();
     unsigned int sz = a->mRecCount;
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
     thrust::sequence(permutation, permutation+sz,0,1);
@@ -468,7 +464,6 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     unsigned int maxSize = 0;
     for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
         CudaSet *t = varNames[setMap[*it]];
-        //cout << "MAX of " << setMap[*it] << " = " << t->mRecCount << endl;
         if(t->mRecCount > maxSize)
             maxSize = t->mRecCount;
     };
@@ -476,7 +471,16 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     //cout << "max size " << maxSize << endl;
     //cout << "sort alloc " << maxSize << endl;
     //cout << "order mem " << getFreeMem() << endl;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
+	unsigned int max_char = 0;
+	for(unsigned int i = 0; i < a->char_size.size(); i++)
+	    if (a->char_size[a->type_index[i]] > max_char)
+		    max_char = a->char_size[a->type_index[i]];
+			
+	
+    if(max_char > float_size)	
+	    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char));
+	else	
+        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
 	
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
@@ -486,9 +490,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
         else if ((a->type)[colInd] == 1)
             update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, sz,"ASC", (float_type*)temp);
         else {
-            CudaChar* c = a->h_columns_cuda_char[a->type_index[colInd]];
-            for(int j=(c->mColumnCount)-1; j>=0 ; j--)
-                update_permutation((c->d_columns)[j], raw_ptr, sz, "ASC", (char*)temp);
+			update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, sz, "ASC", (char*)temp, a->char_size[a->type_index[colInd]]);	
+				
         };
     };
 	
@@ -500,9 +503,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
         else if ((a->type)[i] == 1)
             apply_permutation(a->d_columns_float[a->type_index[i]], raw_ptr, sz, (float_type*)temp);
         else {
-            CudaChar* c = a->h_columns_cuda_char[a->type_index[i]];
-            for(int j=(c->mColumnCount)-1; j>=0 ; j--)
-                apply_permutation((c->d_columns)[j], raw_ptr, sz, (char*)temp);
+			apply_permutation_char(a->d_columns_char[a->type_index[i]], raw_ptr, sz, (char*)temp, a->char_size[a->type_index[i]]);
         };
     };
 
@@ -510,6 +511,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     thrust::device_free(permutation);
 	
 }
+
 
 
 
@@ -559,7 +561,8 @@ void emit_join(char *s, char *j1)
     string f2 = op_value.front();
     op_value.pop();
 
-    cout << "JOIN " << s <<  " " <<  getFreeMem() <<  endl;
+    cout << "JOIN " << s <<  " " <<  getFreeMem() <<  endl;	
+
 
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right,left,0,op_sel, op_sel_as);	
@@ -574,8 +577,8 @@ void emit_join(char *s, char *j1)
     unsigned int colInd1 = (left->columnNames).find(f1)->second;
     unsigned int colInd2 = (right->columnNames).find(f2)->second;
 	
-	if ((left->type)[colInd1] != 0 || (right->type)[colInd2]  != 0) {
-	    cout << "Right now only integer joins are supported " << endl;
+	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2))) {
+	    cout << "Only joins on integers and strings are supported " << endl;
 		exit(0);
 	};	
 
@@ -583,53 +586,30 @@ void emit_join(char *s, char *j1)
     stack<string> exe_type;
     exe_type.push(f2);
     field_names.insert(f2);
+	
+	bool str_join = 0;
+	//if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
+	
+	if (right->type[colInd2]  == 2) {
+	    str_join = 1;
+		right->d_columns_int.push_back(thrust::device_vector<int_type>());		
+		for(unsigned int i = 0; i < right->segCount; i++) {
+		    right->add_hashed_strings(colInd2, i);
+		};			
+	};	
+	
 
     // need to allocate all right columns	
     queue<string> cc;
-	queue<string> c1(op_sel);;
+	unsigned int rcount;
 	
-	while(!c1.empty()) {	
-        if(right->columnNames.find(c1.front()) !=  right->columnNames.end()) {
-		    if(f2 != c1.front())
-                cc.push(c1.front());
-		};	
-		c1.pop();		
-	};	
-    cc.push(f2);	
+	unsigned int cnt_r = load_queue(op_sel, right, str_join, f2, rcount);	
 
-	if(right->prm.size())
-        allocColumns(right, cc);	
-	
-    unsigned int rcount;
-    if(!right->prm.empty()) {
- 	    rcount = std::accumulate(right->prm_count.begin(), right->prm_count.end(), 0 );
-    }
-    else
-        rcount = right->mRecCount;
-	//cout << "rcount = " << rcount << endl;	
-	
-	queue<string> ct(cc);
-	while(!ct.empty()) {	
-	    right->allocColumnOnDevice(right->columnNames[ct.front()], rcount);
-		ct.pop();		
+    if(str_join) {	
+        colInd2 = right->mColumnCount+1;
+	    right->type_index[colInd2] = right->d_columns_int.size()-1;		
 	};	
 
-	
-	unsigned int cnt_r = 0;	
-	   
-	if(right->prm.size() == 0) {
-       //copy all records	    
-	   for(unsigned int i = 0; i < right->mColumnCount; i++)
-	       right->CopyColumnToGpu(i);		   
-	   cnt_r = right->mRecCount;
-    }	
-	else { 
-	    //copy and gather all records					
-         for(unsigned int i = 0; i < right->segCount; i++) {		 
-             copyColumns(right, cc, i, cnt_r);			  			 	 
-			 cnt_r = cnt_r + right->prm_count[i];
-		 };				
-	};
 	
 	
 	unsigned int tt;
@@ -639,15 +619,19 @@ void emit_join(char *s, char *j1)
         tt = rcount;
 		
 	
-	//here we need to make sure that rr is ordered. If not then we order it and keep the permutation	
+	//here we need to make sure that right column is ordered. If not then we order it and keep the permutation	
+	
+	
+		
 	bool sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);
 	
-    thrust::device_vector<unsigned int> v(cnt_r);
-	thrust::sequence(v.begin(),v.end(),0,1);
-	thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(tt);			
-
-    	
+  	
 	if(!sorted) {
+	
+	    thrust::device_vector<unsigned int> v(cnt_r);
+	    thrust::sequence(v.begin(),v.end(),0,1);
+	    thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(tt);			
+	
 	    thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
 		for(unsigned int i = 0; i < right->mColumnCount; i++) {
 		    if(i != colInd2) {
@@ -658,88 +642,56 @@ void emit_join(char *s, char *j1)
 			    else if(right->type[i] == 1) {			
 			        thrust::gather(v.begin(), v.end(), right->d_columns_float[right->type_index[i]].begin(), d_tmp);
 				    thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[right->type_index[i]].begin());
-				}                				
+				}        
+                else {
+                    str_gather(thrust::raw_pointer_cast(v.data()), cnt_r, (void*)left->d_columns_char[left->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[i]]);
+					cudaMemcpy( (void*)left->d_columns_char[left->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*left->char_size[left->type_index[i]], cudaMemcpyDeviceToDevice);		            
+					
+                };				
 			};	
 		};
-		thrust::sequence(v.begin(),v.end(),0,1);		
+		thrust::device_free(d_tmp);	
 	};
-	thrust::device_free(d_tmp);	
-
 	
+	
+		
 	while(!cc.empty())
         cc.pop();
-	
-    cc.push(f1);
-    allocColumns(left, cc);	
+
+	if (left->type[colInd1]  == 2) {
+		left->d_columns_int.push_back(thrust::device_vector<int_type>());		
+		//colInd1 = left->mColumnCount+1;
+		//left->type_index[colInd1] = left->d_columns_int.size()-1;		
+	}
+    else {		
+        cc.push(f1);
+        allocColumns(left, cc);	
+	};	
 
     //cout << "successfully loaded l && r " << cnt_l << " " << cnt_r << " " << getFreeMem() << endl;
 	
     thrust::device_vector<unsigned int> d_res1;
-    thrust::device_vector<unsigned int> d_res2;
-    
-	thrust::device_ptr<uint2> res = thrust::device_malloc<uint2>(left->maxRecs);
-	
+    thrust::device_vector<unsigned int> d_res2;    
 	unsigned int cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
 
 	queue<string> lc(cc);
-	curr_segment = 10000000;	
-	CUDPPResult result;
-	
-	// now for 64bit values we need to create several HashTables where each of them will keep a certain range of values
-	// lets find out how many tables we need
-	int_type max_val = right->d_columns_int[right->type_index[colInd2]][rcount-1];   
-    unsigned int tab_count = (max_val / std::numeric_limits<unsigned int>::max()) + 1;	
-    vector<CUDPPHandle> tabs;
-    vector<unsigned int> tab_nums;
-	unsigned int v_offset = 0;
-	int_type min_v, max_v;
-	thrust::device_ptr<unsigned int> d_r = thrust::device_malloc<unsigned int>(tt);			
-	
-	for(unsigned int i = 0; i < tab_count; i ++) {
-
-	    // find out rcount
-		min_v = i*std::numeric_limits<unsigned int>::max();
-		max_v =  min_v + std::numeric_limits<unsigned int>::max();
-      		
-		unsigned int loc_count = thrust::count_if(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + rcount,
-                                            	  _1 > min_v && _1 <= max_v );
-        CUDPPHandle hash_table_handle;
-        CUDPPHashTableConfig config;
-        config.type = CUDPP_MULTIVALUE_HASH_TABLE;
-        config.kInputSize = loc_count;
-        config.space_usage = 1.5f;
-		
-        //cout << "creating table with " << loc_count << " " << getFreeMem()  << endl;		
-	    result = cudppHashTable(theCudpp, &hash_table_handle, &config);
-        //if (result == CUDPP_SUCCESS)
-        //    cout << "hash table created " << getFreeMem() << endl;
-					
-        //cout << "INSERT " <<  " " << loc_count << " " << getFreeMem() << endl;	
-
-		if(i != 0)				
-		    thrust::transform(right->d_columns_int[right->type_index[colInd2]].begin() + v_offset, right->d_columns_int[right->type_index[colInd2]].begin() + v_offset + loc_count,
-                              d_r, _1 - i*std::numeric_limits<unsigned int>::max());					
-		else
-	        thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin() + v_offset, right->d_columns_int[right->type_index[colInd2]].begin() + v_offset + loc_count, d_r);	
-	
-        result = cudppHashInsert(hash_table_handle, thrust::raw_pointer_cast(d_r),
-                                 thrust::raw_pointer_cast(v.data() + v_offset), loc_count);								 
-							 
-        //if (result == CUDPP_SUCCESS)
-        //    cout << "hash table inserted " << getFreeMem() << endl;		
-			
-		v_offset = v_offset + loc_count;	
-		tabs.push_back(hash_table_handle);	
-		tab_nums.push_back(loc_count);
-	};		
+	curr_segment = 10000000;			
 	
 	
     for (unsigned int i = 0; i < left->segCount; i++) {		
 	    
 		cout << "segment " << i << " " << getFreeMem() << endl;				
 		cnt_l = 0;
-		copyColumns(left, lc, i, cnt_l);
-        if(left->prm.size() == 0) {
+		
+		if (left->type[colInd1]  != 2) {
+		    copyColumns(left, lc, i, cnt_l);
+		}
+        else {
+            left->add_hashed_strings(colInd1, i);
+        };		
+		
+		
+        if(left->prm.empty()) {
            //copy all records	    
 		    cnt_l = left->mRecCount;
         }			
@@ -748,120 +700,107 @@ void emit_join(char *s, char *j1)
 		};			
 		
 		if (cnt_l) { 					        
-			
-			
-			unsigned int off = 0;
-			for(unsigned int j = 0; j < tab_count; j ++) {
-			
 
-				if(j)
-				    off = off + tab_nums[j-1];
-				
-				thrust::device_vector<unsigned int> tc(1);
-				tc[0] = j;
-			    //when copying to d_r need to make sure to set non-relevant values to zero otherwise they will get truncated to relevant values
-				thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-                trans_int t(thrust::raw_pointer_cast(tc.data()),thrust::raw_pointer_cast(left->d_columns_int[left->type_index[colInd1]].data()), thrust::raw_pointer_cast(d_r));
-                thrust::for_each(begin, begin + cnt_l, t);		
-	
-	
-			
-			    result = cudppHashRetrieve(tabs[j], thrust::raw_pointer_cast(d_r),
-                                           thrust::raw_pointer_cast(res), cnt_l);
-			    if (result != CUDPP_SUCCESS)						   
-			        cout << "Failed retrieve " << endl;					
-
-
-		        uint2 rr = thrust::reduce(res, res+cnt_l, make_uint2(0,0), Uint2Sum());		
-			    res_count = rr.y;
-
-                if(res_count) {		 				
-
-                
-                    uint2_split ff(thrust::raw_pointer_cast(res),thrust::raw_pointer_cast(d_r));
-                    thrust::for_each(begin, begin + cnt_l, ff);		
-		
-		            thrust::exclusive_scan(d_r, d_r+cnt_l, d_r );  // addresses	
-		
-				    tot_count = tot_count + res_count;
-                    d_res1.resize(res_count);
-                    d_res2.resize(res_count);				
-			
-                    join_functor ff1(thrust::raw_pointer_cast(res),
-                                     thrust::raw_pointer_cast(d_r),
-	     			        		 thrust::raw_pointer_cast(d_res1.data()),
-		    			        	 thrust::raw_pointer_cast(d_res2.data()));
-                    thrust::for_each(begin, begin + cnt_l, ff1);
+			unsigned int idx;
+			if(!str_join)
+                idx = left->type_index[colInd1];
+            else
+                idx = left->d_columns_int.size()-1;				
 					
-					thrust::transform(d_res2.begin(), d_res2.end(), d_res2.begin(), _1 + off);		
-				
+			//cout << "cnts " << cnt_l << " " << cnt_r << endl;	
 
-	
-				    offset = c->mRecCount;
-			        c->resize(res_count);				
+            //for(int z = 0; z < 50; z++)
+			//cout << "L R " << left->d_columns_int[idx][z] << " " << right->d_columns_int[right->type_index[colInd2]][z] << endl;
+
 			
-		            queue<string> op_sel1(op_sel);					
-                    while(!op_sel1.empty()) {
+            join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
+                 d_res1, d_res2, cnt_l, cnt_r, right->isUnique(colInd2));
+		
+    	    res_count = d_res1.size();
+			cout << "res count " << res_count << endl;
+			tot_count = tot_count + res_count;
 
-	                    while(!cc.empty())
-                            cc.pop();
+            if(res_count) {		 				
+                
+    		    offset = c->mRecCount;
+		        c->resize(res_count);					
+	            queue<string> op_sel1(op_sel);					
 
-                        cc.push(op_sel1.front());
+                while(!op_sel1.empty()) {
+
+                    while(!cc.empty())
+                        cc.pop();
+						
+                    cc.push(op_sel1.front());
 				
-                        if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
-						    // copy field's segment to device, gather it and copy to the host  
-					        unsigned int colInd = left->columnNames[op_sel1.front()];	
-                            allocColumns(left, cc);						
-					        copyColumns(left, cc, i, k);
-					       //gather	   
-					       if(left->type[colInd] == 0) {
-                              thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(left->d_columns_int[left->type_index[colInd]].begin(), d_res1.begin());
-							  thrust::copy(iter, iter + res_count, c->h_columns_int[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);								   
-					       }	   
-					       else if(left->type[colInd] == 1) {
-                              thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(left->d_columns_float[left->type_index[colInd]].begin(), d_res1.begin());
-  					          thrust::copy(iter, iter + res_count, c->h_columns_float[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);												   						   							   
-					       };	   					   
-
+                    if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
+					    // copy field's segment to device, gather it and copy to the host  
+				        unsigned int colInd = left->columnNames[op_sel1.front()];	
+                        allocColumns(left, cc);	
+				        copyColumns(left, cc, i, k);
+						
+				       //gather	   
+				        if(left->type[colInd] == 0) {
+                            thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(left->d_columns_int[left->type_index[colInd]].begin(), d_res1.begin());
+							thrust::copy(iter, iter + res_count, c->h_columns_int[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);								   
+				        }	   
+					    else if(left->type[colInd] == 1) {
+                            thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(left->d_columns_float[left->type_index[colInd]].begin(), d_res1.begin());
+  					        thrust::copy(iter, iter + res_count, c->h_columns_float[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);												   						   							   
 					    }
-                        else {
-						    unsigned int colInd = right->columnNames[op_sel1.front()];		
-					       //gather	   					   
-					       if(right->type[colInd] == 0) {
-                              thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(right->d_columns_int[right->type_index[colInd]].begin(), d_res2.begin());
-                              thrust::copy(iter, iter + res_count, c->h_columns_int[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);								   
-					       }
-					       else if(right->type[colInd] == 1) {
-                              thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(right->d_columns_float[right->type_index[colInd]].begin(), d_res2.begin());
-  					          thrust::copy(iter, iter + res_count, c->h_columns_float[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);												   						   
-							   
-					       };					   
-					    };
-                        op_sel1.pop();		  
-                    };	
-				};	
-			};			
-        };
-    };
+                        else { //strings
+                            thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);			
+                            str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
+							                                    (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
+                            cudaMemcpy( (void*)&c->h_columns_char[c->type_index[colInd]][offset*c->char_size[c->type_index[colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
+						                 left->char_size[left->type_index[colInd]] * res_count, cudaMemcpyDeviceToHost);		            
+                            thrust::device_free(d_tmp); 	
+                        }						  
 
-	for(unsigned int i = 0; i < tab_count; i ++) 
-	    cudppDestroyHashTable(theCudpp, tabs[i]);   
-	thrust::device_free(res);				
-	thrust::device_free(d_r);		
+					}
+                    else {
+					    unsigned int colInd = right->columnNames[op_sel1.front()];		
+					    //gather	   					   
+					    if(right->type[colInd] == 0) {
+                            thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(right->d_columns_int[right->type_index[colInd]].begin(), d_res2.begin());
+                            thrust::copy(iter, iter + res_count, c->h_columns_int[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);								   
+					     }
+  				        else if(right->type[colInd] == 1) {
+                            thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(right->d_columns_float[right->type_index[colInd]].begin(), d_res2.begin());
+  					        thrust::copy(iter, iter + res_count, c->h_columns_float[c->type_index[c->columnNames[op_sel1.front()]]].begin() + offset);												   						   							   
+					    }
+                        else { //strings
+                            thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*right->char_size[right->type_index[colInd]]);			
+                            str_gather(thrust::raw_pointer_cast(d_res2.data()), res_count, (void*)right->d_columns_char[right->type_index[colInd]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);
+                            cudaMemcpy( (void*)&c->h_columns_char[c->type_index[colInd]][offset*c->char_size[c->type_index[colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
+						                right->char_size[right->type_index[colInd]] * res_count, cudaMemcpyDeviceToHost);		            
+                            thrust::device_free(d_tmp); 							   
+                        }						  
+						   
+					};
+                    op_sel1.pop();		  
+                };	
+			};	
+        };
+    };	
+
+			
     d_res1.resize(0);
     d_res1.shrink_to_fit();
     d_res2.resize(0);
-    d_res2.shrink_to_fit();	    
+    d_res2.shrink_to_fit();	   	
 		
-    left->deAllocOnDevice();
+    left->deAllocOnDevice();	
     right->deAllocOnDevice();
-	c->deAllocOnDevice();
-	
+	c->deAllocOnDevice();	
 	
 	cout << "join final end " << tot_count << "  " << getFreeMem() << endl;
 
     varNames[s] = c;
 	c->mRecCount = tot_count; 
+    for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
+        setMap[(*it).first] = s;
+
     clean_queues();
 
 
@@ -884,6 +823,85 @@ void emit_join(char *s, char *j1)
 
 }
 
+
+void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> exe_type, stack<string> exe_value)
+{
+    unsigned int tot = 0;
+    if(!a->not_compressed) { //compressed
+        allocColumns(a, names);
+		
+		unsigned int c = 0;
+       	if(a->prm_count.size())	{	
+            for(unsigned int i = 0; i < a->prm.size(); i++)
+                c = c + a->prm_count[i];
+		}
+        else
+            c = a->mRecCount;			
+		a->mRecCount = 0;	
+	    a->resize(c);
+			
+		unsigned int cnt = 0;
+		for(unsigned int i = 0; i < a->segCount; i++) {		
+            copyColumns(a, names, (a->segCount - i) - 1, cnt);	//uses segment 1 on a host	to copy data from a file to gpu			
+			if (a->mRecCount) {
+                a->CopyToHost((c - tot) - a->mRecCount, a->mRecCount);			
+			    tot = tot + a->mRecCount;		
+			};	
+		};
+	}
+	else
+	    tot = a->mRecCount;
+	
+	
+    b->resize(tot); //resize host arrays	
+	a->mRecCount = tot;		
+	
+	
+	unsigned int* permutation = new unsigned int[a->mRecCount];
+	thrust::sequence(permutation, permutation + a->mRecCount);
+
+	unsigned int maxSize =  a->mRecCount;
+	char* temp;
+	unsigned int max_char = 0;
+	for(unsigned int i = 0; i < a->char_size.size(); i++)
+		if (a->char_size[a->type_index[i]] > max_char)
+			max_char = a->char_size[a->type_index[i]];			
+
+	if(max_char > float_size)	
+		temp = new char[maxSize*max_char];
+	else	
+		temp = new char[maxSize*float_size];    
+	
+	// sort on host
+	
+	for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
+		int colInd = (a->columnNames).find(exe_type.top())->second;
+
+		if ((a->type)[colInd] == 0)
+			update_permutation_host(a->h_columns_int[a->type_index[colInd]].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
+		else if ((a->type)[colInd] == 1)
+			update_permutation_host(a->h_columns_float[a->type_index[colInd]].data(), permutation, a->mRecCount,exe_value.top(), (float_type*)temp);
+		else {
+			update_permutation_char_host(a->h_columns_char[a->type_index[colInd]], permutation, a->mRecCount, exe_value.top(), b->h_columns_char[b->type_index[colInd]], a->char_size[a->type_index[colInd]]);	
+		};
+	};
+	
+	
+	for (unsigned int i = 0; i < a->mColumnCount; i++) {
+		if ((a->type)[i] == 0) {
+			apply_permutation_host(a->h_columns_int[a->type_index[i]].data(), permutation, a->mRecCount, b->h_columns_int[b->type_index[i]].data());
+		}	
+		else if ((a->type)[i] == 1)
+			apply_permutation_host(a->h_columns_float[a->type_index[i]].data(), permutation, a->mRecCount, b->h_columns_float[b->type_index[i]].data());
+		else {
+			apply_permutation_char_host(a->h_columns_char[a->type_index[i]], permutation, a->mRecCount, b->h_columns_char[b->type_index[i]], a->char_size[a->type_index[i]]);
+		};
+	};
+	
+	delete [] temp;
+	delete [] permutation;
+
+}
 
 
 
@@ -936,18 +954,7 @@ void emit_order(char *s, char *f, int e, int ll)
             exe_value.push(op_value.front());
         };
     };
-
-    // initialize permutation to [0, 1, 2, ... ,N-1]
-
-    thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(a->mRecCount);
-    thrust::sequence(permutation, permutation+(a->mRecCount));
-
-    unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
-    CudaSet *b = a->copyDeviceStruct();
-	b->mRecCount = a->mRecCount;
-
-    // find the largest mRecSize of all data sources
-
+	
     stack<string> tp(exe_type);
     queue<string> op_vx;
     while (!tp.empty()) {
@@ -955,65 +962,108 @@ void emit_order(char *s, char *f, int e, int ll)
         tp.pop();
     };
 	
-    unsigned int maxSize =  a->mRecCount, cnt = 0;
+	queue<string> names;
+	for ( map<string,int>::iterator it=a->columnNames.begin() ; it != a->columnNames.end(); ++it )
+	    names.push((*it).first);
 
-    void* temp;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
-
-    varNames[setMap[exe_type.top()]]->oldRecCount = varNames[setMap[exe_type.top()]]->mRecCount;
-    allocColumns(a, op_vx);
-    copyColumns(a, op_vx, 0, cnt);
-
-    varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->oldRecCount;
-
-    for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
-        int colInd = (a->columnNames).find(exe_type.top())->second;
-
-        if ((a->type)[colInd] == 0)
-            update_permutation(a->d_columns_int[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
-        else if ((a->type)[colInd] == 1)
-            update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp);
-        else {
-            CudaChar* c = a->h_columns_cuda_char[a->type_index[colInd]];
-            for(int j=(c->mColumnCount)-1; j>=0 ; j--)
-                update_permutation((c->d_columns)[j], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp);
-        };
-    };
-
-    // gather a's prm  to b's prm
-    thrust::device_vector<unsigned int> p(a->mRecCount);
-    if(a->prm.size() != 0) {
+	CudaSet *b = a->copyDeviceStruct();
 	
-        thrust::device_vector<unsigned int> p_a(a->mRecCount);
-        b->prm.push_back(new unsigned int[a->mRecCount]);
-        b->prm_count.push_back(a->mRecCount);
-		b->prm_index.push_back('R');
-        cudaMemcpy((void**)(thrust::raw_pointer_cast(p_a.data())), (void**)a->prm[0], 4*a->mRecCount, cudaMemcpyHostToDevice);
-        thrust::gather(permutation, permutation+a->mRecCount, p_a.begin(), p.begin());
-        cudaMemcpy((void**)b->prm[0], (void**)(thrust::raw_pointer_cast(p.data())), 4*a->mRecCount, cudaMemcpyDeviceToHost);
-    }
-    else {
-        b->prm.push_back(new unsigned int[a->mRecCount]);
-        b->prm_count.push_back(a->mRecCount);
-		b->prm_index.push_back('R');
-        thrust::copy(permutation, permutation+a->mRecCount, p.begin());
-        cudaMemcpy((void**)b->prm[0], (void**)(thrust::raw_pointer_cast(p.data())), 4*a->mRecCount, cudaMemcpyDeviceToHost);
-    };
+	//lets find out if our data set fits into a GPU
+	size_t mem_available = getFreeMem();
+	size_t rec_size = 0;
+	for(unsigned int i = 0; i < a->mColumnCount; i++) {
+        if(a->type[i] == 0)
+            rec_size = rec_size + int_size;         
+		else if(a->type[i] == 1)	
+	        rec_size = rec_size + float_size;         
+		else 	
+           rec_size = rec_size + a->char_size[a->type_index[i]];
+    };	
+	bool fits = 1;
+	if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU
+	    fits = 0;
+		
+		
+	fits = 0; //for a test	
+	if(!fits) {
+	    order_on_host(a, b, names, exe_type, exe_value);
+	}	
+	else {
+	    // initialize permutation to [0, 1, 2, ... ,N-1]
+		thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(a->mRecCount);
+		thrust::sequence(permutation, permutation+(a->mRecCount));
 
-    b->deAllocOnDevice();
-    a->deAllocOnDevice();
+		unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
+
+		unsigned int maxSize =  a->mRecCount;
+		void* temp;
+		unsigned int max_char = 0;
+		for(unsigned int i = 0; i < a->char_size.size(); i++)
+			if (a->char_size[a->type_index[i]] > max_char)
+				max_char = a->char_size[a->type_index[i]];			
+	
+		if(max_char > float_size)	
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char));
+		else	
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));    
+
+		varNames[setMap[exe_type.top()]]->oldRecCount = varNames[setMap[exe_type.top()]]->mRecCount;
+	
+	
+		unsigned int rcount;
+		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);	
+    
+		varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->oldRecCount;
+
+		for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
+			int colInd = (a->columnNames).find(exe_type.top())->second;
+
+			if ((a->type)[colInd] == 0)
+				update_permutation(a->d_columns_int[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+			else if ((a->type)[colInd] == 1)
+				update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp);
+			else {
+				update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp, a->char_size[a->type_index[colInd]]);	
+			};
+		};
+		
+        b->resize(a->mRecCount); //resize host arrays	
+	    b->mRecCount = a->mRecCount;		
+	
+		for (unsigned int i = 0; i < a->mColumnCount; i++) {
+			if ((a->type)[i] == 0)
+				apply_permutation(a->d_columns_int[a->type_index[i]], raw_ptr, a->mRecCount, (int_type*)temp);
+			else if ((a->type)[i] == 1)
+				apply_permutation(a->d_columns_float[a->type_index[i]], raw_ptr, a->mRecCount, (float_type*)temp);
+			else {
+				apply_permutation_char(a->d_columns_char[a->type_index[i]], raw_ptr, a->mRecCount, (char*)temp, a->char_size[a->type_index[i]]);
+			};
+		};	
+		
+		for(unsigned int i = 0; i < a->mColumnCount; i++) {
+			switch(a->type[i]) {		 
+			case 0 :
+				thrust::copy(a->d_columns_int[a->type_index[i]].begin(), a->d_columns_int[a->type_index[i]].begin() + a->mRecCount, b->h_columns_int[b->type_index[i]].begin());
+				break;
+			case 1 :
+				thrust::copy(a->d_columns_float[a->type_index[i]].begin(), a->d_columns_float[a->type_index[i]].begin() + a->mRecCount, b->h_columns_float[b->type_index[i]].begin());
+				break;
+			default :
+				cudaMemcpy(b->h_columns_char[b->type_index[i]], a->d_columns_char[a->type_index[i]], a->char_size[a->type_index[i]]*a->mRecCount, cudaMemcpyDeviceToHost);
+			}
+		};
+
+		b->deAllocOnDevice();
+		a->deAllocOnDevice();
 
 
-    thrust::device_free(permutation);
-    cudaFree(temp);
+		thrust::device_free(permutation);
+		cudaFree(temp);
+	};	
 
     varNames[s] = b;
     b->segCount = 1;
-
-    if (a->fact_table == 1)
-        b->fact_table = 1;
-    else
-        b->fact_table = 0;
+    b->not_compressed = 1;
 
     if(stat[f] == statement_count && !a->keep) {
         a->free();
@@ -1112,23 +1162,21 @@ void emit_select(char *s, char *f, int ll)
 
 	curr_segment = 10000000;
     allocColumns(a, op_vx);
-
+	
 	unsigned int cycle_count = 1;
-	if(a->prm.size())
+	if(!a->prm.empty())
         cycle_count = varNames[setMap[op_value.front()]]->segCount;
-     	
-
+    
     unsigned int ol_count = a->mRecCount, cnt;
-    varNames[setMap[op_value.front()]]->oldRecCount = varNames[setMap[op_value.front()]]->mRecCount;
+    //varNames[setMap[op_value.front()]]->oldRecCount = varNames[setMap[op_value.front()]]->mRecCount;
+	a->oldRecCount = a->mRecCount;
 	b = new CudaSet(0, col_count);	
 	bool b_set = 0, c_set = 0;
 	
-	
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "cycle " << i << " select mem " << getFreeMem() << endl;
-        std::clock_t start2 = std::clock();
-                    
-		cnt = 0;
+                   
+		cnt = 0;		
         copyColumns(a, op_vx, i, cnt);	
 		
         if(a->mRecCount) { 			
@@ -1137,8 +1185,7 @@ void emit_select(char *s, char *f, int ll)
                 order_inplace(a,op_v2,field_names,i);
                 a->GroupBy(op_v3);
             };
-		
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);			
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);				
 		
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -1149,7 +1196,7 @@ void emit_select(char *s, char *f, int ll)
             if (ll != 0) {
                 if (!c_set) {
                     c = new CudaSet(b->mRecCount, col_count);
-                    c->fact_table = 1;
+                    c->not_compressed = 1;
                     c->segCount = 1;
 					c_set = 1;
                 }
@@ -1161,8 +1208,11 @@ void emit_select(char *s, char *f, int ll)
 		};	
     };
 	
+	
+
     a->mRecCount = ol_count;
-    varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
+    //varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
+	a->mRecCount = a->oldRecCount;
     a->deAllocOnDevice();
 
     if (ll != 0) {
@@ -1362,8 +1412,8 @@ void emit_store_binary(char *s, char *f)
 
     while(!fact_file_loaded)	{
         cout << "LOADING " << f_file << " " << separator << endl;
-        fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
-        //cout << "STORING " << f << " " << limit << endl;
+		if(a->text_source)
+            fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
         a->Store(f,"", limit, 1);
     };
 
@@ -1397,7 +1447,6 @@ void emit_load_binary(char *s, char *f, int d)
 	strcat(f1,".header");
 
     FILE* ff = fopen(f1, "rb");
-    //fseeko(ff, -16, SEEK_END);
     fread((char *)&totalRecs, 8, 1, ff);
     fread((char *)&segCount, 4, 1, ff);
     fread((char *)&maxRecs, 4, 1, ff);
@@ -1442,7 +1491,7 @@ void emit_load(char *s, char *f, int d, char* sep)
     a->mRecCount = 0;
     a->resize(process_count);
     a->keep = true;
-    a->fact_table = 1;
+    a->not_compressed = 1;
     
     string separator1(sep);
     separator = separator1;
@@ -1503,7 +1552,7 @@ int main(int ac, char **av)
     //    cout << "Device 0 cannot map host memory" << endl;
 
     //cudaSetDeviceFlags(cudaDeviceMapHost);
-    cudppCreate(&theCudpp);
+    //cudppCreate(&theCudpp);
 
     if (ac == 1) {
         cout << "Usage : alenka -l process_count script.sql" << endl;
@@ -1528,8 +1577,7 @@ int main(int ac, char **av)
         printf("SQL scan parse failed\n");
         exit(1);
     };
-    fclose(yyin);
-
+    
     scan_state = 1;
 
     std::clock_t start1 = std::clock();
@@ -1551,7 +1599,7 @@ int main(int ac, char **av)
 
     fclose(yyin);
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
-    cudppDestroy(theCudpp);
+    //cudppDestroy(theCudpp);
 
 }
 

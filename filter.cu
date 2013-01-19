@@ -14,6 +14,40 @@
 #include <thrust/device_vector.h>
 #include "cm.h"
 
+
+struct cmp_functor_str
+{
+
+    const char  * source;
+	const char *str; 
+    bool * dest;
+    const unsigned int * len;
+
+
+    cmp_functor_str(const char * _source, const char * _str, bool * _dest,
+                           const unsigned int * _len):
+        source(_source), str(_str), dest(_dest), len(_len) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+        unsigned int length = len[0];
+		unsigned int start = i*length;
+		
+	    for(unsigned int z = 0; z < length ; z++) {
+            if(source[start+z] != str[z]) {
+			    dest[i] = 0;
+				return;
+			};
+			
+		};	
+        dest[i] = 1;		
+
+    }
+};
+
+
 unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
                     CudaSet* b, unsigned int segment, thrust::device_vector<unsigned int>& dev_p)
 {
@@ -460,27 +494,63 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                 }
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-
+				
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
-                    CudaChar* cc = (a->h_columns_cuda_char)[a->type_index[colIndex1]];
-                    exe_type.push("VECTOR");
-                    bool_vectors.push(cc->cmpStr(s1_val));
+                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;					
+			        void* d_v;
+            	    cudaMalloc((void **) &d_v, 4);					
+                    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+                    dd_v[0] = a->char_size[a->type_index[colIndex1]];
+					void* d_res;
+            	    cudaMalloc((void **) &d_res, a->mRecCount);
+					
+					void* d_str;
+            	    cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
+					cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
+					cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);	
+
+                    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+                    cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                    thrust::for_each(begin, begin + a->mRecCount, ff);					
+					
+					exe_type.push("VECTOR");
+					bool_vectors.push((bool*)d_res);
+					cudaFree(d_v);
+					cudaFree(d_str);
+					
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-
+					
                     unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
-                    CudaChar* cc = (a->h_columns_cuda_char)[a->type_index[colIndex1]];
-                    exe_type.push("VECTOR");
-                    bool_vectors.push(cc->cmpStr(s2_val));
+			        void* d_v;
+            	    cudaMalloc((void **) &d_v, 4);					
+                    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+                    dd_v[0] = a->char_size[a->type_index[colIndex1]];				
+					
+					void* d_res;
+            	    cudaMalloc((void **) &d_res, a->mRecCount);
+					
+					void* d_str;
+            	    cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
+					cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
+					cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);	
+
+                    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+                    cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                    thrust::for_each(begin, begin + a->mRecCount, ff);									
+					
+					exe_type.push("VECTOR");
+					bool_vectors.push((bool*)d_res);
+					cudaFree(d_v);
+					cudaFree(d_str);
                 }
 
 
@@ -816,17 +886,18 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
         };
     };
-
+	
+	
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());
-
     unsigned int count = thrust::count(bp, bp + a->mRecCount, 1);
     b->mRecCount = b->mRecCount + count;
 
     b->prm.push_back(new unsigned int[count]);
     b->prm_count.push_back(count);
-    b->prm_index.push_back('R');
+    b->prm_index.push_back('R');	
     thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
-                    bp, dev_p.begin(), nz<bool>());
+                    bp, dev_p.begin(), thrust::identity<bool>());
+
     cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
 
     b->type_index = a->type_index;
