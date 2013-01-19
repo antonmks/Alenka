@@ -2,7 +2,7 @@ Short introduction :
 Alenka supports several data types : integers, floats, decimals and character strings.
 The difference between floats and decimals is that the latter are compressed when written to a file.
 
-Requirements : you need to have a model 200 or better NVidia GPU.
+Requirements : you need to have a model 200 or better of NVidia GPU.
 Limitations : 
  all column names in a script must be unique.
 

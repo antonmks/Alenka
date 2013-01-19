@@ -1,3 +1,17 @@
+/*
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+ 
 #include <thrust/device_vector.h>
 #include "strings.cu"
 
@@ -46,7 +60,6 @@ void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permut
 template <typename KeyType>
 void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned int RecCount, KeyType* res)
 {
-    //thrust::copy(key, key + RecCount, tmp);
     thrust::gather(permutation, permutation + RecCount, key, res);
 }
 
@@ -54,10 +67,6 @@ void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned in
 
 void update_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
 {
-    //thrust::device_ptr<unsigned int> dev_per(permutation);
-    // temporary storage for keys
-    //thrust::device_ptr<char> temp(tmp);
-    // permute the keys with the current reordering
 	
 	str_gather((void*)permutation, RecCount, (void*)key, (void*)tmp, len);	
 
@@ -92,7 +101,6 @@ void apply_permutation_char(char* key, unsigned int* permutation, unsigned int R
 
 void apply_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, char* res, unsigned int len)
 {    
-	//cudaMemcpy( (void*)tmp, (void*) key, RecCount*len, cudaMemcpyDeviceToDevice);		            
  	str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);
 }
 
