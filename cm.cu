@@ -1409,7 +1409,7 @@ public:
 		char *cc = new char[len+1];  
 		unsigned int sz = dict_ordered.size();
 		// write to a file
-		fstream binary_file(file_name,ios::out|ios::binary);
+		fstream binary_file(file_name.c_str(),ios::out|ios::binary);
 		binary_file.write((char *)&sz, 4);
     	for(unsigned int i = 0; i < dict_ordered.size(); i++) {
 		    memset(&cc[0], 0, len);
