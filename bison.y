@@ -1168,9 +1168,11 @@ void emit_select(char *s, char *f, int ll)
 	curr_segment = 10000000;
     allocColumns(a, op_vx);
 	
-	unsigned int cycle_count = 1;
+	unsigned int cycle_count;
 	if(!a->prm.empty())
         cycle_count = varNames[setMap[op_value.front()]]->segCount;
+	else
+        cycle_count = a->segCount;	
     
     unsigned int ol_count = a->mRecCount, cnt;
     //varNames[setMap[op_value.front()]]->oldRecCount = varNames[setMap[op_value.front()]]->mRecCount;
