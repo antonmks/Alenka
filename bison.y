@@ -27,6 +27,7 @@
     void emit_mul();
     void emit_add();
     void emit_minus();
+	void emit_distinct();
     void emit_div();
     void emit_and();
     void emit_eq();
@@ -60,7 +61,7 @@
     void emit_select(char *s, char *f, int ll);
     void emit_join(char *s, char *j1);
     void emit_join_tab(char *s);
-    void emit_distinct(char *s, char *f);
+    void emit_distinct();
 
 %}
 
@@ -86,6 +87,7 @@
 %left OR
 %left XOR
 %left AND
+%left DISTINCT
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
@@ -123,6 +125,7 @@
 %token LIMIT
 %token ON
 %token BINARY
+%token DISTINCT
 
 
 %type <intval> load_list  opt_where opt_limit
@@ -178,6 +181,7 @@ NAME { emit_name($1); }
 | AVG '(' expr ')' { emit_average(); }
 | MIN '(' expr ')' { emit_min(); }
 | MAX '(' expr ')' { emit_max(); }
+| DISTINCT expr { emit_distinct(); }
 ;
 
 expr:
@@ -245,7 +249,6 @@ opt_limit: { /* nil */
 
 
 %%
-
 
 #include "filter.cu"
 #include "select.cu"
@@ -355,7 +358,10 @@ void emit_eq()
 
 }
 
-
+void emit_distinct()
+{
+    op_type.push("DISTINCT");
+}
 
 void emit_or()
 {
@@ -1123,6 +1129,7 @@ void emit_select(char *s, char *f, int ll)
     cout << "SELECT " << s << " " << f << endl;
     std::clock_t start1 = std::clock();
 
+	unordered_map<long long int, unsigned int> mymap; 
     // here we need to determine the column count and composition
 
     queue<string> op_v(op_value);
@@ -1148,7 +1155,6 @@ void emit_select(char *s, char *f, int ll)
         op_vx.push(*it);
     };
 
-
     // find out how many columns a new set will have
     queue<string> op_t(op_type);
     int_type col_count = 0;
@@ -1157,8 +1163,7 @@ void emit_select(char *s, char *f, int ll)
         if((op_t.front()).compare("emit sel_name") == 0)
             col_count++;
 
-
-    CudaSet* b, *c;
+    CudaSet *b, *c;
 
 	curr_segment = 10000000;
     allocColumns(a, op_vx);
@@ -1185,25 +1190,26 @@ void emit_select(char *s, char *f, int ll)
                 order_inplace(a,op_v2,field_names,i);
                 a->GroupBy(op_v3);
             };
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);				
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);		
 		
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
                     setMap[(*it).first] = s;
 				b_set = 1;	
+				unsigned int old_cnt = b->mRecCount;
+				b->mRecCount = 0;
+				b->resize(varNames[setMap[op_vx.front()]]->maxRecs);
+				b->mRecCount = old_cnt;
             };
 
             if (ll != 0) {
                 if (!c_set) {
-                    c = new CudaSet(b->mRecCount, col_count);
+                    c = new CudaSet(0, col_count);
                     c->not_compressed = 1;
                     c->segCount = 1;
 					c_set = 1;
                 }
-                else {
-                    c->resize(b->mRecCount);
-			    };	
-                add(c,b,op_v3);
+                add(c,b,op_v3, mymap, aliases);
             };
 		};	
     };
@@ -1216,12 +1222,10 @@ void emit_select(char *s, char *f, int ll)
     a->deAllocOnDevice();
 
     if (ll != 0) {
-        CudaSet *r = merge(c,op_v3, op_v2, aliases);
-        c->free();
-        c = r;
+        count_avg(c);
     };
 
-    c->deAllocOnDevice();
+    //c->deAllocOnDevice();
     c->maxRecs = c->mRecCount;
     c->name = s;
     c->keep = 1;
@@ -1544,7 +1548,7 @@ void clean_queues()
 
 int main(int ac, char **av)
 {
-    extern FILE *yyin;
+    extern FILE *yyin;	
     //cudaDeviceProp deviceProp;
 
     //cudaGetDeviceProperties(&deviceProp, 0);
@@ -1602,4 +1606,5 @@ int main(int ac, char **av)
     //cudppDestroy(theCudpp);
 
 }
+
 

@@ -10,11 +10,18 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- */
-
+ */ 
+ 
 
 #include "cm.h"
 #include <thrust/iterator/discard_iterator.h>
+
+template<typename T>
+  struct distinct : public binary_function<T,T,T>
+{
+  __host__ __device__ T operator()(const T &lhs, const T &rhs) const {return lhs != rhs;}
+}; 
+
 
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a, CudaSet* b, int_type old_reccount)
 {
@@ -63,31 +70,78 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
 
-            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0) {
+            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
+                if (ss.compare("DISTINCT") == 0) {
+				    //cout << "count dist " << exe_value.top() << " " << exe_type.top() << endl;
+					grp_type = "COUNTD";
+				    s1_val = exe_value.top();
+				    exe_type.pop();
+				    exe_value.pop();
+					// sort the segments and run the segmented scan
+					thrust::device_ptr<int_type> res  = thrust::device_malloc<int_type>(res_size);
+					unsigned int colIndex = (a->columnNames).find(s1_val)->second;
+
+                    if((a->type)[colIndex] == 0) {
+					    thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);
+						thrust::device_ptr<char> di_tmp = thrust::device_malloc<char>(a->mRecCount);
+						thrust::copy(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount, tmp);
+						thrust::copy(d_di, d_di + a->mRecCount, di_tmp);
+						di_tmp[a->mRecCount-1] = 0;
+						thrust::inclusive_scan(di_tmp, di_tmp + a->mRecCount, di_tmp);
+						
+						thrust::stable_sort_by_key(tmp, tmp + a->mRecCount, di_tmp); 
+						thrust::stable_sort_by_key(di_tmp, di_tmp + a->mRecCount, tmp); 				
+                        
+						
+						thrust::reduce_by_key(d_di, d_di+(a->mRecCount), tmp,
+                                              thrust::make_discard_iterator(), res,
+                                              head_flag_predicate<bool>(), distinct<int_type>());
+                    					
+					
+					    thrust::device_free(tmp);
+					    thrust::device_free(di_tmp);
+
+                    }
+                    else if((a->type)[colIndex] == 2){
+					
+					}
+					else {
+					    cout << "DISTINCT on float is not supported" << endl;
+						exit(0);
+					};	
+				 
+                    exe_vectors.push(thrust::raw_pointer_cast(res));
+					exe_type.push("VECTOR");				 
+				};
+				
+			
                 if (ss.compare("COUNT") == 0) {
-
-
+				
                     grp_type = "COUNT";
                     s1 = exe_type.top();
-                    exe_type.pop();
-                    s1_val = exe_value.top();
-                    exe_value.pop();
+					//if(s1.compare("VECTOR")) {  // non distinct
+                        exe_type.pop();
+                        s1_val = exe_value.top();
+                        exe_value.pop();
+					    
+                        if (!a->columnGroups.empty()) {
+                            thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
+                            thrust::reduce_by_key(d_di, d_di+(a->mRecCount), thrust::constant_iterator<int_type>(1),
+                                                  thrust::make_discard_iterator(), count_diff,
+                                                  head_flag_predicate<bool>(),thrust::plus<int_type>());
 
-                    if (!a->columnGroups.empty()) {
-                        thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                        thrust::reduce_by_key(d_di, d_di+(a->mRecCount), thrust::constant_iterator<int_type>(1),
-                                              thrust::make_discard_iterator(), count_diff,
-                                              head_flag_predicate<bool>(),thrust::plus<int_type>());
-
-                        exe_vectors.push(thrust::raw_pointer_cast(count_diff));
-                    }
-                    else {
-                        thrust::device_ptr<int_type> dest  = thrust::device_malloc<int_type>(1);
-                        dest[0] = a->mRecCount;
-                        exe_vectors.push(thrust::raw_pointer_cast(dest));
-                    }
-                }
+                            exe_vectors.push(thrust::raw_pointer_cast(count_diff));
+						    exe_type.push("VECTOR");
+                        }
+                        else {
+                            thrust::device_ptr<int_type> dest  = thrust::device_malloc<int_type>(1);
+                            dest[0] = a->mRecCount;
+                            exe_vectors.push(thrust::raw_pointer_cast(dest));
+						    exe_type.push("VECTOR");
+                        }
+                    //}
+				}	
                 else if (ss.compare("SUM") == 0) {
 
                     grp_type = "SUM";
@@ -151,7 +205,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         if (!a->columnGroups.empty()) {
 
                             if((a->type)[colIndex] == 0) {
-                                //thrust::device_ptr<int_type> source((int_type*)(a->d_columns)[colIndex]);
                                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 
                                 thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_int[a->type_index[colIndex]].begin(),
@@ -161,7 +214,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_type.push("VECTOR");
                             }
                             else if((a->type)[colIndex] == 1) {
-                                //thrust::device_ptr<float_type> source((float_type*)(a->d_columns)[colIndex]);
                                 thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
 
                                 thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[a->type_index[colIndex]].begin(),
@@ -174,7 +226,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         }
                         else {
                             if(a->type[colIndex] == 0) {
-                                //thrust::device_ptr<int_type> source((int_type*)(a->d_columns)[colIndex]);
                                 thrust::device_ptr<int_type> dest;
                                 int_type cc = thrust::reduce(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin()+a->mRecCount);
                                 if (one_line) {
@@ -189,7 +240,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_type.push("VECTOR");
                             }
                             else if((a->type)[colIndex] == 1) {
-                                //thrust::device_ptr<float_type> source((float_type*)(a->d_columns)[colIndex]);
                                 thrust::device_ptr<float_type> dest;
                                 float_type cc = thrust::reduce(a->d_columns_float[a->type_index[colIndex]].begin(), a->d_columns_float[a->type_index[colIndex]].begin()+a->mRecCount);
 
@@ -218,24 +268,23 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     unsigned int colIndex = (a->columnNames).find(s1_val)->second;
 
                     if((a->type)[colIndex] == 0) {
-                        //thrust::device_ptr<int_type> source((int_type*)(a->d_columns)[colIndex]);
 
                         thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                         thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_int[a->type_index[colIndex]].begin(),
                                               thrust::make_discard_iterator(), count_diff,
                                               head_flag_predicate<bool>(),thrust::minimum<int_type>());
                         exe_vectors.push(thrust::raw_pointer_cast(count_diff));
+						exe_type.push("VECTOR");
 
                     }
                     else if((a->type)[colIndex] == 1) {
-                        //thrust::device_ptr<float_type> source((float_type*)(a->d_columns)[colIndex]);
 
                         thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                         thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[a->type_index[colIndex]].begin(),
                                               thrust::make_discard_iterator(), count_diff,
                                               head_flag_predicate<bool>(),thrust::minimum<float_type>());
                         exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
-
+                        exe_type.push("VECTOR F");
                     }
                 }
 
@@ -250,7 +299,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                     unsigned int colIndex = (a->columnNames).find(s1_val)->second;
                     if((a->type)[colIndex] == 0) {
-                        //thrust::device_ptr<int_type> source((int_type*)(a->d_columns)[colIndex]);
 
                         thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                         thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_int[a->type_index[colIndex]].begin(),
@@ -261,7 +309,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_type.push("VECTOR");
                     }
                     else if((a->type)[colIndex] == 1) {
-                        //thrust::device_ptr<float_type> source((float_type*)(a->d_columns)[colIndex]);
+
                         thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                         thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[a->type_index[colIndex]].begin(),
                                               thrust::make_discard_iterator(), count_diff,
@@ -270,8 +318,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_type.push("VECTOR F");
                     }
                 };
-
-                //op_value.pop();
             };
 
             if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("VECTOR F") == 0) {
@@ -687,7 +733,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     
     b->grp_type = new unsigned int[colCount];
-
+	
     for(unsigned int j=0; j<colCount; j++) {
 
         if ((grp_type1.top()).compare("COUNT") == 0 )
@@ -702,6 +748,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             b->grp_type[colCount-j-1] = 4;
         else if ((grp_type1.top()).compare("MAX") == 0 )
             b->grp_type[colCount-j-1] = 5;
+        else if ((grp_type1.top()).compare("COUNTD") == 0 )
+            b->grp_type[colCount-j-1] = 6;			
 
 
         if(col_type.top() == 0) {
@@ -772,18 +820,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else {  // already exists, my need to resize it
                     if(b->mRecCount < res_size)
-                        b->resizeDeviceColumn(colCount-j-1, res_size-b->mRecCount);
+                        b->resizeDeviceColumn(res_size-b->mRecCount, colCount-j-1);
                 };
 
                 //modify what we push there in case of a grouping
                 if (!(a->columnGroups).empty()) {
                     thrust::device_ptr<bool> d_grp(a->grp);
-					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);                }
+					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);               
+			
+				}
                 else {
-                    //copy the cc to new
-                    //for(unsigned int k=0; k < (nn->mColumnCount); k++)
-                    //    thrust::copy(cc->d_columns[k].begin(), cc->d_columns[k].begin() + a->mRecCount, nn->h_columns[k].begin() + b->mRecCount);
-					//cudaMemcpy( (void*)b->h_columns_char[b->type_index[colCount-j-1]], (void*)a->d_columns_char[a->type_index[colIndex]], sz*len, cudaMemcpyDeviceToDevice);		            
 					
                 }
             }

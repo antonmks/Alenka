@@ -52,39 +52,40 @@
      OR = 268,
      XOR = 269,
      AND = 270,
-     REGEXP = 271,
-     LIKE = 272,
-     IS = 273,
-     IN = 274,
-     NOT = 275,
-     BETWEEN = 276,
-     COMPARISON = 277,
-     SHIFT = 278,
-     MOD = 279,
-     UMINUS = 280,
-     LOAD = 281,
-     STREAM = 282,
-     FILTER = 283,
-     BY = 284,
-     JOIN = 285,
-     STORE = 286,
-     INTO = 287,
-     GROUP = 288,
-     FROM = 289,
-     SELECT = 290,
-     AS = 291,
-     ORDER = 292,
-     ASC = 293,
-     DESC = 294,
-     COUNT = 295,
-     USING = 296,
-     SUM = 297,
-     AVG = 298,
-     MIN = 299,
-     MAX = 300,
-     LIMIT = 301,
-     ON = 302,
-     BINARY = 303
+     DISTINCT = 271,
+     REGEXP = 272,
+     LIKE = 273,
+     IS = 274,
+     IN = 275,
+     NOT = 276,
+     BETWEEN = 277,
+     COMPARISON = 278,
+     SHIFT = 279,
+     MOD = 280,
+     UMINUS = 281,
+     LOAD = 282,
+     STREAM = 283,
+     FILTER = 284,
+     BY = 285,
+     JOIN = 286,
+     STORE = 287,
+     INTO = 288,
+     GROUP = 289,
+     FROM = 290,
+     SELECT = 291,
+     AS = 292,
+     ORDER = 293,
+     ASC = 294,
+     DESC = 295,
+     COUNT = 296,
+     USING = 297,
+     SUM = 298,
+     AVG = 299,
+     MIN = 300,
+     MAX = 301,
+     LIMIT = 302,
+     ON = 303,
+     BINARY = 304
    };
 #endif
 
@@ -95,7 +96,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 67 "bison.y"
+#line 68 "bison.y"
 
     int intval;
     float floatval;
@@ -105,7 +106,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 109 "bison.tab.h"
+#line 110 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

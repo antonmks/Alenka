@@ -1064,7 +1064,7 @@ public:
         if(grp)
             cudaFree(grp);
 
-        CUDA_SAFE_CALL(cudaMalloc((void **) &grp, mRecCount * sizeof(bool))); // d_di is the vector for segmented scans
+        CUDA_SAFE_CALL(cudaMalloc((void **) &grp, mRecCount * sizeof(bool))); 
         thrust::device_ptr<bool> d_grp(grp);
 
         thrust::sequence(d_grp, d_grp+mRecCount, 0, 0);
@@ -1088,24 +1088,24 @@ public:
 
             if (type[colIndex] == 0) {  // int_type
                 thrust::transform(d_columns_int[type_index[colIndex]].begin(), d_columns_int[type_index[colIndex]].begin() + mRecCount - 1,
-                                  d_columns_int[type_index[colIndex]].begin()+1, d_group, thrust::not_equal_to<int_type>());
-                thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<bool>());
+                                  d_columns_int[type_index[colIndex]].begin()+1, d_group, thrust::not_equal_to<int_type>());                
             }
             else if (type[colIndex] == 1) {  // float_type
                 thrust::transform(d_columns_float[type_index[colIndex]].begin(), d_columns_float[type_index[colIndex]].begin() + mRecCount - 1,
                                   d_columns_float[type_index[colIndex]].begin()+1, d_group, f_not_equal_to());
-                thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<bool>());
             }
             else  {  // Char
 				    str_grp(d_columns_char[type_index[colIndex]], mRecCount, d_group, char_size[type_index[colIndex]]);
-                    thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<int>());
             };
+			thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<bool>());
             if (grpInd == 1)
                 deAllocColumnOnDevice(colIndex);
         };
 
         thrust::device_free(d_group);
         grp_count = thrust::count(d_grp, d_grp+mRecCount,1);
+
+		
     }
 
 
@@ -1115,6 +1115,7 @@ public:
             columnNames[colName] = colIndex;
             type[colIndex] = 0;
             d_columns_int.push_back(thrust::device_vector<int_type>(recCount));
+			h_columns_int.push_back(thrust::host_vector<int_type>());
             type_index[colIndex] = d_columns_int.size()-1;
         }
         else {  // already exists, my need to resize it
@@ -1124,8 +1125,7 @@ public:
         };
         // copy data to d columns
         thrust::device_ptr<int_type> d_col((int_type*)col);
-        thrust::copy(d_col, d_col+recCount, d_columns_int[type_index[colIndex]].begin());
-        mRecCount = recCount;
+        thrust::copy(d_col, d_col+recCount, d_columns_int[type_index[colIndex]].begin());        
     };
 
     void addDeviceColumn(float_type* col, int colIndex, string colName, int_type recCount)
@@ -1134,6 +1134,7 @@ public:
             columnNames[colName] = colIndex;
             type[colIndex] = 1;
             d_columns_float.push_back(thrust::device_vector<float_type>(recCount));
+			h_columns_float.push_back(thrust::host_vector<float_type>());
             type_index[colIndex] = d_columns_float.size()-1;
         }
         else {  // already exists, my need to resize it
@@ -1142,8 +1143,7 @@ public:
         };
 
         thrust::device_ptr<float_type> d_col((float_type*)col);
-        thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());
-        mRecCount = recCount;
+        thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());        
     };
 
 
@@ -2147,8 +2147,10 @@ protected: // methods
         decimal = new bool[mColumnCount];
         seq = 0;
 
-        for(unsigned int i =0; i < mColumnCount; i++)
+        for(unsigned int i =0; i < mColumnCount; i++) {
             cols[i] = i;
+		};
+        
 
     };
 

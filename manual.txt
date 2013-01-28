@@ -4,7 +4,8 @@ The difference between floats and decimals is that the latter are compressed whe
 
 Requirements : you need to have a model 200 or better of NVidia GPU.
 Limitations : 
- all column names in a script must be unique.
+1. all column names in a script must be unique.
+2. Group By statement must include COUNT(FIELD) expression.
 
 Loading data for processing : 
 Alenka can read text files with fields separated by separators. But much faster way to read the data would be to load it into binary files as demonstrated by the following script :

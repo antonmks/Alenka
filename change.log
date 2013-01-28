@@ -1,3 +1,7 @@
+01/28/2013
+    Bug fixes.
+
+
 01/19/2013.
     Major changes to the way the strings are stored and processed by the engine.
     Implemented join on strings using Murmurhash library.
