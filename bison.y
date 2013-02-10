@@ -60,7 +60,7 @@
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
     void emit_join(char *s, char *j1);
-    void emit_join_tab(char *s);
+    void emit_join_tab(char *s, bool left);
     void emit_distinct();
 
 %}
@@ -126,6 +126,7 @@
 %token ON
 %token BINARY
 %token DISTINCT
+%token LEFT
 
 
 %type <intval> load_list  opt_where opt_limit
@@ -239,8 +240,9 @@ opt_where:
 BY expr { emit("FILTER BY"); };
 
 join_list:
-JOIN NAME ON expr { $$ = 1; emit_join_tab($2);}
-| JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($2); };
+JOIN NAME ON expr { $$ = 1; emit_join_tab($2, 0);}
+| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 1);}
+| JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($2, 0); };
 
 opt_limit: { /* nil */
     $$ = 0
@@ -264,15 +266,17 @@ queue<int> cols;
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
 unsigned int join_cnt = 0;
+unsigned int distinct_cnt = 0;
 int join_col_cnt = 0;
 unsigned int eqq = 0;
 stack<string> op_join;
+bool left_join;
 
 unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 bool scan_state = 0;
 string separator, f_file;
-			
+ContextPtr context;			
 
 
 //CUDPPHandle theCudpp;
@@ -361,6 +365,7 @@ void emit_eq()
 void emit_distinct()
 {
     op_type.push("DISTINCT");
+	distinct_cnt++;
 }
 
 void emit_or()
@@ -448,9 +453,10 @@ void emit_max()
     op_type.push("MAX");
 }
 
-void emit_join_tab(char *s)
+void emit_join_tab(char *s, bool left)
 {
     op_join.push(s);
+	left_join = left;
 };
 
 
@@ -659,7 +665,18 @@ void emit_join(char *s, char *j1)
 		thrust::device_free(d_tmp);	
 	};
 	
-	
+	searchEngine_t engine = 0;
+	searchStatus_t status = searchCreate("C:/GnuWin32/bin/mgpu-master/search/src/cubin/search.cubin", &engine);		
+
+	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);
+	DeviceMemPtr btreeDevice;
+	context->ByteAlloc(treeSize, &btreeDevice);		
+	status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
+		                     (CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());
+	if(SEARCH_STATUS_SUCCESS != status) {
+		printf("BUILD FAIL!\n");
+		exit(0);
+	};
 		
 	while(!cc.empty())
         cc.pop();
@@ -720,7 +737,7 @@ void emit_join(char *s, char *j1)
 
 			
             join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
-                 d_res1, d_res2, cnt_l, cnt_r, right->isUnique(colInd2));
+                 d_res1, d_res2, cnt_l, cnt_r, right->isUnique(colInd2), left_join, engine, btreeDevice);
 		
     	    res_count = d_res1.size();
 			cout << "res count " << res_count << endl;
@@ -825,6 +842,7 @@ void emit_join(char *s, char *j1)
         varNames.erase(j2);
     };
 
+	searchDestroy(engine);
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';		
 
 }
@@ -1129,8 +1147,8 @@ void emit_select(char *s, char *f, int ll)
     cout << "SELECT " << s << " " << f << endl;
     std::clock_t start1 = std::clock();
 
-	unordered_map<long long int, unsigned int> mymap; 
-    // here we need to determine the column count and composition
+	
+	// here we need to determine the column count and composition
 
     queue<string> op_v(op_value);
     queue<string> op_vx;
@@ -1180,20 +1198,39 @@ void emit_select(char *s, char *f, int ll)
 	b = new CudaSet(0, col_count);	
 	bool b_set = 0, c_set = 0;
 	
+	unsigned int tmp_size = a->mRecCount;
+	if(a->segCount > 1)
+		tmp_size = a->maxRecs;
+		
+	boost::unordered_map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
+	vector<thrust::device_vector<int_type> > distinct_val; //keeps array of DISTINCT values for every key 
+	vector<thrust::device_vector<int_type> > distinct_hash; //keeps array of DISTINCT values for every key 
+	vector<thrust::device_vector<int_type> > distinct_tmp;
+	
+	for(unsigned int i = 0; i < distinct_cnt; i++) {
+		distinct_tmp.push_back(thrust::device_vector<int_type>(tmp_size));
+		distinct_val.push_back(thrust::device_vector<int_type>());
+		distinct_hash.push_back(thrust::device_vector<int_type>());		
+	};	
+	
+	cout << "count of dist " << distinct_cnt << endl;	
+		
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
-        cout << "cycle " << i << " select mem " << getFreeMem() << endl;
+        cout << "cycle " << i << " select mem " << getFreeMem() << endl;	
                    
 		cnt = 0;		
         copyColumns(a, op_vx, i, cnt);	
-		
+				
         if(a->mRecCount) { 			
 
-            if (ll != 0) {
-                order_inplace(a,op_v2,field_names,i);
+		    
+            if (ll != 0) {			
+                order_inplace(a,op_v2,field_names,i);	
                 a->GroupBy(op_v3);
             };
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount);		
-		
+			
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp);	
+					
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
                     setMap[(*it).first] = s;
@@ -1211,9 +1248,11 @@ void emit_select(char *s, char *f, int ll)
                     c->segCount = 1;
 					c_set = 1;
                 }
-                add(c,b,op_v3, mymap, aliases);
+				
+                add(c,b,op_v3, mymap, aliases, distinct_tmp, distinct_val, distinct_hash, a);
+				
             };
-		};	
+		};			
     };
 	
 	
@@ -1224,7 +1263,7 @@ void emit_select(char *s, char *f, int ll)
     a->deAllocOnDevice();
 
     if (ll != 0) {
-        count_avg(c);
+        count_avg(c, mymap, distinct_hash);
     };
 
     //c->deAllocOnDevice();
@@ -1543,6 +1582,7 @@ void clean_queues()
     sel_count = 0;
     join_cnt = 0;
     join_col_cnt = -1;
+	distinct_cnt = 0;
     eqq = 0;
 }
 
@@ -1559,6 +1599,13 @@ int main(int ac, char **av)
 
     //cudaSetDeviceFlags(cudaDeviceMapHost);
     //cudppCreate(&theCudpp);
+	
+	cuInit(0);
+
+	DevicePtr device;
+	CreateCuDevice(0, &device);	
+	CreateCuContext(device, 0, &context);
+
 
     if (ac == 1) {
         cout << "Usage : alenka -l process_count script.sql" << endl;

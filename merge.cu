@@ -13,10 +13,18 @@
  */
 
 #include <unordered_map>
+#include <thrust/unique.h>
+#include <thrust/functional.h>
+#include <boost/unordered_map.hpp>
 #include "cm.h"
 
 head_flag_predicate<bool> binary_pred_l;
 
+typedef thrust::device_vector<int_type>::iterator    IntIterator;
+typedef thrust::tuple<IntIterator,IntIterator> IteratorTuple;
+typedef thrust::zip_iterator<IteratorTuple> ZipIterator; 
+
+ 
 int myPow(long long int x, long long int p)
 {
   if (p == 0) return 1;
@@ -27,8 +35,11 @@ int myPow(long long int x, long long int p)
   else return x * tmp * tmp;
 }
 
-void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long long int, unsigned int>& mymap, map<string,string> aliases)
+void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long long int, unsigned int>& mymap, map<string,string> aliases,
+		 vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
+         vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
 {
+	
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
 
@@ -59,11 +70,9 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
         };
     }
 	
-	
-	std::unordered_map<long long int, unsigned int>::const_iterator got;	 	  
+	boost::unordered_map<long long int, unsigned int>::const_iterator got;	 	  
 	 
-     b->CopyToHost(0, b->mRecCount);
-	 
+     b->CopyToHost(0, b->mRecCount);	 
    
 	// store in a variable c only unique records
 	// we have do it on a host because the hash table for the expected set sizes(~5 bln records) won't fit into a GPU memory
@@ -73,15 +82,22 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 	long long int *b_hash = new long long int[b->mRecCount];
 	long long int res, loc;
 	unsigned int idx;
-	for(unsigned int i = 0; i < b->mRecCount; i++) {
-	     queue<string> op_v(op_v3);		 
+    queue<string> op_v(op_v3);		 
+	unsigned int cycle_sz = op_v.size();
+	vector<unsigned int> opv;
+	for(unsigned int z = 0; z < cycle_sz; z++) {
+	    opv.push_back(b->columnNames[aliases[op_v.front()]]);
+	    op_v.pop();
+	};
+	
+	for(unsigned int i = 0; i < b->mRecCount; i++) {	
 		 res = 0;
-	     for(unsigned int z = 0; z < op_v.size(); op_v.pop()) {	
-		     idx = b->columnNames[aliases[op_v.front()]];
-		     if(b->type[b->columnNames[aliases[op_v.front()]]] == 0) {  //int
-			     loc = MurmurHash64A(thrust::raw_pointer_cast(b->h_columns_int[b->type_index[idx]].data()) + i, int_size, hash_seed)/2;
+	     for(unsigned int z = 0; z < cycle_sz; z++) {	
+		     idx = opv[z];
+		     if(b->type[idx] == 0) {  //int
+			     loc = MurmurHash64A(thrust::raw_pointer_cast(b->h_columns_int[b->type_index[idx]].data()) + i, int_size, hash_seed)/2;				 
 			 }
-			 else if(b->type[b->columnNames[aliases[op_v.front()]]] == 2) {  //string
+			 else if(b->type[idx] == 2) {  //string
 			     loc = MurmurHash64A(b->h_columns_char[b->type_index[idx]] + i*b->char_size[b->type_index[idx]], b->char_size[b->type_index[idx]], hash_seed);
 			 }
 			 else {  //float
@@ -104,11 +120,11 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 	 unsigned int old_cnt = c->mRecCount;
 	 if(cnt)
 	     c->resize(cnt);
+		 
 	
+	// now lets add to c those records that are not already there and update those that are there	
 	
-	// now lets add to c those records that are not already there and update those that are there
-	for(unsigned int i = 0; i < b->mRecCount; i++) {
-	    queue<string> op_v(op_v3);
+	 for(unsigned int i = 0; i < b->mRecCount; i++) {
 		
 	    got = mymap.find(b_hash[i]);		
 	    if(got == mymap.end()) {	//not found, need to insert
@@ -116,7 +132,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 		    mymap[b_hash[i]] = old_cnt;			
 			for(unsigned int j=0; j < b->mColumnCount; j++) {	
 			    
-			    if(b->type[j] == 0) {  //int
+				if(b->type[j] == 0) {  //int
 					 c->h_columns_int[c->type_index[j]][old_cnt] = b->h_columns_int[b->type_index[j]][i];
 				}
 				else if(b->type[j] == 1) {  //float
@@ -133,7 +149,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 //		    cout << "update " << b_hash[i] << endl;
 		    for(unsigned int j=0; j < b->mColumnCount; j++) {	
 			    
-			    if (c->grp_type[j] == 2 || c->grp_type[j] == 1 || c->grp_type[j] == 0) {  // SUM || AVG || COUNT
+			    if (c->grp_type[j] == 2 || c->grp_type[j] == 1 || c->grp_type[j] == 0 ) {  // SUM || AVG || COUNT
 				    if (c->type[j] == 0) {
 					   c->h_columns_int[c->type_index[j]][got->second] +=  b->h_columns_int[b->type_index[j]][i];
 					}
@@ -160,10 +176,63 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 					    if (c->h_columns_float[c->type_index[j]][got->second] < b->h_columns_float[b->type_index[j]][i])
 						    c->h_columns_float[c->type_index[j]][got->second] = b->h_columns_float[b->type_index[j]][i];
 					};				
-                } 							
+                } 		
+                else if(c->grp_type[j] == 6) {  // DISTINCT				
+				
+				}
 			};
 		};		
 	};	
+	
+	bool grp_scanned = 0;
+	thrust::device_ptr<bool> d_di(a->grp);
+	thrust::device_ptr<unsigned int> d_dii = thrust::device_malloc<unsigned int>(a->mRecCount);				 
+	thrust::identity<bool> op;
+	thrust::transform(d_di, d_di+a->mRecCount, d_dii, op);
+	
+	thrust::device_ptr<int_type> d_hash = thrust::device_malloc<int_type>(b->mRecCount);				 
+	thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);		
+		
+	unsigned int dist_count = 0;	
+	
+    for(unsigned int j=0; j < c->mColumnCount; j++) {				    
+				
+	    if (c->grp_type[j] == 6) {			
+
+		    if(!grp_scanned) {			
+			
+				d_dii[a->mRecCount-1] = 0;
+				thrust::inclusive_scan(d_dii, d_dii + a->mRecCount, d_dii);					
+				thrust::copy(b_hash, b_hash + b->mRecCount, d_hash);
+				thrust::gather(d_dii, d_dii + a->mRecCount, d_hash, tmp);	// now hashes are in tmp 
+				grp_scanned = 1;
+			};
+			unsigned int offset = distinct_val[dist_count].size();
+						
+			distinct_val[dist_count].resize(distinct_val[dist_count].size() + a->mRecCount);
+			distinct_hash[dist_count].resize(distinct_hash[dist_count].size() + a->mRecCount);
+						
+			thrust::copy(distinct_tmp[dist_count].begin(), distinct_tmp[dist_count].begin() + a->mRecCount, distinct_val[dist_count].begin() + offset);
+			thrust::copy(tmp, tmp + a->mRecCount, distinct_hash[dist_count].begin() + offset);
+					
+			thrust::stable_sort_by_key(distinct_val[dist_count].begin(), distinct_val[dist_count].end(), distinct_hash[dist_count].begin());
+			thrust::stable_sort_by_key(distinct_hash[dist_count].begin(), distinct_hash[dist_count].end(), distinct_val[dist_count].begin());		
+					 
+			ZipIterator new_last = thrust::unique(thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].begin(), distinct_val[dist_count].begin())),
+                                                  thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].end(), distinct_val[dist_count].end())));	    
+
+			IteratorTuple t = new_last.get_iterator_tuple(); 
+			distinct_val[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
+			distinct_hash[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
+						
+			dist_count++;
+			
+		};		
+	};	
+	
+	thrust::device_free(d_hash);
+	thrust::device_free(tmp);	
+	thrust::device_free(d_dii);		
 	delete [] b_hash;
 }
 
@@ -171,7 +240,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, std::unordered_map<long lo
 
 
 
-void count_avg(CudaSet* c)
+void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& mymap, vector<thrust::device_vector<int_type> >& distinct_hash)
 {
     int countIndex;
 
@@ -182,6 +251,7 @@ void count_avg(CudaSet* c)
 	
     if (c->mRecCount != 0) {    
     	
+		unsigned int dis_count = 0;
         for(unsigned int k = 0; k < c->mColumnCount; k++)	{
             if(c->grp_type[k] == 1) {   // AVG
             
@@ -203,7 +273,27 @@ void count_avg(CudaSet* c)
 					    c->h_columns_float[c->type_index[k]][z] =  c->h_columns_float[c->type_index[k]][z] / (float_type)c->h_columns_int[c->type_index[countIndex]][z];										  
 					};				  
 				};	
-            };
+            }
+			else if(c->grp_type[k] == 6) {
+			    unsigned int res_count = 0;                
+				
+				int_type curr_val = distinct_hash[dis_count][0];
+				for(unsigned int i = 0; i < distinct_hash[dis_count].size(); i++) {
+				    if (distinct_hash[dis_count][i] == curr_val) {
+					    res_count++;
+						if(i == distinct_hash[dis_count].size()-1) {
+						    c->h_columns_int[c->type_index[k]][mymap[distinct_hash[dis_count][i]]] = res_count;
+						};
+					}
+					else {
+					    unsigned int idx = mymap[distinct_hash[dis_count][i-1]];
+					    c->h_columns_int[c->type_index[k]][idx] = res_count;
+						curr_val = distinct_hash[dis_count][i];
+                        res_count = 1;						
+					};
+				};
+				dis_count++;
+			};
         };
     };
 

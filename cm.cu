@@ -404,7 +404,7 @@ public:
             d_columns_float[type_index[colIndex]].resize(RecordCount);
         else {
 			void* d;
-            cudaMalloc((void **) &d, char_size[type_index[colIndex]]*RecordCount);
+            cudaMalloc(&d, char_size[type_index[colIndex]]*RecordCount);
 			d_columns_char[type_index[colIndex]] = (char*)d;
 		};	
     };

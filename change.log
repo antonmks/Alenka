@@ -1,3 +1,9 @@
+02/10/2013
+   Modified groupby op - now it is hash-based and scalable.
+   Switched to Sean Baxter's binary search implementation (it is significantly faster)
+   Added support for COUNT(DISTINCT field))
+
+
 01/28/2013
     Bug fixes.
 

@@ -56,6 +56,7 @@ ON { return ON; }
 STREAM { return STREAM; }
 BINARY { return BINARY; }
 DISTINCT { return DISTINCT; }
+LEFT { return LEFT; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }

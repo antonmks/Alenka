@@ -40,9 +40,11 @@ RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;
 STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;	
 
 
-To compile alenka you only need to have NVidia's CUDA installed. 
+To compile alenka you need to have NVidia's CUDA installed. You will also need to download and build Sean Baxter's binary search implementation from moderngpu.com
+(http://www.moderngpu.com/search/mgpusearch.html). New groupby op requires Boost's unordered map, so make sure that you got this too.
 To compile alenka executable run the following command : 
-nvcc.exe  -O3 -arch=sm_20 -lcuda bison.cu -o alenka
+nvcc.exe  -O3 -arch=sm_20 -L "mgpu-master\search\src\mgpusearch" -lcuda -lmgpusearch "mgpu-master\util\cucpp.cpp" bison.cu -o alenka
+- just modify locations of the Sean Buxter's mgpu library and files.
 
 Alenka have been tested on a 64bit Windows7 and Linux.
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 

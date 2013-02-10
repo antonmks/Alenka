@@ -20,6 +20,9 @@
 #include <thrust/fill.h>
 #include <thrust/scan.h>
 #include <thrust/device_ptr.h>
+#include "mgpu-master/util/cucpp.h"
+#include "mgpu-master/inc/mgpusearch.h"
+
 
 template <typename HeadFlagType>
 struct join_head_flag_predicate
@@ -88,49 +91,60 @@ struct join_functor
 
 void join(int_type* d_input,int_type* d_values,
           thrust::device_vector<unsigned int>& d_res1, thrust::device_vector<unsigned int>& d_res2,
-          unsigned int bRecCount, unsigned int aRecCount, bool isUnique)
+          unsigned int bRecCount, unsigned int aRecCount, bool isUnique, bool left_join,
+		  searchEngine_t engine, CuDeviceMem* btree)
 {
 
 
-    //float time;
+  //  float time;
     //cudaEvent_t start, stop;
-
-
-//cudaEventCreate(&start);
-//cudaEventCreate(&stop) ;
 
 
 
     thrust::device_ptr<unsigned int> d_output1 = thrust::device_malloc<unsigned int>(bRecCount);
-
     thrust::device_ptr<int_type> d_i(d_input);
     thrust::device_ptr<int_type> d_v(d_values);
 
-    if (!isUnique) {
+    //if (!isUnique) {
+	if (1) {
 
+	
         thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
-        thrust::lower_bound(d_i, d_i+aRecCount,
-                            d_v, d_v+bRecCount,
-                            d_output);
+		
+//cudaEventCreate(&start);
+//cudaEventCreate(&stop) ;
+//cudaEventRecord(start, 0) ;
+						
+		searchStatus_t status = searchKeys(engine, aRecCount, SEARCH_TYPE_INT64, 
+			(CUdeviceptr)d_input, SEARCH_ALGO_LOWER_BOUND,
+			(CUdeviceptr)d_values, bRecCount, btree->Handle(),
+			(CUdeviceptr)thrust::raw_pointer_cast(d_output));
+			
+			
+//	        cudaEventRecord(stop, 0) ;
+//        cudaEventSynchronize(stop) ;
+//        cudaEventElapsedTime(&time, start, stop);
+//        printf("Time BinS:  %3.1f ms \n", time);
+
+			
+		if(SEARCH_STATUS_SUCCESS != status) {
+			printf("FAIL!\n");
+			exit(0);
+		}	
+							
 
         thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(bRecCount);
 
-        thrust::upper_bound(d_i, d_i+aRecCount,
-                            d_v, d_v+bRecCount,
-                            d_output1);
-
-
+        status = searchKeys(engine, aRecCount, SEARCH_TYPE_INT64, 
+		                    (CUdeviceptr)d_input, SEARCH_ALGO_UPPER_BOUND,
+			                (CUdeviceptr)d_values, bRecCount, btree->Handle(),
+			                (CUdeviceptr)thrust::raw_pointer_cast(d_output1));							
 
         thrust::transform(d_output1, d_output1+bRecCount, d_output, d_output2, thrust::minus<unsigned int>());
-
         unsigned int sz =  thrust::reduce(d_output2, d_output2+bRecCount, 0, thrust::plus<unsigned int>());
-
         //    cout << "join end " << sz << endl;
-
         thrust::exclusive_scan(d_output2, d_output2+bRecCount, d_output2);  // addresses
-
         thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-
         d_res1.resize(sz);
         d_res2.resize(sz);
 
@@ -156,22 +170,28 @@ void join(int_type* d_input,int_type* d_values,
         };
         thrust::device_free(d_output2);
         thrust::device_free(d_output);
+		
+
     }
     else {  // DW style join with unique dimension keys
 	
-	//cudaEventRecord(start, 0) ;
-
         thrust::binary_search(d_i, d_i+aRecCount,
                               d_v, d_v+bRecCount,
                               d_output1);
 
-      //  cudaEventRecord(stop, 0) ;
-      //  cudaEventSynchronize(stop) ;
-      //  cudaEventElapsedTime(&time, start, stop);
-      //  cudaEventRecord(start, 0);
+      for(int i = 0; i < 10; i++)
+      cout << "TH " << d_output1[i] << endl;	  
 
-        //printf("Time BinS:  %3.1f ms \n", time);
-        	
+
+		     searchKeys(engine, aRecCount, SEARCH_TYPE_INT64, 
+			(CUdeviceptr)d_input, SEARCH_ALGO_BINARY_SEARCH,
+			(CUdeviceptr)d_values, bRecCount, btree->Handle(),
+			(CUdeviceptr)thrust::raw_pointer_cast(d_output1));
+							  
+           cout << "done " << endl;							  
+		   
+		         for(int i = 0; i < 10; i++)
+      cout << "SRC " << d_output1[i] << endl;	          	
 
         unsigned int sz =  thrust::reduce(d_output1, d_output1+bRecCount);
         d_res1.resize(sz);
@@ -189,7 +209,8 @@ void join(int_type* d_input,int_type* d_values,
         };
 
         //cout << "fast join end " << sz << endl;
-    };
+    };	
+    
     thrust::device_free(d_output1);
 }
 

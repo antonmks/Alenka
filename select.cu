@@ -14,6 +14,7 @@
  
 
 #include "cm.h"
+#include <unordered_map>
 #include <thrust/iterator/discard_iterator.h>
 
 template<typename T>
@@ -23,7 +24,8 @@ template<typename T>
 }; 
 
 
-void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a, CudaSet* b, int_type old_reccount)
+void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a,
+            CudaSet* b, int_type old_reccount, vector<thrust::device_vector<int_type> >& distinct_tmp)
 {
 
     stack<string> exe_type;
@@ -48,6 +50,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
     bool one_line = 0;
+	unsigned int dist_processed = 0;
     //std::clock_t start1 = std::clock();
 
 
@@ -60,9 +63,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     if (!(a->columnGroups).empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
 
-
-
-
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -73,54 +73,40 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
                 if (ss.compare("DISTINCT") == 0) {
-				    //cout << "count dist " << exe_value.top() << " " << exe_type.top() << endl;
-					grp_type = "COUNTD";
 				    s1_val = exe_value.top();
 				    exe_type.pop();
 				    exe_value.pop();
-					// sort the segments and run the segmented scan
-					thrust::device_ptr<int_type> res  = thrust::device_malloc<int_type>(res_size);
+					cout << "dist " << s1_val << endl;
+
 					unsigned int colIndex = (a->columnNames).find(s1_val)->second;
 
-                    if((a->type)[colIndex] == 0) {
-					    thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);
-						thrust::device_ptr<char> di_tmp = thrust::device_malloc<char>(a->mRecCount);
-						thrust::copy(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount, tmp);
-						thrust::copy(d_di, d_di + a->mRecCount, di_tmp);
-						di_tmp[a->mRecCount-1] = 0;
-						thrust::inclusive_scan(di_tmp, di_tmp + a->mRecCount, di_tmp);
+                    if((a->type)[colIndex] == 0) {					    
 						
-						thrust::stable_sort_by_key(tmp, tmp + a->mRecCount, di_tmp); 
-						thrust::stable_sort_by_key(di_tmp, di_tmp + a->mRecCount, tmp); 				
-                        
-						
-						thrust::reduce_by_key(d_di, d_di+(a->mRecCount), tmp,
-                                              thrust::make_discard_iterator(), res,
-                                              head_flag_predicate<bool>(), distinct<int_type>());
-                    					
-					
-					    thrust::device_free(tmp);
-					    thrust::device_free(di_tmp);
-
+						thrust::copy(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount,
+               						 distinct_tmp[dist_processed].begin());	
+						dist_processed++;			 
+						thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(res_size);				 
+						exe_vectors.push(thrust::raw_pointer_cast(res));
+						exe_type.push("VECTOR");	
                     }
                     else if((a->type)[colIndex] == 2){
-					
+					   //will add a DISTINCT on strings if anyone needs it
+					    cout << "DISTINCT on strings is not supported yet" << endl;
+						exit(0);
+					   
 					}
 					else {
 					    cout << "DISTINCT on float is not supported" << endl;
 						exit(0);
-					};	
-				 
-                    exe_vectors.push(thrust::raw_pointer_cast(res));
-					exe_type.push("VECTOR");				 
-				};
-				
+					};						
+				}				
 			
-                if (ss.compare("COUNT") == 0) {
-				
-                    grp_type = "COUNT";
+                else if (ss.compare("COUNT") == 0) {				
+                    
                     s1 = exe_type.top();
-					//if(s1.compare("VECTOR")) {  // non distinct
+					if(s1.compare("VECTOR") != 0) {  // non distinct
+					    
+						grp_type = "COUNT";					
                         exe_type.pop();
                         s1_val = exe_value.top();
                         exe_value.pop();
@@ -140,7 +126,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             exe_vectors.push(thrust::raw_pointer_cast(dest));
 						    exe_type.push("VECTOR");
                         }
-                    //}
+                    }
+					else
+					    grp_type = "COUNTD";
+					
 				}	
                 else if (ss.compare("SUM") == 0) {
 
@@ -701,10 +690,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             op_value.pop();
 
             grp_type1.push(grp_type);
-
-
-
-
+			
             if(!exe_nums.empty()) {  //number
                 col_type.push(0);
                 exe_nums1.push(exe_nums.top());
@@ -733,9 +719,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     
     b->grp_type = new unsigned int[colCount];
-	
+		
     for(unsigned int j=0; j<colCount; j++) {
-
+	
         if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[colCount-j-1] = 0;
         else if ((grp_type1.top()).compare("AVG") == 0 )
@@ -748,8 +734,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             b->grp_type[colCount-j-1] = 4;
         else if ((grp_type1.top()).compare("MAX") == 0 )
             b->grp_type[colCount-j-1] = 5;
-        else if ((grp_type1.top()).compare("COUNTD") == 0 )
+        else if ((grp_type1.top()).compare("COUNTD") == 0 ) {
             b->grp_type[colCount-j-1] = 6;			
+		};	
 
 
         if(col_type.top() == 0) {
