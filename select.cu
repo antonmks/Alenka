@@ -76,7 +76,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 				    s1_val = exe_value.top();
 				    exe_type.pop();
 				    exe_value.pop();
-					cout << "dist " << s1_val << endl;
 
 					unsigned int colIndex = (a->columnNames).find(s1_val)->second;
 
@@ -98,7 +97,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 					else {
 					    cout << "DISTINCT on float is not supported" << endl;
 						exit(0);
-					};						
+					};	
 				}				
 			
                 else if (ss.compare("COUNT") == 0) {				
@@ -716,11 +715,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-
     
     b->grp_type = new unsigned int[colCount];
 		
-    for(unsigned int j=0; j<colCount; j++) {
+    for(unsigned int j=0; j < colCount; j++) {
 	
         if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[colCount-j-1] = 0;
@@ -737,7 +735,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         else if ((grp_type1.top()).compare("COUNTD") == 0 ) {
             b->grp_type[colCount-j-1] = 6;			
 		};	
-
+		
 
         if(col_type.top() == 0) {
 
@@ -812,9 +810,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                 //modify what we push there in case of a grouping
                 if (!(a->columnGroups).empty()) {
-                    thrust::device_ptr<bool> d_grp(a->grp);
+                    thrust::device_ptr<bool> d_grp(a->grp);				
 					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);               
-			
 				}
                 else {
 					

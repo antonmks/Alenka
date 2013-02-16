@@ -69,12 +69,14 @@ void update_permutation_char(char* key, unsigned int* permutation, unsigned int 
 {
 	
 	str_gather((void*)permutation, RecCount, (void*)key, (void*)tmp, len);	
+	cout << "gathered " << len << " " << RecCount << endl;
 
     // stable_sort the permuted keys and update the permutation
     if (SortType.compare("DESC") == 0 )
 		str_sort(tmp, RecCount, permutation, 1, len);
     else
 		str_sort(tmp, RecCount, permutation, 0, len);
+	cout << "srt " << endl;	
 }
 
 void update_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
