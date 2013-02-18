@@ -604,24 +604,18 @@ void emit_join(char *s, char *j1)
 		    right->add_hashed_strings(colInd2, i, right->d_columns_int.size()-1);
 		};			
 	};	
-	
 
     // need to allocate all right columns	
     queue<string> cc;
 	unsigned int rcount;
 	
-	unsigned int cnt_r = load_queue(op_sel, right, str_join, f2, rcount);	
+	unsigned int cnt_r = load_queue(op_sel, right, str_join, f2, rcount);		
 
     if(str_join) {	
         colInd2 = right->mColumnCount+1;
 	    right->type_index[colInd2] = right->d_columns_int.size()-1;		
 	};		
 	
-	unsigned int tt;
-    if(left->maxRecs > rcount)	
-	    tt = left->maxRecs;
-	else
-        tt = rcount;				
 	
 	//here we need to make sure that right column is ordered. If not then we order it and keep the permutation		
 	bool sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);	
@@ -639,32 +633,36 @@ void emit_join(char *s, char *j1)
 	    else	
             mm = 1;
 
-	    thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(tt*mm);			
-	
+	    thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(cnt_r*mm);				
 	    thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
 		
 		//for(unsigned int i = 0; i < right->mColumnCount; i++) {
 		unsigned int i;
 		while(!ss.empty()) {	
-		    i = right->columnNames[ss.front()];
-		    if(i != colInd2) {
-			    if(right->type[i] == 0) {
-			        thrust::gather(v.begin(), v.end(), right->d_columns_int[right->type_index[i]].begin(), d_tmp);
-				    thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_int[right->type_index[i]].begin());	                    
-				}
-			    else if(right->type[i] == 1) {			
-			        thrust::gather(v.begin(), v.end(), right->d_columns_float[right->type_index[i]].begin(), d_tmp);
-				    thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[right->type_index[i]].begin());
-				}        
-                else {
-                    str_gather(thrust::raw_pointer_cast(v.data()), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);					
-					cudaMemcpy( (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[right->type_index[i]], cudaMemcpyDeviceToDevice);		            					
-                };				
+		    if (right->columnNames.find(ss.front()) != right->columnNames.end()) {
+				i = right->columnNames[ss.front()];
+
+				if(i != colInd2) {
+					if(right->type[i] == 0) {
+						thrust::gather(v.begin(), v.end(), right->d_columns_int[right->type_index[i]].begin(), d_tmp);
+						thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_int[right->type_index[i]].begin());	                    
+					}
+					else if(right->type[i] == 1) {			
+						thrust::gather(v.begin(), v.end(), right->d_columns_float[right->type_index[i]].begin(), d_tmp);
+						thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[right->type_index[i]].begin());
+					}        
+					else {						
+						str_gather(thrust::raw_pointer_cast(v.data()), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);					
+						cudaMemcpy( (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[right->type_index[i]], cudaMemcpyDeviceToDevice);		            					
+
+					};				
+				};	
 			};	
 			ss.pop();
 		};
 		thrust::device_free(d_tmp);	
 	};
+	
 	
 	searchEngine_t engine = 0;
 	searchStatus_t status = searchCreate("C:/GnuWin32/bin/mgpu-master/search/src/cubin/search.cubin", &engine);		
@@ -1297,7 +1295,7 @@ void emit_select(char *s, char *f, int ll)
 	a->mRecCount = a->oldRecCount;
     a->deAllocOnDevice();
 
-    if (ll != 0) {	   
+    if (ll != 0) {	   	    
         count_avg(c, mymap, distinct_hash);
     };
 

@@ -239,7 +239,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 	thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);		
 		
 	unsigned int dist_count = 0;	
-	
+		
     for(unsigned int j=0; j < c->mColumnCount; j++) {				    
 				
 	    if (c->grp_type[j] == 6) {			
@@ -274,7 +274,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 			
 		};		
 	};	
-	
+		
 	thrust::device_free(d_hash);
 	thrust::device_free(tmp);	
 	thrust::device_free(d_dii);		
@@ -323,18 +323,21 @@ void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& my
 			else if(c->grp_type[k] == 6) {
 			    unsigned int res_count = 0;                
 				
-				int_type curr_val = distinct_hash[dis_count][0];
-				for(unsigned int i = 0; i < distinct_hash[dis_count].size(); i++) {
-				    if (distinct_hash[dis_count][i] == curr_val) {
+				thrust::host_vector<int_type> h_hash = distinct_hash[dis_count];
+				int_type curr_val = h_hash[0];				
+				unsigned int cycle_sz = h_hash.size();
+				
+				for(unsigned int i = 0; i < cycle_sz; i++) {
+				    if (h_hash[i] == curr_val) {
 					    res_count++;
-						if(i == distinct_hash[dis_count].size()-1) {
-						    c->h_columns_int[c->type_index[k]][mymap[distinct_hash[dis_count][i]]] = res_count;
+						if(i == cycle_sz-1) {
+						    c->h_columns_int[c->type_index[k]][mymap[h_hash[i]]] = res_count;
 						};
 					}
 					else {
-					    unsigned int idx = mymap[distinct_hash[dis_count][i-1]];
+					    unsigned int idx = mymap[h_hash[i-1]];
 					    c->h_columns_int[c->type_index[k]][idx] = res_count;
-						curr_val = distinct_hash[dis_count][i];
+						curr_val = h_hash[i];
                         res_count = 1;						
 					};
 				};

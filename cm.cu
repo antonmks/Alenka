@@ -49,6 +49,7 @@ unsigned int total_segments = 0;
 unsigned int total_max;
 unsigned int process_count;
 unsigned long long int hash_seed;
+unsigned int str_offset;
 long long int totalRecs = 0;
 bool fact_file_loaded = 0;
 char map_check;
@@ -451,7 +452,6 @@ public:
 		
 	    for(unsigned int i = 0; i < sz ; i++) {
             hashes[i] = MurmurHash64A(&d_array[i*len], len, hash_seed); // divide by 2 so it will fit into a signed long long
-//			cout << "hash " << hashes[i] << " " <<  endl;
 		};	
 		
         void* d;
@@ -492,8 +492,6 @@ public:
         dd_v[1] = fit_count;
         dd_v[0] = bits_encoded;
 		
-//		cout << "TTT " << fit_count << " " << bits_encoded << " " << mval[0] << endl;
-
         thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
         decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v);
         thrust::for_each(begin, begin + real_count, ff);		 
@@ -794,7 +792,7 @@ public:
 			fread((unsigned int*)(h_columns_float[type_index[colIndex]].data()) + 1, (cnt+8)*8 - 4, 1, f);
         }
         else { 
-			decompress_char(f, colIndex);
+			decompress_char(f, colIndex, segNum);
         };		
 	
         fclose(f);
@@ -802,9 +800,8 @@ public:
     }
 	
 	
-	void decompress_char(FILE* f, unsigned int colIndex)
+	void decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum)
 	{
-	
 	    unsigned int bits_encoded, fit_count, sz, vals_count, real_count;		
 		const unsigned int len = char_size[type_index[colIndex]];
 		
@@ -812,10 +809,6 @@ public:
 	    char* d_array = new char[sz*len];
 	    fread((void*)d_array, sz*len, 1, f);
 
-		//char A[100];
-        //for(int z = 0; z < sz ; z ++)
-        //cout << "DICT " << strcpy(A,&d_array[z*len]) << endl;;		
-		
         void* d;
         cudaMalloc((void **) &d, sz*len);		
 	    cudaMemcpy( d, (void *) d_array, sz*len, cudaMemcpyHostToDevice);		            
@@ -854,23 +847,23 @@ public:
         //for(int z = 0 ; z < 3; z++)
         //cout << "DD " << dd_r[z] << endl; 		
 		
-        void* d_char;
-        cudaMalloc((void **) &d_char, real_count*len);		
-		cudaMemset(d_char, 0, real_count*len);							
-		str_gather(d_int, real_count, d, d_char, len);
+        //void* d_char;
+        //cudaMalloc((void **) &d_char, real_count*len);		
+		//cudaMemset(d_char, 0, real_count*len);							
+		//str_gather(d_int, real_count, d, d_char, len);
+		str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset*char_size[type_index[colIndex]], len);
+		str_offset = str_offset + real_count;
 		
-		if(d_columns_char[type_index[colIndex]])
-		    cudaFree(d_columns_char[type_index[colIndex]]);
-        d_columns_char[type_index[colIndex]] = (char*)d_char;	
+		//if(d_columns_char[type_index[colIndex]])
+		//    cudaFree(d_columns_char[type_index[colIndex]]);
+        //d_columns_char[type_index[colIndex]] = (char*)d_char;	
 		
         mRecCount = real_count;		
 				
 	    cudaFree(d);	
 		cudaFree(d_val);	
 	    cudaFree(d_v);	
-		cudaFree(d_int);	
-	    //cout << "decompress finished " << endl;
-	
+		cudaFree(d_int);		
 	}	
 	
 	
@@ -963,6 +956,7 @@ public:
             if(s_v == NULL);
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 
+			str_offset = 0;
             for(unsigned int i = 0; i < segCount; i++) {
 
                 if (partial_load)
@@ -1290,9 +1284,7 @@ public:
 				
 				
 				sum_printed = sum_printed + mRecCount;
-	//			cout << "sum printed " << sum_printed << " " << curr_count << endl;
-	            string ss;
-				
+	            string ss;				
 			
                 for(unsigned int i=0; i < curr_count; i++) {
                     for(unsigned int j=0; j < mColumnCount; j++) {
@@ -2463,7 +2455,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
     while(!c1.empty()) {	
         if(right->columnNames.find(c1.front()) !=  right->columnNames.end()) {
 		    if(f2 != c1.front() || str_join) {
-                cc.push(c1.front());
+                cc.push(c1.front());				
 			};	
 		};	
 		c1.pop();		
@@ -2489,7 +2481,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
 	ct = cc;   
 	if(right->prm.empty()) {
        //copy all records	    
-	   while(!ct.empty()) {		       
+	   while(!ct.empty()) {		                
 	       right->CopyColumnToGpu(right->columnNames[ct.front()]);	
 		   ct.pop();		
 	   };	   
