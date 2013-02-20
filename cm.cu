@@ -49,7 +49,7 @@ unsigned int total_segments = 0;
 unsigned int total_max;
 unsigned int process_count;
 unsigned long long int hash_seed;
-unsigned int str_offset;
+map <unsigned int, unsigned int> str_offset;
 long long int totalRecs = 0;
 bool fact_file_loaded = 0;
 char map_check;
@@ -60,6 +60,7 @@ queue<string> op_type;
 queue<string> op_value;
 queue<int_type> op_nums;
 queue<float_type> op_nums_f;
+queue<string> col_aliases;
 
 typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
 typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
@@ -424,6 +425,19 @@ public:
 		};	
     };
 	
+    void reset_offsets(queue<string> ct) {
+
+		while(!ct.empty()) {	
+		    if (columnNames.find(ct.front()) != columnNames.end()) {
+				if(type[columnNames[ct.front()]] == 2) {	 
+					str_offset[columnNames[ct.front()]] = 0;		
+				};			
+			};	
+			ct.pop();		
+		};		
+	}	
+	
+	
  
  
 	void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt)
@@ -655,18 +669,22 @@ public:
     {
         for(unsigned int i=0; i <mColumnCount; i++)
             deAllocColumnOnDevice(i);
+	
         if(!columnGroups.empty() && mRecCount !=0) {
             cudaFree(grp);
             grp = NULL;
         };
+		
 		if(!prm.empty()) { // free the sources
 		    string some_field; 
 			map<string,int>::iterator it=columnNames.begin();
             some_field = (*it).first;		    
-		    CudaSet* t = varNames[setMap[some_field]]; 			
-			t->deAllocOnDevice();		
-		};
-		
+				    
+			if(setMap[some_field].compare(name)) {
+			    CudaSet* t = varNames[setMap[some_field]]; 
+			    t->deAllocOnDevice();		
+			};	
+		};		
     };
 
     void resizeDeviceColumn(unsigned int RecCount, unsigned int colIndex)
@@ -851,8 +869,14 @@ public:
         //cudaMalloc((void **) &d_char, real_count*len);		
 		//cudaMemset(d_char, 0, real_count*len);							
 		//str_gather(d_int, real_count, d, d_char, len);
-		str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset*char_size[type_index[colIndex]], len);
-		str_offset = str_offset + real_count;
+		str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
+		
+		if(!prm.empty()) {	
+		    str_offset[colIndex] = str_offset[colIndex] + prm_count[segNum];
+		}
+        else {
+            str_offset[colIndex] = str_offset[colIndex] + real_count;
+        };		
 		
 		//if(d_columns_char[type_index[colIndex]])
 		//    cudaFree(d_columns_char[type_index[colIndex]]);
@@ -956,7 +980,7 @@ public:
             if(s_v == NULL);
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 
-			str_offset = 0;
+			str_offset[colIndex] = 0;
             for(unsigned int i = 0; i < segCount; i++) {
 
                 if (partial_load)
@@ -2181,71 +2205,74 @@ protected: // methods
         unsigned int i = 0;
 		segCount = 1;
 		not_compressed = 1;
+		
+		col_aliases = op_sel_as;
+		queue<string> names(op_sel);
 
-        while(!op_sel_as.empty()) {
-            columnNames[op_sel_as.front()] = i;
-            op_sel_as.pop();
+        while(!names.empty()) {
+            columnNames[names.front()] = i;
+            names.pop();
             i++;
         };
 
 
-            unsigned int index;
-            for(unsigned int i=0; i < mColumnCount; i++) {
+        unsigned int index;
+        for(unsigned int i=0; i < mColumnCount; i++) {
 
-                if((it = a->columnNames.find(op_sel.front())) !=  a->columnNames.end()) {
-                    index = it->second;
-                    cols[i] = i;
-                    decimal[i] = a->decimal[i];					
+            if((it = a->columnNames.find(op_sel.front())) !=  a->columnNames.end()) {
+                index = it->second;
+                cols[i] = i;
+                decimal[i] = a->decimal[i];					
 
-                    if ((a->type)[index] == 0)  {
-                        d_columns_int.push_back(thrust::device_vector<int_type>());
-                        h_columns_int.push_back(thrust::host_vector<int_type>());
-                        type[i] = 0;
-                        type_index[i] = h_columns_int.size()-1;
-                    }
-                    else if ((a->type)[index] == 1) {
-                        d_columns_float.push_back(thrust::device_vector<float_type>());
-                        h_columns_float.push_back(thrust::host_vector<float_type>());
-                        type[i] = 1;
-                        type_index[i] = h_columns_float.size()-1;
-                    }
-                    else {
-                        h_columns_char.push_back(NULL);
-						d_columns_char.push_back(NULL);
-                        type[i] = 2;
-                        type_index[i] = h_columns_char.size()-1;
-						char_size.push_back(a->char_size[a->type_index[index]]);
-                    };
+                if ((a->type)[index] == 0)  {
+                    d_columns_int.push_back(thrust::device_vector<int_type>());
+                    h_columns_int.push_back(thrust::host_vector<int_type>());
+                    type[i] = 0;
+                    type_index[i] = h_columns_int.size()-1;
+                }
+                else if ((a->type)[index] == 1) {
+                    d_columns_float.push_back(thrust::device_vector<float_type>());
+                    h_columns_float.push_back(thrust::host_vector<float_type>());
+                    type[i] = 1;
+                    type_index[i] = h_columns_float.size()-1;
                 }
                 else {
-                    it = b->columnNames.find(op_sel.front());
-                    index = it->second;
+                    h_columns_char.push_back(NULL);
+        			d_columns_char.push_back(NULL);
+                    type[i] = 2;
+                    type_index[i] = h_columns_char.size()-1;
+		    		char_size.push_back(a->char_size[a->type_index[index]]);
+                };
+            }
+            else {
+                it = b->columnNames.find(op_sel.front());
+                index = it->second;
 					
-                    cols[i] = i;
-                    decimal[i] = b->decimal[index];
+                cols[i] = i;
+                decimal[i] = b->decimal[index];
 
-                    if ((b->type)[index] == 0) {
-                        d_columns_int.push_back(thrust::device_vector<int_type>());
-                        h_columns_int.push_back(thrust::host_vector<int_type>());
-                        type[i] = 0;
-                        type_index[i] = h_columns_int.size()-1;
-                    }
-                    else if ((b->type)[index] == 1) {
-                        d_columns_float.push_back(thrust::device_vector<float_type>());
-                        h_columns_float.push_back(thrust::host_vector<float_type>());
-                        type[i] = 1;
-                        type_index[i] = h_columns_float.size()-1;
-                    }
-                    else {
-                        h_columns_char.push_back(NULL);
-						d_columns_char.push_back(NULL);
-                        type[i] = 2;
-                        type_index[i] = h_columns_char.size()-1;
-						char_size.push_back(b->char_size[b->type_index[index]]);
-                    };
+                if ((b->type)[index] == 0) {
+                    d_columns_int.push_back(thrust::device_vector<int_type>());
+                    h_columns_int.push_back(thrust::host_vector<int_type>());
+                    type[i] = 0;
+                    type_index[i] = h_columns_int.size()-1;
                 }
-                op_sel.pop();
-            };
+                else if ((b->type)[index] == 1) {
+                    d_columns_float.push_back(thrust::device_vector<float_type>());
+                    h_columns_float.push_back(thrust::host_vector<float_type>());
+                    type[i] = 1;
+                    type_index[i] = h_columns_float.size()-1;
+                }
+                else {
+                    h_columns_char.push_back(NULL);
+			    	d_columns_char.push_back(NULL);
+                    type[i] = 2;
+                    type_index[i] = h_columns_char.size()-1;
+				    char_size.push_back(b->char_size[b->type_index[index]]);
+                };
+            }
+            op_sel.pop();
+        };
     }
 };
 
@@ -2340,7 +2367,8 @@ void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, u
 	
 
 
-	unsigned int g_size = a->prm_count[segment];
+	unsigned int g_size = a->prm_count[segment];	
+
     if(a->prm_index[segment] == 'R') {        
 		
         if(a->prm_d.size() == 0) // find the largest prm segment
@@ -2425,9 +2453,11 @@ void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, uns
 	    thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size,
                        t->d_columns_float[t->type_index[tindex]].begin(), a->d_columns_float[a->type_index[idx]].begin() + offset);					   
 	}				   
-	else {
+	else {	
+	
         str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size, 
-		                (void*)t->d_columns_char[t->type_index[tindex]], (void*)a->d_columns_char[a->type_index[idx]], a->char_size[a->type_index[idx]] );
+		                (void*)t->d_columns_char[t->type_index[tindex]], (void*)a->d_columns_char[a->type_index[idx]], a->char_size[a->type_index[idx]] );						
+						
     }	
 };
 
@@ -2473,8 +2503,10 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
   	    rcount = right->mRecCount;	
     
 	queue<string> ct(cc);
+	right->reset_offsets(ct);
+	
 	while(!ct.empty()) {	
-	    right->allocColumnOnDevice(right->columnNames[ct.front()], rcount);
+        right->allocColumnOnDevice(right->columnNames[ct.front()], rcount);		
 		ct.pop();		
 	};		
 	   
@@ -2488,7 +2520,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
 	   cnt_r = right->mRecCount;
     }	
 	else { 
-	    //copy and gather all records					
+	    //copy and gather all records	           
          for(unsigned int i = 0; i < right->segCount; i++) {		 
              copyColumns(right, cc, i, cnt_r);			  			 	 
 			 cnt_r = cnt_r + right->prm_count[i];
@@ -2508,5 +2540,7 @@ unsigned int max_char(CudaSet* a)
 			
     return max_char;	
 };		
+
+
 
 
