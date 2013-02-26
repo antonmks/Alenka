@@ -55,15 +55,11 @@ char *trimwhitespace(char *str)
   return str;
 }
 
-void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long long int, unsigned int>& mymap, map<string,string> aliases,
-		 vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
-         vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
+void create_c(CudaSet* c, CudaSet* b)
 {
-	
-    if (c->columnNames.empty()) {
-        // create d_columns and h_columns
-
         map<string,int>::iterator it;
+        c->not_compressed = 1;
+        c->segCount = 1;
 
         for (  it=b->columnNames.begin() ; it != b->columnNames.end(); ++it ) {
             c->columnNames[(*it).first] = (*it).second;
@@ -89,13 +85,25 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 			c->type_index[i] = b->type_index[i];
 			c->char_size = b->char_size;
         };
+}
+
+void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long long int, unsigned int>& mymap, map<string,string> aliases,
+		 vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
+         vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
+{
+	
+    if (c->columnNames.empty()) {
+        // create d_columns and h_columns
+        create_c(c,b);
     }
+	
+
 	
 	boost::unordered_map<long long int, unsigned int>::const_iterator got;	 	  
 	 
     b->CopyToHost(0, b->mRecCount);	  
-   
-	// store in a variable c only unique records
+	
+    // store in a variable c only unique records
 	// we have do it on a host because the hash table for the expected set sizes(~5 bln records) won't fit into a GPU memory
 	// gonna be kinda on the slow side 
 	
@@ -153,7 +161,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 	     b_hash[i] = res;
 	};
 	
-	
+		
 	 //resize c
 	 unsigned int cnt = 0;
 	 for(unsigned int i = 0; i < b->mRecCount; i++) {
@@ -228,56 +236,64 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 		};		
 	};	
 	
-
-	bool grp_scanned = 0;
-	thrust::device_ptr<bool> d_di(a->grp);
-	thrust::device_ptr<unsigned int> d_dii = thrust::device_malloc<unsigned int>(a->mRecCount);				 
-	thrust::identity<bool> op;
-	thrust::transform(d_di, d_di+a->mRecCount, d_dii, op);
+	bool dis_exists = 0;
+    for(unsigned int j=0; j < c->mColumnCount; j++) {				    			
+	    if (c->grp_type[j] == 6) 
+			dis_exists = 1;
+	};	
 	
-	thrust::device_ptr<int_type> d_hash = thrust::device_malloc<int_type>(b->mRecCount);				 
-	thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);		
-		
-	unsigned int dist_count = 0;	
-		
-    for(unsigned int j=0; j < c->mColumnCount; j++) {				    
-				
-	    if (c->grp_type[j] == 6) {			
 
-		    if(!grp_scanned) {			
-			
-				d_dii[a->mRecCount-1] = 0;
-				thrust::inclusive_scan(d_dii, d_dii + a->mRecCount, d_dii);					
-				thrust::copy(b_hash, b_hash + b->mRecCount, d_hash);
-				thrust::gather(d_dii, d_dii + a->mRecCount, d_hash, tmp);	// now hashes are in tmp 
-				grp_scanned = 1;
-			};
-			unsigned int offset = distinct_val[dist_count].size();
-						
-			distinct_val[dist_count].resize(distinct_val[dist_count].size() + a->mRecCount);
-			distinct_hash[dist_count].resize(distinct_hash[dist_count].size() + a->mRecCount);
-						
-			thrust::copy(distinct_tmp[dist_count].begin(), distinct_tmp[dist_count].begin() + a->mRecCount, distinct_val[dist_count].begin() + offset);
-			thrust::copy(tmp, tmp + a->mRecCount, distinct_hash[dist_count].begin() + offset);
+	if (dis_exists) {
+		bool grp_scanned = 0;
+		thrust::device_ptr<bool> d_di(a->grp);
+		thrust::device_ptr<unsigned int> d_dii = thrust::device_malloc<unsigned int>(a->mRecCount);				 
+		thrust::identity<bool> op;
+		thrust::transform(d_di, d_di+a->mRecCount, d_dii, op);
+	
+		thrust::device_ptr<int_type> d_hash = thrust::device_malloc<int_type>(b->mRecCount);				 
+		thrust::device_ptr<int_type> tmp = thrust::device_malloc<int_type>(a->mRecCount);		
+		
+		unsigned int dist_count = 0;	
+		
+		for(unsigned int j=0; j < c->mColumnCount; j++) {				    
 					
-			thrust::stable_sort_by_key(distinct_val[dist_count].begin(), distinct_val[dist_count].end(), distinct_hash[dist_count].begin());
-			thrust::stable_sort_by_key(distinct_hash[dist_count].begin(), distinct_hash[dist_count].end(), distinct_val[dist_count].begin());		
-					 
-			ZipIterator new_last = thrust::unique(thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].begin(), distinct_val[dist_count].begin())),
-                                                  thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].end(), distinct_val[dist_count].end())));	    
+			if (c->grp_type[j] == 6) {			
 
-			IteratorTuple t = new_last.get_iterator_tuple(); 
-			distinct_val[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
-			distinct_hash[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
-						
-			dist_count++;
+				if(!grp_scanned) {			
 			
-		};		
+					d_dii[a->mRecCount-1] = 0;
+					thrust::inclusive_scan(d_dii, d_dii + a->mRecCount, d_dii);					
+					thrust::copy(b_hash, b_hash + b->mRecCount, d_hash);
+					thrust::gather(d_dii, d_dii + a->mRecCount, d_hash, tmp);	// now hashes are in tmp 
+					grp_scanned = 1;
+				};
+				unsigned int offset = distinct_val[dist_count].size();
+						
+				distinct_val[dist_count].resize(distinct_val[dist_count].size() + a->mRecCount);
+				distinct_hash[dist_count].resize(distinct_hash[dist_count].size() + a->mRecCount);
+						
+				thrust::copy(distinct_tmp[dist_count].begin(), distinct_tmp[dist_count].begin() + a->mRecCount, distinct_val[dist_count].begin() + offset);
+				thrust::copy(tmp, tmp + a->mRecCount, distinct_hash[dist_count].begin() + offset);
+					
+				thrust::stable_sort_by_key(distinct_val[dist_count].begin(), distinct_val[dist_count].end(), distinct_hash[dist_count].begin());
+				thrust::stable_sort_by_key(distinct_hash[dist_count].begin(), distinct_hash[dist_count].end(), distinct_val[dist_count].begin());		
+					 
+				ZipIterator new_last = thrust::unique(thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].begin(), distinct_val[dist_count].begin())),
+													thrust::make_zip_iterator(thrust::make_tuple(distinct_hash[dist_count].end(), distinct_val[dist_count].end())));	    
+
+				IteratorTuple t = new_last.get_iterator_tuple(); 
+				distinct_val[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
+				distinct_hash[dist_count].resize(thrust::get<0>(t) - distinct_hash[dist_count].begin());
+						
+				dist_count++;
+			
+			};		
+		};	
+		thrust::device_free(d_hash);
+		thrust::device_free(tmp);	
+		thrust::device_free(d_dii);				
 	};	
 		
-	thrust::device_free(d_hash);
-	thrust::device_free(tmp);	
-	thrust::device_free(d_dii);		
 	delete [] b_hash;	
 
 }

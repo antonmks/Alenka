@@ -110,8 +110,6 @@
     {
 		char res = 'R';
 	
-		//cout << "comparing " << column1[0] << " " << column1[1] << " " << d << " " << op_type << endl;
-
         if (op_type == 2) {   // >
    		    if (column1[1] <= d)
 		       res = 'N';
@@ -597,6 +595,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
 	
+	if(a->not_compressed)
+	    return 'R';
+	
 	//first we need to set all host arrays [0] and [1] of t to min and max values of appropriate files
     set<string> uniques;
 	queue<string> fields(op_value);
@@ -629,13 +630,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_int[a->type_index[colIndex]].resize(2);	
                     fread((char *)&a->h_columns_int[a->type_index[colIndex]][0], 8, 1, f);
 				    fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);					
-					cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
+					//cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
 				}	
                 else  {					
 				    a->h_columns_float[a->type_index[colIndex]].resize(2);	
                     fread((char *)&a->h_columns_float[a->type_index[colIndex]][0], 8, 1, f);
 				    fread((char *)&a->h_columns_float[a->type_index[colIndex]][1], 8, 1, f);										
-					cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+					//cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
 				};				                
 				fclose(f);						
 			};
@@ -786,7 +787,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     };
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
-                    s1_val = exe_value.top();
+				
+				    return 'R'; 
+                    /*s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
@@ -817,6 +820,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             exe_vectors_f.push(host_op(t,t1,ss,0));
                         };
                     }
+					*/
                 }
                 else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0 ) && s2.compare("NAME") == 0) {
 
@@ -1359,6 +1363,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
 
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
+				    return 'R';
+					/*
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
@@ -1388,6 +1394,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             bool_vectors.push(host_compare(t,t1,cmp_type));
                         };
                     }
+					*/
                 }
             }
 

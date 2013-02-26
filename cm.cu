@@ -19,6 +19,7 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/adjacent_difference.h>
+#include <thrust/partition.h>
 #include <queue>
 #include <cctype>
 #include <functional>
@@ -526,6 +527,7 @@ public:
 				old_count = d_columns_int[i_cnt].size();
 				d_columns_int[i_cnt].resize(old_count + prm_count[segment]);				
                 thrust::gather(prm_d.begin(), prm_d.begin() + prm_count[segment], d_tmp, d_columns_int[i_cnt].begin() + old_count);        
+				thrust::device_free(d_tmp);
 	            
 			}	
 			else if(prm_index[segment] == 'A') {        
@@ -2304,10 +2306,10 @@ void allocColumns(CudaSet* a, queue<string> fields)
 {
     while(!fields.empty()) {
         if(setMap.count(fields.front()) > 0) {
-		
 		    CudaSet *t;
-		    if(!a->prm.empty())
-	            t = varNames[setMap[fields.front()]];
+		    if(!a->prm.empty()) {
+	            t = varNames[setMap[fields.front()]];			
+			}	
 			else
                 t = a;
 				
@@ -2315,20 +2317,28 @@ void allocColumns(CudaSet* a, queue<string> fields)
             bool onDevice = 0;
 
             if(t->type[idx] == 0) {
-                if(t->d_columns_int[t->type_index[idx]].size() > 0)
+                if(t->d_columns_int[t->type_index[idx]].size() > 0) {
                     onDevice = 1;
+				}	
             }
             else if(t->type[idx] == 1) {
-                if(t->d_columns_float[t->type_index[idx]].size() > 0)
+                if(t->d_columns_float[t->type_index[idx]].size() > 0) {
                     onDevice = 1;
+				};	
             }
             else {
-                if((t->d_columns_char[t->type_index[idx]]) != NULL)
+                if((t->d_columns_char[t->type_index[idx]]) != NULL) {
                     onDevice = 1;
+				};	
             };
 
             if (!onDevice) {
-	            t->allocColumnOnDevice(idx, t->maxRecs);
+			    if(a->prm.empty()) {
+					t->allocColumnOnDevice(idx, t->maxRecs);
+				}
+                else {
+					t->allocColumnOnDevice(idx, largest_prm(t));
+                };				
 			};	
 			
         };

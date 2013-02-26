@@ -5,7 +5,7 @@ The difference between floats and decimals is that the latter are compressed whe
 Requirements : you need to have a model 200 or better of NVidia GPU.
 Limitations ( hopefully temporary) : 
 1. all column names in a script must be unique.
-2. Group By statement must include COUNT(FIELD) expression.
+2. if you use AVG function the Group By statement must include COUNT(FIELD) expression .
 3. In LOAD statement the columns should be listed in the order they have in a source file.
 
 Loading data for processing : 
@@ -43,8 +43,9 @@ STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;
 
 To compile alenka you need to have NVidia's CUDA installed. You will also need to download and build Sean Baxter's binary search implementation from moderngpu.com
 (http://www.moderngpu.com/search/mgpusearch.html). New groupby op requires Boost's unordered map, so make sure that you got this too.
+You also need to download and use the latest development version of Thrust.
 To compile alenka executable run the following command : 
-nvcc.exe  -O3 -arch=sm_20 -L "mgpu-master\search\src\mgpusearch" -lcuda -lmgpusearch "mgpu-master\util\cucpp.cpp" bison.cu -o alenka
+nvcc.exe -Xcompiler /bigobj -O3 -arch=sm_20 -L "mgpu-master\search\src\mgpusearch" -lcuda -lmgpusearch "mgpu-master\util\cucpp.cpp" bison.cu -o alenka
 - just modify locations of the Sean Buxter's mgpu library and files.
 
 Alenka have been tested on a 64bit Windows7 and Linux.

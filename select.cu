@@ -751,7 +751,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 thrust::device_free(count_diff);
             }
             else
-                b->addHostColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+                //b->addHostColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+				b->addDeviceColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount);
             exe_nums1.pop();
         };
         if(col_type.top() == 1) {
@@ -772,7 +773,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     thrust::device_free(count_diff);
                 }
                 else
-                    b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+                    //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+					b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
 
             }
             else if(a->type[colIndex] == 1) {
@@ -788,33 +790,36 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     thrust::device_free(count_diff);
                 }
                 else
-                    b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+                    //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+ 					b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
             }
             else if(a->type[colIndex] == 2) { //varchar
 
-                if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {
-                  
+				if (a->columnGroups.empty()) 
+				    res_size = a->mRecCount;
+				
+				if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {                  
 					void *d;
-				    cudaMalloc((void **) &d, res_size*a->char_size[a->type_index[colIndex]]); 
+					cudaMalloc((void **) &d, res_size*a->char_size[a->type_index[colIndex]]); 
 					b->d_columns_char.push_back((char*)d);	
-                    b->h_columns_char.push_back(NULL);					
+					b->h_columns_char.push_back(NULL);					
 					b->char_size.push_back(a->char_size[a->type_index[colIndex]]);
-                    b->type_index[colCount-j-1] = b->d_columns_char.size()-1;
-                    b->columnNames[col_val.top()] = colCount-j-1;
-                    b->type[colCount-j-1] = 2;
-                }
-                else {  // already exists, my need to resize it
-                    if(b->mRecCount < res_size)
-                        b->resizeDeviceColumn(res_size-b->mRecCount, colCount-j-1);
-                };
-
-                //modify what we push there in case of a grouping
-                if (!(a->columnGroups).empty()) {
+					b->type_index[colCount-j-1] = b->d_columns_char.size()-1;
+					b->columnNames[col_val.top()] = colCount-j-1;
+					b->type[colCount-j-1] = 2;
+				}
+				else {  // already exists, my need to resize it
+					if(b->mRecCount < res_size)
+						b->resizeDeviceColumn(res_size-b->mRecCount, colCount-j-1);
+				};
+				
+				if (!a->columnGroups.empty()) {
                     thrust::device_ptr<bool> d_grp(a->grp);				
-					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);               
+					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);               					
 				}
                 else {
-					
+					cudaMemcpy((void*)(thrust::raw_pointer_cast(b->d_columns_char[b->type_index[colCount-j-1]])), (void*)thrust::raw_pointer_cast(a->d_columns_char[a->type_index[colIndex]]),
+							   a->mRecCount*a->char_size[a->type_index[colIndex]], cudaMemcpyDeviceToDevice);
                 }
             }
             exe_value1.pop();
@@ -826,7 +831,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (!(a->columnGroups).empty())
                 b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), res_size);
             else
-                b->addHostColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+                //b->addHostColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+				b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
 
             cudaFree(exe_vectors1.top());
             exe_vectors1.pop();
@@ -838,7 +844,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), res_size);
             }
             else
-                b->addHostColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+                //b->addHostColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
+				b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
             cudaFree(exe_vectors1_d.top());
             exe_vectors1_d.pop();
         };
@@ -848,10 +855,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     };
 
     if ((a->columnGroups).empty()) {
-        if ( !one_line)
-            b->mRecCount = b->mRecCount + a->mRecCount;
-        else
-            b->mRecCount = b->mRecCount + 1;
+        b->mRecCount = a->mRecCount;		
     }
     else
         b->mRecCount = res_size;
