@@ -600,7 +600,7 @@ void emit_join(char *s, char *j1)
 	    str_join = 1;
 		right->d_columns_int.push_back(thrust::device_vector<int_type>());		
 		for(unsigned int i = 0; i < right->segCount; i++) {
-		    right->add_hashed_strings(colInd2, i, right->d_columns_int.size()-1);
+		    right->add_hashed_strings(f2, i, right->d_columns_int.size()-1);
 		};			
 	};	
 
@@ -708,7 +708,7 @@ void emit_join(char *s, char *j1)
 		    copyColumns(left, lc, i, cnt_l);
 		}
         else {
-            left->add_hashed_strings(colInd1, i, left->d_columns_int.size());
+            left->add_hashed_strings(f1, i, left->d_columns_int.size());
         };	
         		
 		
@@ -805,12 +805,12 @@ void emit_join(char *s, char *j1)
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
 							                                    (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
-						                 c->char_size[c->type_index[colInd]] * res_count, cudaMemcpyDeviceToHost);		            
+						                 c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);		            
                             thrust::device_free(d_tmp); 	
                         }						  
 
 					}
-                    else {
+                    else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
 					    colInd = right->columnNames[op_sel1.front()];		
 											
 					    //gather	   					   
@@ -840,13 +840,17 @@ void emit_join(char *s, char *j1)
 
                             cudaMemcpy( (void*)(c->h_columns_char[c->type_index[c_colInd]] + offset*c->char_size[c->type_index[c_colInd]]), (void*) thrust::raw_pointer_cast(d_tmp), 
 						                c->char_size[c->type_index[c_colInd]] * d_res2.size(), cudaMemcpyDeviceToHost);		            							
-                            if(left_join) {
+                            if(left_join && left_sz) {
 					            memset((void*)(c->h_columns_char[c->type_index[c_colInd]] + (d_res2.size() + offset)*c->char_size[c->type_index[c_colInd]]), 0, 
 								       left_sz*c->char_size[c->type_index[c_colInd]]);		 
 							};											
                             thrust::device_free(d_tmp); 							   
                         }						  
 						   
+					}
+					else {
+					    cout << "Couldn't find field " << op_sel1.front() << endl;
+						exit(0);
 					};
                     op_sel1.pop();		  					
                 };	
@@ -1202,6 +1206,7 @@ void emit_select(char *s, char *f, int ll)
     };
 
     cout << "SELECT " << s << " " << f << endl;
+	cout << "free mem " << getFreeMem() << endl;
     std::clock_t start1 = std::clock();
 
 	
@@ -1273,6 +1278,7 @@ void emit_select(char *s, char *f, int ll)
 // find out how many string columns we have. Add int_type columns to store string hashes for sort/groupby ops.
     stack<string> op_s = op_v2;	
 	int_col_count = a->d_columns_int.size();	
+	
     while(!op_s.empty()) {
         int colInd = (a->columnNames).find(op_s.top())->second;		
         if (a->type[colInd] == 2) {
@@ -1295,7 +1301,7 @@ void emit_select(char *s, char *f, int ll)
             int colInd = (a->columnNames).find(op_s.top())->second;		
 			if (a->type[colInd] == 2) {
 			    a->d_columns_int[int_col_count + s_cnt].resize(0);
-				a->add_hashed_strings(colInd, i, int_col_count + s_cnt);
+				a->add_hashed_strings(op_s.top(), i, int_col_count + s_cnt);
 				s_cnt++;
 			};
 			op_s.pop();
@@ -1468,8 +1474,6 @@ void emit_filter(char *s, char *f, int e)
         varNames[s]->free();
 
     varNames[s] = b;	
-	//b->maxRecs = largest_prm(b);
-	cout << "filetr max " << b->maxRecs << endl;
 
     if(stat[s] == statement_count) {
         b->free();
@@ -1752,6 +1756,9 @@ int main(int ac, char **av)
         cout << "SQL scan parse worked" << endl;
     else
         cout << "SQL scan parse failed" << endl;
+		
+	if(alloced_sz) 
+        cudaFree(alloced_tmp);	
 
     fclose(yyin);
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
