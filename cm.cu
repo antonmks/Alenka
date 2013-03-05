@@ -961,22 +961,25 @@ public:
             };
         }
         else {
+		
+		
              unsigned long long int data_offset;
             if (partial_load)
                 data_offset = readSegmentsFromFile(segment,colIndex);
 				
+			
             if(d_v == NULL)
                 CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
             if(s_v == NULL);
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
-			
+
             if(type[colIndex] == 0) {	            
 			    if(!alloced_switch) {
                     pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data()), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
 				}	
 				else {	
 					pfor_decompress(alloced_tmp, h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
-				};	
+				};					
             }
        		else if(type[colIndex] == 1) {	
                 if(decimal[colIndex]) {

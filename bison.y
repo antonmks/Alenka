@@ -1308,7 +1308,21 @@ void emit_select(char *s, char *f, int ll)
 		};					 
                    
 		cnt = 0;			
+		
+  float time;
+  cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop) ;
+cudaEventRecord(start, 0) ;
+		
         copyColumns(a, op_vx, i, cnt);		
+		
+        cudaEventRecord(stop, 0) ;
+        cudaEventSynchronize(stop) ;
+        cudaEventElapsedTime(&time, start, stop);
+        printf("CPY:  %3.1f ms \n", time);				
+       
+		
 				
         if(a->mRecCount) { 					    
             if (ll != 0) {		
