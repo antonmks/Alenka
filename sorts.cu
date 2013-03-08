@@ -13,7 +13,7 @@
  */
  
 #include <thrust/device_vector.h>
-#include "strings.cu"
+#include "strings.h"
 
 using namespace std;
 

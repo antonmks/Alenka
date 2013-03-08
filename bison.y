@@ -17,8 +17,7 @@
 %{
 
 #include "lex.yy.c"
-#include "cm.cu"
-
+#include "cm.h"
 
     void clean_queues();
     void order_inplace(CudaSet* a, stack<string> exe_type);
@@ -252,10 +251,13 @@ opt_limit: { /* nil */
 
 %%
 
-#include "filter.cu"
-#include "select.cu"
-#include "merge.cu"
-#include "zone_map.cu"
+#include "filter.h"
+#include "select.h"
+#include "merge.h"
+#include "zone_map.h"
+#include "join.h"
+#include "atof.h"
+#include "sorts.cu"
 
 FILE *file_pointer;
 queue<string> namevars;
@@ -664,7 +666,7 @@ void emit_join(char *s, char *j1)
 
 	
 	searchEngine_t engine = 0;
-	searchStatus_t status = searchCreate("C:/GnuWin32/bin/mgpu-master/search/src/cubin/search.cubin", &engine);		
+	searchStatus_t status = searchCreate("search.cubin", &engine);		
 
 	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);
 	DeviceMemPtr btreeDevice;

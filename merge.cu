@@ -12,11 +12,11 @@
  *  limitations under the License.
  */
 
-#include <unordered_map>
-#include <thrust/unique.h>
-#include <thrust/functional.h>
-#include <boost/unordered_map.hpp>
-#include "cm.h"
+#include "merge.h"
+
+unsigned long long int hash_seed;
+
+using namespace std;
 
 head_flag_predicate<bool> binary_pred_l;
 

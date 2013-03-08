@@ -1,0 +1,5 @@
+LIBRARY	"mgpuscan"
+EXPORTS
+	scanCreateEngine
+	scanDestroyEngine
+	scanArray

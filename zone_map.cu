@@ -11,8 +11,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
+ 
+#include "zone_map.h"
+ 
+ 
     bool fh_equal_to(const float_type x, const float_type y)
     {
         return (((x-y) < EPSILON) && ((x-y) > -EPSILON));

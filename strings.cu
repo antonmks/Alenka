@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-#include <thrust/copy.h>
+#include "strings.h"
 
 using namespace std;
 

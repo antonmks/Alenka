@@ -11,18 +11,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-#include <thrust/device_vector.h>
+ 
 #include "cm.h"
-
 
 struct cmp_functor_str
 {
-
     const char  * source;
 	const char *str; 
     bool * dest;
     const unsigned int * len;
-
 
     cmp_functor_str(const char * _source, const char * _str, bool * _dest,
                            const unsigned int * _len):

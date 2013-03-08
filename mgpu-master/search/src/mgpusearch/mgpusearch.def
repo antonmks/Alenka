@@ -1,0 +1,10 @@
+LIBRARY "mgpusearch"
+EXPORTS
+	searchStatusString
+	searchTreeSize
+	searchCreate
+	searchDestroy
+	searchBuildTree
+	searchKeys
+	
+	

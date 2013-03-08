@@ -12,20 +12,10 @@
  *  limitations under the License.
  */
 
+#include "join.h"
 
-#include <thrust/device_vector.h>
-#include <thrust/iterator/counting_iterator.h>
-#include <thrust/iterator/constant_iterator.h>
-#include <thrust/binary_search.h>
-#include <thrust/reduce.h>
-#include <thrust/fill.h>
-#include <thrust/scan.h>
-#include <thrust/device_ptr.h>
-#include "mgpu-master/util/cucpp.h"
-#include "mgpu-master/inc/mgpusearch.h"
-#include <climits>
-
-using namespace thrust::placeholders;
+size_t int_size = sizeof(int_type);
+size_t float_size = sizeof(float_type);
 
 template <typename HeadFlagType>
 struct join_head_flag_predicate
@@ -126,14 +116,12 @@ unsigned int join(int_type* d_input,int_type* d_values,
 	unsigned int left_sz = 0;
 	if (left_join) {
 		left_sz = thrust::count(d_output2, d_output2+bRecCount,0);			
-		cout << "LS " << left_sz << endl;
 	};	
     d_res1.resize(sz + left_sz);
     d_res2.resize(sz);
 
 	if (left_join && left_sz) {
 		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(bRecCount-1), d_output2, d_res1.begin()+ sz, is_zero() );
-	    //thrust::copy_if(thrust::constant_iterator<unsigned int>(std::numeric_limits<unsigned int>::max()), thrust::constant_iterator<unsigned int>(std::numeric_limits<int>::max()) + bRecCount, d_output2, d_res2.begin()+ sz, is_zero());
 	};		
 		
     thrust::exclusive_scan(d_output2, d_output2+bRecCount, d_output2);  // addresses

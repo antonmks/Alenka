@@ -12,10 +12,7 @@
  *  limitations under the License.
  */ 
  
-
-#include "cm.h"
-#include <unordered_map>
-#include <thrust/iterator/discard_iterator.h>
+#include "cm.h" 
 
 template<typename T>
   struct distinct : public binary_function<T,T,T>

@@ -23,16 +23,6 @@
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/extrema.h>
 
-// YOU NEED TO MODIFY THE CUDPP PATH !!!!!
-/*#ifdef _WIN64
-#include "C:\Users\anton\Favorites\Downloads\cudpp_src_2.0\cudpp_src_2.0\include\cudpp_hash.h"
-#else
-#include "./cudpp_src_2.0/include/cudpp_hash.h"
-#endif
-*/
-
-#include "sorts.cu"
-
 using namespace std;
 
 unsigned long long int* raw_decomp = NULL;

@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mgpuscan", "mgpuscan\mgpuscan.vcxproj", "{A8594ACE-66C6-4BEF-A5ED-F53DB1743DFF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "occupancy", "occupancy\occupancy.vcxproj", "{D519CFCF-B343-4FC8-B0AB-B793E4BB79F8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "scantest", "scantest\scantest.vcxproj", "{2423A37C-BA04-481E-B988-673C510D7A74}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A8594ACE-66C6-4BEF-A5ED-F53DB1743DFF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A8594ACE-66C6-4BEF-A5ED-F53DB1743DFF}.Debug|Win32.Build.0 = Debug|Win32
+		{A8594ACE-66C6-4BEF-A5ED-F53DB1743DFF}.Release|Win32.ActiveCfg = Release|Win32
+		{A8594ACE-66C6-4BEF-A5ED-F53DB1743DFF}.Release|Win32.Build.0 = Release|Win32
+		{D519CFCF-B343-4FC8-B0AB-B793E4BB79F8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D519CFCF-B343-4FC8-B0AB-B793E4BB79F8}.Debug|Win32.Build.0 = Debug|Win32
+		{D519CFCF-B343-4FC8-B0AB-B793E4BB79F8}.Release|Win32.ActiveCfg = Release|Win32
+		{D519CFCF-B343-4FC8-B0AB-B793E4BB79F8}.Release|Win32.Build.0 = Release|Win32
+		{2423A37C-BA04-481E-B988-673C510D7A74}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2423A37C-BA04-481E-B988-673C510D7A74}.Debug|Win32.Build.0 = Debug|Win32
+		{2423A37C-BA04-481E-B988-673C510D7A74}.Release|Win32.ActiveCfg = Release|Win32
+		{2423A37C-BA04-481E-B988-673C510D7A74}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

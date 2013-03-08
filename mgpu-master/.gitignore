@@ -1,0 +1,22 @@
+# binary file types
+*.obj
+*.o
+*.a
+*.so
+
+# support file types for VS
+*.dep
+*.ilk
+*.ncb
+*.sdf
+*.suo
+*.dll
+*.pdb
+*.idb
+*.tmp
+*.user
+*.vcxproj.filters
+*.vcxproj.user
+*.opensdf
+UpgradeLog.XML
+_UpgradeReport_Files/

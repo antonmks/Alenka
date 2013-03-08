@@ -1,0 +1,44 @@
+alenka : bison.obj join.obj merge.obj \
+         MurmurHash2_64.obj filter.obj strings.obj \
+		 select.obj zone_map.obj itoa.obj \
+		 atof.obj cucpp.obj mgpusearch.obj mgpusearch.lib search.cubin cm.obj 
+	nvcc -Xcompiler /bigobj -O3 -arch=sm_20 -lcuda -lmgpusearch -o alenka bison.obj join.obj merge.obj \
+         MurmurHash2_64.obj filter.obj strings.obj \
+		 select.obj zone_map.obj itoa.obj \
+		 atof.obj cucpp.obj mgpusearch.obj cm.obj
+		 
+bison.obj : bison.cu cm.h
+	nvcc -O3 -arch=sm_20 -c bison.cu
+join.obj : join.cu cm.h join.h
+	nvcc -O3 -arch=sm_20 -c join.cu
+merge.obj : merge.cu cm.h merge.h
+	nvcc -O3 -arch=sm_20 -c merge.cu
+MurmurHash2_64.obj : MurmurHash2_64.cu cm.h 
+	nvcc -O3 -arch=sm_20 -c MurmurHash2_64.cu
+filter.obj : filter.cu cm.h filter.h
+	nvcc -O3 -arch=sm_20 -c filter.cu
+strings.obj : strings.cu cm.h strings.h
+	nvcc -O3 -arch=sm_20 -c strings.cu
+select.obj : select.cu cm.h select.h
+	nvcc -O3 -arch=sm_20 -c select.cu
+zone_map.obj : zone_map.cu cm.h zone_map.h
+	nvcc -O3 -arch=sm_20 -c zone_map.cu
+itoa.obj : itoa.cu itoa.h
+	nvcc -O3 -arch=sm_20 -c itoa.cu
+atof.obj : atof.cu cm.h atof.h
+	nvcc -O3 -arch=sm_20 -c atof.cu 
+cucpp.obj : mgpu-master\util\cucpp.cpp
+	cl /EHsc -I "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include" mgpu-master\util\cucpp.cpp -c 	
+mgpusearch.obj : mgpu-master\search\src\mgpusearch\mgpusearch.cpp
+	cl /EHsc -I "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include" mgpu-master\search\src\mgpusearch\mgpusearch.cpp -c	
+mgpusearch.lib : 	
+	lib.exe /out:mgpusearch.lib mgpusearch.obj cucpp.obj
+search.cubin : 	
+	nvcc --cubin -Xptxas=-v -arch=compute_20 -code=sm_20 -o search.cubin mgpu-master\search\src\kernels\searchgen.cu
+cm.obj : cm.cu cm.h	
+	nvcc -O3 -arch=sm_20 -c cm.cu
+	
+clean : del bison.obj join.obj merge.obj \
+         MurmurHash2_64.obj filter.obj strings.obj \
+		 select.obj zone_map.obj itoa.obj \
+		 atof.obj cucpp.obj mgpusearch.obj mgpusearch.lib search.cubin cm.obj
