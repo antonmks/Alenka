@@ -2671,12 +2671,19 @@ void emit_join(char *s, char *j1)
 	
 	searchEngine_t engine = 0;
 	searchStatus_t status = searchCreate("search.cubin", &engine);		
+	if(SEARCH_STATUS_SUCCESS != status) {
+		printf("Please compile and place search.cubin into alenka's directory \n");
+		exit(0);
+	};
+	
 
 	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);
 	DeviceMemPtr btreeDevice;
 	context->ByteAlloc(treeSize, &btreeDevice);		
 	status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
 		                     (CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());
+							 
+							 
 	if(SEARCH_STATUS_SUCCESS != status) {
 		printf("BUILD FAIL!\n");
 		exit(0);
