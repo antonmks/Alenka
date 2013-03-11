@@ -2586,8 +2586,36 @@ void emit_join(char *s, char *j1)
         return;
     };
 	
-    unsigned int colInd1 = (left->columnNames).find(f1)->second;
-    unsigned int colInd2 = (right->columnNames).find(f2)->second;
+	unsigned int colInd1, colInd2;
+	string tmpstr; 
+	if (left->columnNames.find(f1) != left->columnNames.end()) {
+		colInd1 = (left->columnNames).find(f1)->second;
+		if (right->columnNames.find(f2) != right->columnNames.end()) {
+			colInd2 = (right->columnNames).find(f2)->second;
+		}	
+		else {
+			cout << "Couldn't find column " << f2 << endl;
+			exit(0);
+		};
+	}
+    else if (right->columnNames.find(f1) != right->columnNames.end()) {
+		colInd2 = (right->columnNames).find(f1)->second;
+		tmpstr = f1;
+		f1 = f2;		
+		if (left->columnNames.find(f2) != left->columnNames.end()) {
+			colInd1 = (left->columnNames).find(f2)->second;
+			f2 = tmpstr;
+		}	
+		else {
+			cout << "Couldn't find column " << f2 << endl;
+			exit(0);
+		};	
+    }
+	else {
+		cout << "Couldn't find column " << f1 << endl;
+		exit(0);
+	};	
+	
 	
 	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2))) {
 	    cout << "Only joins on integers and strings are supported " << endl;
@@ -2746,7 +2774,7 @@ void emit_join(char *s, char *j1)
                                         d_res1, d_res2, cnt_l, cnt_r, left_join, engine, btreeDevice);
 			
             // check if the join is a multicolumn join
-			while(!op_value.empty()) {
+			/*while(!op_value.empty()) {
 	            string f3 = op_value.front();
 				op_value.pop();
 				string f4 = op_value.front();
@@ -2775,6 +2803,7 @@ void emit_join(char *s, char *j1)
                     };
 				};				
 	        };
+			*/
 
 
 			
