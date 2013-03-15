@@ -1,11 +1,11 @@
 alenka : bison.o join.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cucpp.o mgpusearch.o libmgpusearch.a search.cubin cm.o 
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -L. -lmgpusearch -o alenka bison.o join.o merge.o \
+		 atof.o cucpp.o cm.o 
+	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -o alenka bison.o join.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cucpp.o mgpusearch.o cm.o
+		 atof.o cm.o
 		 
 bison.o : bison.cu cm.h
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c bison.cu
@@ -27,18 +27,10 @@ itoa.o : itoa.cu itoa.h
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c itoa.cu
 atof.o : atof.cu cm.h atof.h
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c atof.cu 
-cucpp.o : mgpu-master/util/cucpp.cpp
-	cc -I /usr/local/cuda/include  mgpu-master/util/cucpp.cpp -c 	
-mgpusearch.o : mgpu-master/search/src/mgpusearch/mgpusearch.cpp
-	cc -I /usr/local/cuda/include  mgpu-master/search/src/mgpusearch/mgpusearch.cpp -c	
-libmgpusearch.a : 	
-	ar rcs libmgpusearch.a mgpusearch.o cucpp.o
-search.cubin : 	
-	/usr/local/cuda/bin/nvcc --cubin -Xptxas=-v -arch=compute_20 -code=sm_20 -o search.cubin mgpu-master/search/src/kernels/searchgen.cu
 cm.o : cm.cu cm.h	
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c cm.cu
 	
 clean : del bison.o join.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cucpp.o mgpusearch.o libmgpusearch.a search.cubin cm.o
+		 atof.o cm.o
