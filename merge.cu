@@ -74,9 +74,11 @@ void create_c(CudaSet* c, CudaSet* b)
 
             if (b->type[i] == 0) {
                 c->h_columns_int.push_back(thrust::host_vector<int_type>());
+				c->d_columns_int.push_back(thrust::device_vector<int_type>());
             }
             else if (b->type[i] == 1) {
                 c->h_columns_float.push_back(thrust::host_vector<float_type>());
+				c->d_columns_float.push_back(thrust::device_vector<float_type>());
             }
             else {
 				c->h_columns_char.push_back(NULL); 
@@ -299,7 +301,46 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
 }
 
 
+void count_simple(CudaSet* c)
+{
+	int_type count;
 
+    for(unsigned int i = 0; i < c->mColumnCount; i++) {
+        if(c->grp_type[i] == 0) { // COUNT
+			count = thrust::reduce(c->h_columns_int[c->type_index[i]].begin(), c->h_columns_int[c->type_index[i]].begin() + c->mRecCount);
+			c->h_columns_int[c->type_index[i]][0] = count;
+		};	
+    };    
+	
+	
+    if (c->mRecCount != 0) {    
+    	
+        for(unsigned int k = 0; k < c->mColumnCount; k++)	{
+            if(c->grp_type[k] == 1) {   // AVG
+				if(c->type[k] == 0) {
+					int_type sum  = thrust::reduce(c->h_columns_int[c->type_index[k]].begin(), c->h_columns_int[c->type_index[k]].begin() + c->mRecCount);
+					c->h_columns_int[c->type_index[k]][0] = sum/count;
+				}
+				if(c->type[k] == 1) {
+					float_type sum  = thrust::reduce(c->h_columns_float[c->type_index[k]].begin(), c->h_columns_float[c->type_index[k]].begin() + c->mRecCount);
+					c->h_columns_float[c->type_index[k]][0] = sum/count;
+				};			
+            }
+			else if(c->grp_type[k] == 2) {   // SUM
+				if(c->type[k] == 0) {
+					int_type sum  = thrust::reduce(c->h_columns_int[c->type_index[k]].begin(), c->h_columns_int[c->type_index[k]].begin() + c->mRecCount);
+					c->h_columns_int[c->type_index[k]][0] = sum;
+				}
+				if(c->type[k] == 1) {
+					float_type sum  = thrust::reduce(c->h_columns_float[c->type_index[k]].begin(), c->h_columns_float[c->type_index[k]].begin() + c->mRecCount);
+					c->h_columns_float[c->type_index[k]][0] = sum;
+				};			
+			
+            }			
+        };
+    }
+	c->mRecCount = 1;
+};	
 
 
 void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& mymap, vector<thrust::device_vector<int_type> >& distinct_hash)
@@ -358,6 +399,9 @@ void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& my
 					};
 				};
 				dis_count++;
+			}
+			else if(c->grp_type[k] == 2) { 
+			
 			};
         };
     };

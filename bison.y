@@ -58,7 +58,7 @@
     void emit_order(char *s, char *f, int e, int ll = 0);
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
-    void emit_join(char *s, char *j1);
+    void emit_join(char *s, char *j1, int grp);
     void emit_join_tab(char *s, bool left);
     void emit_distinct();
 
@@ -155,8 +155,8 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_filter($1, $4, $5);}
 | NAME ASSIGN ORDER NAME BY opt_val_list
 {  emit_order($1, $4, $6);}
-| NAME ASSIGN SELECT expr_list FROM NAME join_list
-{ emit_join($1,$6); }
+| NAME ASSIGN SELECT expr_list FROM NAME join_list opt_group_list
+{ emit_join($1,$6,$7); }
 | STORE NAME INTO FILENAME USING '(' FILENAME ')' opt_limit
 { emit_store($2,$4,$7); }
 | STORE NAME INTO FILENAME opt_limit BINARY
@@ -258,19 +258,21 @@ opt_limit: { /* nil */
 #include "join.h"
 #include "atof.h"
 #include "sorts.cu"
+#include <limits>
 
 FILE *file_pointer;
 queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
 queue<int> cols;
+//searchStatus_t status;
+//searchEngine_t engine;
 
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
 unsigned int join_cnt = 0;
 unsigned int distinct_cnt = 0;
 int join_col_cnt = 0;
-unsigned int eqq = 0;
 stack<string> op_join;
 bool left_join;
 
@@ -278,13 +280,8 @@ unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 bool scan_state = 0;
 string separator, f_file;
-ContextPtr context;			
+//ContextPtr context;			
 unsigned int int_col_count;
-
-
-//CUDPPHandle theCudpp;
-
-using namespace thrust::placeholders;
 
 
 void emit_name(char *name)
@@ -302,7 +299,7 @@ void emit_limit(int val)
 void emit_string(char *str)
 {   // remove the float_type quotes
     string sss(str,1, strlen(str)-2);
-    op_type.push("STRING");
+    op_type.push("STRING");	
     op_value.push(sss);
 }
 
@@ -345,24 +342,12 @@ void emit_div()
 void emit_and()
 {
     op_type.push("AND");
-    if (join_col_cnt == -1)
-        join_col_cnt++;
     join_col_cnt++;
-    eqq = 0;
-}
+} 
 
 void emit_eq()
 {
-    //op_type.push("JOIN");
-    eqq++;
-    join_cnt++;
-    if(eqq == join_col_cnt+1) {
-        j_col_count.push(join_col_cnt+1);
-        join_col_cnt = -1;
-    }
-    else if (join_col_cnt == -1 )
-        j_col_count.push(1);
-
+    op_type.push("JOIN"); 
 }
 
 void emit_distinct()
@@ -524,8 +509,9 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 	
 }
 
+int hh = 0;
 
-void emit_join(char *s, char *j1)
+void emit_join(char *s, char *j1, int grp)
 {
 
     string j2 = op_join.top();
@@ -571,6 +557,15 @@ void emit_join(char *s, char *j1)
     op_value.pop();
 
     cout << "JOIN " << s <<  " " <<  getFreeMem() <<  endl;	
+	//cout << "join col count " << join_col_cnt << endl;
+	
+    queue<string> op_v1(op_value);
+    while(op_v1.size() ) {        
+		//cout << op_v1.front() << endl;
+		op_v1.pop();
+		grp++;
+	};	
+
 	
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right,left,0,op_sel, op_sel_as);	
@@ -613,10 +608,14 @@ void emit_join(char *s, char *j1)
 	};	
 	
 	
-	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2))) {
-	    cout << "Only joins on integers and strings are supported " << endl;
+	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2)
+           || (left->type[colInd1] == 1 && right->type[colInd2]  == 1 && left->decimal[colInd1] && right->decimal[colInd2]))) {
+	    cout << "Joins on floats are not supported " << endl;
 		exit(0);
 	};	
+	bool decimal_join = 0;
+	if (left->type[colInd1] == 1 && right->type[colInd2]  == 1)
+		decimal_join = 1;
 	
     set<string> field_names;
     stack<string> exe_type;
@@ -647,8 +646,13 @@ void emit_join(char *s, char *j1)
 	
 	
 	//here we need to make sure that right column is ordered. If not then we order it and keep the permutation		
-	bool sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);	
-	
+	bool sorted;
+	if(!decimal_join)
+		sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);	
+    else		
+		sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);	
+		
+
 	if(!sorted) {	
 	   
 	    queue<string> ss(op_sel);
@@ -691,27 +695,25 @@ void emit_join(char *s, char *j1)
 		thrust::device_free(d_tmp);	
 	};
 	
-
-	
-	searchEngine_t engine = 0;
-	searchStatus_t status = searchCreate("search.cubin", &engine);		
-	if(SEARCH_STATUS_SUCCESS != status) {
-		printf("Please compile and place search.cubin into alenka's directory \n");
-		exit(0);
-	};
-	
-
-	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);
+/*	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);	
 	DeviceMemPtr btreeDevice;
-	context->ByteAlloc(treeSize, &btreeDevice);		
-	status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
-		                     (CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());
+	context->ByteAlloc(treeSize, &btreeDevice);	
+	
+	if(decimal_join) {
+		thrust::device_ptr<int_type> d_cc((int_type*)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()));
+		thrust::transform(right->d_columns_float[right->type_index[colInd2]].begin(),right->d_columns_float[right->type_index[colInd2]].begin()+cnt_r,
+						  d_cc, float_to_long());
+
+		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
+								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()), btreeDevice->Handle());
+    }
+    else {
+		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
+								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());								
+    };	
+*/	
+					
 							 
-							 
-	if(SEARCH_STATUS_SUCCESS != status) {
-		printf("BUILD FAIL!\n");
-		exit(0);
-	};
 		
 	while(!cc.empty())
         cc.pop();
@@ -726,8 +728,7 @@ void emit_join(char *s, char *j1)
         allocColumns(left, cc);	
 	};	
 
-    //cout << "successfully loaded l && r " << cnt_l << " " << cnt_r << " " << getFreeMem() << endl;
-	
+    	
     thrust::device_vector<unsigned int> d_res1;
     thrust::device_vector<unsigned int> d_res2;    
 	unsigned int cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
@@ -740,7 +741,7 @@ void emit_join(char *s, char *j1)
 	    
 		cout << "segment " << i << " " << getFreeMem() << endl;				
 		cnt_l = 0;
-		
+				
 		if (left->type[colInd1]  != 2) {
 		    copyColumns(left, lc, i, cnt_l);
 		}
@@ -764,33 +765,77 @@ void emit_join(char *s, char *j1)
                 idx = left->type_index[colInd1];
             else
                 idx = left->d_columns_int.size()-1;				
-					
-		
-            unsigned int left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
-                                        d_res1, d_res2, cnt_l, cnt_r, left_join, engine, btreeDevice);
-			
+
+			unsigned int left_sz;	
+			if(decimal_join) {
+				thrust::device_ptr<int_type> d_cc((int_type*)thrust::raw_pointer_cast(left->d_columns_int[idx].data()));
+				thrust::transform(left->d_columns_float[left->type_index[colInd1]].begin(), left->d_columns_float[right->type_index[colInd2]].begin()+cnt_r,
+								  d_cc, float_to_long());
+				
+				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), (int_type*)thrust::raw_pointer_cast(left->d_columns_float[idx].data()),
+                               d_res1, d_res2, cnt_l, cnt_r, left_join);
+			}
+            else {
+		    
+				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
+                               d_res1, d_res2, cnt_l, cnt_r, left_join);
+            };	
+  //          cout << "res " << d_res1.size() << " " << left_join << endl; 		
+						
             // check if the join is a multicolumn join
-			/*while(!op_value.empty()) {
+			while(join_col_cnt) {
+			    
+			    join_col_cnt--;
 	            string f3 = op_value.front();
 				op_value.pop();
 				string f4 = op_value.front();
-	            op_value.pop();
+	            op_value.pop();				
+		
+				//alloc f4 if not alloced
+				queue<string> rc;
+				rc.push(f3);
+				allocColumns(left, rc);				
+				copyColumns(left, rc, i, cnt_l);
+				rc.pop();
+			
 				
 				if (d_res1.size() && d_res2.size()) {
 					unsigned int colInd3 = (left->columnNames).find(f3)->second;
-					unsigned int colInd4 = (right->columnNames).find(f4)->second;
+					unsigned int colInd4 = (right->columnNames).find(f4)->second;					
+			
+					thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());	
 					
-                    thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());				    
-					thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2.begin());
+					if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
+
+						if(right->d_columns_float[right->type_index[colInd4]].size() == 0)
+							unsigned int cnt_r = load_queue(rc, right, 0, f4, rcount);	
 					
-			        thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res2.size());	
-					thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, thrust::equal_to<int_type>());
+						thrust::device_ptr<int_type> d_l = thrust::device_malloc<int_type>(d_res1.size());
+                        thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_left(left->d_columns_float[left->type_index[colInd3]].begin(), d_res1.begin());				    				
+						thrust::transform(iter_left, iter_left+d_res1.size(), d_l, float_to_long());
+						
+						thrust::device_ptr<int_type> d_r = thrust::device_malloc<int_type>(d_res1.size());
+                        thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_right(right->d_columns_float[right->type_index[colInd4]].begin(), d_res2.begin());				    
+						thrust::transform(iter_right, iter_right+d_res2.size(), d_r, float_to_long());					
+						
+						thrust::transform(d_l, d_l+d_res1.size(), d_r, d_add, thrust::equal_to<int_type>());
+						
+					}
+                    else {									
+                        thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());				    
+						thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2.begin());
 					
-					unsigned int new_cnt = thrust::count(d_add, d_add+d_res2.size(), (bool)1);
+						
+						thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, thrust::equal_to<int_type>());
+					};	
+					
+					unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), (bool)1);
+
 					thrust::stable_partition(d_res1.begin(), d_res1.begin() + d_res2.size(), d_add, thrust::identity<unsigned int>());
 					thrust::stable_partition(d_res2.begin(), d_res2.end(), d_add, thrust::identity<unsigned int>());					
 					
-					d_res2.resize(new_cnt);					
+					d_res2.resize(new_cnt);	            
+					thrust::device_free(d_add);
                     if(!left_join) {					
 						d_res1.resize(new_cnt);
 					}
@@ -799,12 +844,12 @@ void emit_join(char *s, char *j1)
                     };
 				};				
 	        };
-			*/
+			
 
 
 			
     	    res_count = d_res1.size();
-			//cout << "res " << res_count << endl;
+//			cout << "res " << res_count << endl;
 			tot_count = tot_count + res_count;
 
             if(res_count) {		 				
@@ -819,12 +864,13 @@ void emit_join(char *s, char *j1)
                     while(!cc.empty())
                         cc.pop();
 						
-                    cc.push(op_sel1.front());	
+	                cc.push(op_sel1.front());	
                     c_colInd = c->columnNames[op_sel1.front()];					
 				
                     if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
 					    // copy field's segment to device, gather it and copy to the host  						
 				        unsigned int colInd = left->columnNames[op_sel1.front()];	
+						reset_offsets();
 											
                         allocColumns(left, cc);	
 				        copyColumns(left, cc, i, k);
@@ -842,10 +888,12 @@ void emit_join(char *s, char *j1)
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);			
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
 							                                    (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
+
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
 						                 c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);		            
                             thrust::device_free(d_tmp); 	
-                        }						  
+                        }	
+                        left->deAllocColumnOnDevice(colInd);
 
 					}
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
@@ -894,9 +942,8 @@ void emit_join(char *s, char *j1)
                 };	
 			};	
         };
-    };	
-
-			
+    };				
+	
     d_res1.resize(0);
     d_res1.shrink_to_fit();
     d_res2.resize(0);
@@ -906,7 +953,7 @@ void emit_join(char *s, char *j1)
     right->deAllocOnDevice();
 	c->deAllocOnDevice();	
 	
-	cout << "join final end " << tot_count << "  " << getFreeMem() << endl;
+	cout << "join end " << tot_count << "  " << getFreeMem() << endl;
 	unsigned int i = 0;
     while(!col_aliases.empty()) {
         c->columnNames[col_aliases.front()] = i;
@@ -920,8 +967,7 @@ void emit_join(char *s, char *j1)
     for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
         setMap[(*it).first] = s;
 
-    clean_queues();
-
+    clean_queues();	
 
     if(stat[s] == statement_count) {
         c->free();
@@ -938,7 +984,6 @@ void emit_join(char *s, char *j1)
         varNames.erase(j2);
     };
 
-	searchDestroy(engine);
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';		
 
 }
@@ -1096,12 +1141,11 @@ void emit_order(char *s, char *f, int e, int ll)
 		else 	
            rec_size = rec_size + a->char_size[a->type_index[i]];
     };	
-	bool fits = 1;
-	if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU
-	    fits = 0;
+	bool fits;
+	if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU		
+		fits = 0;
+	else fits = 1;	
 		
-		
-	fits = 0; //for a test	
 	if(!fits) {
 	    order_on_host(a, b, names, exe_type, exe_value);
 	}	
@@ -1114,13 +1158,10 @@ void emit_order(char *s, char *f, int e, int ll)
 
 		unsigned int maxSize =  a->mRecCount;
 		void* temp;
-		unsigned int max_char = 0;
-		for(unsigned int i = 0; i < a->char_size.size(); i++)
-			if (a->char_size[a->type_index[i]] > max_char)
-				max_char = a->char_size[a->type_index[i]];			
-	
-		if(max_char > float_size)	
-			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char));
+		unsigned int max_c = max_char(a);
+		
+		if(max_c > float_size)	
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
 		else	
 			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));    
 
@@ -1128,21 +1169,21 @@ void emit_order(char *s, char *f, int e, int ll)
 	
 	
 		unsigned int rcount;
-		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);	
+		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);			
     
 		varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->oldRecCount;
 		unsigned int str_count = 0;
 
 		for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
 			int colInd = (a->columnNames).find(exe_type.top())->second;
-
 			if ((a->type)[colInd] == 0)
 				update_permutation(a->d_columns_int[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
 			else if ((a->type)[colInd] == 1)
 				update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp);
 			else {
-				//update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp, a->char_size[a->type_index[colInd]]);	
-				update_permutation(a->d_columns_int[int_col_count+str_count], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+				update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp, a->char_size[a->type_index[colInd]]);	
+				//update_permutation(a->d_columns_int[int_col_count+str_count], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+				str_count++;
 			};
 		};
 		
@@ -1157,9 +1198,7 @@ void emit_order(char *s, char *f, int e, int ll)
 				apply_permutation(a->d_columns_float[a->type_index[i]], raw_ptr, a->mRecCount, (float_type*)temp);
 			else {
 				apply_permutation_char(a->d_columns_char[a->type_index[i]], raw_ptr, a->mRecCount, (char*)temp, a->char_size[a->type_index[i]]);
-				apply_permutation(a->d_columns_int[int_col_count + str_count], raw_ptr, a->mRecCount, (int_type*)temp);
-				str_count++;
-				
+				str_count++;				
 			};
 		};	
 		
@@ -1244,7 +1283,7 @@ void emit_select(char *s, char *f, int ll)
     };
 
     cout << "SELECT " << s << " " << f << endl;
-	cout << "free mem " << getFreeMem() << endl;
+	//cout << "free mem " << getFreeMem() << endl;
     std::clock_t start1 = std::clock();
 
 	
@@ -1326,11 +1365,12 @@ void emit_select(char *s, char *f, int ll)
 	};		
 	
 	unsigned int s_cnt;				
+	bool one_liner;
 	
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "cycle " << i << " select mem " << getFreeMem() << endl;			
 		
-		a->reset_offsets(op_value);					
+		reset_offsets();
         op_s = op_v2;	
 		s_cnt = 0;
 	
@@ -1346,21 +1386,7 @@ void emit_select(char *s, char *f, int ll)
 		};					 
                    
 		cnt = 0;			
-		
-  float time;
-  cudaEvent_t start, stop;
-cudaEventCreate(&start);
-cudaEventCreate(&stop) ;
-cudaEventRecord(start, 0) ;
-		
         copyColumns(a, op_vx, i, cnt);		
-		
-        cudaEventRecord(stop, 0) ;
-        cudaEventSynchronize(stop) ;
-        cudaEventElapsedTime(&time, start, stop);
-        printf("CPY:  %3.1f ms \n", time);				
-       
-		
 				
         if(a->mRecCount) { 					    
             if (ll != 0) {		
@@ -1371,8 +1397,8 @@ cudaEventRecord(start, 0) ;
 			
 			for(unsigned int z = int_col_count; z < a->d_columns_int.size()-1; z++)
 				a->d_columns_int[z].resize(0);						
-		
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp);	
+
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp, one_liner);	
 			
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -1395,6 +1421,7 @@ cudaEventRecord(start, 0) ;
             }
 			else {
 				//copy b to c
+
 				unsigned int c_offset = c->mRecCount;
 				c->resize(b->mRecCount);
 				for(unsigned int j=0; j < b->mColumnCount; j++) {			
@@ -1419,11 +1446,18 @@ cudaEventRecord(start, 0) ;
 	a->mRecCount = a->oldRecCount;
     a->deAllocOnDevice();    
 	b->deAllocOnDevice();
+	
 
     if (ll != 0) {	  
         count_avg(c, mymap, distinct_hash);
-    };
+    }
+	else {
+		if(one_liner) {
+			count_simple(c);
+		};	
+	};
 
+	reset_offsets();
     c->maxRecs = c->mRecCount;
     c->name = s;
     c->keep = 1;
@@ -1486,7 +1520,6 @@ void emit_filter(char *s, char *f, int e)
     else {
         cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 		
-
         b = a->copyDeviceStruct();
         b->name = s;
 
@@ -1505,7 +1538,7 @@ void emit_filter(char *s, char *f, int e)
         for(unsigned int i = 0; i < cycle_count; i++) {		 
         	map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
 	        cout << "MAP CHECK " << map_check << endl;	
-            a->reset_offsets(op_value);			
+            reset_offsets();
             if(map_check == 'R') {			
                 copyColumns(a, op_value, i, cnt);
                 filter(op_type,op_value,op_nums, op_nums_f,a, b, i, p);
@@ -1513,7 +1546,7 @@ void emit_filter(char *s, char *f, int e)
             else  {		
 				setPrm(a,b,map_check,i);
 			}
-        };
+        };		
 		a->mRecCount = oldCount;
         varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
         cout << "filter is finished " << b->mRecCount << " " << getFreeMem()  << endl;             
@@ -1735,9 +1768,9 @@ void clean_queues()
 
     sel_count = 0;
     join_cnt = 0;
-    join_col_cnt = -1;
+    join_col_cnt = 0;
 	distinct_cnt = 0;
-    eqq = 0;
+	reset_offsets();
 }
 
 
@@ -1754,11 +1787,21 @@ int main(int ac, char **av)
     //cudaSetDeviceFlags(cudaDeviceMapHost);
     //cudppCreate(&theCudpp);
 	
-	cuInit(0);
-
+/*	cuInit(0);
 	DevicePtr device;
 	CreateCuDevice(0, &device);	
 	CreateCuContext(device, 0, &context);
+	
+    engine = 0;
+	status = searchCreate("search.cubin", &engine);
+	
+	if(SEARCH_STATUS_SUCCESS != status) {
+		printf("search.cubin must be in alenka's directory \n");
+		exit(0);
+	};
+	*/
+
+	
 
     long long int r30 = RAND_MAX*rand()+rand();
     long long int s30 = RAND_MAX*rand()+rand();
@@ -1813,6 +1856,7 @@ int main(int ac, char **av)
         cudaFree(alloced_tmp);	
 
     fclose(yyin);
+//	searchDestroy(engine);
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     //cudppDestroy(theCudpp);
 

@@ -22,7 +22,7 @@ template<typename T>
 
 
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a,
-            CudaSet* b, int_type old_reccount, vector<thrust::device_vector<int_type> >& distinct_tmp)
+            CudaSet* b, int_type old_reccount, vector<thrust::device_vector<int_type> >& distinct_tmp, bool& one_liner)
 {
 
     stack<string> exe_type;
@@ -46,14 +46,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type*> exe_vectors_f;
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
-    bool one_line = 0;
+    bool one_line;
 	unsigned int dist_processed = 0;
     //std::clock_t start1 = std::clock();
 
 
-    if (a->columnGroups.empty() && a->mRecCount != 0)
-        one_line = 1;
-
+    one_line = 0;
 
     thrust::device_ptr<bool> d_di(a->grp);
 
@@ -69,6 +67,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
+			    one_line = 1;
                 if (ss.compare("DISTINCT") == 0) {
 				    s1_val = exe_value.top();
 				    exe_type.pop();
@@ -712,7 +711,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-    
+   
     b->grp_type = new unsigned int[colCount];
 		
     for(unsigned int j=0; j < colCount; j++) {
@@ -740,7 +739,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
             thrust::device_ptr<int_type> s = thrust::device_malloc<int_type>(a->mRecCount);
             thrust::sequence(s, s+(a->mRecCount), (int)exe_nums1.top(), 0);
-            if (!(a->columnGroups).empty()) {
+            if (!a->columnGroups.empty()) {
                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                 thrust::device_ptr<bool> d_grp(a->grp);
                 thrust::copy_if(s,s+(a->mRecCount), d_grp, count_diff, thrust::identity<bool>());
@@ -760,7 +759,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if(a->type[colIndex] == 0) {
 
                 //modify what we push there in case of a grouping
-                if (!(a->columnGroups).empty()) {
+                if (!a->columnGroups.empty()) {
                     thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                     thrust::device_ptr<bool> d_grp(a->grp);
 
@@ -777,7 +776,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             else if(a->type[colIndex] == 1) {
 
                 //modify what we push there in case of a grouping
-                if (!(a->columnGroups).empty()) {
+                if (!a->columnGroups.empty()) {
                     thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                     thrust::device_ptr<bool> d_grp(a->grp);
 
@@ -825,11 +824,15 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
         if(col_type.top() == 2) {	    // int
 
-            if (!(a->columnGroups).empty())
+            if (!a->columnGroups.empty())
                 b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), res_size);
-            else
+            else {
                 //b->addHostColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
-				b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
+				if(!one_line)
+				    b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
+				else	
+					b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), 1);
+			};	
 
             cudaFree(exe_vectors1.top());
             exe_vectors1.pop();
@@ -837,12 +840,18 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         }
         if(col_type.top() == 3) {        //float
 
-            if (!(a->columnGroups).empty()) {
+            if (!a->columnGroups.empty()) {
                 b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), res_size);
             }
-            else
+            else {
                 //b->addHostColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
-				b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
+                if(!one_line) {
+					b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
+				}
+                else {
+                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), 1);
+                };
+			};	
             cudaFree(exe_vectors1_d.top());
             exe_vectors1_d.pop();
         };
@@ -852,10 +861,14 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     };
 
     if ((a->columnGroups).empty()) {
-        b->mRecCount = a->mRecCount;		
+        if(!one_line) 
+            b->mRecCount = a->mRecCount;		
+		else
+            b->mRecCount = 1;			
     }
     else
         b->mRecCount = res_size;
+	one_liner = one_line;	
 }
 
 

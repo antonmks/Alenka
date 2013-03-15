@@ -99,17 +99,20 @@ void str_gather_host(unsigned int* d_int, unsigned int real_count, void* d, void
 		else if(len  == 10) {	
 	        thrust::gather(d_int, d_int + real_count, (Str<10> *)d, (Str<10> *)d_char);       
 		}
+		else if(len  == 15) {	
+	        thrust::gather(d_int, d_int + real_count, (Str<15> *)d, (Str<15> *)d_char);       
+		}		
 		else if(len  == 20) {	
 	        thrust::gather(d_int, d_int + real_count, (Str<20> *)d, (Str<20> *)d_char);       
 		}
-		else if(len  == 50) {	
-	        thrust::gather(d_int, d_int + real_count, (Str<50> *)d, (Str<50> *)d_char);       
+		else if(len  == 25) {	
+	        thrust::gather(d_int, d_int + real_count, (Str<25> *)d, (Str<25> *)d_char);       
 		}
-		else if(len  == 60) {	
-	        thrust::gather(d_int, d_int + real_count, (Str<60> *)d, (Str<60> *)d_char);       
+		else if(len  == 40) {	
+	        thrust::gather(d_int, d_int + real_count, (Str<40> *)d, (Str<40> *)d_char);       
 		}		
-		else if(len  == 100) {	
-	        thrust::gather(d_int, d_int + real_count, (Str<100> *)d, (Str<100> *)d_char);       
+		else if(len  == 101) {	
+	        thrust::gather(d_int, d_int + real_count, (Str<101> *)d, (Str<101> *)d_char);       
 		};		
 
 }		 
@@ -170,24 +173,29 @@ void str_gather(void* d_int, unsigned int real_count, void* d, void* d_char, con
 		    thrust::device_ptr<Str<10> > dev_ptr((Str<10> *)d);			
 	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
 		}
+		else if(len  == 15) {	
+	        thrust::device_ptr<Str<15> > dev_ptr_char((Str<15> *)d_char);
+		    thrust::device_ptr<Str<15> > dev_ptr((Str<15> *)d);			
+	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
+		}		
 		else if(len  == 20) {	
 	        thrust::device_ptr<Str<20> > dev_ptr_char((Str<20> *)d_char);
 		    thrust::device_ptr<Str<20> > dev_ptr((Str<20> *)d);			
 	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
 		}
-		else if(len  == 50) {	
-	        thrust::device_ptr<Str<50> > dev_ptr_char((Str<50> *)d_char);
-		    thrust::device_ptr<Str<50> > dev_ptr((Str<50> *)d);			
+		else if(len  == 25) {	
+	        thrust::device_ptr<Str<25> > dev_ptr_char((Str<25> *)d_char);
+		    thrust::device_ptr<Str<25> > dev_ptr((Str<25> *)d);			
 	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
 		}
-		else if(len  == 60) {	
-	        thrust::device_ptr<Str<60> > dev_ptr_char((Str<60> *)d_char);
-		    thrust::device_ptr<Str<60> > dev_ptr((Str<60> *)d);			
+		else if(len  == 40) {	
+	        thrust::device_ptr<Str<40> > dev_ptr_char((Str<40> *)d_char);
+		    thrust::device_ptr<Str<40> > dev_ptr((Str<40> *)d);			
 	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
 		}		
-		else if(len  == 100) {	
-	        thrust::device_ptr<Str<100> > dev_ptr_char((Str<100> *)d_char);
-		    thrust::device_ptr<Str<100> > dev_ptr((Str<100> *)d);			
+		else if(len  == 101) {	
+	        thrust::device_ptr<Str<101> > dev_ptr_char((Str<101> *)d_char);
+		    thrust::device_ptr<Str<101> > dev_ptr((Str<101> *)d);			
 	        thrust::gather(res, res + real_count, dev_ptr, dev_ptr_char);     
 		};
 
@@ -257,29 +265,36 @@ void str_sort_host(char* tmp, unsigned int RecCount, unsigned int* permutation, 
 		else
             thrust::stable_sort_by_key((Str<10> *)tmp, (Str<10> *)tmp+RecCount, permutation);				        
 	}
+	if(len  == 15) {	
+        if(srt)
+            thrust::stable_sort_by_key((Str<15> *)tmp, (Str<15> *)tmp+RecCount, permutation, thrust::greater<Str<15> >());			
+		else
+            thrust::stable_sort_by_key((Str<15> *)tmp, (Str<15> *)tmp+RecCount, permutation);				        
+	}
+
 	if(len  == 20) {	
         if(srt)
             thrust::stable_sort_by_key((Str<20> *)tmp, (Str<20> *)tmp+RecCount, permutation, thrust::greater<Str<20> >());			
 		else
             thrust::stable_sort_by_key((Str<20> *)tmp, (Str<20> *)tmp+RecCount, permutation);				        
 	}
-	if(len  == 50) {	
+	if(len  == 25) {	
         if(srt)
-            thrust::stable_sort_by_key((Str<50> *)tmp, (Str<50> *)tmp+RecCount, permutation, thrust::greater<Str<50> >());			
+            thrust::stable_sort_by_key((Str<25> *)tmp, (Str<25> *)tmp+RecCount, permutation, thrust::greater<Str<25> >());			
 		else
-            thrust::stable_sort_by_key((Str<50> *)tmp, (Str<50> *)tmp+RecCount, permutation);				        
+            thrust::stable_sort_by_key((Str<25> *)tmp, (Str<25> *)tmp+RecCount, permutation);				        
 	}
-	if(len  == 60) {	
+	if(len  == 40) {	
         if(srt)
-            thrust::stable_sort_by_key((Str<60> *)tmp, (Str<60> *)tmp+RecCount, permutation, thrust::greater<Str<60> >());			
+            thrust::stable_sort_by_key((Str<40> *)tmp, (Str<40> *)tmp+RecCount, permutation, thrust::greater<Str<40> >());			
 		else
-            thrust::stable_sort_by_key((Str<60> *)tmp, (Str<60> *)tmp+RecCount, permutation);				        
+            thrust::stable_sort_by_key((Str<40> *)tmp, (Str<40> *)tmp+RecCount, permutation);				        
 	}
-	if(len  == 100) {	
+	if(len  == 101) {	
         if(srt)
-            thrust::stable_sort_by_key((Str<100> *)tmp, (Str<100> *)tmp+RecCount, permutation, thrust::greater<Str<100> >());			
+            thrust::stable_sort_by_key((Str<101> *)tmp, (Str<101> *)tmp+RecCount, permutation, thrust::greater<Str<101> >());			
 		else
-            thrust::stable_sort_by_key((Str<100> *)tmp, (Str<100> *)tmp+RecCount, permutation);				        
+            thrust::stable_sort_by_key((Str<101> *)tmp, (Str<101> *)tmp+RecCount, permutation);				        
 	}
 	
 }
@@ -361,6 +376,15 @@ void str_sort(char* tmp, unsigned int RecCount, unsigned int* permutation, bool 
                 thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
 			};	
 		}	
+		else if(len  == 15) {	
+			thrust::device_ptr<Str<15> > temp((Str<15> *)tmp);			
+            if(srt) {
+                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<15> >());			
+			}	
+			else {				
+                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
+			};	
+		}			
 		else if(len  == 20) {	
 			thrust::device_ptr<Str<20> > temp((Str<20> *)tmp);			
             if(srt) {
@@ -370,28 +394,28 @@ void str_sort(char* tmp, unsigned int RecCount, unsigned int* permutation, bool 
                 thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
 			};	
 		}	
-		else if(len  == 50) {	
-			thrust::device_ptr<Str<50> > temp((Str<50> *)tmp);			
+		else if(len  == 25) {	
+			thrust::device_ptr<Str<25> > temp((Str<25> *)tmp);			
             if(srt) {
-                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<50> >());			
+                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<25> >());			
 			}	
 			else {				
                 thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
 			};	
 		}	
-		else if(len  == 60) {	
-			thrust::device_ptr<Str<60> > temp((Str<60> *)tmp);			
+		else if(len  == 40) {	
+			thrust::device_ptr<Str<40> > temp((Str<40> *)tmp);			
             if(srt) {
-                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<60> >());			
+                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<40> >());			
 			}	
 			else {				
                 thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
 			};	
 		}			
-		else if(len  == 100) {	
-			thrust::device_ptr<Str<100> > temp((Str<100> *)tmp);			
+		else if(len  == 101) {	
+			thrust::device_ptr<Str<101> > temp((Str<101> *)tmp);			
             if(srt) {
-                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<100> >());			
+                thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<Str<101> >());			
 			}	
 			else {				
                 thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);				        				
@@ -445,21 +469,25 @@ void str_grp(char* d_char, unsigned int real_count, thrust::device_ptr<bool>& d_
 	        thrust::device_ptr<Str<10> > d_str((Str<10> *)d_char);
             thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<10> >());			
 		}
+		else if(len  == 15) {	
+	        thrust::device_ptr<Str<15> > d_str((Str<15> *)d_char);
+            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<15> >());			
+		}		
 		else if(len  == 20) {	
 	        thrust::device_ptr<Str<20> > d_str((Str<20> *)d_char);
             thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<20> >());			
 		}
-		else if(len  == 50) {	
-	        thrust::device_ptr<Str<50> > d_str((Str<50> *)d_char);
-            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<50> >());			
+		else if(len  == 25) {	
+	        thrust::device_ptr<Str<25> > d_str((Str<25> *)d_char);
+            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<25> >());			
 		}
-		else if(len  == 60) {	
-	        thrust::device_ptr<Str<60> > d_str((Str<60> *)d_char);
-            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<60> >());			
+		else if(len  == 40) {	
+	        thrust::device_ptr<Str<40> > d_str((Str<40> *)d_char);
+            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<40> >());			
 		}		
-		else if(len  == 100) {	
-	        thrust::device_ptr<Str<100> > d_str((Str<100> *)d_char);
-            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<100> >());			
+		else if(len  == 101) {	
+	        thrust::device_ptr<Str<101> > d_str((Str<101> *)d_char);
+            thrust::transform(d_str, d_str + real_count -1, d_str+1, d_group, thrust::not_equal_to<Str<101> >());			
 		}
 		
 
@@ -528,27 +556,33 @@ void str_copy_if(char* source, unsigned int mRecCount, char* dest, thrust::devic
 			
             thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
 		}
+		else if(len  == 15) {	
+	        thrust::device_ptr<Str<15> > d_str((Str<15> *)source);
+			thrust::device_ptr<Str<15> > d_dest((Str<15> *)dest);
+			
+            thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
+		}		
 		else if(len  == 20) {	
 	        thrust::device_ptr<Str<20> > d_str((Str<20> *)source);
 			thrust::device_ptr<Str<20> > d_dest((Str<20> *)dest);
 			
             thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
 		}
-		else if(len  == 50) {	
-	        thrust::device_ptr<Str<50> > d_str((Str<50> *)source);
-			thrust::device_ptr<Str<50> > d_dest((Str<50> *)dest);
+		else if(len  == 25) {	
+	        thrust::device_ptr<Str<25> > d_str((Str<25> *)source);
+			thrust::device_ptr<Str<25> > d_dest((Str<25> *)dest);
 			
             thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
 		}
-		else if(len  == 60) {	
-	        thrust::device_ptr<Str<60> > d_str((Str<60> *)source);
-			thrust::device_ptr<Str<60> > d_dest((Str<60> *)dest);
+		else if(len  == 40) {	
+	        thrust::device_ptr<Str<40> > d_str((Str<40> *)source);
+			thrust::device_ptr<Str<40> > d_dest((Str<40> *)dest);
 			
             thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
 		}		
-		else if(len  == 100) {	
-	        thrust::device_ptr<Str<100> > d_str((Str<100> *)source);
-			thrust::device_ptr<Str<100> > d_dest((Str<100> *)dest);
+		else if(len  == 101) {	
+	        thrust::device_ptr<Str<101> > d_str((Str<101> *)source);
+			thrust::device_ptr<Str<101> > d_dest((Str<101> *)dest);
 			
             thrust::copy_if(d_str, d_str + mRecCount, d_grp, d_dest, thrust::identity<bool>());
 		}

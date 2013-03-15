@@ -43,7 +43,6 @@ STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;
 
 To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest development version of Thrust.
 New groupby op requires Boost's unordered map, so make sure that you got Boost installed too.
-You also need to download and use the latest development version of Thrust.
 To compile alenka run make or nmake on windows.
 
 

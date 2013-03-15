@@ -173,19 +173,6 @@ struct div_long_to_float_type
     }
 };
 
-struct float_to_long
-{
-
-    __host__ __device__
-    long long int operator()(const float_type x)
-    {
-        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-            return (long long int)((x+EPSILON)*100.0);
-        else return (long long int)(x*100.0);
-
-
-    }
-};
 
 struct long_to_float
 {
@@ -323,18 +310,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 		};	
     };
 	
-    void CudaSet::reset_offsets(queue<string> ct) {
-
-		while(!ct.empty()) {	
-		    if (columnNames.find(ct.front()) != columnNames.end()) {
-				if(type[columnNames[ct.front()]] == 2) {	 
-					str_offset[columnNames[ct.front()]] = 0;		
-				};			
-			};	
-			ct.pop();		
-		};		
-	};	
- 
  
 	void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt)
 	{
@@ -770,6 +745,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
         //cudaMalloc((void **) &d_char, real_count*len);		
 		//cudaMemset(d_char, 0, real_count*len);							
 		//str_gather(d_int, real_count, d, d_char, len);
+		if(str_offset.count(colIndex) == 0)
+			str_offset[colIndex] = 0;
+		//cout << "str off " << str_offset[colIndex] << endl;	
 		if(!alloced_switch)
 		    str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
 		else
@@ -1105,13 +1083,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 			h_columns_float.push_back(thrust::host_vector<float_type>());
             type_index[colIndex] = d_columns_float.size()-1;
         }
-        else {  // already exists, my need to resize it
+        else {  // already exists, my need to resize it		    
             if(d_columns_float[type_index[colIndex]].size() < recCount)
 				d_columns_float[type_index[colIndex]].resize(recCount);
         };
 
         thrust::device_ptr<float_type> d_col((float_type*)col);
-        thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());        
+        thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());     
     };
 
 
@@ -2484,9 +2462,9 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
   	    rcount = right->mRecCount;	
     
 	queue<string> ct(cc);
-	right->reset_offsets(ct);
+	reset_offsets();
 	
-	while(!ct.empty()) {	
+	while(!ct.empty()) {		    
         right->allocColumnOnDevice(right->columnNames[ct.front()], rcount);		
 		ct.pop();		
 	};		
@@ -2506,8 +2484,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
              copyColumns(right, cc, i, cnt_r);			  			 	 
 			 cnt_r = cnt_r + right->prm_count[i];
 		 };				
-	};
-	
+	};	
 	return cnt_r;
 
 }
@@ -2546,3 +2523,11 @@ unsigned int max_tmp(CudaSet* a)
 
 
 
+    void reset_offsets() {
+		map<unsigned int, unsigned int>::iterator iter;		
+		
+		for (iter = str_offset.begin(); iter != str_offset.end(); ++iter) {
+           iter->second = 0; 
+		};   
+		
+	};	

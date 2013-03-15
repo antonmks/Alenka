@@ -85,6 +85,21 @@ struct head_flag_predicate
     }
 };
 
+struct float_to_long
+{
+
+    __host__ __device__
+    long long int operator()(const float_type x)
+    {
+        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
+            return (long long int)((x+EPSILON)*100.0);
+        else return (long long int)(x*100.0);
+
+
+    }
+};
+
+
 #ifdef _WIN64
 typedef unsigned __int64 uint64_t;
 #endif
@@ -146,8 +161,7 @@ public:
     CudaSet(unsigned int RecordCount, unsigned int ColumnCount);
     CudaSet(CudaSet* a, CudaSet* b, int_type Recs, queue<string> op_sel, queue<string> op_sel_as);
     ~CudaSet();
-    void allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount);	
-    void reset_offsets(queue<string> ct);	
+    void allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount);	    
     void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt);	
     bool isUnique(unsigned int colIndex);
     void add_hashed_strings(string field, unsigned int segment, unsigned int i_cnt);
@@ -221,7 +235,7 @@ void mycopy(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsig
 unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, unsigned int &rcount);
 unsigned int max_char(CudaSet* a);
 unsigned int max_tmp(CudaSet* a);    
-
+void reset_offsets();
 
 #endif
 

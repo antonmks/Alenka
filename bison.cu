@@ -113,7 +113,7 @@
     void emit_order(char *s, char *f, int e, int ll = 0);
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
-    void emit_join(char *s, char *j1);
+    void emit_join(char *s, char *j1, int grp);
     void emit_join_tab(char *s, bool left);
     void emit_distinct();
 
@@ -442,7 +442,7 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  8
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   460
+#define YYLAST   457
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  68
@@ -451,7 +451,7 @@ union yyalloc
 /* YYNRULES -- Number of rules.  */
 #define YYNRULES  64
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  160
+#define YYNSTATES  161
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
@@ -502,12 +502,12 @@ static const yytype_uint8 yytranslate[] =
 static const yytype_uint16 yyprhs[] =
 {
        0,     0,     3,     6,    10,    12,    20,    33,    43,    49,
-      56,    64,    74,    81,    83,    87,    89,    91,    93,    95,
-      97,    99,   109,   116,   119,   122,   127,   132,   137,   142,
-     147,   150,   154,   158,   162,   166,   170,   174,   178,   182,
-     186,   190,   194,   197,   200,   204,   210,   214,   218,   223,
-     224,   228,   232,   238,   240,   244,   246,   250,   251,   253,
-     256,   261,   267,   273,   274
+      56,    65,    75,    82,    84,    88,    90,    92,    94,    96,
+      98,   100,   110,   117,   120,   123,   128,   133,   138,   143,
+     148,   151,   155,   159,   163,   167,   171,   175,   179,   183,
+     187,   191,   195,   198,   201,   205,   211,   215,   219,   224,
+     225,   229,   233,   239,   241,   245,   247,   251,   252,   254,
+     257,   262,   268,   274,   275
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
@@ -519,28 +519,28 @@ static const yytype_int8 yyrhs[] =
       75,    62,    -1,     4,    11,    36,     3,    58,    46,    61,
       75,    62,    -1,     4,    11,    38,     4,    78,    -1,     4,
       11,    47,     4,    39,    77,    -1,     4,    11,    45,    74,
-      44,     4,    79,    -1,    41,     4,    42,     3,    51,    61,
-       3,    62,    80,    -1,    41,     4,    42,     3,    80,    58,
-      -1,     4,    -1,     4,    63,     4,    -1,    10,    -1,     5,
-      -1,     6,    -1,     9,    -1,     7,    -1,     8,    -1,     4,
-      64,     6,    65,    66,     4,    61,     6,    62,    -1,     4,
-      64,     6,    65,    66,     4,    -1,     4,    48,    -1,     4,
-      49,    -1,    50,    61,    72,    62,    -1,    52,    61,    72,
-      62,    -1,    53,    61,    72,    62,    -1,    54,    61,    72,
-      62,    -1,    55,    61,    72,    62,    -1,    16,    72,    -1,
-      72,    28,    72,    -1,    72,    29,    72,    -1,    72,    30,
-      72,    -1,    72,    31,    72,    -1,    72,    32,    72,    -1,
-      72,    33,    72,    -1,    72,    15,    72,    -1,    72,    12,
-      72,    -1,    72,    13,    72,    -1,    72,    14,    72,    -1,
-      72,    27,    72,    -1,    22,    72,    -1,    21,    72,    -1,
-      72,    24,    72,    -1,    72,    24,    61,    71,    62,    -1,
-      61,    72,    62,    -1,    72,    19,     8,    -1,    72,    19,
-      22,     8,    -1,    -1,    43,    39,    76,    -1,    72,    46,
-       4,    -1,    74,    67,    72,    46,     4,    -1,    72,    -1,
-      75,    67,    72,    -1,    72,    -1,    72,    67,    76,    -1,
-      -1,    76,    -1,    39,    72,    -1,    40,     4,    57,    72,
-      -1,    59,    40,     4,    57,    72,    -1,    40,     4,    57,
-      72,    79,    -1,    -1,    56,     6,    -1
+      44,     4,    79,    73,    -1,    41,     4,    42,     3,    51,
+      61,     3,    62,    80,    -1,    41,     4,    42,     3,    80,
+      58,    -1,     4,    -1,     4,    63,     4,    -1,    10,    -1,
+       5,    -1,     6,    -1,     9,    -1,     7,    -1,     8,    -1,
+       4,    64,     6,    65,    66,     4,    61,     6,    62,    -1,
+       4,    64,     6,    65,    66,     4,    -1,     4,    48,    -1,
+       4,    49,    -1,    50,    61,    72,    62,    -1,    52,    61,
+      72,    62,    -1,    53,    61,    72,    62,    -1,    54,    61,
+      72,    62,    -1,    55,    61,    72,    62,    -1,    16,    72,
+      -1,    72,    28,    72,    -1,    72,    29,    72,    -1,    72,
+      30,    72,    -1,    72,    31,    72,    -1,    72,    32,    72,
+      -1,    72,    33,    72,    -1,    72,    15,    72,    -1,    72,
+      12,    72,    -1,    72,    13,    72,    -1,    72,    14,    72,
+      -1,    72,    27,    72,    -1,    22,    72,    -1,    21,    72,
+      -1,    72,    24,    72,    -1,    72,    24,    61,    71,    62,
+      -1,    61,    72,    62,    -1,    72,    19,     8,    -1,    72,
+      19,    22,     8,    -1,    -1,    43,    39,    76,    -1,    72,
+      46,     4,    -1,    74,    67,    72,    46,     4,    -1,    72,
+      -1,    75,    67,    72,    -1,    72,    -1,    72,    67,    76,
+      -1,    -1,    76,    -1,    39,    72,    -1,    40,     4,    57,
+      72,    -1,    59,    40,     4,    57,    72,    -1,    40,     4,
+      57,    72,    79,    -1,    -1,    56,     6,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
@@ -606,7 +606,7 @@ static const yytype_uint8 yyr1[] =
 static const yytype_uint8 yyr2[] =
 {
        0,     2,     2,     3,     1,     7,    12,     9,     5,     6,
-       7,     9,     6,     1,     3,     1,     1,     1,     1,     1,
+       8,     9,     6,     1,     3,     1,     1,     1,     1,     1,
        1,     9,     6,     2,     2,     4,     4,     4,     4,     4,
        2,     3,     3,     3,     3,     3,     3,     3,     3,     3,
        3,     3,     2,     2,     3,     5,     3,     3,     4,     0,
@@ -631,10 +631,11 @@ static const yytype_uint8 yydefact[] =
       37,    47,     0,     0,    44,    41,    31,    32,    33,    34,
       35,    36,    51,    49,     0,    55,    58,     9,     0,    64,
       12,     0,     0,     0,    25,    26,    27,    28,    29,    48,
-      13,     0,     0,     0,     0,     5,    10,     0,     0,     0,
-       0,    53,     0,     0,    45,     0,     0,     0,    52,    56,
-      63,     0,     7,     0,    22,     0,    50,     0,    11,     0,
-      54,     0,    60,     0,     0,     0,    62,    61,     6,    21
+      13,     0,     0,     0,     0,     5,    49,     0,     0,     0,
+       0,    53,     0,     0,    45,     0,     0,     0,    10,    52,
+      56,    63,     0,     7,     0,    22,     0,    50,     0,    11,
+       0,    54,     0,    60,     0,     0,     0,    62,    61,     6,
+      21
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -650,28 +651,29 @@ static const yytype_int16 yydefgoto[] =
 static const yytype_int16 yypact[] =
 {
        6,    -3,     5,     1,   -44,  -126,    59,   -18,  -126,   -34,
-    -126,    53,    65,   113,    66,    54,  -126,   -39,    29,    37,
+    -126,    53,    64,   113,    65,    54,  -126,   -39,    31,    37,
     -126,  -126,  -126,  -126,  -126,  -126,   113,   113,   113,    33,
-      41,    63,    67,    72,   113,   336,   -42,    76,    27,    77,
-      79,   113,  -126,  -126,  -126,   133,   142,   151,   414,   414,
-     113,   113,   113,   113,   113,   181,   113,   113,   113,   113,
-      -2,   137,   113,   113,   113,   113,   113,   113,   113,   135,
-     145,   113,   113,    89,   146,    93,   152,    95,   385,  -126,
-      92,   203,   225,   247,   269,   291,  -126,   385,     3,   404,
-     151,  -126,   153,    55,   421,   427,    81,    81,  -126,  -126,
-    -126,  -126,  -126,   -36,   362,    60,  -126,  -126,   157,  -126,
-    -126,   100,   113,    88,  -126,  -126,  -126,  -126,  -126,  -126,
-      18,   102,   165,   132,   136,  -126,  -126,   168,   113,   111,
-     131,   385,    36,   182,  -126,   128,   113,   184,  -126,  -126,
-     141,   138,  -126,   113,   140,   113,  -126,   147,  -126,   113,
-     385,   196,   314,   113,    64,   144,  -126,   385,  -126,  -126
+      41,    67,    71,    75,   113,   337,   -42,    76,    27,    77,
+      78,   113,  -126,  -126,  -126,   122,   133,   401,   411,   411,
+     113,   113,   113,   113,   113,   182,   113,   113,   113,   113,
+      -2,   138,   113,   113,   113,   113,   113,   113,   113,   136,
+     145,   113,   113,    89,   146,    93,   150,    94,   386,  -126,
+      91,   204,   226,   248,   270,   292,  -126,   386,     3,   154,
+     401,  -126,   149,    55,   418,   424,    81,    81,  -126,  -126,
+    -126,  -126,  -126,   -36,   363,    60,  -126,  -126,   155,  -126,
+    -126,    99,   113,    96,  -126,  -126,  -126,  -126,  -126,  -126,
+      18,   102,   166,   132,   135,  -126,   129,   172,   113,   115,
+     134,   386,    36,   175,  -126,   141,   113,   185,  -126,  -126,
+    -126,   144,   142,  -126,   113,   143,   113,  -126,   148,  -126,
+     113,   386,   196,   315,   113,    63,   158,  -126,   386,  -126,
+    -126
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -126,  -126,   200,   114,   -13,  -126,  -126,    70,  -125,  -126,
-    -126,    68,    83
+    -126,  -126,   205,   114,   -13,    95,  -126,    72,  -125,  -126,
+    -126,    73,    83
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -681,53 +683,52 @@ static const yytype_int16 yypgoto[] =
 #define YYTABLE_NINF -1
 static const yytype_uint8 yytable[] =
 {
-      35,     8,    70,   139,   122,     1,    91,   123,     6,     7,
-       1,   146,    39,    47,    48,    49,    10,    58,    59,    40,
+      35,     8,    70,   140,   122,     1,    91,   123,     6,     7,
+       1,   147,    39,    47,    48,    49,    10,    58,    59,    40,
       92,    55,    60,   124,    15,    71,    16,    61,    78,     6,
       62,    63,    64,    65,    66,    67,    68,    81,    82,    83,
       84,    85,     2,    87,    88,    89,    90,     2,    94,    95,
       96,    97,    98,    99,   100,   101,    17,    38,   104,   120,
-      20,    21,    22,    23,    24,    25,    43,    44,    41,    18,
-      37,    26,    56,    57,    58,    59,    27,    28,    73,    60,
+      20,    21,    22,    23,    24,    25,    43,    44,    18,    37,
+      41,    26,    56,    57,    58,    59,    27,    28,    73,    60,
       55,    45,    46,    74,    61,    43,    44,    62,    63,    64,
-      65,    66,    67,    68,    50,    11,     2,    12,   142,   131,
-      45,    46,    51,   143,    13,    29,    14,    30,    31,    32,
+      65,    66,    67,    68,    50,    11,     2,    12,   143,   131,
+      45,    46,    51,   144,    13,    29,    14,    30,    31,    32,
       33,    65,    66,    67,    68,    72,    34,    19,    20,    21,
-      22,    23,    24,    25,    52,    77,   158,   128,    53,    26,
-     150,   143,   152,    54,    27,    28,   131,    79,    76,   102,
-     157,    19,    20,    21,    22,    23,    24,    25,    80,   103,
-     108,   110,   109,    26,   133,   111,   112,   113,    27,    28,
-     129,   119,   130,    29,   134,    30,    31,    32,    33,   135,
-      60,   136,   138,   140,    34,    61,   137,   141,    62,    63,
-      64,    65,    66,    67,    68,   145,   144,    29,   147,    30,
-      31,    32,    33,    56,    57,    58,    59,    74,    93,   149,
-      60,   151,   155,     9,   153,    61,   159,   121,    62,    63,
-      64,    65,    66,    67,    68,    56,    57,    58,    59,   154,
-     156,     0,    60,   148,     0,     0,     0,    61,     0,     0,
-      62,    63,    64,    65,    66,    67,    68,    56,    57,    58,
-      59,     0,     0,    86,    60,     0,     0,     0,     0,    61,
-       0,     0,    62,    63,    64,    65,    66,    67,    68,    56,
-      57,    58,    59,     0,     0,   114,    60,     0,     0,     0,
-       0,    61,     0,     0,    62,    63,    64,    65,    66,    67,
-      68,    56,    57,    58,    59,     0,     0,   115,    60,     0,
-       0,     0,     0,    61,     0,     0,    62,    63,    64,    65,
-      66,    67,    68,    56,    57,    58,    59,     0,     0,   116,
-      60,     0,     0,     0,     0,    61,     0,     0,    62,    63,
-      64,    65,    66,    67,    68,     0,    56,    57,    58,    59,
-       0,   117,     0,    60,     0,     0,     0,     0,    61,     0,
+      22,    23,    24,    25,    77,   159,    79,   128,    52,    26,
+     144,   151,    53,   153,    27,    28,    54,   131,    76,    80,
+     102,   158,    19,    20,    21,    22,    23,    24,    25,   103,
+     108,   110,   109,   111,    26,   112,   113,   119,   129,    27,
+      28,   130,   133,    29,   134,    30,    31,    32,    33,    59,
+     135,   136,   123,    60,    34,   137,   139,   141,    61,   145,
+     142,    62,    63,    64,    65,    66,    67,    68,    29,   148,
+      30,    31,    32,    33,    56,    57,    58,    59,   146,    93,
+      74,    60,   156,   150,   152,   154,    61,   121,     9,    62,
+      63,    64,    65,    66,    67,    68,    56,    57,    58,    59,
+     160,   138,   155,    60,   149,     0,   157,     0,    61,     0,
        0,    62,    63,    64,    65,    66,    67,    68,    56,    57,
-      58,    59,     0,   118,   122,    60,     0,     0,     0,     0,
+      58,    59,     0,     0,    86,    60,     0,     0,     0,     0,
       61,     0,     0,    62,    63,    64,    65,    66,    67,    68,
-       0,     0,     0,   124,    56,    57,    58,    59,     0,     0,
-       0,    60,    69,     0,     0,     0,    61,     0,     0,    62,
+      56,    57,    58,    59,     0,     0,   114,    60,     0,     0,
+       0,     0,    61,     0,     0,    62,    63,    64,    65,    66,
+      67,    68,    56,    57,    58,    59,     0,     0,   115,    60,
+       0,     0,     0,     0,    61,     0,     0,    62,    63,    64,
+      65,    66,    67,    68,    56,    57,    58,    59,     0,     0,
+     116,    60,     0,     0,     0,     0,    61,     0,     0,    62,
       63,    64,    65,    66,    67,    68,     0,    56,    57,    58,
-      59,     0,     0,     0,    60,     0,     0,     0,   127,    61,
-       0,     0,    62,    63,    64,    65,    66,    67,    68,    59,
-       0,     0,     0,    60,     0,     0,     0,     0,    61,     0,
-       0,    62,    63,    64,    65,    66,    67,    68,    61,     0,
-       0,    62,    63,    64,    65,    66,    67,    68,    62,    63,
-      64,    65,    66,    67,    68,    63,    64,    65,    66,    67,
-      68
+      59,     0,   117,     0,    60,     0,     0,     0,     0,    61,
+       0,     0,    62,    63,    64,    65,    66,    67,    68,    56,
+      57,    58,    59,     0,   118,   122,    60,     0,     0,     0,
+       0,    61,     0,     0,    62,    63,    64,    65,    66,    67,
+      68,     0,     0,     0,   124,    56,    57,    58,    59,     0,
+       0,     0,    60,    69,     0,     0,     0,    61,     0,     0,
+      62,    63,    64,    65,    66,    67,    68,     0,    56,    57,
+      58,    59,     0,     0,     0,    60,     0,     0,     0,   127,
+      61,     0,     0,    62,    63,    64,    65,    66,    67,    68,
+      60,     0,     0,     0,     0,    61,     0,     0,    62,    63,
+      64,    65,    66,    67,    68,    61,     0,     0,    62,    63,
+      64,    65,    66,    67,    68,    62,    63,    64,    65,    66,
+      67,    68,    63,    64,    65,    66,    67,    68
 };
 
 static const yytype_int16 yycheck[] =
@@ -738,47 +739,46 @@ static const yytype_int16 yycheck[] =
       27,    28,    29,    30,    31,    32,    33,    50,    51,    52,
       53,    54,    41,    56,    57,    58,    59,    41,    61,    62,
       63,    64,    65,    66,    67,    68,     3,     3,    71,     4,
-       5,     6,     7,     8,     9,    10,    48,    49,    39,     4,
-       4,    16,    12,    13,    14,    15,    21,    22,    51,    19,
+       5,     6,     7,     8,     9,    10,    48,    49,     4,     4,
+      39,    16,    12,    13,    14,    15,    21,    22,    51,    19,
       93,    63,    64,    56,    24,    48,    49,    27,    28,    29,
       30,    31,    32,    33,    61,    36,    41,    38,    62,   112,
       63,    64,    61,    67,    45,    50,    47,    52,    53,    54,
       55,    30,    31,    32,    33,    39,    61,     4,     5,     6,
-       7,     8,     9,    10,    61,    46,    62,    67,    61,    16,
-     143,    67,   145,    61,    21,    22,   149,     4,    61,     4,
-     153,     4,     5,     6,     7,     8,     9,    10,     6,     4,
-      61,    58,     6,    16,    66,     3,    61,    65,    21,    22,
-       3,     8,    62,    50,    62,    52,    53,    54,    55,     4,
-      19,    39,     4,    62,    61,    24,    40,    46,    27,    28,
-      29,    30,    31,    32,    33,    57,     4,    50,     4,    52,
-      53,    54,    55,    12,    13,    14,    15,    56,    61,    61,
-      19,    61,     6,     3,    57,    24,    62,    93,    27,    28,
-      29,    30,    31,    32,    33,    12,    13,    14,    15,   149,
-     152,    -1,    19,   140,    -1,    -1,    -1,    24,    -1,    -1,
-      27,    28,    29,    30,    31,    32,    33,    12,    13,    14,
-      15,    -1,    -1,    62,    19,    -1,    -1,    -1,    -1,    24,
-      -1,    -1,    27,    28,    29,    30,    31,    32,    33,    12,
-      13,    14,    15,    -1,    -1,    62,    19,    -1,    -1,    -1,
-      -1,    24,    -1,    -1,    27,    28,    29,    30,    31,    32,
-      33,    12,    13,    14,    15,    -1,    -1,    62,    19,    -1,
-      -1,    -1,    -1,    24,    -1,    -1,    27,    28,    29,    30,
-      31,    32,    33,    12,    13,    14,    15,    -1,    -1,    62,
-      19,    -1,    -1,    -1,    -1,    24,    -1,    -1,    27,    28,
-      29,    30,    31,    32,    33,    -1,    12,    13,    14,    15,
-      -1,    62,    -1,    19,    -1,    -1,    -1,    -1,    24,    -1,
+       7,     8,     9,    10,    46,    62,     4,    67,    61,    16,
+      67,   144,    61,   146,    21,    22,    61,   150,    61,     6,
+       4,   154,     4,     5,     6,     7,     8,     9,    10,     4,
+      61,    58,     6,     3,    16,    61,    65,     8,     3,    21,
+      22,    62,    66,    50,    62,    52,    53,    54,    55,    15,
+       4,    39,    43,    19,    61,    40,     4,    62,    24,     4,
+      46,    27,    28,    29,    30,    31,    32,    33,    50,     4,
+      52,    53,    54,    55,    12,    13,    14,    15,    57,    61,
+      56,    19,     6,    61,    61,    57,    24,    93,     3,    27,
+      28,    29,    30,    31,    32,    33,    12,    13,    14,    15,
+      62,   126,   150,    19,   141,    -1,   153,    -1,    24,    -1,
       -1,    27,    28,    29,    30,    31,    32,    33,    12,    13,
-      14,    15,    -1,    62,    40,    19,    -1,    -1,    -1,    -1,
+      14,    15,    -1,    -1,    62,    19,    -1,    -1,    -1,    -1,
       24,    -1,    -1,    27,    28,    29,    30,    31,    32,    33,
-      -1,    -1,    -1,    59,    12,    13,    14,    15,    -1,    -1,
-      -1,    19,    46,    -1,    -1,    -1,    24,    -1,    -1,    27,
+      12,    13,    14,    15,    -1,    -1,    62,    19,    -1,    -1,
+      -1,    -1,    24,    -1,    -1,    27,    28,    29,    30,    31,
+      32,    33,    12,    13,    14,    15,    -1,    -1,    62,    19,
+      -1,    -1,    -1,    -1,    24,    -1,    -1,    27,    28,    29,
+      30,    31,    32,    33,    12,    13,    14,    15,    -1,    -1,
+      62,    19,    -1,    -1,    -1,    -1,    24,    -1,    -1,    27,
       28,    29,    30,    31,    32,    33,    -1,    12,    13,    14,
-      15,    -1,    -1,    -1,    19,    -1,    -1,    -1,    46,    24,
-      -1,    -1,    27,    28,    29,    30,    31,    32,    33,    15,
-      -1,    -1,    -1,    19,    -1,    -1,    -1,    -1,    24,    -1,
-      -1,    27,    28,    29,    30,    31,    32,    33,    24,    -1,
-      -1,    27,    28,    29,    30,    31,    32,    33,    27,    28,
-      29,    30,    31,    32,    33,    28,    29,    30,    31,    32,
-      33
+      15,    -1,    62,    -1,    19,    -1,    -1,    -1,    -1,    24,
+      -1,    -1,    27,    28,    29,    30,    31,    32,    33,    12,
+      13,    14,    15,    -1,    62,    40,    19,    -1,    -1,    -1,
+      -1,    24,    -1,    -1,    27,    28,    29,    30,    31,    32,
+      33,    -1,    -1,    -1,    59,    12,    13,    14,    15,    -1,
+      -1,    -1,    19,    46,    -1,    -1,    -1,    24,    -1,    -1,
+      27,    28,    29,    30,    31,    32,    33,    -1,    12,    13,
+      14,    15,    -1,    -1,    -1,    19,    -1,    -1,    -1,    46,
+      24,    -1,    -1,    27,    28,    29,    30,    31,    32,    33,
+      19,    -1,    -1,    -1,    -1,    24,    -1,    -1,    27,    28,
+      29,    30,    31,    32,    33,    24,    -1,    -1,    27,    28,
+      29,    30,    31,    32,    33,    27,    28,    29,    30,    31,
+      32,    33,    28,    29,    30,    31,    32,    33
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
@@ -798,9 +798,10 @@ static const yytype_uint8 yystos[] =
       72,    72,     4,     4,    72,    72,    76,    77,    61,     6,
       58,     3,    61,    65,    62,    62,    62,    62,    62,     8,
        4,    71,    40,    43,    59,    73,    79,    46,    67,     3,
-      62,    72,    75,    66,    62,     4,    39,    40,     4,    76,
-      62,    46,    62,    67,     4,    57,    76,     4,    80,    61,
-      72,    61,    72,    57,    75,     6,    79,    72,    62,    62
+      62,    72,    75,    66,    62,     4,    39,    40,    73,     4,
+      76,    62,    46,    62,    67,     4,    57,    76,     4,    80,
+      61,    72,    61,    72,    57,    75,     6,    79,    72,    62,
+      62
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -1657,7 +1658,7 @@ yyreduce:
 
 /* Line 1455 of yacc.c  */
 #line 159 "bison.y"
-    { emit_join((yyvsp[(1) - (7)].strval),(yyvsp[(6) - (7)].strval)); ;}
+    { emit_join((yyvsp[(1) - (8)].strval),(yyvsp[(6) - (8)].strval),(yyvsp[(7) - (8)].intval)); ;}
     break;
 
   case 11:
@@ -2040,7 +2041,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 2044 "bison.cu"
+#line 2045 "bison.cu"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2262,19 +2263,21 @@ yyreturn:
 #include "join.h"
 #include "atof.h"
 #include "sorts.cu"
+#include <limits>
 
 FILE *file_pointer;
 queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
 queue<int> cols;
+//searchStatus_t status;
+//searchEngine_t engine;
 
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
 unsigned int join_cnt = 0;
 unsigned int distinct_cnt = 0;
 int join_col_cnt = 0;
-unsigned int eqq = 0;
 stack<string> op_join;
 bool left_join;
 
@@ -2282,13 +2285,8 @@ unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 bool scan_state = 0;
 string separator, f_file;
-ContextPtr context;			
+//ContextPtr context;			
 unsigned int int_col_count;
-
-
-//CUDPPHandle theCudpp;
-
-using namespace thrust::placeholders;
 
 
 void emit_name(char *name)
@@ -2306,7 +2304,7 @@ void emit_limit(int val)
 void emit_string(char *str)
 {   // remove the float_type quotes
     string sss(str,1, strlen(str)-2);
-    op_type.push("STRING");
+    op_type.push("STRING");	
     op_value.push(sss);
 }
 
@@ -2349,24 +2347,12 @@ void emit_div()
 void emit_and()
 {
     op_type.push("AND");
-    if (join_col_cnt == -1)
-        join_col_cnt++;
     join_col_cnt++;
-    eqq = 0;
-}
+} 
 
 void emit_eq()
 {
-    //op_type.push("JOIN");
-    eqq++;
-    join_cnt++;
-    if(eqq == join_col_cnt+1) {
-        j_col_count.push(join_col_cnt+1);
-        join_col_cnt = -1;
-    }
-    else if (join_col_cnt == -1 )
-        j_col_count.push(1);
-
+    op_type.push("JOIN"); 
 }
 
 void emit_distinct()
@@ -2528,8 +2514,9 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 	
 }
 
+int hh = 0;
 
-void emit_join(char *s, char *j1)
+void emit_join(char *s, char *j1, int grp)
 {
 
     string j2 = op_join.top();
@@ -2575,6 +2562,15 @@ void emit_join(char *s, char *j1)
     op_value.pop();
 
     cout << "JOIN " << s <<  " " <<  getFreeMem() <<  endl;	
+	//cout << "join col count " << join_col_cnt << endl;
+	
+    queue<string> op_v1(op_value);
+    while(op_v1.size() ) {        
+		//cout << op_v1.front() << endl;
+		op_v1.pop();
+		grp++;
+	};	
+
 	
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right,left,0,op_sel, op_sel_as);	
@@ -2617,10 +2613,14 @@ void emit_join(char *s, char *j1)
 	};	
 	
 	
-	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2))) {
-	    cout << "Only joins on integers and strings are supported " << endl;
+	if (!((left->type[colInd1] == 0 && right->type[colInd2]  == 0) || (left->type[colInd1] == 2 && right->type[colInd2]  == 2)
+           || (left->type[colInd1] == 1 && right->type[colInd2]  == 1 && left->decimal[colInd1] && right->decimal[colInd2]))) {
+	    cout << "Joins on floats are not supported " << endl;
 		exit(0);
 	};	
+	bool decimal_join = 0;
+	if (left->type[colInd1] == 1 && right->type[colInd2]  == 1)
+		decimal_join = 1;
 	
     set<string> field_names;
     stack<string> exe_type;
@@ -2651,8 +2651,13 @@ void emit_join(char *s, char *j1)
 	
 	
 	//here we need to make sure that right column is ordered. If not then we order it and keep the permutation		
-	bool sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);	
-	
+	bool sorted;
+	if(!decimal_join)
+		sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);	
+    else		
+		sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);	
+		
+
 	if(!sorted) {	
 	   
 	    queue<string> ss(op_sel);
@@ -2695,27 +2700,25 @@ void emit_join(char *s, char *j1)
 		thrust::device_free(d_tmp);	
 	};
 	
-
-	
-	searchEngine_t engine = 0;
-	searchStatus_t status = searchCreate("search.cubin", &engine);		
-	if(SEARCH_STATUS_SUCCESS != status) {
-		printf("Please compile and place search.cubin into alenka's directory \n");
-		exit(0);
-	};
-	
-
-	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);
+/*	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);	
 	DeviceMemPtr btreeDevice;
-	context->ByteAlloc(treeSize, &btreeDevice);		
-	status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
-		                     (CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());
+	context->ByteAlloc(treeSize, &btreeDevice);	
+	
+	if(decimal_join) {
+		thrust::device_ptr<int_type> d_cc((int_type*)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()));
+		thrust::transform(right->d_columns_float[right->type_index[colInd2]].begin(),right->d_columns_float[right->type_index[colInd2]].begin()+cnt_r,
+						  d_cc, float_to_long());
+
+		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
+								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()), btreeDevice->Handle());
+    }
+    else {
+		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
+								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());								
+    };	
+*/	
+					
 							 
-							 
-	if(SEARCH_STATUS_SUCCESS != status) {
-		printf("BUILD FAIL!\n");
-		exit(0);
-	};
 		
 	while(!cc.empty())
         cc.pop();
@@ -2730,8 +2733,7 @@ void emit_join(char *s, char *j1)
         allocColumns(left, cc);	
 	};	
 
-    //cout << "successfully loaded l && r " << cnt_l << " " << cnt_r << " " << getFreeMem() << endl;
-	
+    	
     thrust::device_vector<unsigned int> d_res1;
     thrust::device_vector<unsigned int> d_res2;    
 	unsigned int cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
@@ -2744,7 +2746,7 @@ void emit_join(char *s, char *j1)
 	    
 		cout << "segment " << i << " " << getFreeMem() << endl;				
 		cnt_l = 0;
-		
+				
 		if (left->type[colInd1]  != 2) {
 		    copyColumns(left, lc, i, cnt_l);
 		}
@@ -2768,33 +2770,77 @@ void emit_join(char *s, char *j1)
                 idx = left->type_index[colInd1];
             else
                 idx = left->d_columns_int.size()-1;				
-					
-		
-            unsigned int left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
-                                        d_res1, d_res2, cnt_l, cnt_r, left_join, engine, btreeDevice);
-			
+
+			unsigned int left_sz;	
+			if(decimal_join) {
+				thrust::device_ptr<int_type> d_cc((int_type*)thrust::raw_pointer_cast(left->d_columns_int[idx].data()));
+				thrust::transform(left->d_columns_float[left->type_index[colInd1]].begin(), left->d_columns_float[right->type_index[colInd2]].begin()+cnt_r,
+								  d_cc, float_to_long());
+				
+				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), (int_type*)thrust::raw_pointer_cast(left->d_columns_float[idx].data()),
+                               d_res1, d_res2, cnt_l, cnt_r, left_join);
+			}
+            else {
+		    
+				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
+                               d_res1, d_res2, cnt_l, cnt_r, left_join);
+            };	
+  //          cout << "res " << d_res1.size() << " " << left_join << endl; 		
+						
             // check if the join is a multicolumn join
-			/*while(!op_value.empty()) {
+			while(join_col_cnt) {
+			    
+			    join_col_cnt--;
 	            string f3 = op_value.front();
 				op_value.pop();
 				string f4 = op_value.front();
-	            op_value.pop();
+	            op_value.pop();				
+		
+				//alloc f4 if not alloced
+				queue<string> rc;
+				rc.push(f3);
+				allocColumns(left, rc);				
+				copyColumns(left, rc, i, cnt_l);
+				rc.pop();
+			
 				
 				if (d_res1.size() && d_res2.size()) {
 					unsigned int colInd3 = (left->columnNames).find(f3)->second;
-					unsigned int colInd4 = (right->columnNames).find(f4)->second;
+					unsigned int colInd4 = (right->columnNames).find(f4)->second;					
+			
+					thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());	
 					
-                    thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());				    
-					thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2.begin());
+					if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
+
+						if(right->d_columns_float[right->type_index[colInd4]].size() == 0)
+							unsigned int cnt_r = load_queue(rc, right, 0, f4, rcount);	
 					
-			        thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res2.size());	
-					thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, thrust::equal_to<int_type>());
+						thrust::device_ptr<int_type> d_l = thrust::device_malloc<int_type>(d_res1.size());
+                        thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_left(left->d_columns_float[left->type_index[colInd3]].begin(), d_res1.begin());				    				
+						thrust::transform(iter_left, iter_left+d_res1.size(), d_l, float_to_long());
+						
+						thrust::device_ptr<int_type> d_r = thrust::device_malloc<int_type>(d_res1.size());
+                        thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_right(right->d_columns_float[right->type_index[colInd4]].begin(), d_res2.begin());				    
+						thrust::transform(iter_right, iter_right+d_res2.size(), d_r, float_to_long());					
+						
+						thrust::transform(d_l, d_l+d_res1.size(), d_r, d_add, thrust::equal_to<int_type>());
+						
+					}
+                    else {									
+                        thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());				    
+						thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2.begin());
 					
-					unsigned int new_cnt = thrust::count(d_add, d_add+d_res2.size(), (bool)1);
+						
+						thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, thrust::equal_to<int_type>());
+					};	
+					
+					unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), (bool)1);
+
 					thrust::stable_partition(d_res1.begin(), d_res1.begin() + d_res2.size(), d_add, thrust::identity<unsigned int>());
 					thrust::stable_partition(d_res2.begin(), d_res2.end(), d_add, thrust::identity<unsigned int>());					
 					
-					d_res2.resize(new_cnt);					
+					d_res2.resize(new_cnt);	            
+					thrust::device_free(d_add);
                     if(!left_join) {					
 						d_res1.resize(new_cnt);
 					}
@@ -2803,12 +2849,12 @@ void emit_join(char *s, char *j1)
                     };
 				};				
 	        };
-			*/
+			
 
 
 			
     	    res_count = d_res1.size();
-			//cout << "res " << res_count << endl;
+//			cout << "res " << res_count << endl;
 			tot_count = tot_count + res_count;
 
             if(res_count) {		 				
@@ -2823,12 +2869,13 @@ void emit_join(char *s, char *j1)
                     while(!cc.empty())
                         cc.pop();
 						
-                    cc.push(op_sel1.front());	
+	                cc.push(op_sel1.front());	
                     c_colInd = c->columnNames[op_sel1.front()];					
 				
                     if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
 					    // copy field's segment to device, gather it and copy to the host  						
 				        unsigned int colInd = left->columnNames[op_sel1.front()];	
+						reset_offsets();
 											
                         allocColumns(left, cc);	
 				        copyColumns(left, cc, i, k);
@@ -2846,10 +2893,12 @@ void emit_join(char *s, char *j1)
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);			
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
 							                                    (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
+
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
 						                 c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);		            
                             thrust::device_free(d_tmp); 	
-                        }						  
+                        }	
+                        left->deAllocColumnOnDevice(colInd);
 
 					}
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
@@ -2898,9 +2947,8 @@ void emit_join(char *s, char *j1)
                 };	
 			};	
         };
-    };	
-
-			
+    };				
+	
     d_res1.resize(0);
     d_res1.shrink_to_fit();
     d_res2.resize(0);
@@ -2910,7 +2958,7 @@ void emit_join(char *s, char *j1)
     right->deAllocOnDevice();
 	c->deAllocOnDevice();	
 	
-	cout << "join final end " << tot_count << "  " << getFreeMem() << endl;
+	cout << "join end " << tot_count << "  " << getFreeMem() << endl;
 	unsigned int i = 0;
     while(!col_aliases.empty()) {
         c->columnNames[col_aliases.front()] = i;
@@ -2924,8 +2972,7 @@ void emit_join(char *s, char *j1)
     for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
         setMap[(*it).first] = s;
 
-    clean_queues();
-
+    clean_queues();	
 
     if(stat[s] == statement_count) {
         c->free();
@@ -2942,7 +2989,6 @@ void emit_join(char *s, char *j1)
         varNames.erase(j2);
     };
 
-	searchDestroy(engine);
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';		
 
 }
@@ -3100,12 +3146,11 @@ void emit_order(char *s, char *f, int e, int ll)
 		else 	
            rec_size = rec_size + a->char_size[a->type_index[i]];
     };	
-	bool fits = 1;
-	if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU
-	    fits = 0;
+	bool fits;
+	if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU		
+		fits = 0;
+	else fits = 1;	
 		
-		
-	fits = 0; //for a test	
 	if(!fits) {
 	    order_on_host(a, b, names, exe_type, exe_value);
 	}	
@@ -3118,13 +3163,10 @@ void emit_order(char *s, char *f, int e, int ll)
 
 		unsigned int maxSize =  a->mRecCount;
 		void* temp;
-		unsigned int max_char = 0;
-		for(unsigned int i = 0; i < a->char_size.size(); i++)
-			if (a->char_size[a->type_index[i]] > max_char)
-				max_char = a->char_size[a->type_index[i]];			
-	
-		if(max_char > float_size)	
-			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char));
+		unsigned int max_c = max_char(a);
+		
+		if(max_c > float_size)	
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
 		else	
 			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));    
 
@@ -3132,21 +3174,21 @@ void emit_order(char *s, char *f, int e, int ll)
 	
 	
 		unsigned int rcount;
-		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);	
+		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);			
     
 		varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->oldRecCount;
 		unsigned int str_count = 0;
 
 		for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
 			int colInd = (a->columnNames).find(exe_type.top())->second;
-
 			if ((a->type)[colInd] == 0)
 				update_permutation(a->d_columns_int[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
 			else if ((a->type)[colInd] == 1)
 				update_permutation(a->d_columns_float[a->type_index[colInd]], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp);
 			else {
-				//update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp, a->char_size[a->type_index[colInd]]);	
-				update_permutation(a->d_columns_int[int_col_count+str_count], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+				update_permutation_char(a->d_columns_char[a->type_index[colInd]], raw_ptr, a->mRecCount, exe_value.top(), (char*)temp, a->char_size[a->type_index[colInd]]);	
+				//update_permutation(a->d_columns_int[int_col_count+str_count], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+				str_count++;
 			};
 		};
 		
@@ -3161,9 +3203,7 @@ void emit_order(char *s, char *f, int e, int ll)
 				apply_permutation(a->d_columns_float[a->type_index[i]], raw_ptr, a->mRecCount, (float_type*)temp);
 			else {
 				apply_permutation_char(a->d_columns_char[a->type_index[i]], raw_ptr, a->mRecCount, (char*)temp, a->char_size[a->type_index[i]]);
-				apply_permutation(a->d_columns_int[int_col_count + str_count], raw_ptr, a->mRecCount, (int_type*)temp);
-				str_count++;
-				
+				str_count++;				
 			};
 		};	
 		
@@ -3248,7 +3288,7 @@ void emit_select(char *s, char *f, int ll)
     };
 
     cout << "SELECT " << s << " " << f << endl;
-	cout << "free mem " << getFreeMem() << endl;
+	//cout << "free mem " << getFreeMem() << endl;
     std::clock_t start1 = std::clock();
 
 	
@@ -3330,11 +3370,12 @@ void emit_select(char *s, char *f, int ll)
 	};		
 	
 	unsigned int s_cnt;				
+	bool one_liner;
 	
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "cycle " << i << " select mem " << getFreeMem() << endl;			
 		
-		a->reset_offsets(op_value);					
+		reset_offsets();
         op_s = op_v2;	
 		s_cnt = 0;
 	
@@ -3350,21 +3391,7 @@ void emit_select(char *s, char *f, int ll)
 		};					 
                    
 		cnt = 0;			
-		
-  float time;
-  cudaEvent_t start, stop;
-cudaEventCreate(&start);
-cudaEventCreate(&stop) ;
-cudaEventRecord(start, 0) ;
-		
         copyColumns(a, op_vx, i, cnt);		
-		
-        cudaEventRecord(stop, 0) ;
-        cudaEventSynchronize(stop) ;
-        cudaEventElapsedTime(&time, start, stop);
-        printf("CPY:  %3.1f ms \n", time);				
-       
-		
 				
         if(a->mRecCount) { 					    
             if (ll != 0) {		
@@ -3375,8 +3402,8 @@ cudaEventRecord(start, 0) ;
 			
 			for(unsigned int z = int_col_count; z < a->d_columns_int.size()-1; z++)
 				a->d_columns_int[z].resize(0);						
-		
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp);	
+
+            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp, one_liner);	
 			
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -3399,6 +3426,7 @@ cudaEventRecord(start, 0) ;
             }
 			else {
 				//copy b to c
+
 				unsigned int c_offset = c->mRecCount;
 				c->resize(b->mRecCount);
 				for(unsigned int j=0; j < b->mColumnCount; j++) {			
@@ -3423,11 +3451,18 @@ cudaEventRecord(start, 0) ;
 	a->mRecCount = a->oldRecCount;
     a->deAllocOnDevice();    
 	b->deAllocOnDevice();
+	
 
     if (ll != 0) {	  
         count_avg(c, mymap, distinct_hash);
-    };
+    }
+	else {
+		if(one_liner) {
+			count_simple(c);
+		};	
+	};
 
+	reset_offsets();
     c->maxRecs = c->mRecCount;
     c->name = s;
     c->keep = 1;
@@ -3490,7 +3525,6 @@ void emit_filter(char *s, char *f, int e)
     else {
         cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 		
-
         b = a->copyDeviceStruct();
         b->name = s;
 
@@ -3509,7 +3543,7 @@ void emit_filter(char *s, char *f, int e)
         for(unsigned int i = 0; i < cycle_count; i++) {		 
         	map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
 	        cout << "MAP CHECK " << map_check << endl;	
-            a->reset_offsets(op_value);			
+            reset_offsets();
             if(map_check == 'R') {			
                 copyColumns(a, op_value, i, cnt);
                 filter(op_type,op_value,op_nums, op_nums_f,a, b, i, p);
@@ -3517,7 +3551,7 @@ void emit_filter(char *s, char *f, int e)
             else  {		
 				setPrm(a,b,map_check,i);
 			}
-        };
+        };		
 		a->mRecCount = oldCount;
         varNames[setMap[op_value.front()]]->mRecCount = varNames[setMap[op_value.front()]]->oldRecCount;
         cout << "filter is finished " << b->mRecCount << " " << getFreeMem()  << endl;             
@@ -3739,9 +3773,9 @@ void clean_queues()
 
     sel_count = 0;
     join_cnt = 0;
-    join_col_cnt = -1;
+    join_col_cnt = 0;
 	distinct_cnt = 0;
-    eqq = 0;
+	reset_offsets();
 }
 
 
@@ -3758,11 +3792,21 @@ int main(int ac, char **av)
     //cudaSetDeviceFlags(cudaDeviceMapHost);
     //cudppCreate(&theCudpp);
 	
-	cuInit(0);
-
+/*	cuInit(0);
 	DevicePtr device;
 	CreateCuDevice(0, &device);	
 	CreateCuContext(device, 0, &context);
+	
+    engine = 0;
+	status = searchCreate("search.cubin", &engine);
+	
+	if(SEARCH_STATUS_SUCCESS != status) {
+		printf("search.cubin must be in alenka's directory \n");
+		exit(0);
+	};
+	*/
+
+	
 
     long long int r30 = RAND_MAX*rand()+rand();
     long long int s30 = RAND_MAX*rand()+rand();
@@ -3817,6 +3861,7 @@ int main(int ac, char **av)
         cudaFree(alloced_tmp);	
 
     fclose(yyin);
+//	searchDestroy(engine);
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     //cudppDestroy(theCudpp);
 

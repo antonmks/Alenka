@@ -85,46 +85,56 @@ struct join_functor
 };
 
 
-unsigned int join(int_type* d_input,int_type* d_values,
+unsigned int join(int_type* right,int_type* left,
           thrust::device_vector<unsigned int>& d_res1, thrust::device_vector<unsigned int>& d_res2,
-          unsigned int bRecCount, unsigned int aRecCount, bool left_join, searchEngine_t engine, CuDeviceMem* btree)
+          unsigned int cnt_l, unsigned int cnt_r, bool left_join)
 {
-    thrust::device_ptr<unsigned int> d_output1 = thrust::device_malloc<unsigned int>(bRecCount);
-    thrust::device_ptr<int_type> d_i(d_input);
-    thrust::device_ptr<int_type> d_v(d_values);
-
-
+    thrust::device_ptr<unsigned int> d_output1 = thrust::device_malloc<unsigned int>(cnt_l);
+    thrust::device_ptr<int_type> d_i(right);
+    thrust::device_ptr<int_type> d_v(left);	
+	
     thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
-    thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(bRecCount);
+    thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(cnt_l);
 		
-						
-	searchStatus_t status = searchKeys(engine, aRecCount, SEARCH_TYPE_INT64, 
-                            		  (CUdeviceptr)d_input, SEARCH_ALGO_LOWER_BOUND,
-			                          (CUdeviceptr)d_values, bRecCount, btree->Handle(),
+	/*searchStatus_t status = searchKeys(engine, cnt_r, SEARCH_TYPE_INT64, 
+                            		  (CUdeviceptr)right, SEARCH_ALGO_LOWER_BOUND,
+			                          (CUdeviceptr)left, cnt_l, btree->Handle(),
 			                          (CUdeviceptr)thrust::raw_pointer_cast(d_output));
-			
-    thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(bRecCount);
+	*/		
+	        thrust::lower_bound(d_i, d_i+cnt_r,
+                            d_v, d_v+cnt_l,
+                            d_output);
 
-    status = searchKeys(engine, aRecCount, SEARCH_TYPE_INT64, 
-	                    (CUdeviceptr)d_input, SEARCH_ALGO_UPPER_BOUND,
-		                (CUdeviceptr)d_values, bRecCount, btree->Handle(),
-		                (CUdeviceptr)thrust::raw_pointer_cast(d_output1));							
 
-    thrust::transform(d_output1, d_output1+bRecCount, d_output, d_output2, thrust::minus<unsigned int>());
-    unsigned int sz =  thrust::reduce(d_output2, d_output2+bRecCount, 0, thrust::plus<unsigned int>());
+    			
+    thrust::device_ptr<unsigned int> d_output2 = thrust::device_malloc<unsigned int>(cnt_l);
+
+    /*status = searchKeys(engine, cnt_r, SEARCH_TYPE_INT64, 
+	                    (CUdeviceptr)right, SEARCH_ALGO_UPPER_BOUND,
+		                (CUdeviceptr)left, cnt_l, btree->Handle(),
+		                (CUdeviceptr)thrust::raw_pointer_cast(d_output1));		
+	*/					
+	
+       thrust::upper_bound(d_i, d_i+cnt_r,
+                            d_v, d_v+cnt_l,
+                            d_output1);
+		
+
+    thrust::transform(d_output1, d_output1+cnt_l, d_output, d_output2, thrust::minus<unsigned int>());
+    unsigned int sz =  thrust::reduce(d_output2, d_output2+cnt_l, 0, thrust::plus<unsigned int>());
 		
 	unsigned int left_sz = 0;
 	if (left_join) {
-		left_sz = thrust::count(d_output2, d_output2+bRecCount,0);			
+		left_sz = thrust::count(d_output2, d_output2+cnt_l,0);			
 	};	
     d_res1.resize(sz + left_sz);
     d_res2.resize(sz);
 
 	if (left_join && left_sz) {
-		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(bRecCount-1), d_output2, d_res1.begin()+ sz, is_zero() );
+		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(cnt_l-1), d_output2, d_res1.begin()+ sz, is_zero() );
 	};		
 		
-    thrust::exclusive_scan(d_output2, d_output2+bRecCount, d_output2);  // addresses
+    thrust::exclusive_scan(d_output2, d_output2+cnt_l, d_output2);  // addresses
 
     if (sz != 0 ) {
 
@@ -138,7 +148,7 @@ unsigned int join(int_type* d_input,int_type* d_values,
                         thrust::raw_pointer_cast(&d_res2[0]));
 
 
-        thrust::for_each(begin, begin + bRecCount, ff);
+        thrust::for_each(begin, begin + cnt_l, ff);
 		
         thrust::inclusive_scan_by_key(d_res1.begin(), d_res1.begin() + sz, d_res1.begin(), d_res1.begin(), join_head_flag_predicate<unsigned int>(), thrust::maximum<unsigned int>()); // in-place scan
         thrust::inclusive_scan_by_key(d_res2.begin(), d_res2.end(), d_res2.begin(), d_res2.begin(), join_head_flag_predicate1<unsigned int>(), thrust::plus<unsigned int>()); // in-place scan
