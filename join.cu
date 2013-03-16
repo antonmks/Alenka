@@ -93,7 +93,7 @@ unsigned int join(int_type* right,int_type* left,
     thrust::device_ptr<int_type> d_i(right);
     thrust::device_ptr<int_type> d_v(left);	
 	
-    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+    thrust::counting_iterator<unsigned int> begin(0);
     thrust::device_ptr<unsigned int> d_output = thrust::device_malloc<unsigned int>(cnt_l);
 		
 	/*searchStatus_t status = searchKeys(engine, cnt_r, SEARCH_TYPE_INT64, 

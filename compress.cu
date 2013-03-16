@@ -266,7 +266,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
     dd_v[2] = bit_count;
 
 
-    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+    thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
     if(comp_type == 1) {
@@ -338,7 +338,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
             bits = 1;
     };
 
-    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+    thrust::counting_iterator<unsigned int> begin(0);
 
     fit_count = bit_count/bits;
     void* d_v1;
@@ -498,7 +498,7 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
 
-    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+    thrust::counting_iterator<unsigned int> begin(0);
 
     fit_count = bit_count/bits;
     void* d_v1;

@@ -46,19 +46,25 @@
 	
     char host_logical_and(char column1, char column2)
     {
+	    //cout << "AND " << column1 << " " << column2 << endl;
 		if (column1 == 'A' && column2 == 'A')
 		    return 'A';
-		else
-            return 'R';
+		else if (column1 == 'N' || column2 == 'N') {		    
+			return 'N';
+		}	
+        else
+			return 'R';
 
     }
 
 
    char host_logical_or(char column1, char column2)
     {
-
+        //cout << "OR " << column1 << " " << column2 << endl;
 		if (column1 == 'A' && column2 == 'A')
 		    return 'A';
+		else if (column1 == 'N' && column2 == 'N')	
+			return 'N';
 		else
             return 'R';
 
@@ -68,7 +74,7 @@
 
     char host_compare(int_type s, int_type d, int_type op_type)
     {
-        char res = 'N';
+        char res = 'N';		
 
         if (op_type == 2 && d>s ) // >
             res = 'A';
@@ -111,6 +117,7 @@
     char host_compare(int_type* column1, int_type d, int_type op_type)
     {
 		char res = 'R';
+		//cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
 	
         if (op_type == 2) {   // >
    		    if (column1[1] <= d)
@@ -139,6 +146,7 @@
         else if (op_type == 4 && column1[0] == d && column1[1] == d) { // =
             res = 'A';
 		};	
+		//cout << "res " << res << endl;
 
         return res;
     }
@@ -146,6 +154,7 @@
     char host_compare(float_type* column1, float_type d, int_type op_type)
     {
 		char res = 'R';
+		//cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
 
         if (op_type == 2) { // >
 		   if(fh_less_equal_to(column1[1],d)) { 
@@ -182,6 +191,7 @@
         else if (op_type == 4 && fh_equal_to(column1[0],d) && fh_equal_to(column1[1],d)) // =
             res = 'A';
 
+		//cout << "res " << res << endl;	
         return res;
 
     }
@@ -635,9 +645,12 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 					//cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
 				}	
                 else  {					
+				    long long int t;
 				    a->h_columns_float[a->type_index[colIndex]].resize(2);	
-                    fread((char *)&a->h_columns_float[a->type_index[colIndex]][0], 8, 1, f);
-				    fread((char *)&a->h_columns_float[a->type_index[colIndex]][1], 8, 1, f);										
+					fread((char *)&t, 8, 1, f);
+					a->h_columns_float[a->type_index[colIndex]][0] = (float_type)t/100.0;
+					fread((char *)&t, 8, 1, f);
+					a->h_columns_float[a->type_index[colIndex]][1] = (float_type)t/100.0;				    
 					//cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
 				};				                
 				fclose(f);						

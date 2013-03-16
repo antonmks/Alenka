@@ -377,7 +377,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
         dd_v[1] = fit_count;
         dd_v[0] = bits_encoded;
 		
-        thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+        thrust::counting_iterator<unsigned int> begin(0);
         decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v);
         thrust::for_each(begin, begin + real_count, ff);		 
 
@@ -733,7 +733,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
         dd_v[1] = fit_count;
         dd_v[0] = bits_encoded;
 		
-        thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+        thrust::counting_iterator<unsigned int> begin(0);
         decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v);
         thrust::for_each(begin, begin + real_count, ff);	
 

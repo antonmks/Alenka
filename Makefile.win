@@ -1,12 +1,14 @@
-alenka : bison.obj join.obj merge.obj \
+alenka : cm.obj join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 select.obj zone_map.obj itoa.obj \
-		 atof.obj cm.obj 
-	nvcc -Xcompiler /bigobj -O3 -arch=sm_20 -lcuda -o alenka bison.obj join.obj merge.obj \
+		 atof.obj bison.obj
+	nvcc -O3 -arch=sm_20 -lcuda -o alenka join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 select.obj zone_map.obj itoa.obj \
-		 atof.obj cm.obj
-		 
+		 atof.obj cm.obj bison.obj
+
+cm.obj : cm.cu cm.h	
+	nvcc -O3 -arch=sm_20 -c cm.cu 
 bison.obj : bison.cu cm.h
 	nvcc -O3 -arch=sm_20 -c bison.cu
 join.obj : join.cu cm.h join.h
@@ -27,8 +29,6 @@ itoa.obj : itoa.cu itoa.h
 	nvcc -O3 -arch=sm_20 -c itoa.cu
 atof.obj : atof.cu cm.h atof.h
 	nvcc -O3 -arch=sm_20 -c atof.cu 
-cm.obj : cm.cu cm.h	
-	nvcc -O3 -arch=sm_20 -c cm.cu
 	
 clean : del bison.obj join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \

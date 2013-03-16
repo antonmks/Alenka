@@ -585,7 +585,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
 					
 					void* d_str;					
 
-                    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+                    thrust::counting_iterator<unsigned int> begin(0);
 					if(!like_start) {
 						cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
 						cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
@@ -635,7 +635,7 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
 					cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
 					cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);	
 
-                    thrust::counting_iterator<unsigned int, thrust::device_space_tag> begin(0);
+                    thrust::counting_iterator<unsigned int> begin(0);
 					if(!like_start) {
 						cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
 						thrust::for_each(begin, begin + a->mRecCount, ff);					
