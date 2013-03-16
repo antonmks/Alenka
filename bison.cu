@@ -2566,7 +2566,6 @@ void emit_join(char *s, char *j1, int grp)
 	
     queue<string> op_v1(op_value);
     while(op_v1.size() ) {        
-		//cout << op_v1.front() << endl;
 		op_v1.pop();
 		grp++;
 	};	
@@ -2670,7 +2669,7 @@ void emit_join(char *s, char *j1, int grp)
 	        mm = (max_c/8) + 1;
 	    else	
             mm = 1;
-
+		
 	    thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(cnt_r*mm);			
 	    thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
 		
@@ -2699,25 +2698,6 @@ void emit_join(char *s, char *j1, int grp)
 		};
 		thrust::device_free(d_tmp);	
 	};
-	
-/*	int treeSize = searchTreeSize(cnt_r, SEARCH_TYPE_INT64);	
-	DeviceMemPtr btreeDevice;
-	context->ByteAlloc(treeSize, &btreeDevice);	
-	
-	if(decimal_join) {
-		thrust::device_ptr<int_type> d_cc((int_type*)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()));
-		thrust::transform(right->d_columns_float[right->type_index[colInd2]].begin(),right->d_columns_float[right->type_index[colInd2]].begin()+cnt_r,
-						  d_cc, float_to_long());
-
-		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
-								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_float[right->type_index[colInd2]].data()), btreeDevice->Handle());
-    }
-    else {
-		status = searchBuildTree(engine, cnt_r, SEARCH_TYPE_INT64, 
-								(CUdeviceptr)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), btreeDevice->Handle());								
-    };	
-*/	
-					
 							 
 		
 	while(!cc.empty())
@@ -2732,7 +2712,6 @@ void emit_join(char *s, char *j1, int grp)
         cc.push(f1);
         allocColumns(left, cc);	
 	};	
-
     	
     thrust::device_vector<unsigned int> d_res1;
     thrust::device_vector<unsigned int> d_res2;    
@@ -2745,15 +2724,14 @@ void emit_join(char *s, char *j1, int grp)
     for (unsigned int i = 0; i < left->segCount; i++) {		
 	    
 		cout << "segment " << i << " " << getFreeMem() << endl;				
-		cnt_l = 0;
-				
+		cnt_l = 0;				
+		
 		if (left->type[colInd1]  != 2) {
 		    copyColumns(left, lc, i, cnt_l);
 		}
         else {
             left->add_hashed_strings(f1, i, left->d_columns_int.size());
         };	
-        		
 		
         if(left->prm.empty()) {
            //copy all records	    
@@ -2780,10 +2758,11 @@ void emit_join(char *s, char *j1, int grp)
 				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), (int_type*)thrust::raw_pointer_cast(left->d_columns_float[idx].data()),
                                d_res1, d_res2, cnt_l, cnt_r, left_join);
 			}
-            else {
-		    
+            else {		    
+			    
 				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
                                d_res1, d_res2, cnt_l, cnt_r, left_join);
+			    
             };	
   //          cout << "res " << d_res1.size() << " " << left_join << endl; 		
 						
@@ -2799,7 +2778,8 @@ void emit_join(char *s, char *j1, int grp)
 				//alloc f4 if not alloced
 				queue<string> rc;
 				rc.push(f3);
-				allocColumns(left, rc);				
+				
+				allocColumns(left, rc);			
 				copyColumns(left, rc, i, cnt_l);
 				rc.pop();
 			
@@ -2859,8 +2839,11 @@ void emit_join(char *s, char *j1, int grp)
 
             if(res_count) {		 				
                 
+				
     		    offset = c->mRecCount;
-		        c->resize(res_count);					
+				//std::cout<< "cpy time7.1 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
+		        c->resize(res_count);	
+                //std::cout<< "cpy time7.2 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';							
 	            queue<string> op_sel1(op_sel);					
 				unsigned int colInd, c_colInd;
 
@@ -2877,7 +2860,7 @@ void emit_join(char *s, char *j1, int grp)
 				        unsigned int colInd = left->columnNames[op_sel1.front()];	
 						reset_offsets();
 											
-                        allocColumns(left, cc);	
+                        allocColumns(left, cc);							
 				        copyColumns(left, cc, i, k);
 						
 				       //gather	   
@@ -2890,6 +2873,7 @@ void emit_join(char *s, char *j1, int grp)
   					        thrust::copy(iter, iter + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset);												   						   							   
 					    }
                         else { //strings
+						   
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);			
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
 							                                    (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
@@ -2897,6 +2881,7 @@ void emit_join(char *s, char *j1, int grp)
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp), 
 						                 c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);		            
                             thrust::device_free(d_tmp); 	
+							
                         }	
                         left->deAllocColumnOnDevice(colInd);
 
@@ -2924,6 +2909,7 @@ void emit_join(char *s, char *j1, int grp)
 							};	
 					    }
                         else { //strings
+						
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(d_res2.size()*right->char_size[right->type_index[colInd]]);											
 							
                             str_gather(thrust::raw_pointer_cast(d_res2.data()), d_res2.size(), (void*)right->d_columns_char[right->type_index[colInd]],									  
@@ -2936,6 +2922,7 @@ void emit_join(char *s, char *j1, int grp)
 								       left_sz*c->char_size[c->type_index[c_colInd]]);		 
 							};											
                             thrust::device_free(d_tmp); 							   
+							
                         }						  
 						   
 					}
@@ -2944,10 +2931,10 @@ void emit_join(char *s, char *j1, int grp)
 						exit(0);
 					};
                     op_sel1.pop();		  					
-                };	
+                };					
 			};	
         };
-    };				
+    };			
 	
     d_res1.resize(0);
     d_res1.shrink_to_fit();
@@ -3390,13 +3377,15 @@ void emit_select(char *s, char *f, int ll)
 			op_s.pop();
 		};					 
                    
-		cnt = 0;			
+		cnt = 0;	
+		
         copyColumns(a, op_vx, i, cnt);		
+		
 				
         if(a->mRecCount) { 					    
             if (ll != 0) {		
                 order_inplace(a,op_v2,field_names,i);					
-	            a->GroupBy(op_v2, int_col_count);		
+	            a->GroupBy(op_v2, int_col_count);
             };						
 		
 			
@@ -3421,8 +3410,8 @@ void emit_select(char *s, char *f, int ll)
 				c_set = 1;
             };						
 			
-            if (ll != 0) {
-                add(c,b,op_v3, mymap, aliases, distinct_tmp, distinct_val, distinct_hash, a);															
+            if (ll != 0 && cycle_count > 1  ) {
+                add(c,b,op_v3, mymap, aliases, distinct_tmp, distinct_val, distinct_hash, a);		
             }
 			else {
 				//copy b to c
