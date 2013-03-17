@@ -836,9 +836,9 @@ void emit_join(char *s, char *j1, int grp)
                 
 				
     		    offset = c->mRecCount;
-				//std::cout<< "cpy time7.1 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
+				if(i == 0)
+					c->reserve(res_count*(left->segCount+1));
 		        c->resize(res_count);	
-                //std::cout<< "cpy time7.2 " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';							
 	            queue<string> op_sel1(op_sel);					
 				unsigned int colInd, c_colInd;
 

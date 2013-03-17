@@ -500,24 +500,45 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
     void CudaSet::resize(unsigned int addRecs)
     {
-        mRecCount = mRecCount + addRecs;
-
+        mRecCount = mRecCount + addRecs;        
         for(unsigned int i=0; i <mColumnCount; i++) {
-            if(type[i] == 0)
+            if(type[i] == 0) {
                 h_columns_int[type_index[i]].resize(mRecCount);
-            else if(type[i] == 1)
+			}	
+            else if(type[i] == 1) {
                 h_columns_float[type_index[i]].resize(mRecCount);
+			}	
             else {
 				if (h_columns_char[type_index[i]]) {
-				    h_columns_char[type_index[i]] = (char*)realloc(h_columns_char[type_index[i]], mRecCount*char_size[type_index[i]]);
+				    if (mRecCount > prealloc_char_size) {
+					    prealloc_char_size = mRecCount;
+						h_columns_char[type_index[i]] = (char*)realloc(h_columns_char[type_index[i]], mRecCount*char_size[type_index[i]]);
+					};	
 				}	
 				else {
-					h_columns_char[type_index[i]] = new char[mRecCount*char_size[type_index[i]]];
+					h_columns_char[type_index[i]] = new char[mRecCount*char_size[type_index[i]]];					
 				};	
 			};	
 				
         };
     };
+	
+    void CudaSet::reserve(unsigned int Recs)
+    {
+
+        for(unsigned int i=0; i <mColumnCount; i++) {
+            if(type[i] == 0)
+                h_columns_int[type_index[i]].reserve(Recs);
+            else if(type[i] == 1)
+                h_columns_float[type_index[i]].reserve(Recs);			
+            else {
+				h_columns_char[type_index[i]] = new char[Recs*char_size[type_index[i]]];
+				prealloc_char_size = Recs;				
+			};	
+				
+        };
+    };
+	
 
     void CudaSet::deAllocColumnOnDevice(unsigned int colIndex)
     {
@@ -633,12 +654,12 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
             if(a->type[i] == 0) {
                 a->d_columns_int.push_back(thrust::device_vector<int_type>());
-                a->h_columns_int.push_back(thrust::host_vector<int_type>());
+                a->h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>());
                 a->type_index[i] = a->d_columns_int.size()-1;
             }
             else if(a->type[i] == 1) {
                 a->d_columns_float.push_back(thrust::device_vector<float_type>());
-                a->h_columns_float.push_back(thrust::host_vector<float_type>());
+                a->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
                 a->type_index[i] = a->d_columns_float.size()-1;
                 a->decimal[i] = decimal[i];
             }
@@ -1061,7 +1082,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             columnNames[colName] = colIndex;
             type[colIndex] = 0;
             d_columns_int.push_back(thrust::device_vector<int_type>(recCount));
-			h_columns_int.push_back(thrust::host_vector<int_type>());
+			h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>());
             type_index[colIndex] = d_columns_int.size()-1;
         }
         else {  // already exists, my need to resize it
@@ -1080,7 +1101,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             columnNames[colName] = colIndex;
             type[colIndex] = 1;
             d_columns_float.push_back(thrust::device_vector<float_type>(recCount));
-			h_columns_float.push_back(thrust::host_vector<float_type>());
+			h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
             type_index[colIndex] = d_columns_float.size()-1;
         }
         else {  // already exists, my need to resize it		    
@@ -1100,11 +1121,11 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             columnNames[colName] = colIndex;
             type[colIndex] = 0;
             if (!one_line) {
-                h_columns_int.push_back(thrust::host_vector<int_type>(old_reccount));
+                h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>(old_reccount));
                 type_index[colIndex] = h_columns_int.size()-1;
             }
             else {
-                h_columns_int.push_back(thrust::host_vector<int_type>(1));
+                h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>(1));
                 type_index[colIndex] = h_columns_int.size()-1;
             };
         };
@@ -1125,11 +1146,11 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             columnNames[colName] = colIndex;
             type[colIndex] = 1;
             if (!one_line) {
-                h_columns_float.push_back(thrust::host_vector<float_type>(old_reccount));
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(old_reccount));
                 type_index[colIndex] = h_columns_float.size()-1;
             }
             else {
-                h_columns_float.push_back(thrust::host_vector<float_type>(1));
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(1));
                 type_index[colIndex] = h_columns_float.size()-1;
             };
         };
@@ -1983,21 +2004,21 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             if ((typeRef.front()).compare("int") == 0) {
                 type[i] = 0;
                 decimal[i] = 0;
-                h_columns_int.push_back(thrust::host_vector<int_type>(cnt + 9));
+                h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>(cnt + 9));
                 d_columns_int.push_back(thrust::device_vector<int_type>());
                 type_index[i] = h_columns_int.size()-1;
             }
             else if ((typeRef.front()).compare("float") == 0) {
                 type[i] = 1;
                 decimal[i] = 0;
-                h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(cnt + 9));
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
             }
             else if ((typeRef.front()).compare("decimal") == 0) {
                 type[i] = 1;
                 decimal[i] = 1;
-                h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(cnt + 9));
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
             }
@@ -2040,21 +2061,21 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             if ((typeRef.front()).compare("int") == 0) {
                 type[i] = 0;
                 decimal[i] = 0;
-                h_columns_int.push_back(thrust::host_vector<int_type>());
+                h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>());
                 d_columns_int.push_back(thrust::device_vector<int_type>());
                 type_index[i] = h_columns_int.size()-1;
             }
             else if ((typeRef.front()).compare("float") == 0) {
                 type[i] = 1;
                 decimal[i] = 0;
-                h_columns_float.push_back(thrust::host_vector<float_type>());
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
             }
             else if ((typeRef.front()).compare("decimal") == 0) {
                 type[i] = 1;
                 decimal[i] = 1;
-                h_columns_float.push_back(thrust::host_vector<float_type>());
+                h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
                 d_columns_float.push_back(thrust::device_vector<float_type>());
                 type_index[i] = h_columns_float.size()-1;
             }
@@ -2128,13 +2149,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                 if ((a->type)[index] == 0)  {
                     d_columns_int.push_back(thrust::device_vector<int_type>());
-                    h_columns_int.push_back(thrust::host_vector<int_type>());
+                    h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>());
                     type[i] = 0;
                     type_index[i] = h_columns_int.size()-1;
                 }
                 else if ((a->type)[index] == 1) {
                     d_columns_float.push_back(thrust::device_vector<float_type>());
-                    h_columns_float.push_back(thrust::host_vector<float_type>());
+                    h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
                     type[i] = 1;
                     type_index[i] = h_columns_float.size()-1;
                 }
@@ -2144,6 +2165,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     type[i] = 2;
                     type_index[i] = h_columns_char.size()-1;
 		    		char_size.push_back(a->char_size[a->type_index[index]]);
+					prealloc_char_size = 0;
                 };
             }
             else {
@@ -2155,13 +2177,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                 if ((b->type)[index] == 0) {
                     d_columns_int.push_back(thrust::device_vector<int_type>());
-                    h_columns_int.push_back(thrust::host_vector<int_type>());
+                    h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>());
                     type[i] = 0;
                     type_index[i] = h_columns_int.size()-1;
                 }
                 else if ((b->type)[index] == 1) {
                     d_columns_float.push_back(thrust::device_vector<float_type>());
-                    h_columns_float.push_back(thrust::host_vector<float_type>());
+                    h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>());
                     type[i] = 1;
                     type_index[i] = h_columns_float.size()-1;
                 }
@@ -2171,6 +2193,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     type[i] = 2;
                     type_index[i] = h_columns_char.size()-1;
 				    char_size.push_back(b->char_size[b->type_index[index]]);
+					prealloc_char_size = 0;
                 };
             }
             op_sel.pop();

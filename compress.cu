@@ -280,7 +280,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
 
 
 template< typename T>
-unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host, bool tp, unsigned long long int sz)
+unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host, bool tp, unsigned long long int sz)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -445,7 +445,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
 
 template< typename T>
-unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host,  bool tp, unsigned long long int sz)
+unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host,  bool tp, unsigned long long int sz)
 {
     unsigned int recCount;
     long long int orig_lower_val;

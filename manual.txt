@@ -41,9 +41,9 @@ RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;
 STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;	
 
 
-To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest development version of Thrust.
+To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest version of Thrust.
 New groupby op requires Boost's unordered map, so make sure that you got Boost installed too.
-To compile alenka run make or nmake on windows.
+To compile alenka run make on Linux or nmake on windows.
 
 
 Alenka have been tested on a 64bit Windows7 and Linux.

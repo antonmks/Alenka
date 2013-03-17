@@ -73,6 +73,18 @@ extern unsigned int oldCount;
 extern void* alloced_tmp;
 extern unsigned int alloced_sz;
 
+template<typename T>
+  struct uninitialized_host_allocator
+    : std::allocator<T>
+{
+  // note that construct is annotated as
+    __host__ __device__
+  void construct(T *p)
+  {
+    // no-op
+  }
+};
+
 
 template <typename HeadFlagType>
 struct head_flag_predicate
@@ -114,9 +126,10 @@ size_t getFreeMem();
 class CudaSet
 {
 public:
-    std::vector<thrust::host_vector<int_type> > h_columns_int;
-    std::vector<thrust::host_vector<float_type> > h_columns_float;
+    std::vector<thrust::host_vector<int_type, uninitialized_host_allocator<int_type> > > h_columns_int;
+    std::vector<thrust::host_vector<float_type, uninitialized_host_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;	
+	unsigned int prealloc_char_size;
 
     std::vector<thrust::device_vector<int_type> > d_columns_int;
     std::vector<thrust::device_vector<float_type> > d_columns_float;
@@ -166,6 +179,7 @@ public:
     bool isUnique(unsigned int colIndex);
     void add_hashed_strings(string field, unsigned int segment, unsigned int i_cnt);
     void resize(unsigned int addRecs);
+	void reserve(unsigned int Recs);
     void deAllocColumnOnDevice(unsigned int colIndex);
     void allocOnDevice(unsigned int RecordCount);
     void deAllocOnDevice();
