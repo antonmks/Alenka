@@ -82,6 +82,7 @@ void create_c(CudaSet* c, CudaSet* b)
             }
             else {
 				c->h_columns_char.push_back(NULL); 
+				c->d_columns_char.push_back(NULL); 
 				//c->char_size.push_back(b->char_size[b->type_index[i]]);
             };
 			c->type_index[i] = b->type_index[i];
