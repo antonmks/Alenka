@@ -299,8 +299,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
     void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount)
     {
-        if (type[colIndex] == 0) 
+        if (type[colIndex] == 0) {
             d_columns_int[type_index[colIndex]].resize(RecordCount);
+		}	
         else if (type[colIndex] == 1)
             d_columns_float[type_index[colIndex]].resize(RecordCount);
         else {
@@ -460,7 +461,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 			for(unsigned int i = 0; i < t->mRecCount ; i++)
 		        hashes[i] = MurmurHash64A(t->h_columns_char[t->type_index[colInd2]] + i*t->char_size[t->type_index[colInd2]], t->char_size[t->type_index[colInd2]], hash_seed); 			
 				
-				
 		    if(!prm.empty()) {
 	            if(prm_index[segment] == 'R') {     
                      
@@ -489,7 +489,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
 			   old_count = d_columns_int[i_cnt].size();
 			   d_columns_int[i_cnt].resize(old_count + mRecCount);		
-		       thrust::copy(hashes, hashes + mRecCount, d_columns_int[i_cnt].begin() + old_count);			   
+		       thrust::copy(hashes, hashes + mRecCount, d_columns_int[i_cnt].begin() + old_count);		
 		   }					
 		} 
 		else { // hash the dictionary
@@ -852,11 +852,12 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             if (partial_load)
                 data_offset = readSegmentsFromFile(segment,colIndex);
 				
-			
-            if(d_v == NULL)
-                CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
-            if(s_v == NULL);
-                CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+			if(type[colIndex] != 2) {
+				if(d_v == NULL)
+					CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
+				if(s_v == NULL);
+					CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
+			};		
 
             if(type[colIndex] == 0) {	            
 			    if(!alloced_switch) {
@@ -2228,7 +2229,7 @@ size_t getFreeMem()
 void allocColumns(CudaSet* a, queue<string> fields)
 {
     if(!a->prm.empty()) {
-		unsigned int max_sz = max_tmp(a) ;
+		unsigned int max_sz = max_tmp(a) ;		
 		CudaSet* t = varNames[setMap[fields.front()]];			
 		if(max_sz*t->maxRecs > alloced_sz) {
 			if(alloced_sz) {
@@ -2351,17 +2352,17 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigne
 			    if(a->prm_count[segment]) {	
 				    
 				    alloced_switch = 1;
-//					cout << "copy " << fields.front() << " " << alloced_switch << endl;
+					//cout << "copy " << fields.front() << " " << alloced_switch << endl;
 				    t->CopyColumnToGpu(t->columnNames[fields.front()], segment); // segment i
-//					cout << "gather " << fields.front() << endl;
+					//cout << "gather " << fields.front() << endl;
                     gatherColumns(a, t, fields.front(), segment, count);					
-//					cout << "end " << endl;
+					//cout << "end " << endl;
 					alloced_switch = 0;
 				}
                 else
                     a->mRecCount = 0;				
 			}	
-			else {
+			else {			    
                 a->CopyColumnToGpu(a->columnNames[fields.front()], segment); // segment i
 			};	
             uniques.insert(fields.front());
@@ -2464,7 +2465,7 @@ void mycopy(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsig
 unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, unsigned int &rcount) 
 {
     queue<string> cc;
-    while(!c1.empty()) {	
+    while(!c1.empty()) {		
         if(right->columnNames.find(c1.front()) !=  right->columnNames.end()) {
 		    if(f2 != c1.front() || str_join) {
                 cc.push(c1.front());				
@@ -2477,8 +2478,8 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
 	};	
 
 	unsigned int cnt_r = 0;
-	if(!right->prm.empty()) {
-        allocColumns(right, cc);	
+	if(!right->prm.empty()) {	    
+        allocColumns(right, cc);			
 		rcount = std::accumulate(right->prm_count.begin(), right->prm_count.end(), 0 );
 	}
     else
@@ -2491,6 +2492,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
         right->allocColumnOnDevice(right->columnNames[ct.front()], rcount);		
 		ct.pop();		
 	};		
+	
 	   
 	ct = cc;   
 	if(right->prm.empty()) {
@@ -2503,8 +2505,8 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
     }	
 	else { 
 	    //copy and gather all records	           
-         for(unsigned int i = 0; i < right->segCount; i++) {		 
-             copyColumns(right, cc, i, cnt_r);			  			 	 
+         for(unsigned int i = 0; i < right->segCount; i++) {	
+             copyColumns(right, cc, i, cnt_r);	
 			 cnt_r = cnt_r + right->prm_count[i];
 		 };				
 	};	

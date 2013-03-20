@@ -2471,6 +2471,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
         if(t->mRecCount > maxSize)
             maxSize = t->mRecCount;
     };
+	
    
 	unsigned int max_c = max_char(a);
 	
@@ -2480,6 +2481,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
         CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
 	
 	unsigned int str_count = 0;
+	
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
         int colInd = (a->columnNames).find(exe_type.top())->second;
@@ -2491,7 +2493,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 			// use int col int_col_count
 			update_permutation(a->d_columns_int[int_col_count+str_count], raw_ptr, sz, "ASC", (int_type*)temp);
 			str_count++;
-        };
+        };		
     };
 	
 	str_count = 0;
@@ -2508,6 +2510,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 			str_count++;
         };
     };
+	
 	
     cudaFree(temp);
     thrust::device_free(permutation);
@@ -2640,9 +2643,19 @@ void emit_join(char *s, char *j1, int grp)
     // need to allocate all right columns	
     queue<string> cc;
 	unsigned int rcount;	
+	curr_segment = 10000000;			
 	
-	unsigned int cnt_r = load_queue(op_sel, right, str_join, f2, rcount);	
-
+	queue<string> op_vd(op_value);
+	queue<string> op_alt(op_sel);
+	unsigned int jc = join_col_cnt;
+    while(jc) {			    
+	    jc--;
+    	op_vd.pop();
+		op_alt.push(op_vd.front());
+	    op_vd.pop();			
+	};			
+	unsigned int cnt_r = load_queue(op_alt, right, str_join, f2, rcount);
+	
     if(str_join) {	
         colInd2 = right->mColumnCount+1;
 	    right->type_index[colInd2] = right->d_columns_int.size()-1;		
@@ -2668,8 +2681,8 @@ void emit_join(char *s, char *j1, int grp)
         if(max_c > 8)	
 	        mm = (max_c/8) + 1;
 	    else	
-            mm = 1;
-		
+            mm = 1;		
+	
 	    thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(cnt_r*mm);			
 	    thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
 		
@@ -2698,7 +2711,7 @@ void emit_join(char *s, char *j1, int grp)
 		};
 		thrust::device_free(d_tmp);	
 	};
-							 
+	
 		
 	while(!cc.empty())
         cc.pop();
@@ -2712,14 +2725,13 @@ void emit_join(char *s, char *j1, int grp)
         cc.push(f1);
         allocColumns(left, cc);	
 	};	
-    	
+	    	
     thrust::device_vector<unsigned int> d_res1;
     thrust::device_vector<unsigned int> d_res2;    
 	unsigned int cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
 
 	queue<string> lc(cc);
-	curr_segment = 10000000;			
-	
+	curr_segment = 10000000;				
 	
     for (unsigned int i = 0; i < left->segCount; i++) {		
 	    
@@ -2758,13 +2770,12 @@ void emit_join(char *s, char *j1, int grp)
 				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), (int_type*)thrust::raw_pointer_cast(left->d_columns_float[idx].data()),
                                d_res1, d_res2, cnt_l, cnt_r, left_join);
 			}
-            else {		    
-			    
+            else {		    			
 				left_sz = join(thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), thrust::raw_pointer_cast(left->d_columns_int[idx].data()),
                                d_res1, d_res2, cnt_l, cnt_r, left_join);
 			    
             };	
-  //          cout << "res " << d_res1.size() << " " << left_join << endl; 		
+            cout << "res " << d_res1.size() << " " << left_join << endl; 		
 						
             // check if the join is a multicolumn join
 			while(join_col_cnt) {
@@ -2787,8 +2798,10 @@ void emit_join(char *s, char *j1, int grp)
 				if (d_res1.size() && d_res2.size()) {
 					unsigned int colInd3 = (left->columnNames).find(f3)->second;
 					unsigned int colInd4 = (right->columnNames).find(f4)->second;					
-			
+					
 					thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());	
+					d_add[0] = 1;
+					d_add[1] = 0;
 					
 					if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
 
@@ -2806,19 +2819,17 @@ void emit_join(char *s, char *j1, int grp)
 						thrust::transform(d_l, d_l+d_res1.size(), d_r, d_add, thrust::equal_to<int_type>());
 						
 					}
-                    else {									
+                    else {						
                         thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());				    
 						thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2.begin());
-					
-						
 						thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, thrust::equal_to<int_type>());
-					};	
+					};						
 					
-					unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), (bool)1);
-
+					unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), 1);
 					thrust::stable_partition(d_res1.begin(), d_res1.begin() + d_res2.size(), d_add, thrust::identity<unsigned int>());
 					thrust::stable_partition(d_res2.begin(), d_res2.end(), d_add, thrust::identity<unsigned int>());					
 					
+	
 					d_res2.resize(new_cnt);	            
 					thrust::device_free(d_add);
                     if(!left_join) {					
@@ -2834,7 +2845,7 @@ void emit_join(char *s, char *j1, int grp)
 
 			
     	    res_count = d_res1.size();
-//			cout << "res " << res_count << endl;
+			//cout << "res " << res_count << endl;
 			tot_count = tot_count + res_count;
 
             if(res_count) {		 				
@@ -2853,7 +2864,7 @@ void emit_join(char *s, char *j1, int grp)
                         cc.pop();
 						
 	                cc.push(op_sel1.front());	
-                    c_colInd = c->columnNames[op_sel1.front()];					
+                    c_colInd = c->columnNames[op_sel1.front()];		
 				
                     if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
 					    // copy field's segment to device, gather it and copy to the host  						
@@ -2945,7 +2956,6 @@ void emit_join(char *s, char *j1, int grp)
     right->deAllocOnDevice();
 	c->deAllocOnDevice();	
 	
-	cout << "join end " << tot_count << "  " << getFreeMem() << endl;
 	unsigned int i = 0;
     while(!col_aliases.empty()) {
         c->columnNames[col_aliases.front()] = i;
@@ -3161,10 +3171,12 @@ void emit_order(char *s, char *f, int e, int ll)
 	
 	
 		unsigned int rcount;
+		
 		a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount);			
     
 		varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->oldRecCount;
 		unsigned int str_count = 0;
+		
 
 		for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
 			int colInd = (a->columnNames).find(exe_type.top())->second;

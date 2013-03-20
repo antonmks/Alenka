@@ -52,12 +52,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
 
     one_line = 0;
+	
+	thrust::device_ptr<bool> d_di(a->grp);
 
-    thrust::device_ptr<bool> d_di(a->grp);
-
-    if (!(a->columnGroups).empty() && (a->mRecCount != 0))
+    if (!a->columnGroups.empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
-
+	
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -67,7 +67,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
-			    one_line = 1;
+			    if(a->columnGroups.empty())
+					one_line = 1;
+					
                 if (ss.compare("DISTINCT") == 0) {
 				    s1_val = exe_value.top();
 				    exe_type.pop();
@@ -860,15 +862,20 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         grp_type1.pop();
     };
 
-    if ((a->columnGroups).empty()) {
+	cout << one_line << endl;
+    if (a->columnGroups.empty()) {
         if(!one_line) 
             b->mRecCount = a->mRecCount;		
 		else
             b->mRecCount = 1;			
+        one_liner = one_line;				
     }
-    else
+    else {
         b->mRecCount = res_size;
-	one_liner = one_line;	
+		one_liner = 0;
+	};	
+		
+	
 }
 
 
