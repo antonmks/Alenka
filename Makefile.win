@@ -1,34 +1,32 @@
 alenka : cm.obj join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
-		 select.obj zone_map.obj itoa.obj \
+		 zone_map.obj itoa.obj \
 		 atof.obj bison.obj
-	nvcc -O3 -arch=sm_20 -lcuda -o alenka join.obj merge.obj \
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 select.obj zone_map.obj itoa.obj \
 		 atof.obj cm.obj bison.obj
 
 cm.obj : cm.cu cm.h	
-	nvcc -O3 -arch=sm_20 -c cm.cu 
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c cm.cu 
 bison.obj : bison.cu cm.h
-	nvcc -O3 -arch=sm_20 -c bison.cu
-join.obj : join.cu cm.h join.h
-	nvcc -O3 -arch=sm_20 -c join.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c bison.cu
 merge.obj : merge.cu cm.h merge.h
-	nvcc -O3 -arch=sm_20 -c merge.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c merge.cu
 MurmurHash2_64.obj : MurmurHash2_64.cu cm.h 
-	nvcc -O3 -arch=sm_20 -c MurmurHash2_64.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c MurmurHash2_64.cu
 filter.obj : filter.cu cm.h filter.h
-	nvcc -O3 -arch=sm_20 -c filter.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c filter.cu
 strings.obj : strings.cu cm.h strings.h
-	nvcc -O3 -arch=sm_20 -c strings.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c strings.cu
 select.obj : select.cu cm.h select.h
-	nvcc -O3 -arch=sm_20 -c select.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c select.cu
 zone_map.obj : zone_map.cu cm.h zone_map.h
-	nvcc -O3 -arch=sm_20 -c zone_map.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c zone_map.cu
 itoa.obj : itoa.cu itoa.h
-	nvcc -O3 -arch=sm_20 -c itoa.cu
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c itoa.cu
 atof.obj : atof.cu cm.h atof.h
-	nvcc -O3 -arch=sm_20 -c atof.cu 
+	nvcc --compiler-options /MD -O3 -arch=sm_20 -c atof.cu 
 	
 clean : del bison.obj join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
