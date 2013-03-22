@@ -10,15 +10,17 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- */ 
- 
-#include "cm.h" 
+ */
+
+#include "cm.h"
 
 template<typename T>
-  struct distinct : public binary_function<T,T,T>
+struct distinct : public binary_function<T,T,T>
 {
-  __host__ __device__ T operator()(const T &lhs, const T &rhs) const {return lhs != rhs;}
-}; 
+    __host__ __device__ T operator()(const T &lhs, const T &rhs) const {
+        return lhs != rhs;
+    }
+};
 
 
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a,
@@ -47,17 +49,17 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type> exe_nums_f;
     float_type n1_f, n2_f, res_f;
     bool one_line;
-	unsigned int dist_processed = 0;
+    unsigned int dist_processed = 0;
     //std::clock_t start1 = std::clock();
 
 
     one_line = 0;
-	
-	thrust::device_ptr<bool> d_di(a->grp);
+
+    thrust::device_ptr<bool> d_di(a->grp);
 
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
-	
+
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -67,47 +69,47 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
-			    if(a->columnGroups.empty())
-					one_line = 1;
-					
+                if(a->columnGroups.empty())
+                    one_line = 1;
+
                 if (ss.compare("DISTINCT") == 0) {
-				    s1_val = exe_value.top();
-				    exe_type.pop();
-				    exe_value.pop();
+                    s1_val = exe_value.top();
+                    exe_type.pop();
+                    exe_value.pop();
 
-					unsigned int colIndex = (a->columnNames).find(s1_val)->second;
+                    unsigned int colIndex = (a->columnNames).find(s1_val)->second;
 
-                    if((a->type)[colIndex] == 0) {					    
-						
-						thrust::copy(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount,
-               						 distinct_tmp[dist_processed].begin());	
-						dist_processed++;			 
-						thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(res_size);				 
-						exe_vectors.push(thrust::raw_pointer_cast(res));
-						exe_type.push("VECTOR");	
+                    if((a->type)[colIndex] == 0) {
+
+                        thrust::copy(a->d_columns_int[a->type_index[colIndex]].begin(), a->d_columns_int[a->type_index[colIndex]].begin() + a->mRecCount,
+                                     distinct_tmp[dist_processed].begin());
+                        dist_processed++;
+                        thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(res_size);
+                        exe_vectors.push(thrust::raw_pointer_cast(res));
+                        exe_type.push("VECTOR");
                     }
-                    else if((a->type)[colIndex] == 2){
-					   //will add a DISTINCT on strings if anyone needs it
-					    cout << "DISTINCT on strings is not supported yet" << endl;
-						exit(0);
-					   
-					}
-					else {
-					    cout << "DISTINCT on float is not supported" << endl;
-						exit(0);
-					};	
-				}				
-			
-                else if (ss.compare("COUNT") == 0) {				
-                    
+                    else if((a->type)[colIndex] == 2) {
+                        //will add a DISTINCT on strings if anyone needs it
+                        cout << "DISTINCT on strings is not supported yet" << endl;
+                        exit(0);
+
+                    }
+                    else {
+                        cout << "DISTINCT on float is not supported" << endl;
+                        exit(0);
+                    };
+                }
+
+                else if (ss.compare("COUNT") == 0) {
+
                     s1 = exe_type.top();
-					if(s1.compare("VECTOR") != 0) {  // non distinct
-					    
-						grp_type = "COUNT";					
+                    if(s1.compare("VECTOR") != 0) {  // non distinct
+
+                        grp_type = "COUNT";
                         exe_type.pop();
                         s1_val = exe_value.top();
                         exe_value.pop();
-					    
+
                         if (!a->columnGroups.empty()) {
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                             thrust::reduce_by_key(d_di, d_di+(a->mRecCount), thrust::constant_iterator<int_type>(1),
@@ -115,19 +117,19 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                                   head_flag_predicate<bool>(),thrust::plus<int_type>());
 
                             exe_vectors.push(thrust::raw_pointer_cast(count_diff));
-						    exe_type.push("VECTOR");
+                            exe_type.push("VECTOR");
                         }
                         else {
                             thrust::device_ptr<int_type> dest  = thrust::device_malloc<int_type>(1);
                             dest[0] = a->mRecCount;
                             exe_vectors.push(thrust::raw_pointer_cast(dest));
-						    exe_type.push("VECTOR");
+                            exe_type.push("VECTOR");
                         }
                     }
-					else
-					    grp_type = "COUNTD";
-					
-				}	
+                    else
+                        grp_type = "COUNTD";
+
+                }
                 else if (ss.compare("SUM") == 0) {
 
                     grp_type = "SUM";
@@ -260,7 +262,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                               thrust::make_discard_iterator(), count_diff,
                                               head_flag_predicate<bool>(),thrust::minimum<int_type>());
                         exe_vectors.push(thrust::raw_pointer_cast(count_diff));
-						exe_type.push("VECTOR");
+                        exe_type.push("VECTOR");
 
                     }
                     else if((a->type)[colIndex] == 1) {
@@ -687,7 +689,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             op_value.pop();
 
             grp_type1.push(grp_type);
-			
+
             if(!exe_nums.empty()) {  //number
                 col_type.push(0);
                 exe_nums1.push(exe_nums.top());
@@ -712,12 +714,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
-	
-   
+
+
     b->grp_type = new unsigned int[colCount];
-		
+
     for(unsigned int j=0; j < colCount; j++) {
-	
+
         if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[colCount-j-1] = 0;
         else if ((grp_type1.top()).compare("AVG") == 0 )
@@ -731,9 +733,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         else if ((grp_type1.top()).compare("MAX") == 0 )
             b->grp_type[colCount-j-1] = 5;
         else if ((grp_type1.top()).compare("COUNTD") == 0 ) {
-            b->grp_type[colCount-j-1] = 6;			
-		};	
-		
+            b->grp_type[colCount-j-1] = 6;
+        };
+
 
         if(col_type.top() == 0) {
 
@@ -750,7 +752,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             }
             else
                 //b->addHostColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
-				b->addDeviceColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount);
+                b->addDeviceColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount);
             exe_nums1.pop();
         };
         if(col_type.top() == 1) {
@@ -772,7 +774,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else
                     //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
-					b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
+                    b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
 
             }
             else if(a->type[colIndex] == 1) {
@@ -789,35 +791,35 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else
                     //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
- 					b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
+                    b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
             }
             else if(a->type[colIndex] == 2) { //varchar
 
-				if (a->columnGroups.empty()) 
-				    res_size = a->mRecCount;
-				
-				if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {                  
-					void *d;
-					cudaMalloc((void **) &d, res_size*a->char_size[a->type_index[colIndex]]); 
-					b->d_columns_char.push_back((char*)d);	
-					b->h_columns_char.push_back(NULL);					
-					b->char_size.push_back(a->char_size[a->type_index[colIndex]]);
-					b->type_index[colCount-j-1] = b->d_columns_char.size()-1;
-					b->columnNames[col_val.top()] = colCount-j-1;
-					b->type[colCount-j-1] = 2;
-				}
-				else {  // already exists, my need to resize it
-					if(b->mRecCount < res_size)
-						b->resizeDeviceColumn(res_size-b->mRecCount, colCount-j-1);
-				};
-				
-				if (!a->columnGroups.empty()) {
-                    thrust::device_ptr<bool> d_grp(a->grp);				
-					str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);               					
-				}
+                if (a->columnGroups.empty())
+                    res_size = a->mRecCount;
+
+                if (b->columnNames.find(col_val.top()) == b->columnNames.end()) {
+                    void *d;
+                    cudaMalloc((void **) &d, res_size*a->char_size[a->type_index[colIndex]]);
+                    b->d_columns_char.push_back((char*)d);
+                    b->h_columns_char.push_back(NULL);
+                    b->char_size.push_back(a->char_size[a->type_index[colIndex]]);
+                    b->type_index[colCount-j-1] = b->d_columns_char.size()-1;
+                    b->columnNames[col_val.top()] = colCount-j-1;
+                    b->type[colCount-j-1] = 2;
+                }
+                else {  // already exists, my need to resize it
+                    if(b->mRecCount < res_size)
+                        b->resizeDeviceColumn(res_size-b->mRecCount, colCount-j-1);
+                };
+
+                if (!a->columnGroups.empty()) {
+                    thrust::device_ptr<bool> d_grp(a->grp);
+                    str_copy_if(a->d_columns_char[a->type_index[colIndex]], a->mRecCount, b->d_columns_char[b->type_index[colCount-j-1]], d_grp, a->char_size[a->type_index[colIndex]]);
+                }
                 else {
-					cudaMemcpy((void*)(thrust::raw_pointer_cast(b->d_columns_char[b->type_index[colCount-j-1]])), (void*)thrust::raw_pointer_cast(a->d_columns_char[a->type_index[colIndex]]),
-							   a->mRecCount*a->char_size[a->type_index[colIndex]], cudaMemcpyDeviceToDevice);
+                    cudaMemcpy((void*)(thrust::raw_pointer_cast(b->d_columns_char[b->type_index[colCount-j-1]])), (void*)thrust::raw_pointer_cast(a->d_columns_char[a->type_index[colIndex]]),
+                               a->mRecCount*a->char_size[a->type_index[colIndex]], cudaMemcpyDeviceToDevice);
                 }
             }
             exe_value1.pop();
@@ -830,11 +832,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), res_size);
             else {
                 //b->addHostColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
-				if(!one_line)
-				    b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
-				else	
-					b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), 1);
-			};	
+                if(!one_line)
+                    b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
+                else
+                    b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), 1);
+            };
 
             cudaFree(exe_vectors1.top());
             exe_vectors1.pop();
@@ -848,12 +850,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             else {
                 //b->addHostColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                 if(!one_line) {
-					b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
-				}
+                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
+                }
                 else {
                     b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), 1);
                 };
-			};	
+            };
             cudaFree(exe_vectors1_d.top());
             exe_vectors1_d.pop();
         };
@@ -862,20 +864,19 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         grp_type1.pop();
     };
 
-	cout << one_line << endl;
     if (a->columnGroups.empty()) {
-        if(!one_line) 
-            b->mRecCount = a->mRecCount;		
-		else
-            b->mRecCount = 1;			
-        one_liner = one_line;				
+        if(!one_line)
+            b->mRecCount = a->mRecCount;
+        else
+            b->mRecCount = 1;
+        one_liner = one_line;
     }
     else {
         b->mRecCount = res_size;
-		one_liner = 0;
-	};	
-		
-	
+        one_liner = 0;
+    };
+
+
 }
 
 

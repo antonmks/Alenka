@@ -208,12 +208,12 @@ struct decompress_functor_str
         // find the exact location
         unsigned int src_loc = i%fit_count;
         //right shift the values
-		unsigned int shifted = ((fit_count-src_loc)-1)*bits;		
+        unsigned int shifted = ((fit_count-src_loc)-1)*bits;
         unsigned long long int tmp = source[src_idx]  >> shifted;
         // set  the rest of bits to 0
         tmp	= tmp << (int_sz - bits);
         tmp	= tmp >> (int_sz - bits);
-		
+
 
         dest[i] = tmp;
 
@@ -242,18 +242,18 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
 
     *mRecCount = orig_recCount;
 
-	//cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
+    //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
 
-	if(raw_decomp_length < cnt*8) {	
-	    if(raw_decomp != NULL) {
-	        cudaFree(raw_decomp);
-		};	
-	    cudaMalloc((void **) &raw_decomp, cnt*8);
-		raw_decomp_length = cnt*8;
-	};		
+    if(raw_decomp_length < cnt*8) {
+        if(raw_decomp != NULL) {
+            cudaFree(raw_decomp);
+        };
+        cudaMalloc((void **) &raw_decomp, cnt*8);
+        raw_decomp_length = cnt*8;
+    };
 
-	
+
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
 
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
@@ -385,7 +385,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
     unsigned int cnt = (recCount)/fit_count;
     if (recCount%fit_count > 0)
         cnt++;
-		
+
     thrust::device_ptr<unsigned long long int> fin_seq = thrust::device_malloc<unsigned long long int>(cnt);
 
     thrust::reduce_by_key(add_seq, add_seq+recCount,s_copy1,thrust::make_discard_iterator(),
@@ -414,8 +414,8 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
         binary_file.write((char *)&comp_type, 4);
         binary_file.write((char *)&comp_type, 4); //filler
         binary_file.close();
-		if(cnt_counts[curr_file] < cnt)
-		    cnt_counts[curr_file] = cnt;
+        if(cnt_counts[curr_file] < cnt)
+            cnt_counts[curr_file] = cnt;
     }
     else {
         char* hh;
@@ -466,13 +466,13 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
-        sorted = thrust::is_sorted(s, s+recCount);		
+        sorted = thrust::is_sorted(s, s+recCount);
     }
     else {
         thrust::device_ptr<long long int> s((long long int*)source);
         sorted = thrust::is_sorted(s, s+recCount);
     };
-	//cout << "file " << file_name << " is sorted " << sorted << endl;
+    //cout << "file " << file_name << " is sorted " << sorted << endl;
 
     if(sorted)
         return pfor_delta_compress(source, source_len, file_name, host, tp, sz);
@@ -552,8 +552,8 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
-	
-	//cout << file_name << " CNT  " << cnt << endl;
+
+    //cout << file_name << " CNT  " << cnt << endl;
 
     if(file_name) {
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
@@ -572,8 +572,8 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         binary_file.write((char *)&comp_type, 4);
         binary_file.write((char *)&comp_type, 4); //filler
         binary_file.close();
-		if(cnt_counts[curr_file] < cnt)
-		    cnt_counts[curr_file] = cnt;		
+        if(cnt_counts[curr_file] < cnt)
+            cnt_counts[curr_file] = cnt;
     }
     else {
         char* hh;

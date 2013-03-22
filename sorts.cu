@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
+
 #include <thrust/device_vector.h>
 #include "strings.h"
 
@@ -36,7 +36,7 @@ void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permu
 template <typename KeyType>
 void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned int RecCount, string SortType, KeyType* tmp)
 {
-	thrust::gather(permutation, permutation+RecCount, key, tmp);
+    thrust::gather(permutation, permutation+RecCount, key, tmp);
 
     if (SortType.compare("DESC") == 0 )
         thrust::stable_sort_by_key(tmp, tmp+RecCount, permutation, thrust::greater<KeyType>());
@@ -67,42 +67,41 @@ void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned in
 
 void update_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
 {
-	
-	str_gather((void*)permutation, RecCount, (void*)key, (void*)tmp, len);	
+
+    str_gather((void*)permutation, RecCount, (void*)key, (void*)tmp, len);
 
     // stable_sort the permuted keys and update the permutation
     if (SortType.compare("DESC") == 0 )
-		str_sort(tmp, RecCount, permutation, 1, len);
+        str_sort(tmp, RecCount, permutation, 1, len);
     else
-		str_sort(tmp, RecCount, permutation, 0, len);
-	cout << "srt " << endl;	
+        str_sort(tmp, RecCount, permutation, 0, len);
 }
 
 void update_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
-{ 	
-	str_gather_host(permutation, RecCount, (void*)key, (void*)tmp, len);	
-	
+{
+    str_gather_host(permutation, RecCount, (void*)key, (void*)tmp, len);
+
     if (SortType.compare("DESC") == 0 )
-		str_sort_host(tmp, RecCount, permutation, 1, len);
+        str_sort_host(tmp, RecCount, permutation, 1, len);
     else
-		str_sort_host(tmp, RecCount, permutation, 0, len);		
-		
+        str_sort_host(tmp, RecCount, permutation, 0, len);
+
 }
 
 
 
 void apply_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, char* tmp, unsigned int len)
 {
-     // copy keys to temporary vector    
-	cudaMemcpy( (void*)tmp, (void*) key, RecCount*len, cudaMemcpyDeviceToDevice);		            
+    // copy keys to temporary vector
+    cudaMemcpy( (void*)tmp, (void*) key, RecCount*len, cudaMemcpyDeviceToDevice);
     // permute the keys
-	str_gather((void*)permutation, RecCount, (void*)tmp, (void*)key, len);
+    str_gather((void*)permutation, RecCount, (void*)tmp, (void*)key, len);
 }
 
 
 void apply_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, char* res, unsigned int len)
-{    
- 	str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);
+{
+    str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);
 }
 
 

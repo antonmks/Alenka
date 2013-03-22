@@ -11,581 +11,581 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
+
 #include "zone_map.h"
- 
- 
-    bool fh_equal_to(const float_type x, const float_type y)
-    {
-        return (((x-y) < EPSILON) && ((x-y) > -EPSILON));
+
+
+bool fh_equal_to(const float_type x, const float_type y)
+{
+    return (((x-y) < EPSILON) && ((x-y) > -EPSILON));
+}
+
+
+bool fh_less(const float_type x, const float_type y)
+{
+    return ((y-x) > EPSILON);
+}
+
+
+bool fh_greater(const float_type x, const float_type y)
+{
+    return ((x-y) > EPSILON);
+}
+
+
+bool fh_greater_equal_to(const float_type x, const float_type y)
+{
+    return (((x-y) > EPSILON) || (((x-y) < EPSILON) && ((x-y) > -EPSILON)));
+}
+
+
+bool fh_less_equal_to(const float_type x, const float_type y)
+{
+    return (((y-x) > EPSILON) || (((x-y) < EPSILON) && ((x-y) > -EPSILON)));
+}
+
+char host_logical_and(char column1, char column2)
+{
+    //cout << "AND " << column1 << " " << column2 << endl;
+    if (column1 == 'A' && column2 == 'A')
+        return 'A';
+    else if (column1 == 'N' || column2 == 'N') {
+        return 'N';
     }
+    else
+        return 'R';
+
+}
 
 
-    bool fh_less(const float_type x, const float_type y)
-    {
-        return ((y-x) > EPSILON);
+char host_logical_or(char column1, char column2)
+{
+    //cout << "OR " << column1 << " " << column2 << endl;
+    if (column1 == 'A' && column2 == 'A')
+        return 'A';
+    else if (column1 == 'N' && column2 == 'N')
+        return 'N';
+    else
+        return 'R';
+
+}
+
+
+
+char host_compare(int_type s, int_type d, int_type op_type)
+{
+    char res = 'N';
+
+    if (op_type == 2 && d>s ) // >
+        res = 'A';
+    else if (op_type == 1 && d<s)  // <
+        res = 'A';
+    else if (op_type == 6 && d>=s) // >=
+        res = 'A';
+    else if (op_type == 5 && d<=s)  // <=
+        res = 'A';
+    else if (op_type == 4 && d==s)// =
+        res = 'A';
+    else // !=
+        if(d!=s) res = 'A';
+
+    return res;
+}
+
+
+char host_compare(float_type s, float_type d, int_type op_type)
+{
+    char res = 'N';
+
+    if (op_type == 2 && (d-s) > EPSILON) // >
+        res = 'A';
+    else if (op_type == 1 && (s-d) > EPSILON)  // <
+        res = 'A';
+    else if (op_type == 6 && ((d-s) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON))) // >=
+        res = 'A';
+    else if (op_type == 5 && ((s-d) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON)))  // <=
+        res = 'A';
+    else if (op_type == 4 && ((d-s) < EPSILON) && ((d-s) > -EPSILON))// =
+        res = 'A';
+    else // !=
+        if (!(((d-s) < EPSILON) && ((d-s) > -EPSILON))) res = 'A';
+
+    return res;
+}
+
+
+char host_compare(int_type* column1, int_type d, int_type op_type)
+{
+    char res = 'R';
+    //cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
+
+    if (op_type == 2) {   // >
+        if (column1[1] <= d)
+            res = 'N';
+        else if (column1[0] > d)
+            res = 'A';
     }
-
-
-    bool fh_greater(const float_type x, const float_type y)
-    {
-        return ((x-y) > EPSILON);
+    else if (op_type == 1) { // <
+        if (column1[0] >= d)
+            res = 'N';
+        else if (column1[1] < d)
+            res = 'A';
     }
-	
-
-    bool fh_greater_equal_to(const float_type x, const float_type y)
-    {
-        return (((x-y) > EPSILON) || (((x-y) < EPSILON) && ((x-y) > -EPSILON)));
+    else if (op_type == 6) {  // >=
+        if (column1[1] < d)
+            res = 'N';
+        else if (column1[0] >= d)
+            res = 'A';
     }
-	
-
-    bool fh_less_equal_to(const float_type x, const float_type y)
-    {
-        return (((y-x) > EPSILON) || (((x-y) < EPSILON) && ((x-y) > -EPSILON)));
+    else if (op_type == 5) { // <=
+        if (column1[0] > d)
+            res = 'N';
+        else if (column1[1] <= d)
+            res = 'A';
     }
-	
-    char host_logical_and(char column1, char column2)
-    {
-	    //cout << "AND " << column1 << " " << column2 << endl;
-		if (column1 == 'A' && column2 == 'A')
-		    return 'A';
-		else if (column1 == 'N' || column2 == 'N') {		    
-			return 'N';
-		}	
-        else
-			return 'R';
+    else if (op_type == 4 && column1[0] == d && column1[1] == d) { // =
+        res = 'A';
+    };
+    //cout << "res " << res << endl;
 
+    return res;
+}
+
+char host_compare(float_type* column1, float_type d, int_type op_type)
+{
+    char res = 'R';
+    //cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
+
+    if (op_type == 2) { // >
+        if(fh_less_equal_to(column1[1],d)) {
+            res = 'N';
+        }
+        else if(fh_greater(column1[0],d)) {
+            res = 'A';
+        };
     }
-
-
-   char host_logical_or(char column1, char column2)
-    {
-        //cout << "OR " << column1 << " " << column2 << endl;
-		if (column1 == 'A' && column2 == 'A')
-		    return 'A';
-		else if (column1 == 'N' && column2 == 'N')	
-			return 'N';
-		else
-            return 'R';
-
+    else if (op_type == 1) { // <
+        if(fh_less(column1[1],d)) {
+            res = 'A';
+        }
+        else if(fh_greater_equal_to(column1[0],d)) {
+            res = 'N';
+        };
     }
-	
-	
-
-    char host_compare(int_type s, int_type d, int_type op_type)
-    {
-        char res = 'N';		
-
-        if (op_type == 2 && d>s ) // >
+    else if (op_type == 6) { // >=
+        if(fh_greater_equal_to(column1[0],d)) {
             res = 'A';
-        else if (op_type == 1 && d<s)  // <
-            res = 'A';
-        else if (op_type == 6 && d>=s) // >=
-            res = 'A';
-        else if (op_type == 5 && d<=s)  // <=
-            res = 'A';
-        else if (op_type == 4 && d==s)// =
-            res = 'A';
-        else // !=
-            if(d!=s) res = 'A';
-
-        return res;
+        }
+        else if(fh_less(column1[1],d)) {
+            res = 'N';
+        };
     }
-
-
-    char host_compare(float_type s, float_type d, int_type op_type)
-    {
-        char res = 'N';
-
-        if (op_type == 2 && (d-s) > EPSILON) // >
+    else if (op_type == 5) { // <=
+        if(fh_less_equal_to(column1[1],d)) {
             res = 'A';
-        else if (op_type == 1 && (s-d) > EPSILON)  // <
-            res = 'A';
-        else if (op_type == 6 && ((d-s) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON))) // >=
-            res = 'A';
-        else if (op_type == 5 && ((s-d) > EPSILON) || (((d-s) < EPSILON) && ((d-s) > -EPSILON)))  // <=
-            res = 'A';
-        else if (op_type == 4 && ((d-s) < EPSILON) && ((d-s) > -EPSILON))// =
-            res = 'A';
-        else // !=
-            if (!(((d-s) < EPSILON) && ((d-s) > -EPSILON))) res = 'A';
-
-        return res;
+        }
+        else if(fh_greater(column1[0],d)) {
+            res = 'N';
+        };
     }
+    else if (op_type == 4 && fh_equal_to(column1[0],d) && fh_equal_to(column1[1],d)) // =
+        res = 'A';
+
+    //cout << "res " << res << endl;
+    return res;
+
+}
 
 
-    char host_compare(int_type* column1, int_type d, int_type op_type)
-    {
-		char res = 'R';
-		//cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
-	
-        if (op_type == 2) {   // >
-   		    if (column1[1] <= d)
-		       res = 'N';
-			else if (column1[0] > d)  
-		       res = 'A';   
-		}	
-        else if (op_type == 1) { // <
- 		    if (column1[0] >= d)  
-		        res = 'N';			
-			else if (column1[1] < d)  
-		        res = 'A';				
-		}	
-        else if (op_type == 6) {  // >= 
-		    if (column1[1] < d) 
-                res = 'N';			
-			else if (column1[0] >= d)  
-		        res = 'A';								
-		}	
-        else if (op_type == 5) { // <=
-		   if (column1[0] > d)  
-              res = 'N';
-		   else if (column1[1] <= d)  
-		      res = 'A';
-		}	
-        else if (op_type == 4 && column1[0] == d && column1[1] == d) { // =
+char host_compare(int_type* column1, int_type* column2, int_type op_type)
+{
+    char res = 'R';
+
+    if (op_type == 2) { // >
+        if(column1[0] > column2[1])
             res = 'A';
-		};	
-		//cout << "res " << res << endl;
-
-        return res;
+        else if(column1[1] <= column2[0])
+            res = 'N';
     }
-
-    char host_compare(float_type* column1, float_type d, int_type op_type)
-    {
-		char res = 'R';
-		//cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
-
-        if (op_type == 2) { // >
-		   if(fh_less_equal_to(column1[1],d)) { 
-		       res = 'N';
-		   }	
-		   else if(fh_greater(column1[0],d)) {
-		       res = 'A';
-		   };		   
-		}	
-        else if (op_type == 1) { // <
-		   if(fh_less(column1[1],d)) { 
-		       res = 'A';
-		   }	
-		   else if(fh_greater_equal_to(column1[0],d)) {
-		       res = 'N';
-		   };		   
-		}		
-        else if (op_type == 6) { // >=
-		   if(fh_greater_equal_to(column1[0],d)) { 
-		       res = 'A';
-		   }	
-		   else if(fh_less(column1[1],d)) {
-		       res = 'N';
-		   };		   
-		}			
-        else if (op_type == 5) { // <=
-		   if(fh_less_equal_to(column1[1],d)) { 
-		       res = 'A';
-		   }	
-		   else if(fh_greater(column1[0],d)) {
-		       res = 'N';
-		   };		   
-		}		
-        else if (op_type == 4 && fh_equal_to(column1[0],d) && fh_equal_to(column1[1],d)) // =
+    else if (op_type == 1) { // <
+        if(column1[1] < column2[0])
             res = 'A';
-
-		//cout << "res " << res << endl;	
-        return res;
-
+        else if(column1[0] >= column2[1])
+            res = 'N';
     }
-
-
-    char host_compare(int_type* column1, int_type* column2, int_type op_type)
-    {
-		char res = 'R';
-
-        if (op_type == 2) { // >
-		    if(column1[0] > column2[1]) 
-                res = 'A';
-			else if(column1[1] <= column2[0]) 
-                res = 'N';
-        }			
-        else if (op_type == 1) { // <
-		    if(column1[1] < column2[0]) 
-                res = 'A';
-			else if(column1[0] >= column2[1]) 
-                res = 'N';
-        }			
-        else if (op_type == 6) { // >=
-		    if(column1[0] >= column2[1]) 
-                res = 'A';
-			else if(column1[1] < column2[0]) 
-                res = 'N';
-        }			
-        else if (op_type == 5) { // <=
-		    if(column1[1] <= column2[0]) 
-                res = 'A';
-			else if(column1[0] > column2[1]) 
-                res = 'N';
-        }			
-        else if (op_type == 4  && column1[0] == column2[1] && column1[1] == column2[0]) // =
+    else if (op_type == 6) { // >=
+        if(column1[0] >= column2[1])
             res = 'A';
-
-        return res;
-
-
+        else if(column1[1] < column2[0])
+            res = 'N';
     }
-
-    char host_compare(float_type* column1, float_type* column2, int_type op_type)
-    {        
-		char res = 'R';
-
-        if (op_type == 2) { // >
-		    if(fh_greater(column1[0],column2[1])) 
-                res = 'A';
-			else if(fh_less_equal_to(column1[1],column2[0])) 
-			    res = 'N';
-		}		               			
-        else if (op_type == 1) { // <
-		    if(fh_less(column1[1],column2[0])) 
-                res = 'A';
-			else if(fh_greater_equal_to(column1[0],column2[1])) 
-			    res = 'N';
-		}		
-        else if (op_type == 6) { // >=
-		    if(fh_greater_equal_to(column1[1],column2[0])) 
-                res = 'A';
-			else if(fh_less(column1[1],column2[0])) 
-			    res = 'N';
-		}		
-        else if (op_type == 5) { // <=
-		    if(fh_less_equal_to(column1[1],column2[0])) 
-                res = 'A';
-			else if(fh_greater(column1[0],column2[1])) 
-			    res = 'N';
-		}		
-        else if (op_type == 4  && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1],column2[0])) // =
+    else if (op_type == 5) { // <=
+        if(column1[1] <= column2[0])
             res = 'A';
-
-        return res;
+        else if(column1[0] > column2[1])
+            res = 'N';
     }
+    else if (op_type == 4  && column1[0] == column2[1] && column1[1] == column2[0]) // =
+        res = 'A';
+
+    return res;
 
 
-    char host_compare(float_type* column1, int_type* column2, int_type op_type)
-    {        
-		char res = 'R';
-		
-        if (op_type == 2) { // >
-		    if(fh_greater(column1[0],(float_type)column2[1])) 
-                res = 'A';
-			else if(fh_less_equal_to(column1[1],(float_type)column2[0])) 
-			    res = 'N';
-		}		               			
-        else if (op_type == 1) { // <
-		    if(fh_less(column1[1],column2[0])) 
-                res = 'A';
-			else if(fh_greater_equal_to(column1[0],(float_type)column2[1])) 
-			    res = 'N';
-		}		
-        else if (op_type == 6) { // >=
-		    if(fh_greater_equal_to(column1[1],(float_type)column2[0])) 
-                res = 'A';
-			else if(fh_less(column1[1],(float_type)column2[0])) 
-			    res = 'N';
-		}		
-        else if (op_type == 5) { // <=
-		    if(fh_less_equal_to(column1[1],(float_type)column2[0])) 
-                res = 'A';
-			else if(fh_greater(column1[0],(float_type)column2[1])) 
-			    res = 'N';
-		}		
-        else if (op_type == 4  && fh_equal_to(column1[0],(float_type) column2[1]) && fh_equal_to(column1[1],(float_type)column2[0])) // =
+}
+
+char host_compare(float_type* column1, float_type* column2, int_type op_type)
+{
+    char res = 'R';
+
+    if (op_type == 2) { // >
+        if(fh_greater(column1[0],column2[1]))
             res = 'A';
-
-        return res;
+        else if(fh_less_equal_to(column1[1],column2[0]))
+            res = 'N';
     }
+    else if (op_type == 1) { // <
+        if(fh_less(column1[1],column2[0]))
+            res = 'A';
+        else if(fh_greater_equal_to(column1[0],column2[1]))
+            res = 'N';
+    }
+    else if (op_type == 6) { // >=
+        if(fh_greater_equal_to(column1[1],column2[0]))
+            res = 'A';
+        else if(fh_less(column1[1],column2[0]))
+            res = 'N';
+    }
+    else if (op_type == 5) { // <=
+        if(fh_less_equal_to(column1[1],column2[0]))
+            res = 'A';
+        else if(fh_greater(column1[0],column2[1]))
+            res = 'N';
+    }
+    else if (op_type == 4  && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1],column2[0])) // =
+        res = 'A';
+
+    return res;
+}
+
+
+char host_compare(float_type* column1, int_type* column2, int_type op_type)
+{
+    char res = 'R';
+
+    if (op_type == 2) { // >
+        if(fh_greater(column1[0],(float_type)column2[1]))
+            res = 'A';
+        else if(fh_less_equal_to(column1[1],(float_type)column2[0]))
+            res = 'N';
+    }
+    else if (op_type == 1) { // <
+        if(fh_less(column1[1],column2[0]))
+            res = 'A';
+        else if(fh_greater_equal_to(column1[0],(float_type)column2[1]))
+            res = 'N';
+    }
+    else if (op_type == 6) { // >=
+        if(fh_greater_equal_to(column1[1],(float_type)column2[0]))
+            res = 'A';
+        else if(fh_less(column1[1],(float_type)column2[0]))
+            res = 'N';
+    }
+    else if (op_type == 5) { // <=
+        if(fh_less_equal_to(column1[1],(float_type)column2[0]))
+            res = 'A';
+        else if(fh_greater(column1[0],(float_type)column2[1]))
+            res = 'N';
+    }
+    else if (op_type == 4  && fh_equal_to(column1[0],(float_type) column2[1]) && fh_equal_to(column1[1],(float_type)column2[0])) // =
+        res = 'A';
+
+    return res;
+}
 
 
 
-    float_type* host_op(int_type* column1, float_type* column2, string op_type, int reverse)
-    {
+float_type* host_op(int_type* column1, float_type* column2, string op_type, int reverse)
+{
 
-        float_type* temp = (float_type*)malloc(2*float_size);
-		temp[0] = (float_type)column1[0];
-		temp[1] = (float_type)column1[1];
-		
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = temp[0] * column2[0];
-				temp[1] = temp[1] * column2[1];
-			}	
-            else if (op_type.compare("ADD") == 0) {
-   				temp[0] = temp[0] + column2[0];
-				temp[1] = temp[1] + column2[1];
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-   				temp[0] = column2[0] - temp[0];
-				temp[1] = column2[1] - temp[1];
-			}	
-            else {
-   				temp[0] = column2[0] / temp[0];
-				temp[1] = column2[1] / temp[1];
-			}	
+    float_type* temp = (float_type*)malloc(2*float_size);
+    temp[0] = (float_type)column1[0];
+    temp[1] = (float_type)column1[1];
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = temp[0] * column2[0];
+            temp[1] = temp[1] * column2[1];
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = temp[0] + column2[0];
+            temp[1] = temp[1] + column2[1];
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column2[0] - temp[0];
+            temp[1] = column2[1] - temp[1];
         }
         else {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = temp[0] * column2[0];
-				temp[1] = temp[1] * column2[1];
-			}	
-            else if (op_type.compare("ADD") == 0) {
-   				temp[0] = temp[0] + column2[0];
-				temp[1] = temp[1] + column2[1];
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-   				temp[0] = temp[0] - column2[0];
-				temp[1] = temp[1] - column2[1];
-			}	
-            else {
-   				temp[0] = temp[0] / column2[0];
-				temp[1] = temp[1] / column2[1];
-			}	
-        };
-
-        return temp;
+            temp[0] = column2[0] / temp[0];
+            temp[1] = column2[1] / temp[1];
+        }
     }
-
-
-
-
-    int_type* host_op(int_type* column1, int_type* column2, string op_type, int reverse)
-    {
-		int_type* temp = (int_type*)malloc(2*int_size);
-
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * column2[0];
-				temp[1] = column1[1] * column2[1];				
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + column2[0];
-				temp[1] = column1[1] + column2[1];				
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column1[0] - column2[0];
-				temp[1] = column1[1] - column2[1];								
-			}	
-            else {
-				temp[0] = column1[0] / column2[0];
-				temp[1] = column1[1] / column2[1];								
-			}	
+    else {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = temp[0] * column2[0];
+            temp[1] = temp[1] * column2[1];
         }
-        else  {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * column2[0];
-				temp[1] = column1[1] * column2[1];				
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + column2[0];
-				temp[1] = column1[1] + column2[1];				
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column2[0] - column1[0];
-				temp[1] = column2[1] - column1[1];								
-			}	
-            else {
-				temp[0] = column2[0] / column1[0];
-				temp[1] = column2[1] / column1[1];								
-			}	
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = temp[0] + column2[0];
+            temp[1] = temp[1] + column2[1];
         }
-
-        return temp;
-
-    }
-
-    float_type* host_op(float_type* column1, float_type* column2, string op_type, int reverse)
-    {        
-        float_type* temp = (float_type*)malloc(2*float_size);		
-     
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * column2[0];
-				temp[1] = column1[1] * column2[1];				
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + column2[0];
-				temp[1] = column1[1] + column2[1];				
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column1[0] - column2[0];
-				temp[1] = column1[1] - column2[1];								
-			}	
-            else {
-				temp[0] = column1[0] / column2[0];
-				temp[1] = column1[1] / column2[1];								
-			}	
-        }
-        else  {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * column2[0];
-				temp[1] = column1[1] * column2[1];				
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + column2[0];
-				temp[1] = column1[1] + column2[1];				
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column2[0] - column1[0];
-				temp[1] = column2[1] - column1[1];								
-			}	
-            else {
-				temp[0] = column2[0] / column1[0];
-				temp[1] = column2[1] / column1[1];								
-			}	
-        }
-
-        return temp;
-
-    }
-
-    int_type* host_op(int_type* column1, int_type d, string op_type, int reverse)
-    {
-		int_type* temp = (int_type*)malloc(2*int_size);	
-
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * d;
-				temp[1] = column1[1] * d;								
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + d;
-				temp[1] = column1[1] + d;								
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column1[0] - d;
-				temp[1] = column1[1] - d;								
-			}	
-            else {
-				temp[0] = column1[0] / d;
-				temp[1] = column1[1] / d;												
-			}	
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = temp[0] - column2[0];
+            temp[1] = temp[1] - column2[1];
         }
         else {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * d;
-				temp[1] = column1[1] * d;								
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + d;
-				temp[1] = column1[1] + d;								
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = d - column1[0];
-				temp[1] = d - column1[1];								
-			}	
-            else {
-				temp[0] = d / column1[0];
-				temp[1] = d / column1[1];												
-			}	
-
-        };
-
-        return temp;
-
-    }
-
-    float_type* host_op(int_type* column1, float_type d, string op_type, int reverse)
-    {
-		float_type* temp = (float_type*)malloc(2*float_size);		
-		temp[0] = (float_type)column1[0];
-		temp[1] = (float_type)column1[1];
-
-		float_type* temp1 = (float_type*)malloc(2*float_size);		
-
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp1[0] = temp[0] * d;
-				temp1[1] = temp[1] * d;												
-			}	
-            else if (op_type.compare("ADD") == 0) {
-   				temp1[0] = temp[0] + d;
-				temp1[1] = temp[1] + d;												
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp1[0] = temp[0] - d;
-				temp1[1] = temp[1] - d;												
-			}	
-            else {
-				temp1[0] = temp[0] / d;
-				temp1[1] = temp[1] / d;
-			}	
+            temp[0] = temp[0] / column2[0];
+            temp[1] = temp[1] / column2[1];
         }
-        else  {
-            if (op_type.compare("MUL") == 0) {
-				temp1[0] = temp[0] * d;
-				temp1[1] = temp[1] * d;												
-			}	
-            else if (op_type.compare("ADD") == 0) {
-   				temp1[0] = temp[0] + d;
-				temp1[1] = temp[1] + d;												
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp1[0] = d - temp[0];
-				temp1[1] = d - temp[1];												
-			}	
-            else {
-				temp1[0] = d / temp[0];
-				temp1[1] = d / temp[1];
-			}	
-        };
+    };
 
-        free(temp);
-        return temp1;
-
-    }
+    return temp;
+}
 
 
 
-    float_type* host_op(float_type* column1, float_type d, string op_type,int reverse)
-    {
-		float_type* temp = (float_type*)malloc(2*float_size);		
-      
-        if(reverse == 0) {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * d;
-				temp[1] = column1[1] * d;								
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + d;
-				temp[1] = column1[1] + d;								
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = column1[0] - d;
-				temp[1] = column1[1] - d;								
-			}	
-            else {
-				temp[0] = column1[0] / d;
-				temp[1] = column1[1] / d;												
-			}	
+
+int_type* host_op(int_type* column1, int_type* column2, string op_type, int reverse)
+{
+    int_type* temp = (int_type*)malloc(2*int_size);
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * column2[0];
+            temp[1] = column1[1] * column2[1];
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + column2[0];
+            temp[1] = column1[1] + column2[1];
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column1[0] - column2[0];
+            temp[1] = column1[1] - column2[1];
         }
         else {
-            if (op_type.compare("MUL") == 0) {
-				temp[0] = column1[0] * d;
-				temp[1] = column1[1] * d;								
-			}	
-            else if (op_type.compare("ADD") == 0) {
-				temp[0] = column1[0] + d;
-				temp[1] = column1[1] + d;								
-			}	
-            else if (op_type.compare("MINUS") == 0) {
-				temp[0] = d - column1[0];
-				temp[1] = d - column1[1];								
-			}	
-            else {
-				temp[0] = d / column1[0];
-				temp[1] = d / column1[1];												
-			}	
-		};	
-
-        return temp;
-
+            temp[0] = column1[0] / column2[0];
+            temp[1] = column1[1] / column2[1];
+        }
     }
+    else  {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * column2[0];
+            temp[1] = column1[1] * column2[1];
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + column2[0];
+            temp[1] = column1[1] + column2[1];
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column2[0] - column1[0];
+            temp[1] = column2[1] - column1[1];
+        }
+        else {
+            temp[0] = column2[0] / column1[0];
+            temp[1] = column2[1] / column1[1];
+        }
+    }
+
+    return temp;
+
+}
+
+float_type* host_op(float_type* column1, float_type* column2, string op_type, int reverse)
+{
+    float_type* temp = (float_type*)malloc(2*float_size);
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * column2[0];
+            temp[1] = column1[1] * column2[1];
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + column2[0];
+            temp[1] = column1[1] + column2[1];
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column1[0] - column2[0];
+            temp[1] = column1[1] - column2[1];
+        }
+        else {
+            temp[0] = column1[0] / column2[0];
+            temp[1] = column1[1] / column2[1];
+        }
+    }
+    else  {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * column2[0];
+            temp[1] = column1[1] * column2[1];
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + column2[0];
+            temp[1] = column1[1] + column2[1];
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column2[0] - column1[0];
+            temp[1] = column2[1] - column1[1];
+        }
+        else {
+            temp[0] = column2[0] / column1[0];
+            temp[1] = column2[1] / column1[1];
+        }
+    }
+
+    return temp;
+
+}
+
+int_type* host_op(int_type* column1, int_type d, string op_type, int reverse)
+{
+    int_type* temp = (int_type*)malloc(2*int_size);
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * d;
+            temp[1] = column1[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + d;
+            temp[1] = column1[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column1[0] - d;
+            temp[1] = column1[1] - d;
+        }
+        else {
+            temp[0] = column1[0] / d;
+            temp[1] = column1[1] / d;
+        }
+    }
+    else {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * d;
+            temp[1] = column1[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + d;
+            temp[1] = column1[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = d - column1[0];
+            temp[1] = d - column1[1];
+        }
+        else {
+            temp[0] = d / column1[0];
+            temp[1] = d / column1[1];
+        }
+
+    };
+
+    return temp;
+
+}
+
+float_type* host_op(int_type* column1, float_type d, string op_type, int reverse)
+{
+    float_type* temp = (float_type*)malloc(2*float_size);
+    temp[0] = (float_type)column1[0];
+    temp[1] = (float_type)column1[1];
+
+    float_type* temp1 = (float_type*)malloc(2*float_size);
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp1[0] = temp[0] * d;
+            temp1[1] = temp[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp1[0] = temp[0] + d;
+            temp1[1] = temp[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp1[0] = temp[0] - d;
+            temp1[1] = temp[1] - d;
+        }
+        else {
+            temp1[0] = temp[0] / d;
+            temp1[1] = temp[1] / d;
+        }
+    }
+    else  {
+        if (op_type.compare("MUL") == 0) {
+            temp1[0] = temp[0] * d;
+            temp1[1] = temp[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp1[0] = temp[0] + d;
+            temp1[1] = temp[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp1[0] = d - temp[0];
+            temp1[1] = d - temp[1];
+        }
+        else {
+            temp1[0] = d / temp[0];
+            temp1[1] = d / temp[1];
+        }
+    };
+
+    free(temp);
+    return temp1;
+
+}
+
+
+
+float_type* host_op(float_type* column1, float_type d, string op_type,int reverse)
+{
+    float_type* temp = (float_type*)malloc(2*float_size);
+
+    if(reverse == 0) {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * d;
+            temp[1] = column1[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + d;
+            temp[1] = column1[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = column1[0] - d;
+            temp[1] = column1[1] - d;
+        }
+        else {
+            temp[0] = column1[0] / d;
+            temp[1] = column1[1] / d;
+        }
+    }
+    else {
+        if (op_type.compare("MUL") == 0) {
+            temp[0] = column1[0] * d;
+            temp[1] = column1[1] * d;
+        }
+        else if (op_type.compare("ADD") == 0) {
+            temp[0] = column1[0] + d;
+            temp[1] = column1[1] + d;
+        }
+        else if (op_type.compare("MINUS") == 0) {
+            temp[0] = d - column1[0];
+            temp[1] = d - column1[1];
+        }
+        else {
+            temp[0] = d / column1[0];
+            temp[1] = d / column1[1];
+        }
+    };
+
+    return temp;
+
+}
 
 
 
@@ -601,70 +601,70 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     stack<int_type*> exe_vectors;
     stack<float_type*> exe_vectors_f;
     stack<int_type> exe_nums;
-	stack<char> bool_vectors;
+    stack<char> bool_vectors;
     stack<float_type> exe_nums_f;
     string  s1, s2, s1_val, s2_val;
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
-	
-	if(a->not_compressed)
-	    return 'R';
-	
-	//first we need to set all host arrays [0] and [1] of t to min and max values of appropriate files
+
+    if(a->not_compressed)
+        return 'R';
+
+    //first we need to set all host arrays [0] and [1] of t to min and max values of appropriate files
     set<string> uniques;
-	queue<string> fields(op_value);
-	CudaSet *t;
-	FILE* f;
-	unsigned int colIndex, cnt;
-	char f1[100];
-	char col_pos[3];
-	
-	
-	while(!fields.empty()) {
+    queue<string> fields(op_value);
+    CudaSet *t;
+    FILE* f;
+    unsigned int colIndex, cnt;
+    char f1[100];
+    char col_pos[3];
+
+
+    while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
             t = varNames[setMap[fields.front()]];
-			colIndex = t->columnNames[fields.front()];
-		    
-        // copy t min and max values to a only if int, decimal or float
-		    if(t->type[colIndex] <= 1) {				    
-					
+            colIndex = t->columnNames[fields.front()];
+
+            // copy t min and max values to a only if int, decimal or float
+            if(t->type[colIndex] <= 1) {
+
                 strcpy(f1, t->load_file_name);
-                strcat(f1,".");                
+                strcat(f1,".");
                 itoaa(t->cols[colIndex],col_pos);
                 strcat(f1,col_pos);
-				strcat(f1,".");                
-				itoaa(segment,col_pos);
-				strcat(f1,col_pos);
-                f = fopen (f1 , "rb" );     
-                
-	            fread((char *)&cnt, 4, 1, f);
+                strcat(f1,".");
+                itoaa(segment,col_pos);
+                strcat(f1,col_pos);
+                f = fopen (f1 , "rb" );
+
+                fread((char *)&cnt, 4, 1, f);
                 if (t->type[colIndex] == 0) {
-                    a->h_columns_int[a->type_index[colIndex]].resize(2);	
+                    a->h_columns_int[a->type_index[colIndex]].resize(2);
                     fread((char *)&a->h_columns_int[a->type_index[colIndex]][0], 8, 1, f);
-				    fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);					
-					//cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
-				}	
-                else  {					
-				    long long int t;
-				    a->h_columns_float[a->type_index[colIndex]].resize(2);	
-					fread((char *)&t, 8, 1, f);
-					a->h_columns_float[a->type_index[colIndex]][0] = (float_type)t/100.0;
-					fread((char *)&t, 8, 1, f);
-					a->h_columns_float[a->type_index[colIndex]][1] = (float_type)t/100.0;				    
-					//cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
-				};				                
-				fclose(f);						
-			};
-		};	
-        uniques.insert(fields.front());	   
-        fields.pop();		
-	};
-	
-	
-    for(int i=0; !op_type.empty(); ++i, op_type.pop()) {	
-	    
+                    fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);
+                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
+                }
+                else  {
+                    long long int t;
+                    a->h_columns_float[a->type_index[colIndex]].resize(2);
+                    fread((char *)&t, 8, 1, f);
+                    a->h_columns_float[a->type_index[colIndex]][0] = (float_type)t/100.0;
+                    fread((char *)&t, 8, 1, f);
+                    a->h_columns_float[a->type_index[colIndex]][1] = (float_type)t/100.0;
+                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+                };
+                fclose(f);
+            };
+        };
+        uniques.insert(fields.front());
+        fields.pop();
+    };
+
+
+    for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
+
         string ss = op_type.front();
-		
+
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
                 || ss.compare("STRING") == 0) {
 
@@ -734,8 +734,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s1_val = exe_value.top();
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
-                    exe_nums_f.pop();					
-					
+                    exe_nums_f.pop();
+
                     exe_type.push("VECTOR F");
 
                     if (a->type[(a->columnNames)[s1_val]] == 1) {
@@ -753,7 +753,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
+
                     exe_type.push("VECTOR F");
 
                     if (a->type[(a->columnNames)[s2_val]] == 1) {
@@ -770,8 +770,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
-					
-					if (a->type[(a->columnNames)[s1_val]] == 1) {
+
+                    if (a->type[(a->columnNames)[s1_val]] == 1) {
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(host_op(t,(float_type)n1,ss,1));
@@ -788,8 +788,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
-					
+
+
                     if (a->type[(a->columnNames)[s2_val]] == 1) {
                         float_type* t = a->get_host_float_by_name(s2_val);
                         exe_type.push("VECTOR F");
@@ -802,8 +802,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     };
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
-				
-				    return 'R'; 
+
+                    return 'R';
                     /*s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
@@ -835,7 +835,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             exe_vectors_f.push(host_op(t,t1,ss,0));
                         };
                     }
-					*/
+                    */
                 }
                 else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0 ) && s2.compare("NAME") == 0) {
 
@@ -1051,8 +1051,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 exe_type.pop();
                 s2 = exe_type.top();
                 exe_type.pop();
-				
-				
+
+
 
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
@@ -1074,7 +1074,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     n2 = exe_nums.top();
-                    exe_nums.pop();					
+                    exe_nums.pop();
                     exe_type.push("VECTOR");
                     bool_vectors.push(host_compare(n1_f,float_type(n2),cmp_type));
                 }
@@ -1082,20 +1082,20 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     n2 = exe_nums.top();
-                    exe_nums.pop();					
-                    exe_type.push("VECTOR");					
+                    exe_nums.pop();
+                    exe_type.push("VECTOR");
                     bool_vectors.push(host_compare(n1_f,float_type(n2),cmp_type));
                 }
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-				    
-                   
+
+
                     exe_type.push("VECTOR");
                     bool_vectors.push('R'); // later I plan to change implementation of char type so I will leave indexing of char off for now
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
                     exe_type.push("VECTOR");
-                    bool_vectors.push('R');					
+                    bool_vectors.push('R');
                 }
 
 
@@ -1104,7 +1104,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-					//cout << "comparing " << n1 << " and " << s1_val << endl;
+                    //cout << "comparing " << n1 << " and " << s1_val << endl;
 
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
@@ -1123,7 +1123,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					//cout << "comparingg " << n1 << " and " << s2_val << endl;
+                    //cout << "comparingg " << n1 << " and " << s2_val << endl;
 
                     if (a->type[(a->columnNames)[s2_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
@@ -1142,7 +1142,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums_f.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-					
+
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
                         exe_type.push("VECTOR");
@@ -1378,8 +1378,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
 
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
-				    return 'R';
-					/*
+                    return 'R';
+                    /*
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
@@ -1409,7 +1409,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             bool_vectors.push(host_compare(t,t1,cmp_type));
                         };
                     }
-					*/
+                    */
                 }
             }
 
@@ -1433,9 +1433,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 cout << "found nothing " << endl;
             }
         };
-    };    
-    
-	return bool_vectors.top();   
+    };
+
+    return bool_vectors.top();
 
 }
 

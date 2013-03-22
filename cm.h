@@ -85,6 +85,19 @@ template<typename T>
   }
 };
 
+template<typename T>
+  struct uninitialized_allocator
+    : thrust::device_malloc_allocator<T>
+{
+  // note that construct is annotated as
+  // a __host__ __device__ function
+  __host__ __device__
+  void construct(T *p)
+  {
+    // no-op
+  }
+};
+
 
 template <typename HeadFlagType>
 struct head_flag_predicate
@@ -111,6 +124,87 @@ struct float_to_long
     }
 };
 
+struct float_to_int_lower
+{
+
+    __host__ __device__
+    unsigned int operator()(const float_type x)
+    {
+        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
+            return (unsigned int) (((long long int)((x+EPSILON)*100.0) << 32) >> 32);
+        else return (unsigned int) ((((long long int)(x*100.0)) << 32) >> 32);
+
+    }
+};
+
+struct float_to_int_upper
+{
+
+    __host__ __device__
+    unsigned int operator()(const float_type x)
+    {
+        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
+            return (unsigned int)((long long int)((x+EPSILON)*100.0) >> 32);
+        else return (unsigned int)(((long long int)(x*100.0)) >> 32);
+    }
+};
+
+
+struct Uint2Sum
+{
+	__host__ __device__  uint2 operator()(uint2& a, uint2& b)
+	{
+		//a.x += b.x;
+		a.y += b.y;
+		return a;
+	}	
+};
+
+
+struct uint2_split
+{
+
+    const uint2* d_res;
+    unsigned int * output;
+
+    uint2_split(const uint2* _d_res, unsigned int * _output):
+        d_res(_d_res), output(_output) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+        output[i] = d_res[i].y;
+		
+    }
+};
+
+struct join_functor1
+{
+
+    const uint2* d_res;
+	const unsigned int* d_addr;
+    unsigned int * output;
+    unsigned int * output1;	
+
+    join_functor1(const uint2* _d_res, const unsigned int * _d_addr, unsigned int * _output, unsigned int * _output1):
+        d_res(_d_res), d_addr(_d_addr), output(_output), output1(_output1) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+	    if (d_res[i].x || d_res[i].y) {
+		    for(unsigned int z = 0; z < d_res[i].y; z++) {
+                output[d_addr[i] + z] = i;
+                output1[d_addr[i] + z] = d_res[i].x + z;
+			};	
+		};		
+    }
+};
+
+
+
 
 #ifdef _WIN64
 typedef unsigned __int64 uint64_t;
@@ -131,8 +225,8 @@ public:
     std::vector<char*> h_columns_char;	
 	unsigned int prealloc_char_size;
 
-    std::vector<thrust::device_vector<int_type> > d_columns_int;
-    std::vector<thrust::device_vector<float_type> > d_columns_float;
+    std::vector<thrust::device_vector<int_type > > d_columns_int;
+    std::vector<thrust::device_vector<float_type > > d_columns_float;
     std::vector<char*> d_columns_char;	
 
     std::vector<unsigned int> char_size;

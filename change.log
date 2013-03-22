@@ -1,3 +1,6 @@
+03/22/2013
+   Joins are now GPU hash joins.
+
 02/16/2013
    Performance and bug fixes
 

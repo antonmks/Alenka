@@ -11,18 +11,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
+
 #include "cm.h"
 
 struct cmp_functor_str
 {
     const char  * source;
-	const char *str; 
+    const char *str;
     bool * dest;
     const unsigned int * len;
 
     cmp_functor_str(const char * _source, const char * _str, bool * _dest,
-                           const unsigned int * _len):
+                    const unsigned int * _len):
         source(_source), str(_str), dest(_dest), len(_len) {}
 
     template <typename IndexType>
@@ -30,16 +30,16 @@ struct cmp_functor_str
     void operator()(const IndexType & i) {
 
         unsigned int length = len[0];
-		unsigned int start = i*length;
-		
-	    for(unsigned int z = 0; z < length ; z++) {
+        unsigned int start = i*length;
+
+        for(unsigned int z = 0; z < length ; z++) {
             if(source[start+z] != str[z]) {
-			    dest[i] = 0;
-				return;
-			};
-			
-		};	
-        dest[i] = 1;		
+                dest[i] = 0;
+                return;
+            };
+
+        };
+        dest[i] = 1;
 
     }
 };
@@ -48,12 +48,12 @@ struct cmp_functor_str
 struct cmp_functor_str_like_left
 {
     const char  * source;
-	const char *str; 
+    const char *str;
     bool * dest;
     const unsigned int * len;
 
     cmp_functor_str_like_left(const char * _source, const char * _str, bool * _dest,
-                           const unsigned int * _len):
+                              const unsigned int * _len):
         source(_source), str(_str), dest(_dest), len(_len) {}
 
     template <typename IndexType>
@@ -61,17 +61,17 @@ struct cmp_functor_str_like_left
     void operator()(const IndexType & i) {
 
         unsigned int length = len[0];
-		unsigned int str_length = len[1];		
-		unsigned int start = i*length;
-		
-	    for(unsigned int z = 0; z < str_length ; z++) {
+        unsigned int str_length = len[1];
+        unsigned int start = i*length;
+
+        for(unsigned int z = 0; z < str_length ; z++) {
             if(source[start+z] != str[z]) {
-			    dest[i] = 0;
-				return;
-			};
-			
-		};	
-        dest[i] = 1;		
+                dest[i] = 0;
+                return;
+            };
+
+        };
+        dest[i] = 1;
 
     }
 };
@@ -80,12 +80,12 @@ struct cmp_functor_str_like_left
 struct cmp_functor_str_like_right
 {
     const char  * source;
-	const char *str; 
+    const char *str;
     bool * dest;
     const unsigned int * len;
 
     cmp_functor_str_like_right(const char * _source, const char * _str, bool * _dest,
-                           const unsigned int * _len):
+                               const unsigned int * _len):
         source(_source), str(_str), dest(_dest), len(_len) {}
 
     template <typename IndexType>
@@ -93,21 +93,21 @@ struct cmp_functor_str_like_right
     void operator()(const IndexType & i) {
 
         unsigned int length = len[0];
-		unsigned int str_length = len[1];		
-		unsigned int start = i*length;
-		
-		unsigned int j = 1;
-		while(source[(start+length)-j] == 0)
-			j++;			
-			
-	    for(unsigned int z = 0; z < str_length ; z++) {
+        unsigned int str_length = len[1];
+        unsigned int start = i*length;
+
+        unsigned int j = 1;
+        while(source[(start+length)-j] == 0)
+            j++;
+
+        for(unsigned int z = 0; z < str_length ; z++) {
             if(source[((start+length)-j)-z] != str[str_length-z-1]) {
-			    dest[i] = 0;
-				return;
-			};
-			
-		};	
-        dest[i] = 1;		
+                dest[i] = 0;
+                return;
+            };
+
+        };
+        dest[i] = 1;
 
     }
 };
@@ -561,94 +561,94 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                 }
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-				
+
                     s1_val = exe_value.top();
-					unsigned int like_start = 0;
-										
-					if(s1_val[0] == '%') {
-						like_start = 1;
-						s1_val.erase(0,1);
-					};	
-					
+                    unsigned int like_start = 0;
+
+                    if(s1_val[0] == '%') {
+                        like_start = 1;
+                        s1_val.erase(0,1);
+                    };
+
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;					
-			        void* d_v;
-            	    cudaMalloc((void **) &d_v, 8);					
+                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
+                    void* d_v;
+                    cudaMalloc((void **) &d_v, 8);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
                     dd_v[0] = a->char_size[a->type_index[colIndex1]];
-					dd_v[1] = s1_val.length();					
-					void* d_res;
-            	    cudaMalloc((void **) &d_res, a->mRecCount);
-					
-					void* d_str;					
+                    dd_v[1] = s1_val.length();
+                    void* d_res;
+                    cudaMalloc((void **) &d_res, a->mRecCount);
+
+                    void* d_str;
 
                     thrust::counting_iterator<unsigned int> begin(0);
-					if(!like_start) {
-						cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
-						cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
-						cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);						
-					    
-						cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);						
-						thrust::for_each(begin, begin + a->mRecCount, ff);					
-					}
+                    if(!like_start) {
+                        cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
+                        cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);
+                        cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
+
+                        cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        thrust::for_each(begin, begin + a->mRecCount, ff);
+                    }
                     else {
-						cudaMalloc((void **) &d_str, s1_val.length());
-						cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);	
-					
+                        cudaMalloc((void **) &d_str, s1_val.length());
+                        cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
+
                         cmp_functor_str_like_right ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-						thrust::for_each(begin, begin + a->mRecCount, ff);	                        
-                    };		
-                    					
-				
-					exe_type.push("VECTOR");
-					bool_vectors.push((bool*)d_res);
-					cudaFree(d_v);
-					cudaFree(d_str);
-					
+                        thrust::for_each(begin, begin + a->mRecCount, ff);
+                    };
+
+
+                    exe_type.push("VECTOR");
+                    bool_vectors.push((bool*)d_res);
+                    cudaFree(d_v);
+                    cudaFree(d_str);
+
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					
-					bool like_start = 0;					
-					if(s1_val[0] == '%') {
-						like_start = 1;
-						s1_val.erase(0,1);
-					};						
-					
+
+                    bool like_start = 0;
+                    if(s1_val[0] == '%') {
+                        like_start = 1;
+                        s1_val.erase(0,1);
+                    };
+
                     unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
-			        void* d_v;
-            	    cudaMalloc((void **) &d_v, 4);					
+                    void* d_v;
+                    cudaMalloc((void **) &d_v, 4);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-                    dd_v[0] = a->char_size[a->type_index[colIndex1]];				
-					
-					void* d_res;
-            	    cudaMalloc((void **) &d_res, a->mRecCount);
-					
-					void* d_str;
-            	    cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
-					cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);					
-					cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);	
+                    dd_v[0] = a->char_size[a->type_index[colIndex1]];
+
+                    void* d_res;
+                    cudaMalloc((void **) &d_res, a->mRecCount);
+
+                    void* d_str;
+                    cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
+                    cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);
+                    cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
 
                     thrust::counting_iterator<unsigned int> begin(0);
-					if(!like_start) {
-						cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-						thrust::for_each(begin, begin + a->mRecCount, ff);					
-					}
+                    if(!like_start) {
+                        cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        thrust::for_each(begin, begin + a->mRecCount, ff);
+                    }
                     else {
                         cmp_functor_str_like_right ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-						thrust::for_each(begin, begin + a->mRecCount, ff);					
-                    };															
-				
-					exe_type.push("VECTOR");
-					bool_vectors.push((bool*)d_res);
-					cudaFree(d_v);
-					cudaFree(d_str);
+                        thrust::for_each(begin, begin + a->mRecCount, ff);
+                    };
+
+                    exe_type.push("VECTOR");
+                    bool_vectors.push((bool*)d_res);
+                    cudaFree(d_v);
+                    cudaFree(d_str);
                 }
 
 
@@ -968,7 +968,6 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.pop();
                 exe_type.push("VECTOR");
                 bool_vectors.push(a->logical_and(s2,s3));
-                cudaFree(s3);
             }
             else if (ss.compare("OR") == 0) {
                 bool* s3 = bool_vectors.top();
@@ -977,22 +976,21 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.pop();
                 exe_type.push("VECTOR");
                 bool_vectors.push(a->logical_or(s2,s3));
-                cudaFree(s3);
             }
             else {
                 cout << "found nothing " << endl;
             }
         };
     };
-	
-	
+
+
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());
     unsigned int count = thrust::count(bp, bp + a->mRecCount, 1);
     b->mRecCount = b->mRecCount + count;
 
     b->prm.push_back(new unsigned int[count]);
     b->prm_count.push_back(count);
-    b->prm_index.push_back('R');	
+    b->prm_index.push_back('R');
     thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
                     bp, dev_p.begin(), thrust::identity<bool>());
 

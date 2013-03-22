@@ -10,10 +10,13 @@ Limitations ( hopefully temporary) :
 
 Loading data for processing : 
 Alenka can read text files with fields separated by separators. But much faster way to read the data would be to load it into binary files as demonstrated by the following script :
+file1.sql :
+A  :=  LOAD 'nation.tbl' USING ('|') AS (n_nationkey{1}:int, n_name{2}:varchar(25), n_regionkey{3}:int);
+STORE A INTO 'nation' BINARY;
 
-C := STREAM 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int, d_yearmonth{7}:varchar(7), 
-                                            d_weeknuminyear{12}:int);
-STORE C INTO 'date' BINARY;
+File2.sql
+A  :=  LOAD 'region.tbl' USING ('|') AS (r_regionkey{1}:int, r_name{2}:varchar(25));
+STORE A INTO 'region' BINARY;
 
 This script read file date.tbl with fields separated by tabs. Field d_datekey is the first field in a file, d_month - fourth field and so on.
 Since alenka is a columnar database the fields will be compressed and stored in separate files with names like date.1, date.4 etc.
@@ -24,25 +27,21 @@ Like all other oparations compression and decompression are done on the GPU.
 
 Once we created the data files we can do the data processing : 
 
-O := LOAD 'orders' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, o_orderdate{5}:int, o_shippriority{8}:int);
-OFI := FILTER O BY o_orderdate < 19950315;
-C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_mktsegment{7}:varchar(10));
-CF := FILTER C BY c_mktsegment == "BUILDING";
-L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
-LF := FILTER L BY shipdate > 19950315;
-OL := SELECT  o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority
-      FROM OFI JOIN CF ON o_custkey = c_custkey;
-OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriority AS o_shippriority, price AS price, discount AS discount 
-       FROM LF JOIN OL ON l_orderkey = o_orderkey;
-F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, o_shippriority AS shippriority1,
-             SUM(price*(1-discount)) AS sum_revenue, COUNT(o_orderkey) AS cnt  FROM OLC 
- 	  GROUP BY o_orderkey, o_orderdate, o_shippriority;			  
-RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	   
-STORE RES INTO 'mytest.txt' USING ('|') LIMIT 10;	
+N := LOAD 'nation' BINARY AS (n_nationkey{1}:int, n_name{2}:varchar(25), n_regionkey{3}:int);
+
+R := LOAD 'region' BINARY AS (r_regionkey{1}:int, r_name{2}:varchar(25));
+RF := FILTER R BY r_name == "EUROPE";
+
+J_N := SELECT n_nationkey AS n_nationkey, n_name AS n_name
+       FROM N JOIN RF ON n_regionkey = r_regionkey;
+
+STORE J_N INTO 'mytest.txt' USING ('|') LIMIT 100;
 
 
-To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest version of Thrust.
+To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest(7.0) version of Thrust.
+You also need to download and compile CUDPP library, after compilation put library files into Alenka's directory.
 New groupby op requires Boost's unordered map, so make sure that you got Boost installed too.
+
 To compile alenka run make on Linux or nmake on windows.
 
 
