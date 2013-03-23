@@ -28,7 +28,7 @@ itoa.obj : itoa.cu itoa.h
 atof.obj : atof.cu cm.h atof.h
 	nvcc --compiler-options /MD -O3 -arch=sm_20 -c atof.cu 
 	
-clean : del bison.obj join.obj merge.obj \
+clean : del bison.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 select.obj zone_map.obj itoa.obj \
 		 atof.obj cm.obj

@@ -1,7 +1,7 @@
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cucpp.o cm.o 
+		 atof.o cm.o 
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka bison.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
@@ -28,7 +28,7 @@ atof.o : atof.cu cm.h atof.h
 cm.o : cm.cu cm.h	
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c cm.cu
 	
-clean : del bison.o join.o merge.o \
+clean : del bison.o merge.o \
          MurmurHash2_64.o filter.o strings.o \
 		 select.o zone_map.o itoa.o \
 		 atof.o cm.o
