@@ -2796,7 +2796,7 @@ void emit_join(char *s, char *j1, int grp)
         else {
             cnt_l = left->prm_count[i];
         };
-
+		
         if (cnt_l) {
 
             unsigned int idx;
@@ -2837,7 +2837,25 @@ void emit_join(char *s, char *j1, int grp)
                                   thrust::raw_pointer_cast(d_res2.data()));
                 thrust::for_each(begin, begin + cnt_l, ff1);
 				if(v64bit) {// need to check the upper 32 bits
-				
+				    thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
+					if(decimal_join) {
+					    thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_left(left->d_columns_float[idx].begin(), d_res1.begin());
+						thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_right(right->d_columns_float[right->type_index[colInd2]].begin(), d_res2.begin());						
+						thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, float_upper_equal_to());						
+					}
+					else {
+					    thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[idx].begin(), d_res1.begin());
+						thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[right->type_index[colInd2]].begin(), d_res2.begin());						
+						thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, int_upper_equal_to());
+					};	
+                    unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), 1);
+                    thrust::stable_partition(d_res1.begin(), d_res1.begin() + d_res2.size(), d_add, thrust::identity<unsigned int>());
+                    thrust::stable_partition(d_res2.begin(), d_res2.end(), d_add, thrust::identity<unsigned int>());
+
+                    thrust::device_free(d_add);
+                    d_res2.resize(new_cnt);
+                    d_res1.resize(new_cnt);
+					
 				};
 
             };
@@ -2858,14 +2876,11 @@ void emit_join(char *s, char *j1, int grp)
                 allocColumns(left, rc);
                 copyColumns(left, rc, i, cnt_l);
                 rc.pop();
+				thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
 
                 if (d_res1.size() && d_res2.size()) {
                     unsigned int colInd3 = (left->columnNames).find(f3)->second;
-                    unsigned int colInd4 = (right->columnNames).find(f4)->second;
-
-                    thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
-                    d_add[0] = 1;
-                    d_add[1] = 0;
+                    unsigned int colInd4 = (right->columnNames).find(f4)->second;                    
 
                     if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
 

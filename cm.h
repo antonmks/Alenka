@@ -137,17 +137,20 @@ struct float_to_int_lower
     }
 };
 
-struct float_to_int_upper
+struct int_upper_equal_to 
 {
+  /*! Function call operator. The return value is <tt>lhs == rhs</tt>.
+   */
+  __host__ __device__ bool operator()(const int_type &lhs, const int_type &rhs) const {return (lhs >> 32)  == (rhs >> 32);}
+}; 
 
-    __host__ __device__
-    unsigned int operator()(const float_type x)
-    {
-        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-            return (unsigned int)((long long int)((x+EPSILON)*100.0) >> 32);
-        else return (unsigned int)(((long long int)(x*100.0)) >> 32);
-    }
-};
+struct float_upper_equal_to 
+{
+  /*! Function call operator. The return value is <tt>lhs == rhs</tt>.
+   */
+  __host__ __device__ bool operator()(const float_type &lhs, const float_type &rhs) const {return ((int_type)lhs >> 32)  == ((int_type)rhs >> 32);}
+}; 
+
 
 
 struct Uint2Sum
