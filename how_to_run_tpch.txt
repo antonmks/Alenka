@@ -1,0 +1,14 @@
+Here is what you need to do to run provided TPC-H queries :
+A. Create TPC-H files using TPC-H dbgen utility
+B. Sort lineitem.txt on date_received field (so Alenka can use zone map indexes)
+C. Create alenka data files using provided load*.sql files.
+D. Run q1-q7 queries.
+
+On a 100GB dataset I got the following results using GTX580 :
+
+Q1 - 11 sec
+Q2 - 6 sec
+Q3 - 4sec
+Q5 - 10 sec
+Q6 - 1.2 seconds
+Q7 - 8 sec
