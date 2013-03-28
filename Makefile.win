@@ -1,7 +1,7 @@
 alenka : cm.obj join.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 zone_map.obj itoa.obj \
-		 atof.obj bison.obj
+		 atof.obj bison.obj select.obj
 	nvcc --compiler-options /MD -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 select.obj zone_map.obj itoa.obj \

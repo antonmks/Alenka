@@ -24,7 +24,7 @@ struct distinct : public binary_function<T,T,T>
 
 
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, CudaSet* a,
-            CudaSet* b, int_type old_reccount, vector<thrust::device_vector<int_type> >& distinct_tmp, bool& one_liner)
+            CudaSet* b, vector<thrust::device_vector<int_type> >& distinct_tmp, bool& one_liner)
 {
 
     stack<string> exe_type;
@@ -751,7 +751,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 thrust::device_free(count_diff);
             }
             else
-                //b->addHostColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                 b->addDeviceColumn(thrust::raw_pointer_cast(s) , colCount-j-1, col_val.top(), a->mRecCount);
             exe_nums1.pop();
         };
@@ -773,9 +772,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     thrust::device_free(count_diff);
                 }
                 else
-                    //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
-
             }
             else if(a->type[colIndex] == 1) {
 
@@ -790,7 +787,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     thrust::device_free(count_diff);
                 }
                 else
-                    //b->addHostColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
             }
             else if(a->type[colIndex] == 2) { //varchar
@@ -831,7 +827,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (!a->columnGroups.empty())
                 b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), res_size);
             else {
-                //b->addHostColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                 if(!one_line)
                     b->addDeviceColumn(exe_vectors1.top() , colCount-j-1, col_val.top(), a->mRecCount);
                 else
@@ -848,7 +843,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), res_size);
             }
             else {
-                //b->addHostColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, old_reccount, one_line);
                 if(!one_line) {
                     b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
                 }

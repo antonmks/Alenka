@@ -115,8 +115,8 @@ struct cmp_functor_str_like_right
 
 
 
-unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
-                    CudaSet* b, unsigned int segment, thrust::device_vector<unsigned int>& dev_p)
+unsigned long long int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+                              CudaSet* b, unsigned int segment, thrust::device_vector<unsigned int>& dev_p)
 {
 
     stack<string> exe_type;
@@ -985,13 +985,13 @@ unsigned int filter(queue<string> op_type, queue<string> op_value, queue<int_typ
 
 
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());
-    unsigned int count = thrust::count(bp, bp + a->mRecCount, 1);
+    unsigned int count = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
     b->mRecCount = b->mRecCount + count;
 
     b->prm.push_back(new unsigned int[count]);
     b->prm_count.push_back(count);
     b->prm_index.push_back('R');
-    thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator(a->mRecCount),
+    thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
                     bp, dev_p.begin(), thrust::identity<bool>());
 
     cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);

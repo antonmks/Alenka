@@ -771,12 +771,14 @@ void emit_join(char *s, char *j1, int grp)
         cout << "hash table inserted " << getFreeMem() << endl;
 
     thrust::device_ptr<uint2> res = thrust::device_malloc<uint2>(left->maxRecs);
-
+	
+	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
         cout << "segment " << i << " " << getFreeMem() << endl;
         cnt_l = 0;
 
+		
         if (left->type[colInd1]  != 2) {
             copyColumns(left, lc, i, cnt_l);
         }
@@ -792,6 +794,7 @@ void emit_join(char *s, char *j1, int grp)
             cnt_l = left->prm_count[i];
         };
 		
+				
         if (cnt_l) {
 
             unsigned int idx;
@@ -810,6 +813,7 @@ void emit_join(char *s, char *j1, int grp)
                              d_r);
             };
 
+			cout << "joining " << cnt_l << " with " << cnt_r << endl;
             result = cudppHashRetrieve(hash_table_handle, thrust::raw_pointer_cast(d_r),
                                        thrust::raw_pointer_cast(res), cnt_l);
             if (result != CUDPP_SUCCESS)
@@ -916,7 +920,7 @@ void emit_join(char *s, char *j1, int grp)
             tot_count = tot_count + res_count;
             //cout << "res " << res_count << endl;
 
-            //std::clock_t start5 = std::clock();
+            std::clock_t start5 = std::clock();
             if(res_count) {
 
                 offset = c->mRecCount;
@@ -1012,10 +1016,8 @@ void emit_join(char *s, char *j1, int grp)
                     op_sel1.pop();
                 };
             };
-            //std::cout<< "gt join time " <<  ( ( std::clock() - start5 ) / (double)CLOCKS_PER_SEC ) <<'\n';
         };
     };
-    cout << "join end " << tot_count << endl;
 
     d_res1.resize(0);
     d_res1.shrink_to_fit();
@@ -1399,13 +1401,14 @@ void emit_select(char *s, char *f, int ll)
     else
         cycle_count = a->segCount;
 
-    unsigned int ol_count = a->mRecCount, cnt;
+    unsigned long long int ol_count = a->mRecCount;
+	unsigned int cnt;
     //varNames[setMap[op_value.front()]]->oldRecCount = varNames[setMap[op_value.front()]]->mRecCount;
     a->oldRecCount = a->mRecCount;
     b = new CudaSet(0, col_count);
     bool b_set = 0, c_set = 0;
 
-    unsigned int tmp_size = a->mRecCount;
+    unsigned int long long tmp_size = a->mRecCount;
     if(a->segCount > 1)
         tmp_size = a->maxRecs;
 
@@ -1466,7 +1469,7 @@ void emit_select(char *s, char *f, int ll)
             for(unsigned int z = int_col_count; z < a->d_columns_int.size()-1; z++)
                 a->d_columns_int[z].resize(0);
 
-            select(op_type,op_value,op_nums, op_nums_f,a,b, a->mRecCount, distinct_tmp, one_liner);
+            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 
             if(!b_set) {
                 for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )

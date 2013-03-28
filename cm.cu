@@ -832,21 +832,21 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment)
 
         if(type[colIndex] == 0) {
             if(!alloced_switch) {
-                pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data()), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data()), h_columns_int[type_index[colIndex]].data() + data_offset, d_v, s_v);
             }
             else {
-                pfor_decompress(alloced_tmp, h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                mRecCount = pfor_decompress(alloced_tmp, h_columns_int[type_index[colIndex]].data() + data_offset, d_v, s_v);
             };
         }
         else if(type[colIndex] == 1) {
             if(decimal[colIndex]) {
                 if(!alloced_switch) {
-                    pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()) , h_columns_float[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()) , h_columns_float[type_index[colIndex]].data() + data_offset, d_v, s_v);
                     thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()));
                     thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin(), long_to_float());
                 }
                 else {
-                    pfor_decompress(alloced_tmp, h_columns_float[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                    mRecCount = pfor_decompress(alloced_tmp, h_columns_float[type_index[colIndex]].data() + data_offset, d_v, s_v);
                     thrust::device_ptr<long long int> d_col_int((long long int*)alloced_tmp);
                     thrust::device_ptr<float_type> d_col_float((float_type*)alloced_tmp);
                     thrust::transform(d_col_int,d_col_int+mRecCount, d_col_float, long_to_float());
@@ -877,7 +877,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
     }
     else {
         long long int data_offset;
-        unsigned int totalRecs = 0;
+        unsigned long long int totalRecs = 0;
         if(d_v == NULL)
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
         if(s_v == NULL);
@@ -891,11 +891,11 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
 
 
             if(type[colIndex] == 0) {
-                pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data() + data_offset, d_v, s_v);
             }
             else if(type[colIndex] == 1) {
                 if(decimal[colIndex]) {
-                    pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totalRecs) , h_columns_float[type_index[colIndex]].data() + data_offset, &mRecCount, d_v, s_v);
+                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totalRecs) , h_columns_float[type_index[colIndex]].data() + data_offset, d_v, s_v);
                     thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totalRecs));
                     thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin() + totalRecs, long_to_float());
                 }
@@ -1048,7 +1048,7 @@ void CudaSet::GroupBy(stack<string> columnRef, unsigned int int_col_count)
 };
 
 
-void CudaSet::addDeviceColumn(int_type* col, int colIndex, string colName, int_type recCount)
+void CudaSet::addDeviceColumn(int_type* col, int colIndex, string colName, unsigned int recCount)
 {
     if (columnNames.find(colName) == columnNames.end()) {
         columnNames[colName] = colIndex;
@@ -1067,7 +1067,7 @@ void CudaSet::addDeviceColumn(int_type* col, int colIndex, string colName, int_t
     thrust::copy(d_col, d_col+recCount, d_columns_int[type_index[colIndex]].begin());
 };
 
-void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, int_type recCount)
+void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, unsigned int recCount)
 {
     if (columnNames.find(colName) == columnNames.end()) {
         columnNames[colName] = colIndex;
@@ -1083,58 +1083,6 @@ void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, int
 
     thrust::device_ptr<float_type> d_col((float_type*)col);
     thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());
-};
-
-
-
-void CudaSet::addHostColumn(int_type* col, int colIndex, string colName, int_type recCount, int_type old_reccount, bool one_line)
-{
-    if (columnNames.find(colName) == columnNames.end()) {
-        columnNames[colName] = colIndex;
-        type[colIndex] = 0;
-        if (!one_line) {
-            h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>(old_reccount));
-            type_index[colIndex] = h_columns_int.size()-1;
-        }
-        else {
-            h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type>>(1));
-            type_index[colIndex] = h_columns_int.size()-1;
-        };
-    };
-
-    if (!one_line) {
-        thrust::device_ptr<int_type> d_col((int_type*)col);
-        thrust::copy(d_col, d_col+recCount, h_columns_int[type_index[colIndex]].begin() + mRecCount);
-    }
-    else {
-        thrust::device_ptr<int_type> src(col);
-        (h_columns_int[type_index[colIndex]])[0] = (h_columns_int[type_index[colIndex]])[0] + src[0];
-    };
-};
-
-void CudaSet::addHostColumn(float_type* col, int colIndex, string colName, int_type recCount, int_type old_reccount, bool one_line)
-{
-    if (columnNames.find(colName) == columnNames.end()) {
-        columnNames[colName] = colIndex;
-        type[colIndex] = 1;
-        if (!one_line) {
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(old_reccount));
-            type_index[colIndex] = h_columns_float.size()-1;
-        }
-        else {
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(1));
-            type_index[colIndex] = h_columns_float.size()-1;
-        };
-    };
-
-    if (!one_line) {
-        thrust::device_ptr<float_type> d_col((float_type*)col);
-        thrust::copy(d_col, d_col+recCount, h_columns_float[type_index[colIndex]].begin() + mRecCount);
-    }
-    else {
-        thrust::device_ptr<float_type> src(col);
-        (h_columns_float[type_index[colIndex]])[0] = (h_columns_float[type_index[colIndex]])[0] + src[0];
-    };
 };
 
 

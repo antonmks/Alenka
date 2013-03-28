@@ -242,7 +242,7 @@ public:
 
 
     unsigned int mColumnCount;
-    unsigned int mRecCount;
+    unsigned long long int mRecCount;
     std::map<string,int> columnNames;
     std::map<string, FILE*> filePointers;
     bool *grp;
@@ -298,10 +298,8 @@ public:
     float_type* get_host_float_by_name(string name);
     int_type* get_host_int_by_name(string name);
     void GroupBy(std::stack<string> columnRef, unsigned int int_col_count);
-    void addDeviceColumn(int_type* col, int colIndex, string colName, int_type recCount);
-    void addDeviceColumn(float_type* col, int colIndex, string colName, int_type recCount);
-    void addHostColumn(int_type* col, int colIndex, string colName, int_type recCount, int_type old_reccount, bool one_line);
-    void addHostColumn(float_type* col, int colIndex, string colName, int_type recCount, int_type old_reccount, bool one_line);
+    void addDeviceColumn(int_type* col, int colIndex, string colName, unsigned int recCount);
+    void addDeviceColumn(float_type* col, int colIndex, string colName, unsigned int recCount);
     void writeHeader(char* file_name, unsigned int col); 
     void Store(char* file_name, char* sep, unsigned int limit, bool binary);
     void compress_char(string file_name, unsigned int index, unsigned int mCount);

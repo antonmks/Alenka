@@ -223,7 +223,7 @@ struct decompress_functor_str
 
 
 
-long long int pfor_decompress(void* destination, void* host, unsigned int* mRecCount, void* d_v, void* s_v)
+unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount;
@@ -240,7 +240,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
     start_val = ((long long int*)((unsigned int*)host + cnt*2 + 12))[0];
     comp_type = ((unsigned int*)host + cnt*2)[14];
 
-    *mRecCount = orig_recCount;
+    //*mRecCount = orig_recCount;
 
     //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
@@ -275,7 +275,7 @@ long long int pfor_decompress(void* destination, void* host, unsigned int* mRecC
         thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
     };
 
-    return 1;
+    return orig_recCount;
 }
 
 
