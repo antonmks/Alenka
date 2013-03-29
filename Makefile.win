@@ -1,4 +1,4 @@
-alenka : cm.obj join.obj merge.obj \
+alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj strings.obj \
 		 zone_map.obj itoa.obj \
 		 atof.obj bison.obj select.obj
