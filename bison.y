@@ -472,7 +472,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     };
 
 
-    unsigned int max_c = max_char(a);
+    unsigned int max_c = max_char(a, field_names);
+	//cout << "max_c " << max_c << endl;
 
     if(max_c > float_size)
         CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
@@ -813,7 +814,7 @@ void emit_join(char *s, char *j1, int grp)
                              d_r);
             };
 
-			cout << "joining " << cnt_l << " with " << cnt_r << endl;
+			//cout << "joining " << cnt_l << " with " << cnt_r << endl;
             result = cudppHashRetrieve(hash_table_handle, thrust::raw_pointer_cast(d_r),
                                        thrust::raw_pointer_cast(res), cnt_l);
             if (result != CUDPP_SUCCESS)
@@ -823,6 +824,7 @@ void emit_join(char *s, char *j1, int grp)
             res_count = rr.y;
             d_res1.resize(res_count);
             d_res2.resize(res_count);
+			cout << "res cnt " << res_count << endl;
 
             if(res_count) {
                 thrust::counting_iterator<unsigned int> begin(0);
@@ -924,8 +926,10 @@ void emit_join(char *s, char *j1, int grp)
             if(res_count) {
 
                 offset = c->mRecCount;
-                if(i == 0)
+                if(i == 0 && left->segCount != 1) {
                     c->reserve(res_count*(left->segCount+1));
+					//cout << "prealloced " << left->segCount+1 << endl;
+				};	
                 c->resize(res_count);
                 queue<string> op_sel1(op_sel);
                 unsigned int colInd, c_colInd;
@@ -935,12 +939,14 @@ void emit_join(char *s, char *j1, int grp)
                 };
 
                 while(!op_sel1.empty()) {
-
+				
+				  
                     while(!cc.empty())
                         cc.pop();
 
                     cc.push(op_sel1.front());
                     c_colInd = c->columnNames[op_sel1.front()];
+					//cout << "gathering " << op_sel1.front() << endl;
 
                     if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
                         // copy field's segment to device, gather it and copy to the host
@@ -994,14 +1000,14 @@ void emit_join(char *s, char *j1, int grp)
                             };
                         }
                         else { //strings
-
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(d_res2.size()*right->char_size[right->type_index[colInd]]);
 
                             str_gather(thrust::raw_pointer_cast(d_res2.data()), d_res2.size(), (void*)right->d_columns_char[right->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);
-
+									   
                             cudaMemcpy( (void*)(c->h_columns_char[c->type_index[c_colInd]] + offset*c->char_size[c->type_index[c_colInd]]), (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * d_res2.size(), cudaMemcpyDeviceToHost);
+										
                             if(left_join && left_sz) {
                                 memset((void*)(c->h_columns_char[c->type_index[c_colInd]] + (d_res2.size() + offset)*c->char_size[c->type_index[c_colInd]]), 0,
                                        left_sz*c->char_size[c->type_index[c_colInd]]);
@@ -1013,6 +1019,7 @@ void emit_join(char *s, char *j1, int grp)
                         cout << "Couldn't find field " << op_sel1.front() << endl;
                         exit(0);
                     };
+					//cout << "gathered " << op_sel1.front() << endl;
                     op_sel1.pop();
                 };
             };
@@ -1040,6 +1047,7 @@ void emit_join(char *s, char *j1, int grp)
     varNames[s] = c;
     c->mRecCount = tot_count;
     c->maxRecs = tot_count;
+	cout << "join count " << tot_count << endl;
     for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
         setMap[(*it).first] = s;
 
@@ -1173,7 +1181,7 @@ void emit_order(char *s, char *f, int e, int ll)
 
     stack<string> exe_type, exe_value;
 
-    cout << "order: " << s << " " << f << endl;;
+    cout << "order: " << s << " " << f << endl;
 
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop(),op_value.pop()) {
@@ -1393,6 +1401,11 @@ void emit_select(char *s, char *f, int ll)
     CudaSet *b, *c;
 
     curr_segment = 10000000;
+	
+	//setSegments(a, op_vx);
+	//cout << "segs " << a->segCount << endl;
+	//exit(0);
+	
     allocColumns(a, op_vx);
 
     unsigned int cycle_count;
@@ -1735,11 +1748,16 @@ void emit_load_binary(char *s, char *f, int d)
     strcat(f1,".header");
 
     FILE* ff = fopen(f1, "rb");
+	if(ff == NULL) {
+	    cout << "Couldn't open file " << f1 << endl;
+		exit(0);
+	};	
     fread((char *)&totalRecs, 8, 1, ff);
     fread((char *)&segCount, 4, 1, ff);
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
+	cout << "Reading " << totalRecs << " records" << endl;
     queue<string> names(namevars);
     while(!names.empty()) {
         setMap[names.front()] = s;

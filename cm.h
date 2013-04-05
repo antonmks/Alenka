@@ -36,6 +36,7 @@ using namespace std;
 #include <thrust/sort.h>
 #include <thrust/functional.h>
 #include <boost/unordered_map.hpp>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
 #include <string>
 #include <map>
@@ -218,13 +219,15 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 
-
+//using namespace thrust::system::cuda::experimental;
 
 class CudaSet
 {
 public:
     std::vector<thrust::host_vector<int_type, uninitialized_host_allocator<int_type> > > h_columns_int;
     std::vector<thrust::host_vector<float_type, uninitialized_host_allocator<float_type> > > h_columns_float;
+	//std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
+    //std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;	
 	unsigned int prealloc_char_size;
 
@@ -238,7 +241,6 @@ public:
     std::vector<unsigned int> prm_count;	// counts of prm permutations	
     std::vector<char> prm_index; // A - all segments values match, N - none match, R - some may match 
     std::map<unsigned int, unsigned int> type_index;
-    std::map<int,bool> uniqueColumns;
 
 
     unsigned int mColumnCount;
@@ -273,7 +275,6 @@ public:
     ~CudaSet();
     void allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount);	    
     void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt);	
-    bool isUnique(unsigned int colIndex);
     void add_hashed_strings(string field, unsigned int segment, unsigned int i_cnt);
     void resize(unsigned int addRecs);
 	void reserve(unsigned int Recs);
@@ -345,6 +346,8 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
 unsigned int max_char(CudaSet* a);
 unsigned int max_tmp(CudaSet* a);    
 void reset_offsets();
+void setSegments(CudaSet* a, queue<string> cols);
+unsigned int max_char(CudaSet* a, set<string> field_names);
 
 #endif
 

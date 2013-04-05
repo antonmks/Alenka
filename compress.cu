@@ -67,7 +67,7 @@ struct compress_functor_int
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-        long long int val = source[i] - start_val[0];;
+        long long int val = source[i] - start_val[0];
         unsigned int shifted = vals[2] - vals[0] - (i%vals[1])*vals[0];
         dest[i] = val << shifted;
     }

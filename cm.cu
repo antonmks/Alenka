@@ -392,30 +392,6 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
     cudaFree(d_int);
 };
 
-bool CudaSet::isUnique(unsigned int colIndex) //  run only on already sorted columns
-{
-    if (not_compressed)
-        uniqueColumns[colIndex] = 0;
-    if (uniqueColumns.find(colIndex) == uniqueColumns.end()) {
-        if(mRecCount == 1 )
-            uniqueColumns[colIndex] = 1;
-        else {
-            thrust::device_ptr<unsigned int> d_group = thrust::device_malloc<unsigned int>(mRecCount-1);
-
-            thrust::transform(d_columns_int[type_index[colIndex]].begin(), d_columns_int[type_index[colIndex]].begin() + mRecCount - 1,
-                              d_columns_int[type_index[colIndex]].begin()+1, d_group, thrust::not_equal_to<int_type>());
-            unsigned int grp_count = thrust::reduce(d_group, d_group+mRecCount-1);
-            if(grp_count == mRecCount-1)
-                uniqueColumns[colIndex] = 1;
-            else
-                uniqueColumns[colIndex] = 0;
-        };
-
-    };
-    return uniqueColumns[colIndex];
-};
-
-
 
 
 
@@ -470,7 +446,7 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment, unsigned in
 
 
 void CudaSet::resize(unsigned int addRecs)
-{
+{    
     mRecCount = mRecCount + addRecs;
     for(unsigned int i=0; i <mColumnCount; i++) {
         if(type[i] == 0) {
@@ -483,11 +459,11 @@ void CudaSet::resize(unsigned int addRecs)
             if (h_columns_char[type_index[i]]) {
                 if (mRecCount > prealloc_char_size) {
                     prealloc_char_size = mRecCount;
-                    h_columns_char[type_index[i]] = (char*)realloc(h_columns_char[type_index[i]], mRecCount*char_size[type_index[i]]);
+                    h_columns_char[type_index[i]] = (char*)realloc(h_columns_char[type_index[i]], (unsigned long long int)mRecCount*(unsigned long long int)char_size[type_index[i]]);
                 };
             }
             else {
-                h_columns_char[type_index[i]] = new char[mRecCount*char_size[type_index[i]]];
+                h_columns_char[type_index[i]] = new char[(unsigned long long int)mRecCount*(unsigned long long int)char_size[type_index[i]]];
             };
         };
 
@@ -503,7 +479,12 @@ void CudaSet::reserve(unsigned int Recs)
         else if(type[i] == 1)
             h_columns_float[type_index[i]].reserve(Recs);
         else {
-            h_columns_char[type_index[i]] = new char[Recs*char_size[type_index[i]]];
+		    unsigned long long int sz = (unsigned long long int)Recs*(unsigned long long int)char_size[type_index[i]];
+            h_columns_char[type_index[i]] = new char[(unsigned long long int)Recs*(unsigned long long int)char_size[type_index[i]]];
+			if(h_columns_char[type_index[i]] == NULL) {
+			    cout << "Could not allocate on a host " << Recs << " records of size " << char_size[type_index[i]] << endl;
+			    exit(0);
+			};
             prealloc_char_size = Recs;
         };
 
@@ -1664,7 +1645,7 @@ bool* CudaSet::compare(float_type* column1, int_type* column2, int_type op_type)
 {
     thrust::device_ptr<float_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr(column2);
-    thrust::device_ptr<float_type> dev_ptr2 = thrust::device_malloc<float_type>(mRecCount);;
+    thrust::device_ptr<float_type> dev_ptr2 = thrust::device_malloc<float_type>(mRecCount);
     thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
 
     thrust::transform(dev_ptr, dev_ptr + mRecCount, dev_ptr2, long_to_float_type());
@@ -2443,6 +2424,20 @@ unsigned int max_char(CudaSet* a)
     return max_char;
 };
 
+unsigned int max_char(CudaSet* a, set<string> field_names)
+{
+    unsigned int max_char = 0;
+    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
+        int i = a->columnNames[*it];	
+		if (a->type[i] == 2) {
+			if (a->char_size[a->type_index[i]] > max_char)
+				max_char = a->char_size[i];
+		};
+	};	
+    return max_char;
+};
+
+
 unsigned int max_tmp(CudaSet* a)
 {
     unsigned int max_sz = 0;
@@ -2465,13 +2460,30 @@ unsigned int max_tmp(CudaSet* a)
 };
 
 
-
-
 void reset_offsets() {
     map<unsigned int, unsigned int>::iterator iter;
 
     for (iter = str_offset.begin(); iter != str_offset.end(); ++iter) {
         iter->second = 0;
     };
+
+};
+
+void setSegments(CudaSet* a, queue<string> cols)
+{
+	size_t mem_available = getFreeMem();
+	unsigned int tot_sz = 0, idx;
+	while(!cols.empty()) {
+	    idx = a->columnNames[cols.front()];
+	    if(a->type[idx] != 2)
+			tot_sz = tot_sz + int_size;
+		else
+            tot_sz = tot_sz + a->char_size[a->type_index[idx]];
+        cols.pop();		
+	};
+	cout << "tot " << tot_sz << endl;
+	if(a->mRecCount*tot_sz > mem_available/2) {
+	    a->segCount = (a->mRecCount*tot_sz)/(mem_available/2) + 1;	
+	};
 
 };
