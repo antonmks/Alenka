@@ -1189,12 +1189,15 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
             strcat(str,".");
             itoaa(total_segments-1,col_pos);
             strcat(str,col_pos);
+			cout << "Writing to " << str << endl;
 
 
             if(type[i] == 0) {
                 thrust::device_ptr<int_type> d_col((int_type*)d);
                 thrust::copy(h_columns_int[type_index[i]].begin(), h_columns_int[type_index[i]].begin() + mCount, d_col);
+				cout << "Compressing " << endl;
                 pfor_compress( d, mCount*int_size, str, h_columns_int[type_index[i]], 0, 0);
+				cout << "Compressed " << endl;
             }
             else if(type[i] == 1) {
                 if(decimal[i]) {
@@ -1202,7 +1205,9 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
                     thrust::copy(h_columns_float[type_index[i]].begin(), h_columns_float[type_index[i]].begin() + mCount, d_col);
                     thrust::device_ptr<long long int> d_col_dec((long long int*)d);
                     thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
+					cout << "Compressing " << endl;
                     pfor_compress( d, mCount*float_size, str, h_columns_float[type_index[i]], 1, 0);
+					cout << "Compressed " << endl;
                 }
                 else { // do not compress -- float
                     fstream binary_file(str,ios::out|ios::binary|fstream::app);
@@ -1214,7 +1219,9 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
                 };
             }
             else { //char
+			    cout << "Compressing char" << endl;
                 compress_char(str, i, mCount);
+				cout << "Compressed char " << endl;
             };
 
             if(fact_file_loaded) {
