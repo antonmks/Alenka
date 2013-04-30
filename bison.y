@@ -1713,10 +1713,12 @@ void emit_store_binary(char *s, char *f)
     fact_file_loaded = 0;
 
     while(!fact_file_loaded)	{
-        cout << "LOADING " << f_file << " " << separator << endl;
+        cout << "LOADING " << f_file << " " << separator << " " << getFreeMem() << endl;
         if(a->text_source)
             fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
+		cout << "Writing a file " << endl;
         a->Store(f,"", limit, 1);
+		cout << "Finished writing a file " << endl;
     };
 
     if(stat[f] == statement_count && !a->keep) {

@@ -68,7 +68,7 @@
 /* Copy the first part of user declarations.  */
 
 /* Line 189 of yacc.c  */
-#line 17 "bison.y"
+#line 17 "c:\\GnuWin32\\bin\\alenka\\bison.y"
 
 
 #include "lex.yy.c"
@@ -120,7 +120,7 @@
 
 
 /* Line 189 of yacc.c  */
-#line 124 "bison.cu"
+#line 124 "c:\\GnuWin32\\bin\\alenka\\bison.cu"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -205,7 +205,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 67 "bison.y"
+#line 67 "c:\\GnuWin32\\bin\\alenka\\bison.y"
 
     int intval;
     float floatval;
@@ -215,7 +215,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 219 "bison.cu"
+#line 219 "c:\\GnuWin32\\bin\\alenka\\bison.cu"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -227,7 +227,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 231 "bison.cu"
+#line 231 "c:\\GnuWin32\\bin\\alenka\\bison.cu"
 
 #ifdef short
 # undef short
@@ -1615,322 +1615,322 @@ yyreduce:
         case 4:
 
 /* Line 1455 of yacc.c  */
-#line 145 "bison.y"
+#line 145 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("STMT"); ;}
     break;
 
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 149 "bison.y"
+#line 149 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_select((yyvsp[(1) - (7)].strval), (yyvsp[(6) - (7)].strval), (yyvsp[(7) - (7)].intval)); ;}
     break;
 
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 151 "bison.y"
+#line 151 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {  emit_load((yyvsp[(1) - (12)].strval), (yyvsp[(4) - (12)].strval), (yyvsp[(11) - (12)].intval), (yyvsp[(7) - (12)].strval)); ;}
     break;
 
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 153 "bison.y"
+#line 153 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {  emit_load_binary((yyvsp[(1) - (9)].strval), (yyvsp[(4) - (9)].strval), (yyvsp[(8) - (9)].intval)); ;}
     break;
 
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 155 "bison.y"
+#line 155 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {  emit_filter((yyvsp[(1) - (5)].strval), (yyvsp[(4) - (5)].strval), (yyvsp[(5) - (5)].intval));;}
     break;
 
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 157 "bison.y"
+#line 157 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {  emit_order((yyvsp[(1) - (6)].strval), (yyvsp[(4) - (6)].strval), (yyvsp[(6) - (6)].intval));;}
     break;
 
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 159 "bison.y"
+#line 159 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_join((yyvsp[(1) - (8)].strval),(yyvsp[(6) - (8)].strval),(yyvsp[(7) - (8)].intval)); ;}
     break;
 
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 161 "bison.y"
+#line 161 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_store((yyvsp[(2) - (9)].strval),(yyvsp[(4) - (9)].strval),(yyvsp[(7) - (9)].strval)); ;}
     break;
 
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 163 "bison.y"
+#line 163 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_store_binary((yyvsp[(2) - (6)].strval),(yyvsp[(4) - (6)].strval)); ;}
     break;
 
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 167 "bison.y"
+#line 167 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_name((yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 168 "bison.y"
+#line 168 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("FIELDNAME %s.%s", (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].strval)); ;}
     break;
 
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 169 "bison.y"
+#line 169 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("USERVAR %s", (yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 170 "bison.y"
+#line 170 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_string((yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 171 "bison.y"
+#line 171 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_number((yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 172 "bison.y"
+#line 172 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_float((yyvsp[(1) - (1)].floatval)); ;}
     break;
 
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 173 "bison.y"
+#line 173 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_decimal((yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 174 "bison.y"
+#line 174 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("BOOL %d", (yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 175 "bison.y"
+#line 175 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_varchar((yyvsp[(1) - (9)].strval), (yyvsp[(3) - (9)].intval), (yyvsp[(6) - (9)].strval), (yyvsp[(8) - (9)].intval));;}
     break;
 
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 176 "bison.y"
+#line 176 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_var((yyvsp[(1) - (6)].strval), (yyvsp[(3) - (6)].intval), (yyvsp[(6) - (6)].strval));;}
     break;
 
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 177 "bison.y"
+#line 177 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_var_asc((yyvsp[(1) - (2)].strval));;}
     break;
 
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 178 "bison.y"
+#line 178 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_var_desc((yyvsp[(1) - (2)].strval));;}
     break;
 
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 179 "bison.y"
+#line 179 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_count(); ;}
     break;
 
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 180 "bison.y"
+#line 180 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_sum(); ;}
     break;
 
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 181 "bison.y"
+#line 181 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_average(); ;}
     break;
 
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 182 "bison.y"
+#line 182 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_min(); ;}
     break;
 
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 183 "bison.y"
+#line 183 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_max(); ;}
     break;
 
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 184 "bison.y"
+#line 184 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_distinct(); ;}
     break;
 
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 188 "bison.y"
+#line 188 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_add(); ;}
     break;
 
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 189 "bison.y"
+#line 189 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_minus(); ;}
     break;
 
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 190 "bison.y"
+#line 190 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_mul(); ;}
     break;
 
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 191 "bison.y"
+#line 191 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_div(); ;}
     break;
 
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 192 "bison.y"
+#line 192 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("MOD"); ;}
     break;
 
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 193 "bison.y"
+#line 193 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("MOD"); ;}
     break;
 
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 195 "bison.y"
+#line 195 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_and(); ;}
     break;
 
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 196 "bison.y"
+#line 196 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_eq(); ;}
     break;
 
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 197 "bison.y"
+#line 197 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_or(); ;}
     break;
 
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 198 "bison.y"
+#line 198 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("XOR"); ;}
     break;
 
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 199 "bison.y"
+#line 199 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("SHIFT %s", (yyvsp[(2) - (3)].subtok)==1?"left":"right"); ;}
     break;
 
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 200 "bison.y"
+#line 200 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("NOT"); ;}
     break;
 
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 201 "bison.y"
+#line 201 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("NOT"); ;}
     break;
 
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 202 "bison.y"
+#line 202 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_cmp((yyvsp[(2) - (3)].subtok)); ;}
     break;
 
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 204 "bison.y"
+#line 204 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("CMPSELECT %d", (yyvsp[(2) - (5)].subtok)); ;}
     break;
 
   case 46:
 
 /* Line 1455 of yacc.c  */
-#line 205 "bison.y"
+#line 205 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {emit("EXPR");;}
     break;
 
   case 47:
 
 /* Line 1455 of yacc.c  */
-#line 209 "bison.y"
+#line 209 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("ISBOOL %d", (yyvsp[(3) - (3)].intval)); ;}
     break;
 
   case 48:
 
 /* Line 1455 of yacc.c  */
-#line 210 "bison.y"
+#line 210 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("ISBOOL %d", (yyvsp[(4) - (4)].intval)); emit("NOT"); ;}
     break;
 
   case 49:
 
 /* Line 1455 of yacc.c  */
-#line 213 "bison.y"
+#line 213 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { /* nil */
     (yyval.intval) = 0;
 ;}
@@ -1939,56 +1939,56 @@ yyreduce:
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 216 "bison.y"
+#line 216 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = (yyvsp[(3) - (3)].intval);}
     break;
 
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 220 "bison.y"
+#line 220 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; emit_sel_name((yyvsp[(3) - (3)].strval));;}
     break;
 
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 221 "bison.y"
+#line 221 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = (yyvsp[(1) - (5)].intval) + 1; emit_sel_name((yyvsp[(5) - (5)].strval));;}
     break;
 
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 225 "bison.y"
+#line 225 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; ;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 226 "bison.y"
+#line 226 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     {(yyval.intval) = (yyvsp[(1) - (3)].intval) + 1; ;}
     break;
 
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 230 "bison.y"
+#line 230 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; ;}
     break;
 
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 231 "bison.y"
+#line 231 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1 + (yyvsp[(3) - (3)].intval); ;}
     break;
 
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 234 "bison.y"
+#line 234 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { /* nil */
     (yyval.intval) = 0
 ;}
@@ -1997,35 +1997,35 @@ yyreduce:
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 239 "bison.y"
+#line 239 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit("FILTER BY"); ;}
     break;
 
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 242 "bison.y"
+#line 242 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(2) - (4)].strval), 0);;}
     break;
 
   case 61:
 
 /* Line 1455 of yacc.c  */
-#line 243 "bison.y"
+#line 243 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (5)].strval), 1);;}
     break;
 
   case 62:
 
 /* Line 1455 of yacc.c  */
-#line 244 "bison.y"
+#line 244 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(2) - (5)].strval), 0); ;}
     break;
 
   case 63:
 
 /* Line 1455 of yacc.c  */
-#line 246 "bison.y"
+#line 246 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { /* nil */
     (yyval.intval) = 0
 ;}
@@ -2034,14 +2034,14 @@ yyreduce:
   case 64:
 
 /* Line 1455 of yacc.c  */
-#line 249 "bison.y"
+#line 249 "c:\\GnuWin32\\bin\\alenka\\bison.y"
     { emit_limit((yyvsp[(2) - (2)].intval)); ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 2045 "bison.cu"
+#line 2045 "c:\\GnuWin32\\bin\\alenka\\bison.cu"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2253,7 +2253,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 252 "bison.y"
+#line 252 "c:\\GnuWin32\\bin\\alenka\\bison.y"
 
 
 #include "filter.h"
@@ -3718,10 +3718,12 @@ void emit_store_binary(char *s, char *f)
     fact_file_loaded = 0;
 
     while(!fact_file_loaded)	{
-        cout << "LOADING " << f_file << " " << separator << endl;
+        cout << "LOADING " << f_file << " " << separator << " " << getFreeMem() << endl;
         if(a->text_source)
             fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
+		cout << "Writing a file " << endl;
         a->Store(f,"", limit, 1);
+		cout << "Finished writing a file " << endl;
     };
 
     if(stat[f] == statement_count && !a->keep) {

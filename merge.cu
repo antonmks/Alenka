@@ -359,7 +359,7 @@ void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& my
 
                 if (c->type[k] == 0 ) { // int
                     //create a float column k
-                    c->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type>>(c->mRecCount));
+                    c->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(c->mRecCount));
                     unsigned int idx = c->h_columns_float.size()-1;
 
                     for(unsigned int z = 0; z < c->mRecCount; z++) {
