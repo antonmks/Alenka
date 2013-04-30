@@ -183,6 +183,25 @@ struct uint2_split
     }
 };
 
+struct uint2_split_left
+{
+
+    const uint2* d_res;
+    unsigned int * output;
+
+    uint2_split_left(const uint2* _d_res, unsigned int * _output):
+        d_res(_d_res), output(_output) {}
+
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+        output[i] = d_res[i].x;
+		
+    }
+};
+
+
 struct join_functor1
 {
 
@@ -257,7 +276,7 @@ public:
     string name;
     char* load_file_name;
     unsigned int oldRecCount;
-    bool source, text_source;
+    bool source, text_source, tmp_table;
 	
 
     unsigned int* type; // 0 - integer, 1-float_type, 2-char
@@ -271,7 +290,8 @@ public:
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs, char* file_name);
     CudaSet(unsigned int RecordCount, unsigned int ColumnCount);
-    CudaSet(CudaSet* a, CudaSet* b, int_type Recs, queue<string> op_sel, queue<string> op_sel_as);
+    CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
+	CudaSet(queue<string> op_sel, queue<string> op_sel_as);
     ~CudaSet();
     void allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount);	    
     void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt);	
@@ -328,7 +348,8 @@ protected:
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs, char* file_name);
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs);
     void initialize(unsigned int RecordCount, unsigned int ColumnCount);
-    void initialize(CudaSet* a, CudaSet* b, int_type Recs, queue<string> op_sel, queue<string> op_sel_as);
+    void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
+	void initialize(queue<string> op_sel, queue<string> op_sel_as);
 };
 
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables

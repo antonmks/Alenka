@@ -642,7 +642,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_int[a->type_index[colIndex]].resize(2);
                     fread((char *)&a->h_columns_int[a->type_index[colIndex]][0], 8, 1, f);
                     fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
+                    cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
                 }
                 else  {
                     long long int t;
@@ -651,7 +651,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_float[a->type_index[colIndex]][0] = (float_type)t/100.0;
                     fread((char *)&t, 8, 1, f);
                     a->h_columns_float[a->type_index[colIndex]][1] = (float_type)t/100.0;
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+                    cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
                 };
                 fclose(f);
             };

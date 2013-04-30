@@ -142,12 +142,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                         if (!a->columnGroups.empty()) {
                             thrust::device_ptr<float_type> source((float_type*)(s3));
+							
                             thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
-
-                            thrust::reduce_by_key(d_di, d_di+(a->mRecCount), source,
+                            thrust::reduce_by_key(d_di, d_di + a->mRecCount, source,
                                                   thrust::make_discard_iterator(), count_diff,
                                                   head_flag_predicate<bool>(),thrust::plus<float_type>());
-
                             exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
                             exe_type.push("VECTOR F");
                         }
@@ -168,7 +167,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             thrust::device_ptr<int_type> source((int_type*)(s3));
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 
-                            thrust::reduce_by_key(d_di, d_di+(a->mRecCount), source,
+                            thrust::reduce_by_key(d_di, d_di + a->mRecCount, source,
                                                   thrust::make_discard_iterator(), count_diff,
                                                   head_flag_predicate<bool>(),thrust::plus<int_type>());
 
@@ -195,7 +194,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             if((a->type)[colIndex] == 0) {
                                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 
-                                thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_int[a->type_index[colIndex]].begin(),
+                                thrust::reduce_by_key(d_di, d_di + a->mRecCount, a->d_columns_int[a->type_index[colIndex]].begin(),
                                                       thrust::make_discard_iterator(), count_diff,
                                                       head_flag_predicate<bool>(),thrust::plus<int_type>());
                                 exe_vectors.push(thrust::raw_pointer_cast(count_diff));
@@ -204,7 +203,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             else if((a->type)[colIndex] == 1) {
                                 thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
 
-                                thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[a->type_index[colIndex]].begin(),
+                                thrust::reduce_by_key(d_di, d_di+ a->mRecCount, a->d_columns_float[a->type_index[colIndex]].begin(),
                                                       thrust::make_discard_iterator(), count_diff,
                                                       head_flag_predicate<bool>(),thrust::plus<float_type>());
 
@@ -463,7 +462,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             };
                         }
                         else {
-                            float_type* t = a->get_float_type_by_name(s1_val);
+                            float_type* t = a->get_float_type_by_name(s1_val);							
+													
                             if (a->type[(a->columnNames)[s2_val]] == 0) {
                                 int_type* t1 = a->get_int_by_name(s2_val);
                                 exe_type.push("VECTOR F");
