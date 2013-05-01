@@ -2570,7 +2570,7 @@ void star_join(char *s, string j1)
    //build an array of hash tables for the dimension tables
     CUDPPResult result;
    
-    cout << j1 << endl;
+    //cout << j1 << endl;
 	CudaSet* left = varNames.find(j1)->second;
 	
     queue<string> op_sel;
@@ -3112,7 +3112,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
     CudaSet* left = varNames.find(j1)->second;
     CudaSet* right = varNames.find(j2)->second;
 	
-	//cout << "left right " << left->name << " " << right->name << endl;
+	
+	
+	//cout << "left right " << left->name << " " << right->name <<  endl;
 	//cout << "selcount " <<  sel_count << endl;
 
     queue<string> op_sel;
@@ -3567,11 +3569,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         c_colInd = c->columnNames[op_sel1.front()];						
 					};	
 
-                    if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
+					if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
                         // copy field's segment to device, gather it and copy to the host
-                        unsigned int colInd = left->columnNames[op_sel1.front()];
-						
-                        reset_offsets();
+                        unsigned int colInd = left->columnNames[op_sel1.front()];						
+                    
+                        reset_offsets();					
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);
 
@@ -3620,10 +3622,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         }
                         else { //strings
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(d_res2.size()*right->char_size[right->type_index[colInd]]);
-
+													
                             str_gather(thrust::raw_pointer_cast(d_res2.data()), d_res2.size(), (void*)right->d_columns_char[right->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);
-									   
+																   
                             cudaMemcpy( (void*)(c->h_columns_char[c->type_index[c_colInd]] + offset*c->char_size[c->type_index[c_colInd]]), (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * d_res2.size(), cudaMemcpyDeviceToHost);
 										
@@ -4245,7 +4247,7 @@ void emit_filter(char *s, char *f, int e)
     };
 
     clean_queues();
-
+	
     if (varNames.count(s) > 0)
         varNames[s]->free();
 

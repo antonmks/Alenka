@@ -730,6 +730,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     if(str_offset.count(colIndex) == 0)
         str_offset[colIndex] = 0;
     //cout << "str off " << str_offset[colIndex] << endl;
+	//cout << "prm cnt of seg " << segNum << " is " << prm.empty() << endl; 
     if(!alloced_switch)
         str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
     else
@@ -2329,7 +2330,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigne
                 if(a->prm_count[segment]) {
 
                     alloced_switch = 1;
-                    //cout << "copy " << fields.front() << " " << alloced_switch << endl;
+                    //cout << "copy " << fields.front() << " " << alloced_switch << endl;					
                     t->CopyColumnToGpu(t->columnNames[fields.front()], segment); // segment i
                     //cout << "gather " << fields.front() << endl;
                     gatherColumns(a, t, fields.front(), segment, count);
@@ -2391,13 +2392,15 @@ void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, uns
         };
     }
     else {
-        if(!alloced_switch) {
+        if(!alloced_switch) {	
+		
             str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size,
-                       (void*)t->d_columns_char[t->type_index[tindex]], (void*)a->d_columns_char[a->type_index[idx]], a->char_size[a->type_index[idx]] );
+                       (void*)t->d_columns_char[t->type_index[tindex]], (void*)(a->d_columns_char[a->type_index[idx]] + offset*a->char_size[a->type_index[idx]]), a->char_size[a->type_index[idx]] );
+					   
         }
         else {
             str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size,
-                       alloced_tmp, (void*)a->d_columns_char[a->type_index[idx]], a->char_size[a->type_index[idx]] );
+                       alloced_tmp, (void*)(a->d_columns_char[a->type_index[idx]] + offset*a->char_size[a->type_index[idx]]), a->char_size[a->type_index[idx]] );
         };
     }
 };
@@ -2455,7 +2458,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
     };
 
     unsigned int cnt_r = 0;
-    if(!right->prm.empty()) {
+    if(!right->prm.empty()) {	
         allocColumns(right, cc);
         rcount = std::accumulate(right->prm_count.begin(), right->prm_count.end(), 0 );
     }
@@ -2483,6 +2486,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
     else {
         //copy and gather all records
         for(unsigned int i = 0; i < right->segCount; i++) {
+			reset_offsets();
             copyColumns(right, cc, i, cnt_r);
             cnt_r = cnt_r + right->prm_count[i];
         };
