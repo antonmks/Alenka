@@ -1,2 +1,2 @@
-A := LOAD 'lineitem.tbl' USING ('|') AS (orderkey{1}:int,  l_suppkey{3}:int, qty{5}:int, price{6}:decimal, discount{7}:decimal, tax{8}:decimal, rf{9}:varchar(1), lf{10}:varchar(1), shipdate{11}:int, commitdate{12}:int, receiptdate{13}:int);
-STORE A INTO 'lineitem' BINARY;
+A := LOAD 'C:\GitHub\DBGen\tpch_2_15.0\dbgen\lineitem.tbl' USING ('|') AS (orderkey{1}:int,  l_suppkey{3}:int, qty{5}:int, price{6}:decimal, discount{7}:decimal, tax{8}:decimal, rf{9}:varchar(1), lf{10}:varchar(1), shipdate{11}:int, commitdate{12}:int, receiptdate{13}:int);
+STORE A INTO 'C:\db\alenka\100g\lineitem' BINARY;
