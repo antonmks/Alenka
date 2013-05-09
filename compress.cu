@@ -466,7 +466,7 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
-        sorted = thrust::is_sorted(s, s+recCount);
+        sorted = thrust::is_sorted(s, s+recCount-1);
     }
     else {
         thrust::device_ptr<long long int> s((long long int*)source);
