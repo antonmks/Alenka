@@ -9,7 +9,7 @@ PS := LOAD 'partsupp' BINARY AS ( ps_partkey{1}:int, ps_suppkey{2}:int, ps_suppl
 
 J_PS := SELECT n_name AS n_name, ps_partkey AS ps_partkey, ps_supplycost AS ps_supplycost, s_name AS s_name, s_address AS s_address,  s_nationkey AS s_nationkey, s_phone AS s_phone, s_acctbal AS s_acctbal, s_comment AS s_comment
         FROM PS JOIN S ON ps_suppkey = s_suppkey
-		        JOIN N ON s_nationkey = n_nationkey
+		JOIN N ON s_nationkey = n_nationkey
                 JOIN RF ON n_regionkey = r_regionkey;	   
 		
 PS1 := SELECT ps_partkey AS ps_partkey1, MIN(ps_supplycost) AS ps_supplycost1 FROM J_PS

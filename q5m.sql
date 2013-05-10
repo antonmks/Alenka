@@ -17,8 +17,8 @@ F := SELECT o_custkey AS o_custkey, l_suppkey AS l_suppkey, l_price AS l_price, 
 	   
 F1 := SELECT  o_custkey AS o_custkey, s_nationkey AS s_nationkey, n_name AS n_name, l_price AS l_price, l_discount AS l_discount
       FROM F JOIN S ON l_suppkey = s_suppkey
-	     JOIN N ON s_nationkey = n_nationkey
-	     JOIN RF ON n_regionkey = r_regionkey;
+	         JOIN N ON s_nationkey = n_nationkey
+	         JOIN RF ON n_regionkey = r_regionkey;
 	 
   
 F2 := SELECT  n_name AS n_name, l_price AS l_price, l_discount AS l_discount
