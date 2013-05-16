@@ -297,6 +297,7 @@ public:
     void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt);	
     void add_hashed_strings(string field, unsigned int segment, unsigned int i_cnt);
     void resize(unsigned int addRecs);
+	void resize_join(unsigned int addRecs);
 	void reserve(unsigned int Recs);
     void deAllocColumnOnDevice(unsigned int colIndex);
     void allocOnDevice(unsigned int RecordCount);
@@ -307,10 +308,8 @@ public:
     CudaSet* copyDeviceStruct();
     unsigned long long int readSegmentsFromFile(unsigned int segNum, unsigned int colIndex);
     void decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum);
-    void CopyToGpu(unsigned int offset, unsigned int count);
     void CopyColumnToGpu(unsigned int colIndex,  unsigned int segment);
     void CopyColumnToGpu(unsigned int colIndex);
-    void CopyColumnToGpu(unsigned int colIndex,  unsigned int offset, unsigned int count);
     void CopyColumnToHost(int colIndex, unsigned int offset, unsigned int RecCount);
     void CopyColumnToHost(int colIndex);
     void CopyToHost(unsigned int offset, unsigned int count);

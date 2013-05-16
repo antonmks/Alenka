@@ -1,4 +1,4 @@
-L := LOAD 'lineitemtest1' BINARY AS (l_orderkey{1}:int, l_suppkey{3}:int, price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
+L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int, l_suppkey{3}:int, price{6}:decimal, discount{7}:decimal, shipdate{11}:int);
 LF := FILTER L BY shipdate >= 19950101 AND shipdate <= 19961231;
 
 S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_nationkey{4}:int);

@@ -23,36 +23,6 @@ unsigned long long int hash_seed;
 using namespace std;
 
 
-int myPow(long long int x, long long int p)
-{
-    if (p == 0) return 1;
-    if (p == 1) return x;
-
-    int tmp = myPow(x, p/2);
-    if (p%2 == 0) return tmp * tmp;
-    else return x * tmp * tmp;
-}
-
-char *trimwhitespace(char *str)
-{
-    char *end;
-
-    // Trim leading space
-    while(isspace(*str)) str++;
-
-    if(*str == 0)  // All spaces?
-        return str;
-
-    // Trim trailing space
-    end = str + strlen(str) - 1;
-    while(end > str && isspace(*end)) end--;
-
-    // Write new null terminator
-    *(end+1) = 0;
-
-    return str;
-}
-
 void create_c(CudaSet* c, CudaSet* b)
 {
     map<string,int>::iterator it;
@@ -73,18 +43,19 @@ void create_c(CudaSet* c, CudaSet* b)
         if (b->type[i] == 0) {
             c->h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >());
             c->d_columns_int.push_back(thrust::device_vector<int_type>());
+			c->type_index[i] = c->h_columns_int.size()-1;
         }
         else if (b->type[i] == 1) {
             c->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >());
             c->d_columns_float.push_back(thrust::device_vector<float_type>());
+			c->type_index[i] = c->h_columns_float.size()-1;
         }
         else {
             c->h_columns_char.push_back(NULL);
             c->d_columns_char.push_back(NULL);
-            //c->char_size.push_back(b->char_size[b->type_index[i]]);
-        };
-        c->type_index[i] = b->type_index[i];
-        c->char_size = b->char_size;
+            c->char_size.push_back(b->char_size[b->type_index[i]]);
+			c->type_index[i] = c->h_columns_char.size()-1;
+        };        
     };
 }
 
@@ -98,54 +69,31 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
         create_c(c,b);
     }
 
-
-
     boost::unordered_map<long long int, unsigned int>::const_iterator got;
 
     b->CopyToHost(0, b->mRecCount);
 
     // store in a variable c only unique records
     // we have do it on a host because the hash table for the expected set sizes(~5 bln records) won't fit into a GPU memory
-    // gonna be kinda on the slow side
 
+    unsigned long long int *b_hash = new unsigned long long int[b->mRecCount];    
+    unsigned int cycle_sz = op_v3.size();
 
-    unsigned long long int *b_hash = new unsigned long long int[b->mRecCount];
-    unsigned int idx;
-    queue<string> op_v(op_v3);
-    unsigned int cycle_sz = op_v.size();
     vector<unsigned int> opv;
     for(unsigned int z = 0; z < cycle_sz; z++) {
-        opv.push_back(b->columnNames[aliases[op_v.front()]]);
-        op_v.pop();
+        opv.push_back(b->columnNames[aliases[op_v3.front()]]);
+        op_v3.pop();
     };
-
-
-
-    unsigned int tot_sz = 0;
-    for(unsigned int z = 0; z < cycle_sz; z++) {
-        idx = opv[z];
-        if(b->type[idx] == 0) {  //int
-            tot_sz = tot_sz + int_size;
-        }
-        else {
-            tot_sz = tot_sz +  b->char_size[b->type_index[idx]];
-        };
-    };
-    char* data = new char[tot_sz];
-    data[tot_sz-1] = '\0';
-    unsigned int curr;
-    char* tmp1 = new char[101];
-
-    char* prn = new char[101];
-    unsigned long long int loc, res;
+	
+    unsigned int idx, curr;    
+    unsigned long long int loc;
     unsigned long long int* sum = new unsigned long long int[cycle_sz];
 
     for(unsigned int i = 0; i < b->mRecCount; i++) {
-        res = 0;
         curr = 0;
         for(unsigned int z = 0; z < cycle_sz; z++) {
             idx = opv[z];
-
+			
             if(b->type[idx] == 0) {  //int
                 loc = MurmurHash64A(&b->h_columns_int[b->type_index[idx]][i], int_size, hash_seed);
             }
@@ -153,35 +101,34 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
                 loc = MurmurHash64A(&b->h_columns_char[b->type_index[idx]][i*b->char_size[b->type_index[idx]]], b->char_size[b->type_index[idx]], hash_seed);
             }
             else {  //float
+			    cout << "No group by on float/decimal columns " << endl;
                 exit(0);
             };
             sum[curr] = loc;
             curr++;
         };
-        res = MurmurHash64A(sum, cycle_sz*8, hash_seed);
-        b_hash[i] = res;
+		b_hash[i] = MurmurHash64A(sum, cycle_sz*8, hash_seed);
     };
-
+	delete [] sum;
+	
 
     //resize c
-    unsigned int cnt = 0;
+    unsigned int cnt = 0, old_cnt = c->mRecCount;
     for(unsigned int i = 0; i < b->mRecCount; i++) {
-        got = mymap.find(b_hash[i]);
-        if(got == mymap.end())
+        if(mymap.find(b_hash[i]) == mymap.end())
             cnt++;
     };
-    unsigned int old_cnt = c->mRecCount;
-    if(cnt)
+
+    if(cnt) {
         c->resize(cnt);
-
-
+	};	
     // now lets add to c those records that are not already there and update those that are there
+	
 
     for(unsigned int i = 0; i < b->mRecCount; i++) {
 
         got = mymap.find(b_hash[i]);
         if(got == mymap.end()) {	//not found, need to insert
-            //	cout << "insert " << b_hash[i] << endl;
             mymap[b_hash[i]] = old_cnt;
             for(unsigned int j=0; j < b->mColumnCount; j++) {
 
@@ -192,18 +139,16 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
                     c->h_columns_float[c->type_index[j]][old_cnt] = b->h_columns_float[b->type_index[j]][i];
                 }
                 else if(b->type[j] == 2) {  //string
-                    memcpy(c->h_columns_char[c->type_index[j]] + old_cnt*b->char_size[b->type_index[j]], b->h_columns_char[b->type_index[j]] + i*b->char_size[b->type_index[j]],
-                           b->char_size[b->type_index[j]]);
-                };
+                    memcpy(c->h_columns_char[c->type_index[j]] + old_cnt*c->char_size[c->type_index[j]], b->h_columns_char[b->type_index[j]] + i*b->char_size[b->type_index[j]],
+                           b->char_size[b->type_index[j]]);						   
+                };				
             };
-            old_cnt++;
+			old_cnt++;            
         }
         else { //need to update
-            //cout << "update " << i << ":" << got->second << " " << b_hash[i] << endl;
             for(unsigned int j=0; j < b->mColumnCount; j++) {
-
                 if (c->grp_type[j] == 2 || c->grp_type[j] == 1 || c->grp_type[j] == 0 ) {  // SUM || AVG || COUNT
-                    if (c->type[j] == 0) {
+                    if (c->type[j] == 0) {			                        
                         c->h_columns_int[c->type_index[j]][got->second] +=  b->h_columns_int[b->type_index[j]][i];
                     }
                     else {
@@ -236,13 +181,12 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long 
             };
         };
     };
-
+	
     bool dis_exists = 0;
     for(unsigned int j=0; j < c->mColumnCount; j++) {
         if (c->grp_type[j] == 6)
             dis_exists = 1;
     };
-
 
     if (dis_exists) {
         bool grp_scanned = 0;
