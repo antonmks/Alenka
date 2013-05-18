@@ -3419,7 +3419,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
 
 		
         if (left->type[colInd1]  != 2) {
-            copyColumns(left, lc, i, cnt_l);			
+		    std::clock_t start2 = std::clock();
+            copyColumns(left, lc, i, cnt_l);	
+            std::cout<< "seg cpy " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
         }
         else {
 		    left->d_columns_int.resize(0);
@@ -3596,9 +3598,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         // copy field's segment to device, gather it and copy to the host
                         unsigned int colInd = left->columnNames[op_sel1.front()];						
                     
+					    std::clock_t start3 = std::clock();
                         reset_offsets();					
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);
+						std::cout<< "seg ship " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 
                         //gather
                         if(left->type[colInd] == 0) {
@@ -3611,14 +3615,57 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         }
                         else { //strings
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);
+				
+							
+/*							char *aa = new char[25*10];
+  		                   char *hh = new char[26];
+		                   hh[25] = '\0';
+	                       cudaMemcpy( (void*)aa, (void*)&left->d_columns_char[left->type_index[colInd]][5999980*c->char_size[c->type_index[c_colInd]]], 
+						                250, cudaMemcpyDeviceToHost);		            
+							for(unsigned int z = 0 ; z < 10; z++) {
+                            strncpy(hh, aa + z*25, 25); 							
+							cout << "BEFORE gather " << hh << endl;
+							};
+							*/
+							
+							
+							
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
-
+							std::cout<< "seg gather " << res_count << " " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';								   
+													
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
+										
+						
+							//char *aa = new char[25*10];
+  		                   //char *hh = new char[26];
+
+	                       /*cudaMemcpy( (void*)aa, (void*) thrust::raw_pointer_cast(d_tmp + 5999980*c->char_size[c->type_index[c_colInd]]), 
+						                250, cudaMemcpyDeviceToHost);		            
+							for(unsigned int z = 0 ; z < 10; z++) {
+                            strncpy(hh, aa + z*25, 25); 							
+							cout << "AFTER111 gather " << hh << endl;
+							};
+							*/
+
+						   
+						   
+						   
+		             /*      hh[25] = '\0';
+	                       cudaMemcpy( (void*)aa, (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]] + 5999980*c->char_size[c->type_index[c_colInd]]], 
+						                250, cudaMemcpyHostToHost);		            
+							for(unsigned int z = 0 ; z < 10; z++) {
+                            strncpy(hh, aa + z*25, 25); 							
+							cout << "AFTER gather " << hh << endl;
+							};
+							*/										
+										
+							std::cout<< "seg ship host1 " << res_count << " " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						
                             thrust::device_free(d_tmp);
                         }
                         left->deAllocColumnOnDevice(colInd);
+						std::cout<< "seg ship host " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 
                     }
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
