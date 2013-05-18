@@ -12,11 +12,13 @@
  *  limitations under the License.
  */
 
+#define EPSILON    (1.0E-8)
 
 using namespace std; 
  
 #ifndef ADD_H_GUARD
 #define ADD_H_GUARD
+
 
 #include <thrust/device_vector.h>
 #include <thrust/sequence.h>
@@ -388,6 +390,6 @@ unsigned int max_char(CudaSet* a, set<string> field_names);
         exit(EXIT_FAILURE);                                                  \
     } } while (0)
 
-#define EPSILON    (1.0E-8)
+
 
 
