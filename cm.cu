@@ -1353,7 +1353,7 @@ void CudaSet::compress_char(string file_name, unsigned int index, unsigned int m
 int CudaSet::LoadBigFile(const char* file_name, const char* sep )
 {
     char line[1000];
-    unsigned int current_column, count = 0;
+    unsigned int current_column, count = 0, index;
 	char *p,*t;
 
     if (file_p == NULL)
@@ -1377,22 +1377,23 @@ int CudaSet::LoadBigFile(const char* file_name, const char* sep )
 			if(col_map.find(current_column) == col_map.end())
 				continue;					  
           
-            if (type[col_map[current_column]] == 0) {
+			index = col_map[current_column];
+            if (type[index] == 0) {
                 if (strchr(t,'-') == NULL) {
-					(h_columns_int[type_index[col_map[current_column]]])[count] = atoll(t);
+					(h_columns_int[type_index[index]])[count] = atoll(t);
                 }
                 else {   // handling possible dates
                     strncpy(t+4,t+5,2);
                     strncpy(t+6,t+8,2);
                     t[8] = '\0';
-                    (h_columns_int[type_index[col_map[current_column]]])[count] = atoll(t);
+                    (h_columns_int[type_index[index]])[count] = atoll(t);
                 };
             }
-            else if (type[col_map[current_column]] == 1) {
-				(h_columns_float[type_index[col_map[current_column]]])[count] = atoff(t);
+            else if (type[index] == 1) {
+				(h_columns_float[type_index[index]])[count] = atoff(t);
 			}	
             else  {//char
-                strcpy(h_columns_char[type_index[col_map[current_column]]] + count*char_size[type_index[col_map[current_column]]], t);
+                strcpy(h_columns_char[type_index[index]] + count*char_size[type_index[index]], t);
             }
         };
         count++;
