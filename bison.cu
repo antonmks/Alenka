@@ -2262,7 +2262,6 @@ yyreturn:
 #include "zone_map.h"
 #include "atof.h"
 #include "sorts.cu"
-#include <limits>
 #include "cudpp_src_2.0/include/cudpp_hash.h"
 
 
@@ -3311,8 +3310,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
     if(!sorted) {
 
         queue<string> ss(op_sel);
-        thrust::device_vector<unsigned int> v(cnt_r);
-        thrust::sequence(v.begin(),v.end(),0,1);
+        //thrust::device_vector<unsigned int> v(cnt_r);
+		thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
+        thrust::sequence(v, v + cnt_r, 0, 1);
 
         unsigned int max_c	= max_char(right);
         unsigned int mm;
@@ -3322,7 +3322,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
             mm = 1;
 
         thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(cnt_r*mm);
-        thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v.begin());
+        thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
 
         unsigned int i;
         while(!ss.empty()) {
@@ -3331,15 +3331,15 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
 
                 if(i != colInd2) {
                     if(right->type[i] == 0) {
-                        thrust::gather(v.begin(), v.end(), right->d_columns_int[right->type_index[i]].begin(), d_tmp);
+                        thrust::gather(v, v+cnt_r, right->d_columns_int[right->type_index[i]].begin(), d_tmp);
                         thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_int[right->type_index[i]].begin());
                     }
                     else if(right->type[i] == 1) {
-                        thrust::gather(v.begin(), v.end(), right->d_columns_float[right->type_index[i]].begin(), d_tmp);
+                        thrust::gather(v, v+cnt_r, right->d_columns_float[right->type_index[i]].begin(), d_tmp);
                         thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[right->type_index[i]].begin());
                     }
                     else {
-                        str_gather(thrust::raw_pointer_cast(v.data()), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);
+                        str_gather(thrust::raw_pointer_cast(v), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);
                         cudaMemcpy( (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[right->type_index[i]], cudaMemcpyDeviceToDevice);
                     };
                 };
@@ -3347,6 +3347,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
             ss.pop();
         };
         thrust::device_free(d_tmp);
+		thrust::device_free(v);
     };
 
     bool v64bit;
@@ -3382,7 +3383,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
     CUDPPHashTableConfig config;
     config.type = CUDPP_MULTIVALUE_HASH_TABLE;
     config.kInputSize = cnt_r;
-    config.space_usage = 1.5f;
+    config.space_usage = 1.1f;
 
     cout << "creating table with " << cnt_r << " " << getFreeMem()  << endl;
     result = cudppHashTable(theCudpp, &hash_table_handle, &config);
@@ -3395,17 +3396,25 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
         tt = left->maxRecs;
     else
         tt = rcount;
+		
+	//cout << "tt	" << tt << endl;
 
     thrust::device_ptr<unsigned int> d_r = thrust::device_malloc<unsigned int>(tt);
-    thrust::device_vector<unsigned int> v(cnt_r);
-    thrust::sequence(v.begin(),v.end(),0,1);
-	
+	//cout << "d_r " << getFreeMem() << endl;
+	thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
+	//cout << "v " << getFreeMem() << endl;
+    //thrust::device_vector<unsigned int> v(cnt_r);
+    thrust::sequence(v, v+cnt_r, 0, 1);
+		
     thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r,
                  d_r);
-				 
+	//cout << "1 " << getFreeMem() << endl;			 
 				 
     result = cudppHashInsert(hash_table_handle, thrust::raw_pointer_cast(d_r),
-                             thrust::raw_pointer_cast(v.data()), cnt_r);
+                             thrust::raw_pointer_cast(v), cnt_r);
+	//cout << "2 " << getFreeMem() << endl;						 
+							 
+	thrust::device_free(v);						 
 
     if (result == CUDPP_SUCCESS)
         cout << "hash table inserted " << getFreeMem() << endl;
@@ -3419,9 +3428,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
 
 		
         if (left->type[colInd1]  != 2) {
-		    std::clock_t start2 = std::clock();
             copyColumns(left, lc, i, cnt_l);	
-            std::cout<< "seg cpy " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
         }
         else {
 		    left->d_columns_int.resize(0);
@@ -3521,12 +3528,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
 
                 allocColumns(left, rc);
                 copyColumns(left, rc, i, cnt_l);
-                rc.pop();
-				thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
+                rc.pop();				
 				
                 if (d_res1.size() && d_res2.size()) {
                     unsigned int colInd3 = (left->columnNames).find(f3)->second;
                     unsigned int colInd4 = (right->columnNames).find(f4)->second;    
+					thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
 					
                     if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
 
@@ -3537,10 +3544,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_left(left->d_columns_float[left->type_index[colInd3]].begin(), d_res1.begin());
                         thrust::transform(iter_left, iter_left+d_res1.size(), d_l, float_to_long());
 
-                        thrust::device_ptr<int_type> d_r = thrust::device_malloc<int_type>(d_res1.size());
+                        thrust::device_ptr<int_type> d_r1 = thrust::device_malloc<int_type>(d_res1.size());
                         thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter_right(right->d_columns_float[right->type_index[colInd4]].begin(), d_res2.begin());
-                        thrust::transform(iter_right, iter_right+d_res2.size(), d_r, float_to_long());
-                        thrust::transform(d_l, d_l+d_res1.size(), d_r, d_add, thrust::equal_to<int_type>());
+                        thrust::transform(iter_right, iter_right+d_res2.size(), d_r1, float_to_long());
+                        thrust::transform(d_l, d_l+d_res1.size(), d_r1, d_add, thrust::equal_to<int_type>());
+						thrust::device_free(d_l);
+						thrust::device_free(d_r1);
                     }
                     else {
                         thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[left->type_index[colInd3]].begin(), d_res1.begin());
@@ -3598,11 +3607,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         // copy field's segment to device, gather it and copy to the host
                         unsigned int colInd = left->columnNames[op_sel1.front()];						
                     
-					    std::clock_t start3 = std::clock();
                         reset_offsets();					
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);
-						std::cout<< "seg ship " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 
                         //gather
                         if(left->type[colInd] == 0) {
@@ -3615,57 +3622,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
                         }
                         else { //strings
                             thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(res_count*left->char_size[left->type_index[colInd]]);
-				
-							
-/*							char *aa = new char[25*10];
-  		                   char *hh = new char[26];
-		                   hh[25] = '\0';
-	                       cudaMemcpy( (void*)aa, (void*)&left->d_columns_char[left->type_index[colInd]][5999980*c->char_size[c->type_index[c_colInd]]], 
-						                250, cudaMemcpyDeviceToHost);		            
-							for(unsigned int z = 0 ; z < 10; z++) {
-                            strncpy(hh, aa + z*25, 25); 							
-							cout << "BEFORE gather " << hh << endl;
-							};
-							*/
-							
-							
 							
                             str_gather(thrust::raw_pointer_cast(d_res1.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
-							std::cout<< "seg gather " << res_count << " " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';								   
 													
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
-										
-						
-							//char *aa = new char[25*10];
-  		                   //char *hh = new char[26];
 
-	                       /*cudaMemcpy( (void*)aa, (void*) thrust::raw_pointer_cast(d_tmp + 5999980*c->char_size[c->type_index[c_colInd]]), 
-						                250, cudaMemcpyDeviceToHost);		            
-							for(unsigned int z = 0 ; z < 10; z++) {
-                            strncpy(hh, aa + z*25, 25); 							
-							cout << "AFTER111 gather " << hh << endl;
-							};
-							*/
-
-						   
-						   
-						   
-		             /*      hh[25] = '\0';
-	                       cudaMemcpy( (void*)aa, (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]] + 5999980*c->char_size[c->type_index[c_colInd]]], 
-						                250, cudaMemcpyHostToHost);		            
-							for(unsigned int z = 0 ; z < 10; z++) {
-                            strncpy(hh, aa + z*25, 25); 							
-							cout << "AFTER gather " << hh << endl;
-							};
-							*/										
-										
-							std::cout<< "seg ship host1 " << res_count << " " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';						
                             thrust::device_free(d_tmp);
                         }
                         left->deAllocColumnOnDevice(colInd);
-						std::cout<< "seg ship host " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<'\n';			
 
                     }
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
@@ -3720,7 +3686,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
     d_res1.shrink_to_fit();
     d_res2.resize(0);
     d_res2.shrink_to_fit();
-
+	
+    if(left->segCount != 1) {
+		thrust::device_free(d_r);
+		thrust::device_free(res);
+    };
 
     left->deAllocOnDevice();
     right->deAllocOnDevice();
@@ -3746,7 +3716,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
         varNames.erase(j2);
 	};
 	
-    std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+    std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 }
 
 
