@@ -1,34 +1,46 @@
 alenka : cm.obj merge.obj \
-         MurmurHash2_64.obj filter.obj strings.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj itoa.obj \
 		 atof.obj bison.obj select.obj
 	nvcc --compiler-options /MD -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka merge.obj \
-         MurmurHash2_64.obj filter.obj strings.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj itoa.obj \
 		 atof.obj cm.obj bison.obj
 
+
+nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_20 -c
+
 cm.obj : cm.cu cm.h	
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c cm.cu 
-bison.obj : bison.cu cm.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c bison.cu
+	$(nvcc) cm.cu 
+bison.obj : bison.cu cm.h sorts.cu
+	$(nvcc) bison.cu
 merge.obj : merge.cu cm.h merge.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c merge.cu
+	$(nvcc) merge.cu
 MurmurHash2_64.obj : MurmurHash2_64.cu cm.h 
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c MurmurHash2_64.cu
+	$(nvcc) MurmurHash2_64.cu
 filter.obj : filter.cu cm.h filter.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c filter.cu
-strings.obj : strings.cu cm.h strings.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c strings.cu
+	$(nvcc) filter.cu
+strings_filter.obj : strings_filter.cu strings.h strings_type.h
+	$(nvcc) strings_filter.cu
+strings_join.obj : strings_join.cu strings.h strings_type.h
+	$(nvcc) strings_join.cu
+strings_sort_host.obj : strings_sort_host.cu strings.h strings_type.h
+	$(nvcc) strings_sort_host.cu
+strings_sort_device.obj : strings_sort_device.cu strings.h strings_type.h
+	$(nvcc) strings_sort_device.cu
 select.obj : select.cu cm.h select.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c select.cu
+	$(nvcc) select.cu
 zone_map.obj : zone_map.cu cm.h zone_map.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c zone_map.cu
+	$(nvcc) zone_map.cu
 itoa.obj : itoa.cu itoa.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c itoa.cu
+	$(nvcc) itoa.cu
 atof.obj : atof.cu cm.h atof.h
-	nvcc --compiler-options /MD -O3 -arch=sm_20 -c atof.cu 
+	$(nvcc) atof.cu 
 	
 clean : del bison.obj merge.obj \
-         MurmurHash2_64.obj filter.obj strings.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj itoa.obj \
 		 atof.obj cm.obj
