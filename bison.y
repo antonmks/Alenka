@@ -295,7 +295,7 @@ string separator, f_file;
 unsigned int int_col_count;
 CUDPPHandle theCudpp;
 
-void emit_multijoin(string s, string j1, string j2, unsigned int tab);
+void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 
 using namespace thrust::placeholders;
 
@@ -996,10 +996,7 @@ void star_join(char *s, string j1)
 		varNames[op_join.front()]->deAllocOnDevice();
 		op_join.pop();
 	};	   
-	left->deAllocOnDevice();
-	
-	
-	
+	left->deAllocOnDevice();	
 	
 	for(unsigned int i = 0; i < join_tab_cnt; i++) {
 		cudppDestroyHashTable(theCudpp, hash_table_handle[i]);
@@ -1012,10 +1009,7 @@ void star_join(char *s, string j1)
 	cout << "join count " << tot_count << endl;
     for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;			
-	};	
-		
-		
- 
+	};	 
 
 };
 
@@ -1045,12 +1039,11 @@ void emit_join(char *s, char *j1, int grp)
 
 	queue<string> op_m(op_value);
       
-    if(check_star_join(j1)) {
+    if(check_star_join(j1)) {	   
 	    cout << "executing star join !! " << endl;
 		star_join(s, j1);
     }
 	else {
-   
 		if(join_tab_cnt > 1) {
 			string tab_name;
 			for(unsigned int i = 1; i <= join_tab_cnt; i++) {
@@ -1059,7 +1052,6 @@ void emit_join(char *s, char *j1, int grp)
 					tab_name = s;
 				else	 
 					tab_name = s + to_string1((long long int)i);
-				//cout << "tab name " << tab_name << endl;	  
 			  
 				string j, j2;	  
 				if(i == 1) {	  		      
@@ -1076,14 +1068,14 @@ void emit_join(char *s, char *j1, int grp)
 					op_join.pop();
 					j2 = s + to_string1((long long int)i-1);
 				};
-				emit_multijoin(tab_name, j, j2, i);
+				emit_multijoin(tab_name, j, j2, i, s);
 				op_value = op_m;
 			};	
 		}
 		else {
 			string j2 = op_join.front();	
 			op_join.pop();
-			emit_multijoin(s, j1, j2, 0);
+			emit_multijoin(s, j1, j2, 0, s);
 		}; 
     };		
 	
@@ -1107,7 +1099,7 @@ void emit_join(char *s, char *j1, int grp)
 }
 
 
-void emit_multijoin(string s, string j1, string j2, unsigned int tab)
+void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
 {
 	
 	//cout << "j2 " << j2 << endl;
@@ -1205,8 +1197,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab)
 
     if (left->mRecCount == 0 || right->mRecCount == 0) {
         c = new CudaSet(left, right, op_sel_s, op_sel_s_as);
-        varNames[s] = c;
+        varNames[res_name] = c;
         clean_queues();
+        cout << "Join result " << res_name << " : " << c->mRecCount << endl; 		
         return;
     };
 	
@@ -1972,6 +1965,7 @@ void emit_select(char *s, char *f, int ll)
 
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
+		cout << "Couldn't find " << f << endl;
         return;
     };
 
@@ -1999,6 +1993,7 @@ void emit_select(char *s, char *f, int ll)
         c = new CudaSet(0,1);
         varNames[s] = c;
         clean_queues();
+		cout << "SELECT " << s << " count : 0 " << endl;
         return;
     };
 

@@ -582,12 +582,13 @@ char *yytext;
 void yyerror(char *s, ...);
 int oldstate;
 #define YY_NEVER_INTERACTIVE 1
+#define YY_NO_UNISTD_H
 
 #define COMMENT 1
 
 #define BTWMODE 2
 
-#line 591 "lex.yy.c"
+#line 592 "lex.yy.c"
 
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -738,10 +739,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
 
-#line 31 "fl.l"
+#line 32 "fl.l"
 
 
-#line 745 "lex.yy.c"
+#line 746 "lex.yy.c"
 
 	if ( yy_init )
 		{
@@ -834,176 +835,176 @@ do_action:	/* This label is used only to access EOF actions. */
 	{ /* beginning of action switch */
 case 1:
 YY_RULE_SETUP
-#line 33 "fl.l"
+#line 34 "fl.l"
 {return AND; };
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 34 "fl.l"
+#line 35 "fl.l"
 {return OR; };
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 35 "fl.l"
+#line 36 "fl.l"
 { return LOAD; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 36 "fl.l"
+#line 37 "fl.l"
 { return FILTER; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 37 "fl.l"
+#line 38 "fl.l"
 { return DESC; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 38 "fl.l"
+#line 39 "fl.l"
 { return ASC; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 39 "fl.l"
+#line 40 "fl.l"
 { return ORDER; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 40 "fl.l"
+#line 41 "fl.l"
 { return BY; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 41 "fl.l"
+#line 42 "fl.l"
 { return JOIN; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 42 "fl.l"
+#line 43 "fl.l"
 { return STORE; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 43 "fl.l"
+#line 44 "fl.l"
 { return INTO; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 44 "fl.l"
+#line 45 "fl.l"
 { return GROUP; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 45 "fl.l"
+#line 46 "fl.l"
 { return AS; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 46 "fl.l"
+#line 47 "fl.l"
 { return SELECT; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 47 "fl.l"
+#line 48 "fl.l"
 { return FROM; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 48 "fl.l"
+#line 49 "fl.l"
 { return USING; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 49 "fl.l"
+#line 50 "fl.l"
 { return COUNT; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 50 "fl.l"
+#line 51 "fl.l"
 { return SUM; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 51 "fl.l"
+#line 52 "fl.l"
 { return AVG; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 52 "fl.l"
+#line 53 "fl.l"
 { return MIN; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 53 "fl.l"
+#line 54 "fl.l"
 { return MAX; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 54 "fl.l"
+#line 55 "fl.l"
 { return LIMIT; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 55 "fl.l"
+#line 56 "fl.l"
 { return ON; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 56 "fl.l"
+#line 57 "fl.l"
 { return STREAM; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 57 "fl.l"
+#line 58 "fl.l"
 { return BINARY; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 58 "fl.l"
+#line 59 "fl.l"
 { return DISTINCT; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 59 "fl.l"
+#line 60 "fl.l"
 { return LEFT; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 62 "fl.l"
+#line 63 "fl.l"
 { yylval.intval = atoi(yytext);  return INTNUM; }
 	YY_BREAK
 case 29:
-#line 64 "fl.l"
-case 30:
 #line 65 "fl.l"
-case 31:
+case 30:
 #line 66 "fl.l"
-case 32:
+case 31:
 #line 67 "fl.l"
+case 32:
+#line 68 "fl.l"
 case 33:
 YY_RULE_SETUP
-#line 67 "fl.l"
+#line 68 "fl.l"
 { yylval.floatval = atof(yytext) ;
 return APPROXNUM; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 70 "fl.l"
+#line 71 "fl.l"
 { yylval.intval = 1; return BOOL1; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 71 "fl.l"
+#line 72 "fl.l"
 { yylval.intval = -1; return BOOL1; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 72 "fl.l"
+#line 73 "fl.l"
 { yylval.intval = 0; return BOOL1; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 74 "fl.l"
+#line 75 "fl.l"
 { yylval.strval = strdup(yytext); return STRING; }
 	YY_BREAK
 case 38:
@@ -1011,7 +1012,7 @@ case 38:
 yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 75 "fl.l"
+#line 76 "fl.l"
 { yyerror("Unterminated string %s", yytext); }
 	YY_BREAK
 case 39:
@@ -1019,87 +1020,87 @@ case 39:
 yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 76 "fl.l"
+#line 77 "fl.l"
 { yyerror("Unterminated string %s", yytext); }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 79 "fl.l"
+#line 80 "fl.l"
 { return yytext[0]; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 80 "fl.l"
+#line 81 "fl.l"
 { return AND; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 81 "fl.l"
+#line 82 "fl.l"
 { return OR; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 82 "fl.l"
+#line 83 "fl.l"
 { return ASSIGN; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 83 "fl.l"
+#line 84 "fl.l"
 { return EQUAL; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 84 "fl.l"
+#line 85 "fl.l"
 { yylval.subtok = 4; return COMPARISON; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 85 "fl.l"
+#line 86 "fl.l"
 { yylval.subtok = 12; return COMPARISON; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 86 "fl.l"
+#line 87 "fl.l"
 { yylval.subtok = 6; return COMPARISON; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 87 "fl.l"
+#line 88 "fl.l"
 { yylval.subtok = 2; return COMPARISON; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 88 "fl.l"
+#line 89 "fl.l"
 { yylval.subtok = 5; return COMPARISON; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 89 "fl.l"
+#line 90 "fl.l"
 { yylval.subtok = 1; return COMPARISON; }
 	YY_BREAK
 case 51:
-#line 91 "fl.l"
+#line 92 "fl.l"
 case 52:
 YY_RULE_SETUP
-#line 91 "fl.l"
+#line 92 "fl.l"
 { yylval.subtok = 3; return COMPARISON; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 93 "fl.l"
+#line 94 "fl.l"
 { yylval.strval = strdup(yytext+1);
 yylval.strval[yyleng-2] = 0; 
 return FILENAME; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 97 "fl.l"
+#line 98 "fl.l"
 { yylval.strval = strdup(yytext);
 return NAME; }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 99 "fl.l"
+#line 100 "fl.l"
 { yylval.strval = strdup(yytext+1);
 yylval.strval[yyleng-2] = 0; 
 return FILENAME; }
@@ -1109,25 +1110,25 @@ case 56:
 yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 102 "fl.l"
+#line 103 "fl.l"
 { printf("unterminated quoted name %s", yytext); }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 105 "fl.l"
+#line 106 "fl.l"
 
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 106 "fl.l"
+#line 107 "fl.l"
 {  }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 107 "fl.l"
+#line 108 "fl.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1131 "lex.yy.c"
+#line 1132 "lex.yy.c"
 			case YY_STATE_EOF(INITIAL):
 			case YY_STATE_EOF(COMMENT):
 			case YY_STATE_EOF(BTWMODE):
@@ -2013,7 +2014,7 @@ int main()
 	return 0;
 	}
 #endif
-#line 107 "fl.l"
+#line 108 "fl.l"
 
 
 void PROC_FLUSH_BUF ( FILE * xFile )

@@ -21,6 +21,7 @@
 void yyerror(char *s, ...);
 int oldstate;
 #define YY_NEVER_INTERACTIVE 1
+#define YY_NO_UNISTD_H
 
 %}
 %option noyywrap nodefault yylineno case-insensitive
