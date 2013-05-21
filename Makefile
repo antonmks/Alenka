@@ -1,34 +1,46 @@
 alenka : bison.o merge.o \
-         MurmurHash2_64.o filter.o strings.o \
+         MurmurHash2_64.o filter.o \
+		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
 		 atof.o cm.o 
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka bison.o merge.o \
-         MurmurHash2_64.o filter.o strings.o \
+         MurmurHash2_64.o filter.o \
+		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
 		 atof.o cm.o
 		 
-bison.o : bison.cu cm.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c bison.cu
+
+nvcc = /usr/local/cuda/bin/nvcc --machine 64 -O3 -arch=sm_20 -c
+
+bison.o : bison.cu cm.h sorts.cu
+	$(nvcc) bison.cu
 merge.o : merge.cu cm.h merge.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c merge.cu
+	$(nvcc) merge.cu
 MurmurHash2_64.o : MurmurHash2_64.cu cm.h 
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c MurmurHash2_64.cu
+	$(nvcc) MurmurHash2_64.cu
 filter.o : filter.cu cm.h filter.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c filter.cu
-strings.o : strings.cu cm.h strings.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c strings.cu
+	$(nvcc) filter.cu
+strings_filter.o : strings_filter.cu strings.h strings_type.h
+	$(nvcc) strings_filter.cu
+strings_join.o : strings_join.cu strings.h strings_type.h
+	$(nvcc) strings_join.cu
+strings_sort_host.o : strings_sort_host.cu strings.h strings_type.h
+	$(nvcc) strings_sort_host.cu
+strings_sort_device.o : strings_sort_device.cu strings.h strings_type.h
+	$(nvcc) strings_sort_device.cu
 select.o : select.cu cm.h select.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c select.cu
+	$(nvcc) select.cu
 zone_map.o : zone_map.cu cm.h zone_map.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c zone_map.cu
+	$(nvcc) zone_map.cu
 itoa.o : itoa.cu itoa.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c itoa.cu
+	$(nvcc) itoa.cu
 atof.o : atof.cu cm.h atof.h
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c atof.cu 
+	$(nvcc) atof.cu 
 cm.o : cm.cu cm.h	
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -c cm.cu
+	$(nvcc) cm.cu
 	
 clean : del bison.o merge.o \
-         MurmurHash2_64.o filter.o strings.o \
+         MurmurHash2_64.o filter.o \
+		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
 		 atof.o cm.o

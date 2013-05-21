@@ -12,11 +12,13 @@
  *  limitations under the License.
  */
 
+#define EPSILON    (1.0E-8)
 
 using namespace std; 
  
 #ifndef ADD_H_GUARD
 #define ADD_H_GUARD
+
 
 #include <thrust/device_vector.h>
 #include <thrust/sequence.h>
@@ -46,6 +48,7 @@ using namespace std;
 #include "strings.h"
 #include "itoa.h"
 #include <ctime>
+#include <limits>
 
 typedef double float_type;
 typedef long long int int_type;
@@ -323,7 +326,6 @@ public:
     void writeHeader(char* file_name, unsigned int col); 
     void Store(char* file_name, char* sep, unsigned int limit, bool binary);
     void compress_char(string file_name, unsigned int index, unsigned int mCount);
-    void LoadFile(char* file_name, char* sep );
     int LoadBigFile(const char* file_name, const char* sep);
     void free();
     bool* logical_and(bool* column1, bool* column2);
@@ -388,6 +390,6 @@ unsigned int max_char(CudaSet* a, set<string> field_names);
         exit(EXIT_FAILURE);                                                  \
     } } while (0)
 
-#define EPSILON    (1.0E-8)
+
 
 

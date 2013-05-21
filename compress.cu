@@ -458,18 +458,15 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     long long int start_val = 0;
     bool sorted = 0;
 
-    if(tp == 0)
-        recCount = source_len/int_size;
-    else
-        recCount = source_len/float_size;
-
     // check if sorted
 
     if (tp == 0) {
+	    recCount = source_len/int_size;
         thrust::device_ptr<int_type> s((int_type*)source);
         sorted = thrust::is_sorted(s, s+recCount-1);
     }
     else {
+	    recCount = source_len/float_size;
         thrust::device_ptr<long long int> s((long long int*)source);
         sorted = thrust::is_sorted(s, s+recCount);
     };
