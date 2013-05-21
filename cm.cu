@@ -1364,18 +1364,19 @@ int CudaSet::LoadBigFile(const char* file_name, const char* sep )
 	};	
 
 	map<unsigned int,unsigned int> col_map;
-	for(unsigned int i = 0; i < mColumnCount-1; i++) {
+	for(unsigned int i = 0; i < mColumnCount; i++) {
 		col_map[cols[i]] = i;
 	};		
 
     while (count < process_count && fgets(line, 1000, file_p) != NULL) {
-
+        strtok(line, "\n");
         current_column = 0;
 		
         for(t=mystrtok(&p,line,'|');t;t=mystrtok(&p,0,'|')) {
 			current_column++;
-			if(col_map.find(current_column) == col_map.end())
+			if(col_map.find(current_column) == col_map.end()) {
 				continue;					  
+			};	
           
 			index = col_map[current_column];
             if (type[index] == 0) {
