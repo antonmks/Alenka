@@ -1207,10 +1207,6 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
     }
     else if(text_source) {  //writing a binary file using a text file as a source
 
-									for(int z = 0; z < 10;z++)
-		                    cout << "FLST " << h_columns_float[4][15670+z] << " " <<  endl;
-
-	
         char str[100];
         char col_pos[3];
         total_count = total_count + mCount;
