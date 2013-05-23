@@ -223,7 +223,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigne
 void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsigned int count, unsigned int g_size);
 void mycopy(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsigned int count, unsigned int g_size);
 void write_compressed_char(string file_name, unsigned int index, unsigned int mCount);
-unsigned int largest_prm(CudaSet* a);
+unsigned long long int largest_prm(CudaSet* a);
 unsigned int max_tmp(CudaSet* a);
 
 
@@ -294,7 +294,7 @@ CudaSet::~CudaSet()
 };
 
 
-void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount)
+void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned long long int RecordCount)
 {
     if (type[colIndex] == 0) {
         d_columns_int[type_index[colIndex]].resize(RecordCount);
@@ -303,7 +303,12 @@ void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCoun
         d_columns_float[type_index[colIndex]].resize(RecordCount);
     else {
         void* d;
-        cudaMalloc(&d, char_size[type_index[colIndex]]*RecordCount);
+		unsigned long long int sz = (unsigned long long int)RecordCount*char_size[type_index[colIndex]];
+        cudaError_t cudaStatus = cudaMalloc(&d, sz);
+		if(cudaStatus != cudaSuccess) {
+			cout << "Could not allocate " << sz << " bytes of GPU memory" << endl;
+			exit(0);
+		};
         d_columns_char[type_index[colIndex]] = (char*)d;
     };
 };
@@ -561,7 +566,7 @@ void CudaSet::deAllocColumnOnDevice(unsigned int colIndex)
     };
 };
 
-void CudaSet::allocOnDevice(unsigned int RecordCount)
+void CudaSet::allocOnDevice(unsigned long long int RecordCount)
 {
     for(unsigned int i=0; i < mColumnCount; i++)
         allocColumnOnDevice(i, RecordCount);
@@ -1202,6 +1207,10 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
     }
     else if(text_source) {  //writing a binary file using a text file as a source
 
+									for(int z = 0; z < 10;z++)
+		                    cout << "FLST " << h_columns_float[4][15670+z] << " " <<  endl;
+
+	
         char str[100];
         char col_pos[3];
         total_count = total_count + mCount;
@@ -1221,8 +1230,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
 
             strcat(str,".");
             itoaa(total_segments-1,col_pos);
-            strcat(str,col_pos);
-
+            strcat(str,col_pos);			
 
             if(type[i] == 0) {
                 thrust::device_ptr<int_type> d_col((int_type*)d);
@@ -1231,7 +1239,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
             }
             else if(type[i] == 1) {
                 if(decimal[i]) {
-                    thrust::device_ptr<float_type> d_col((float_type*)d);
+                    thrust::device_ptr<float_type> d_col((float_type*)d);				
                     thrust::copy(h_columns_float[type_index[i]].begin(), h_columns_float[type_index[i]].begin() + mCount, d_col);
                     thrust::device_ptr<long long int> d_col_dec((long long int*)d);
                     thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
@@ -1350,6 +1358,7 @@ void CudaSet::compress_char(string file_name, unsigned int index, unsigned int m
 
 
 
+
 int CudaSet::LoadBigFile(const char* file_name, const char* sep )
 {
     char line[1000];
@@ -1401,7 +1410,7 @@ int CudaSet::LoadBigFile(const char* file_name, const char* sep )
     };
 
     mRecCount = count;
-
+	
     if(count < process_count)  {
         fclose(file_p);
         return 1;
@@ -1883,21 +1892,21 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[i] = 0;
             decimal[i] = 0;
-            h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >(cnt + 9));
+            h_columns_int.push_back(thrust::host_vector<int_type>(cnt + 9));
             d_columns_int.push_back(thrust::device_vector<int_type>());
             type_index[i] = h_columns_int.size()-1;
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(cnt + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
             d_columns_float.push_back(thrust::device_vector<float_type >());
             type_index[i] = h_columns_float.size()-1;
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(cnt + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
@@ -1942,21 +1951,21 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[i] = 0;
             decimal[i] = 0;
-            h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >());
+            h_columns_int.push_back(thrust::host_vector<int_type>());
             d_columns_int.push_back(thrust::device_vector<int_type>());
             type_index[i] = h_columns_int.size()-1;
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >());
+            h_columns_float.push_back(thrust::host_vector<float_type>());
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >());
+            h_columns_float.push_back(thrust::host_vector<float_type>());
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
@@ -2224,9 +2233,9 @@ void allocColumns(CudaSet* a, queue<string> fields)
     };
 }
 
-unsigned int largest_prm(CudaSet* a)
+unsigned long long int largest_prm(CudaSet* a)
 {
-    unsigned int maxx = 0;
+    unsigned long long int maxx = 0;
 
     for(unsigned int i = 0; i < a->prm_count.size(); i++)
         if(maxx < a->prm_count[i])
@@ -2527,7 +2536,7 @@ void setSegments(CudaSet* a, queue<string> cols)
             tot_sz = tot_sz + a->char_size[a->type_index[idx]];
         cols.pop();		
 	};
-	if(a->mRecCount*tot_sz > mem_available/5) { //default is 3
+	if(a->mRecCount*tot_sz > mem_available/3) { //default is 3
 	    a->segCount = (a->mRecCount*tot_sz)/(mem_available/5) + 1;	
 		a->maxRecs = (a->mRecCount/a->segCount)+1;
 	};

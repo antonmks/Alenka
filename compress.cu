@@ -281,7 +281,7 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
 
 
 template< typename T>
-unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host, bool tp, unsigned long long int sz)
+unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host, bool tp, unsigned long long int sz)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -446,7 +446,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
 
 template< typename T>
-unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host,  bool tp, unsigned long long int sz)
+unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host,  bool tp, unsigned long long int sz)
 {
     unsigned int recCount;
     long long int orig_lower_val;
@@ -487,11 +487,12 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
+	     
         thrust::device_ptr<long long int> s((long long int*)source);
-
+	
         orig_lower_val = *(thrust::min_element(s, s + recCount));
-        orig_upper_val = *(thrust::max_element(s, s + recCount));
-
+        orig_upper_val = *(thrust::max_element(s, s + recCount));		
+		
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
