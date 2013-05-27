@@ -10,8 +10,9 @@ Ultra fast compression and decompression performed directly inside GPU.
 Column-based storage 
 Minimize disk I/O by only accessing the relevant data.
   
-Data skipping. Better performance without indexes.
+Data skipping
+Better performance without indexes.
 
 Support for sorted merge and hash joins, including star join.
   
-Open source and free.
+Open source and free. 
