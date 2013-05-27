@@ -10,6 +10,8 @@ Ultra fast compression and decompression performed directly inside GPU
 Column-based storage 
 Minimize disk I/O by only accessing the relevant data
   
-Support for zone maps. All columns have indexes for better performance.
+Data skipping. Better performance without indexes.
+
+Support for sorted merge and hash joins, including star join
   
 Open source and free 
