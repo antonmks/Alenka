@@ -306,7 +306,7 @@ void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned long long int 
 		unsigned long long int sz = (unsigned long long int)RecordCount*char_size[type_index[colIndex]];
         cudaError_t cudaStatus = cudaMalloc(&d, sz);
 		if(cudaStatus != cudaSuccess) {
-			cout << "Could not allocate " << sz << " bytes of GPU memory" << endl;
+			cout << "Could not allocate " << sz << " bytes of GPU memory for " << RecordCount << " records " << endl;
 			exit(0);
 		};
         d_columns_char[type_index[colIndex]] = (char*)d;
@@ -775,7 +775,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     cudaMalloc((void **) &d_int, real_count*4);
 
     // convert bits to ints and then do gather
-
+	
     void* d_v;
     cudaMalloc((void **) &d_v, 8);
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
@@ -826,16 +826,15 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
 
 void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment)
 {    
-    if(not_compressed) 
-	{
+    if(not_compressed) 	{
 	    // calculate how many records we need to copy
 		if(segment < segCount-1) {
 			mRecCount = maxRecs;
 		}
         else {
 			mRecCount = oldRecCount - maxRecs*(segCount-1);
-        };
-		
+        };		
+	
         switch(type[colIndex]) {
         case 0 :
             if(!alloced_switch)
@@ -861,7 +860,6 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment)
         };
     }
     else {
-
         unsigned long long int data_offset;
         if (partial_load) 
             data_offset = readSegmentsFromFile(segment,colIndex);
@@ -880,6 +878,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment)
             else {
                 mRecCount = pfor_decompress(alloced_tmp, h_columns_int[type_index[colIndex]].data() + data_offset, d_v, s_v);
             };
+			
         }
         else if(type[colIndex] == 1) {
             if(decimal[colIndex]) {
@@ -2303,7 +2302,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigne
                 t = varNames[setMap[fields.front()]];
                 if(a->prm_count[segment]) {
                     alloced_switch = 1;
-                    t->CopyColumnToGpu(t->columnNames[fields.front()], segment); // segment i
+                    t->CopyColumnToGpu(t->columnNames[fields.front()], segment); 
                     gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
                 }
@@ -2311,7 +2310,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigne
                     a->mRecCount = 0;
             }
             else {
-                a->CopyColumnToGpu(a->columnNames[fields.front()], segment); // segment i
+                a->CopyColumnToGpu(a->columnNames[fields.front()], segment); 
             };
             uniques.insert(fields.front());
         };
@@ -2538,4 +2537,5 @@ void setSegments(CudaSet* a, queue<string> cols)
 	};
 
 };
+
 

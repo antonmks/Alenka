@@ -58,6 +58,8 @@ STREAM { return STREAM; }
 BINARY { return BINARY; }
 DISTINCT { return DISTINCT; }
 LEFT { return LEFT; }
+RIGHT { return RIGHT; }
+OUTER { return OUTER; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }

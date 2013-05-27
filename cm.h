@@ -55,6 +55,7 @@ typedef long long int int_type;
 typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
 typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
 typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
+typedef thrust::device_vector<int>::iterator   IndexIterator2;
 typedef thrust::device_ptr<int> IndexIterator1;
 
 
@@ -103,6 +104,25 @@ template<typename T>
   }
 };
 
+ struct is_positive
+ {
+     __host__ __device__
+     bool operator()(const int x)
+     {
+       return (x >= 0);
+     }
+ };
+ 
+ struct set_minus : public binary_function<int,bool,int>
+{
+  /*! Function call operator. The return value is <tt>lhs + rhs</tt>.
+   */
+  __host__ __device__ int operator()(const int &lhs, const bool &rhs) const {
+		if (rhs) return lhs; else return -1;
+	}
+}; 
+
+  
 
 template <typename HeadFlagType>
 struct head_flag_predicate
@@ -129,18 +149,24 @@ struct float_to_long
     }
 };
 
-struct float_to_int_lower
+struct float_equal_to 
 {
+  /*! Function call operator. The return value is <tt>lhs == rhs</tt>.
+   */
+  __host__ __device__ bool operator()(const float_type &lhs, const float_type &rhs) const {
+    int_type l,r;
+    if ((long long int)((lhs+EPSILON)*100.0) > (long long int)(lhs*100.0))
+            l = (long long int)((lhs+EPSILON)*100.0);
+        else l = (long long int)(lhs*100.0);
+    if ((long long int)((rhs+EPSILON)*100.0) > (long long int)(rhs*100.0))
+            r = (long long int)((rhs+EPSILON)*100.0);
+        else r = (long long int)(rhs*100.0);
+		
 
-    __host__ __device__
-    unsigned int operator()(const float_type x)
-    {
-        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-            return (unsigned int) (((long long int)((x+EPSILON)*100.0) << 32) >> 32);
-        else return (unsigned int) ((((long long int)(x*100.0)) << 32) >> 32);
+      return (l == r);
+  }
+}; 
 
-    }
-};
 
 struct int_upper_equal_to 
 {

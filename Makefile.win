@@ -2,12 +2,12 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj itoa.obj \
-		 atof.obj bison.obj select.obj
+		 atof.obj bison.obj select.obj mgpucontext.obj format.obj
 	nvcc --compiler-options /MD -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj itoa.obj \
-		 atof.obj cm.obj bison.obj
+		 atof.obj cm.obj bison.obj mgpucontext.obj format.obj
 
 
 nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_20 -c
@@ -38,6 +38,11 @@ itoa.obj : itoa.cu itoa.h
 	$(nvcc) itoa.cu
 atof.obj : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
+mgpucontext.obj : moderngpu-master/src/mgpucontext.cpp 	
+	$(nvcc) moderngpu-master/src/mgpucontext.cpp
+format.obj : moderngpu-master/src/format.cpp 	
+	$(nvcc) moderngpu-master/src/format.cpp
+
 	
 clean : del bison.obj merge.obj \
          MurmurHash2_64.obj filter.obj \

@@ -1,3 +1,9 @@
+05/27/2013
+  Added a sorted merge joins as default join type.
+  Added support for left, right and outer joins.
+  Tested a few TPC-H queries on a 300GB dataset.
+
+
 05/10/2013
    Added support for star query joins (important for data warehousing applications)
      -look at star_schema_queries.zip

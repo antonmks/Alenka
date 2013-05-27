@@ -86,7 +86,9 @@
      LIMIT = 302,
      ON = 303,
      BINARY = 304,
-     LEFT = 305
+     LEFT = 305,
+     RIGHT = 306,
+     OUTER = 307
    };
 #endif
 
@@ -97,7 +99,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 68 "bison.y"
+#line 67 "bison.y"
 
     int intval;
     float floatval;
@@ -107,7 +109,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 111 "bison.tab.h"
+#line 113 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
