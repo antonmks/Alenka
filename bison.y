@@ -61,6 +61,7 @@
     void emit_join(char *s, char *j1, int grp);
     void emit_join_tab(char *s, char tp);
     void emit_distinct();
+	void emit_join();
 
 %}
 
@@ -99,7 +100,6 @@
 %left '^'
 %nonassoc UMINUS
 
-%token AND
 %token OR
 %token LOAD
 %token STREAM
@@ -128,7 +128,7 @@
 %token LEFT
 %token RIGHT
 %token OUTER
-
+%token AND
 
 %type <intval> load_list  opt_where opt_limit
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -184,6 +184,7 @@ NAME { emit_name($1); }
 | MIN '(' expr ')' { emit_min(); }
 | MAX '(' expr ')' { emit_max(); }
 | DISTINCT expr { emit_distinct(); }
+| JOIN { emit_join(); }
 ;
 
 expr:
@@ -241,11 +242,11 @@ opt_where:
 BY expr { emit("FILTER BY"); };
 
 join_list:
-JOIN NAME ON expr { $$ = 1; emit_join_tab($2, 'I');}
-| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'L');}
+JOIN NAME ON expr{ $$ = 1; emit_join_tab($2, 'I');}
+| LEFT JOIN NAME ON expr{ $$ = 1; emit_join_tab($3, 'L');}
 | RIGHT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'R');}
 | OUTER JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'O');}
-| JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($2, 'I'); };
+| JOIN NAME ON expr join_list{ $$ = 1; emit_join_tab($2, 'I'); };
 | LEFT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'L'); };
 | RIGHT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'R'); };
 | OUTER JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'O'); };
@@ -292,6 +293,7 @@ unsigned int join_cnt = 0;
 unsigned int distinct_cnt = 0;
 unsigned int join_col_cnt = 0;
 unsigned int join_tab_cnt = 0;
+unsigned int tab_cnt = 0;
 queue<string> op_join;
 queue<char> join_type;
 
@@ -365,19 +367,29 @@ void emit_div()
     op_type.push("DIV");
 }
 
+unsigned int misses = 0;
+
 void emit_and()
 {
     op_type.push("AND");
     join_col_cnt++;
-	if(join_and_cnt.count(join_tab_cnt) == 0)
-	    join_and_cnt[join_tab_cnt] = 1;
-	else	
-		join_and_cnt[join_tab_cnt] = join_and_cnt[join_tab_cnt] + 1;
+	//cout << "AND "  << endl;	
 }
 
 void emit_eq()
-{
+{    
     op_type.push("JOIN");
+	if(misses == 0) {
+		join_and_cnt[tab_cnt] = join_col_cnt;	
+		//cout << "ASSIGN " << tab_cnt << " " << join_and_cnt[tab_cnt] << endl;
+		misses = join_col_cnt;
+		join_col_cnt = 0;		
+		tab_cnt++;
+	}
+	else {
+		misses--;
+	}
+	//cout << "eq " << endl;
 }
 
 void emit_distinct()
@@ -385,6 +397,12 @@ void emit_distinct()
     op_type.push("DISTINCT");
     distinct_cnt++;
 }
+
+void emit_join()
+{
+   cout << "emit join " << endl;
+}
+
 
 void emit_or()
 {
@@ -476,9 +494,8 @@ void emit_join_tab(char *s, char tp)
     op_join.push(s);
 	join_tab_cnt++;
     join_type.push(tp);
+	//cout << "join tab " << join_tab_cnt << endl;
 };
-
-
 
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, unsigned int segment)
@@ -1083,7 +1100,7 @@ void emit_join(char *s, char *j1, int grp)
 		else {
 			string j2 = op_join.front();	
 			op_join.pop();
-			emit_multijoin(s, j1, j2, 0, s);
+			emit_multijoin(s, j1, j2, 1, s);
 		}; 
     };		
 	
@@ -1127,11 +1144,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     CudaSet* left = varNames.find(j1)->second;
     CudaSet* right = varNames.find(j2)->second;
 	
-	
-	
-	//cout << "left right " << left->name << " " << right->name <<  endl;
-	//cout << "selcount " <<  sel_count << endl;
-
     queue<string> op_sel;
     queue<string> op_sel_as;
     for(int i=0; i < sel_count; i++) {
@@ -1143,44 +1155,17 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	
 	queue<string> op_sel_s(op_sel);
 	queue<string> op_sel_s_as(op_sel_as);
-	queue<string> op_g(op_value);
-	
+	queue<string> op_g(op_value);	
 	
 	//cout << "join_col_cnt " << join_col_cnt << endl;			 
-	if(tab) {
-	
-	    unsigned int mul_count = 0;
-		unsigned int sm = 0;
-	    if(join_and_cnt.size()) {
-			
-			for(int z = 0; z < join_and_cnt.size() - (tab-1); z++) {
-				mul_count = mul_count + join_and_cnt[z];
-			};	
-			
-			//cout << "mul count " << mul_count << endl;	
-		
-			//cout << "join_and_cnt size " << join_and_cnt.size() << endl;
-			for(int z = 0; z < join_and_cnt.size(); z++)
-				sm = sm + join_and_cnt[z];
-		
-			//cout << "sm count " << sm << endl;		
-            //cout << "SZ " << join_and_cnt.size() << endl;			
-		
-		    if (join_and_cnt.count(join_tab_cnt - tab))
-			    join_col_cnt = join_and_cnt[join_tab_cnt - tab];
-			else 
-               join_col_cnt = 0;			
-		
-			//cout << "join_col_cnt " << join_col_cnt << endl;						
-		};
-	
-	    while(op_g.size() != (tab*2 + (sm - mul_count)*2) ) {
-		    if(tab != join_tab_cnt) {
+	if(tab > 0) {			
+	    for(unsigned int z = 0; z < join_tab_cnt - tab; z++) {
+			for(unsigned int j = 0; j < join_and_cnt[z]*2 + 2; j++) {
 				op_sel_s.push(op_g.front());
-				op_sel_s_as.push(op_g.front());			
-			};	
-		    op_g.pop();	
-		};	
+				op_sel_s_as.push(op_g.front());						
+				op_g.pop();	
+			};		
+		};
 	};
 	
 
@@ -1280,7 +1265,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
     queue<string> op_vd(op_g);
     queue<string> op_alt(op_sel);
-    unsigned int jc = join_col_cnt;
+    unsigned int jc = join_and_cnt[join_tab_cnt - tab];
     while(jc) {
         jc--;
         op_vd.pop();
@@ -1408,11 +1393,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
 			thrust::sort_by_key(left->d_columns_int[idx].begin(), left->d_columns_int[idx].begin() + cnt_l, v_l.begin());			    						
 		    //cout << endl << "j1 " << getFreeMem() << endl;
-			//cout << "join " << cnt_l << ":" << cnt_r << endl;
+			//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 			
 			char join_kind = join_type.front();
 			join_type.pop();
-
+			
 			if (join_kind == 'I')
 				res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
 								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
@@ -1452,10 +1437,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			//std::cout<< endl << "join time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;            
 	
             // check if the join is a multicolumn join
-			
-			while(join_col_cnt) {			
+			unsigned int mul_cnt = join_and_cnt[join_tab_cnt - tab];
+			while(mul_cnt) {			
 			    		    
-                join_col_cnt--;
+                mul_cnt--;
                 string f3 = op_g.front();
                 op_g.pop();
                 string f4 = op_g.front();
@@ -1527,8 +1512,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             
             tot_count = tot_count + res_count;
 			
+		
+			
             if(res_count) {			
 
+			    
                 offset = c->mRecCount;
                 if(i == 0 && left->segCount != 1) {
                     c->reserve(res_count*(left->segCount+1));
@@ -1545,10 +1533,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				else
 					CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
 
-				
+					
                 while(!op_sel1.empty()) {
 				
-				  
                     while(!cc.empty())
                         cc.pop();
 
@@ -1561,7 +1548,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         // copy field's segment to device, gather it and copy to the host
                         colInd = left->columnNames[op_sel1.front()];						
                     
-                        reset_offsets();								
+                        reset_offsets();				
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);//possible that in some cases a join column would be copied to device twice
 						
@@ -1596,7 +1583,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         colInd = right->columnNames[op_sel1.front()];
 
                         //gather
-                        if(right->type[colInd] == 0) {				
+                        if(right->type[colInd] == 0) {			
 							thrust::device_ptr<int_type> d_tmp((int_type*)temp);	
 							thrust::sequence(d_tmp, d_tmp+res_count,0,0);
                             //thrust::permutation_iterator<ElementIterator_int,IndexIterator1> iter(right->d_columns_int[right->type_index[colInd]].begin(), d_res2);
@@ -1611,7 +1598,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                             thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset);							
                         }
                         else { //strings
-                            thrust::device_ptr<char> d_tmp((char*)temp);
+						
+	                        thrust::device_ptr<char> d_tmp((char*)temp);
 							thrust::sequence(d_tmp, d_tmp+res_count*right->char_size[right->type_index[colInd]],0,0);
                             str_gather(thrust::raw_pointer_cast(d_res2), res_count, (void*)right->d_columns_char[right->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);																   
@@ -1624,13 +1612,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         //exit(0);
                     };
                     op_sel1.pop();
+					
                 };
 				cudaFree(temp);
             };	
         };
     };
 
-	
     left->deAllocOnDevice();
     right->deAllocOnDevice();
     c->deAllocOnDevice();
@@ -2446,6 +2434,7 @@ void clean_queues()
     distinct_cnt = 0;
     reset_offsets();
 	join_tab_cnt = 0;
+	tab_cnt = 0;
 	join_and_cnt.clear();
 }
 
