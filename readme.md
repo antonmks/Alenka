@@ -33,7 +33,12 @@ This is a GPU based database engine written to use vector based processing and h
 
 ### How to use it ?
 
-##### Step 1 - Load the data from text files into data files ( {n} indicates a position in a file)
+Create your data files :
+
+Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create your database files.
+
+
+##### Step 1 - Load the data files 
 
 `O := LOAD 'orders' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, o_orderdate{5}:int, o_shippriority{8}:int);`
 
