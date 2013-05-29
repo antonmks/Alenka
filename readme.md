@@ -2,11 +2,11 @@
 
 ### How to build?
 
-Download Alenka
+Download [Alenka](https://github.com/antonmks/Alenka/archive/master.zip)
 
-Download CUDPP library [CUDPP](http://code.google.com/p/cudpp)
+Download [CUDPP](http://code.google.com/p/cudpp) library 
 
-Download ModernGPU library [ModernGpu](https://github.com/NVlabs/moderngpu)
+Download [ModernGpu](https://github.com/NVlabs/moderngpu) library
 
 Install CUDPP and ModernGPU into Alenka directory
 
