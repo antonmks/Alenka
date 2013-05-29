@@ -1,5 +1,4 @@
-Welcome to Alenka - GPU database engine
-====================================
+## Welcome to Alenka - GPU database engine
 
 ### How to build?
 
@@ -16,7 +15,7 @@ Run Makefile or Makefile.win
 
 ### What is this?
 
-This is a GPU based database engine that is created to take advantage of vector based processing and high bandwidth of modern GPUs
+This is a GPU based database engine written to use vector based processing and high bandwidth of modern GPUs
 
 ### Features :
 
