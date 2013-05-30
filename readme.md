@@ -81,7 +81,7 @@ Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create y
 
 `STORE RES INTO 'results.txt' USING ('|') LIMIT 10;`
 
-![CC SA](https://d2weczhvl823v0.cloudfront.net/antonmks/Alenka/trend.png)
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/924b3b89c15fc603702a40b6ef0a718f "githalytics.com")](http://githalytics.com/antonmks/Alenka)
 
 ---
 
