@@ -2,12 +2,12 @@ alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cm.o 
+		 atof.o cm.o mgpucontext.o format.o
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cm.o
+		 atof.o cm.o mgpucontext.o format.o
 		 
 
 nvcc = /usr/local/cuda/bin/nvcc --machine 64 -O3 -arch=sm_20 -c
@@ -38,9 +38,13 @@ atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
 cm.o : cm.cu cm.h	
 	$(nvcc) cm.cu
+mgpucontext.obj : moderngpu-master/src/mgpucontext.cpp 	
+	$(nvcc) moderngpu-master/src/mgpucontext.cpp
+format.obj : moderngpu-master/src/format.cpp 	
+	$(nvcc) moderngpu-master/src/format.cpp	
 	
 clean : del bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
-		 atof.o cm.o
+		 atof.o cm.o mgpucontext.o format.o

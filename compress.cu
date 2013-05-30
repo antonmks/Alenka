@@ -254,19 +254,15 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
         raw_decomp_length = cnt*8;
     };
 
-
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
-
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
     dd_sv[0] = orig_lower_val;
     dd_v[0] = bits;
     dd_v[1] = fit_count;
     dd_v[2] = bit_count;
-
-
+	
     thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
@@ -275,13 +271,12 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
         d_int[0] = start_val;
         thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
     };
-
     return orig_recCount;
 }
 
 
 template< typename T>
-unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host, bool tp, unsigned long long int sz)
+unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host, bool tp, unsigned long long int sz)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -446,7 +441,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
 
 template< typename T>
-unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, uninitialized_host_allocator<T> >& host,  bool tp, unsigned long long int sz)
+unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T>& host,  bool tp, unsigned long long int sz)
 {
     unsigned int recCount;
     long long int orig_lower_val;
@@ -487,11 +482,12 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
+	     
         thrust::device_ptr<long long int> s((long long int*)source);
-
+	
         orig_lower_val = *(thrust::min_element(s, s + recCount));
-        orig_upper_val = *(thrust::max_element(s, s + recCount));
-
+        orig_upper_val = *(thrust::max_element(s, s + recCount));		
+		
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };

@@ -10,28 +10,22 @@ S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_nationkey{4}:int );
 C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_nationkey{4}:int);
 L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int,  l_suppkey{3}:int, l_price{6}:decimal, l_discount{7}:decimal);
 
-
-
-F := SELECT o_custkey AS o_custkey, l_suppkey AS l_suppkey, l_price AS l_price, l_discount AS l_discount 
-     FROM L JOIN OFI ON l_orderkey = o_orderkey;
-	   
-F1 := SELECT  o_custkey AS o_custkey, s_nationkey AS s_nationkey, n_name AS n_name, l_price AS l_price, l_discount AS l_discount
-      FROM F JOIN S ON l_suppkey = s_suppkey
-	         JOIN N ON s_nationkey = n_nationkey
+   
+J1 := SELECT c_nationkey AS c_nationkey, n_name AS n_name, l_suppkey AS l_suppkey, l_price AS l_price, l_discount AS l_discount
+      FROM L JOIN OFI ON l_orderkey = o_orderkey
+             JOIN C ON o_custkey = c_custkey
+             JOIN N ON c_nationkey = n_nationkey
 	         JOIN RF ON n_regionkey = r_regionkey;
-	 
-  
-F2 := SELECT  n_name AS n_name, l_price AS l_price, l_discount AS l_discount
-      FROM F1 JOIN C ON o_custkey = c_custkey AND s_nationkey = c_nationkey;
+
+J2 := SELECT n_name AS n_name, l_price AS l_price, l_discount AS l_discount
+      FROM J1 JOIN S ON l_suppkey = s_suppkey AND c_nationkey = s_nationkey;
 	  
-	  
-F3 := SELECT n_name AS n_name1, SUM(l_price*(1-l_discount)) AS revenue FROM F2
+F := SELECT n_name AS n_name1, SUM(l_price*(1-l_discount)) AS revenue FROM J2
       GROUP BY n_name;
 	  
-F4 := ORDER F3 BY revenue DESC;	  
+F1 := ORDER F BY revenue DESC;	  
 
-STORE F4 INTO 'mytest.txt' USING ('|');
-
+STORE F1 INTO 'mytest.txt' USING ('|');
 
 
 

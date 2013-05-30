@@ -55,6 +55,8 @@ typedef long long int int_type;
 typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
 typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
 typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
+typedef thrust::device_vector<int>::iterator   IndexIterator2;
+typedef thrust::device_ptr<int> IndexIterator1;
 
 
 extern size_t int_size;
@@ -102,6 +104,25 @@ template<typename T>
   }
 };
 
+ struct is_positive
+ {
+     __host__ __device__
+     bool operator()(const int x)
+     {
+       return (x >= 0);
+     }
+ };
+ 
+ struct set_minus : public binary_function<int,bool,int>
+{
+  /*! Function call operator. The return value is <tt>lhs + rhs</tt>.
+   */
+  __host__ __device__ int operator()(const int &lhs, const bool &rhs) const {
+		if (rhs) return lhs; else return -1;
+	}
+}; 
+
+  
 
 template <typename HeadFlagType>
 struct head_flag_predicate
@@ -128,18 +149,24 @@ struct float_to_long
     }
 };
 
-struct float_to_int_lower
+struct float_equal_to 
 {
+  /*! Function call operator. The return value is <tt>lhs == rhs</tt>.
+   */
+  __host__ __device__ bool operator()(const float_type &lhs, const float_type &rhs) const {
+    int_type l,r;
+    if ((long long int)((lhs+EPSILON)*100.0) > (long long int)(lhs*100.0))
+            l = (long long int)((lhs+EPSILON)*100.0);
+        else l = (long long int)(lhs*100.0);
+    if ((long long int)((rhs+EPSILON)*100.0) > (long long int)(rhs*100.0))
+            r = (long long int)((rhs+EPSILON)*100.0);
+        else r = (long long int)(rhs*100.0);
+		
 
-    __host__ __device__
-    unsigned int operator()(const float_type x)
-    {
-        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-            return (unsigned int) (((long long int)((x+EPSILON)*100.0) << 32) >> 32);
-        else return (unsigned int) ((((long long int)(x*100.0)) << 32) >> 32);
+      return (l == r);
+  }
+}; 
 
-    }
-};
 
 struct int_upper_equal_to 
 {
@@ -246,8 +273,8 @@ size_t getFreeMem();
 class CudaSet
 {
 public:
-    std::vector<thrust::host_vector<int_type, uninitialized_host_allocator<int_type> > > h_columns_int;
-    std::vector<thrust::host_vector<float_type, uninitialized_host_allocator<float_type> > > h_columns_float;
+    std::vector<thrust::host_vector<int_type> > h_columns_int;
+    std::vector<thrust::host_vector<float_type> > h_columns_float;
 	//std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
     //std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;	
@@ -266,7 +293,7 @@ public:
 
 
     unsigned int mColumnCount;
-    unsigned long long int mRecCount;
+    unsigned long long int mRecCount, maxRecs;
     std::map<string,int> columnNames;
     std::map<string, FILE*> filePointers;
     bool *grp;
@@ -275,7 +302,7 @@ public:
     FILE *file_p;
     unsigned int *seq;
     bool keep;
-    unsigned int segCount, maxRecs;
+    unsigned int segCount;
     string name;
     char* load_file_name;
     unsigned int oldRecCount;
@@ -296,14 +323,14 @@ public:
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
 	CudaSet(queue<string> op_sel, queue<string> op_sel_as);
     ~CudaSet();
-    void allocColumnOnDevice(unsigned int colIndex, unsigned int RecordCount);	    
+    void allocColumnOnDevice(unsigned int colIndex, unsigned long long int RecordCount);	    
     void decompress_char_hash(unsigned int colIndex, unsigned int segment, unsigned int i_cnt);	
     void add_hashed_strings(string field, unsigned int segment, unsigned int i_cnt);
     void resize(unsigned int addRecs);
 	void resize_join(unsigned int addRecs);
 	void reserve(unsigned int Recs);
     void deAllocColumnOnDevice(unsigned int colIndex);
-    void allocOnDevice(unsigned int RecordCount);
+    void allocOnDevice(unsigned long long int RecordCount);
     void deAllocOnDevice();
     void resizeDeviceColumn(unsigned int RecCount, unsigned int colIndex);
     void resizeDevice(unsigned int RecCount);
@@ -357,7 +384,7 @@ extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 extern map<string,string> setMap; //map to keep track of column names and set names
 
 void allocColumns(CudaSet* a, queue<string> fields);
-unsigned int largest_prm(CudaSet* a);
+unsigned long long int largest_prm(CudaSet* a);
 void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, unsigned int& count);
 unsigned int getSegmentRecCount(CudaSet* a, unsigned int segment);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigned int& count);
