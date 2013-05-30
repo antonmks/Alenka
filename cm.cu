@@ -2221,12 +2221,13 @@ void allocColumns(CudaSet* a, queue<string> fields)
                     else {
                         a->allocColumnOnDevice(idx, largest_prm(a));
                     };
-                };
-            };
+                }
+            }
             fields.pop();
         };
     };
 }
+
 
 unsigned long long int largest_prm(CudaSet* a)
 {

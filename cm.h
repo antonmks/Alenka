@@ -37,7 +37,6 @@ using namespace std;
 #include <thrust/gather.h>
 #include <thrust/sort.h>
 #include <thrust/functional.h>
-#include <boost/unordered_map.hpp>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
 #include <string>
