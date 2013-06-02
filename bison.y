@@ -2021,7 +2021,7 @@ void emit_select(char *s, char *f, int ll)
     if(a->segCount > 1)
         tmp_size = a->maxRecs;
 		
-    boost::unordered_map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
+    map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
     vector<thrust::device_vector<int_type> > distinct_val; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_hash; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_tmp;
