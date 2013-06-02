@@ -34,7 +34,7 @@ struct T_str_sort {
 /// The conversion between big endian and little endian, it need for sort strings as like fundamental types
 struct T_swap_le_be_64 {
 	__host__ __device__ 
-	inline unsigned long long operator()(unsigned unsigned long long const& val) const {
+	inline unsigned long long operator()(unsigned long long const& val) const {
 		return ((((unsigned long long)255<<(8*7)) & val) >> (8*7)) |
 			((((unsigned long long)255<<(8*6)) & val) >> (8*5)) |
 			((((unsigned long long)255<<(8*5)) & val) >> (8*3)) |
@@ -71,15 +71,16 @@ struct T_swap_le_be_8 {
 //---------------------------------------------------------------------------
 
 /// GPU-optimized radix sort 1 - 8 bytes for fundamental integer types, based on the fact that CUDA little-endian.
+/// Speedup in 8 times.
 template<typename T, typename T_swap_le_be>
 static inline void optimized_str_sort(char* tmp, const size_t RecCount, thrust::device_ptr<unsigned int> &dev_per, const bool desc_order, T_swap_le_be const& swap_le_be) { 
 		thrust::device_ptr<T> temp((T *)tmp);
-		thrust::transform(temp, temp+RecCount, temp, swap_le_be);
+		thrust::transform(temp, temp+RecCount, temp, swap_le_be);	// Transform BE to LE data of string
 		if(desc_order)
 			thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<T>());
 		else
 			thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
-		thrust::transform(temp, temp+RecCount, temp, swap_le_be);
+		thrust::transform(temp, temp+RecCount, temp, swap_le_be);	// Transform LE to BE data of string
 }
 
 /// Using specialization for GPU-optimized radix sort (1 - 8 bytes)
