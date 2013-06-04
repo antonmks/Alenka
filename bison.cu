@@ -4044,7 +4044,7 @@ void emit_select(char *s, char *f, int ll)
     for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it)  {
         op_vx.push(*it);
     };
-
+	
     // find out how many columns a new set will have
     queue<string> op_t(op_type);
     int_type col_count = 0;
@@ -4056,8 +4056,8 @@ void emit_select(char *s, char *f, int ll)
     CudaSet *b, *c;
 
     curr_segment = 10000000;
-	
-	setSegments(a, op_vx);
+	if(a->segCount <= 1)
+		setSegments(a, op_vx);
     allocColumns(a, op_vx);
 	
     unsigned int cycle_count;
@@ -4065,7 +4065,6 @@ void emit_select(char *s, char *f, int ll)
         cycle_count = varNames[setMap[op_value.front()]]->segCount;
     else
         cycle_count = a->segCount;
-	cout << "cycle count " << cycle_count << endl;	
 
     unsigned long long int ol_count = a->mRecCount;
 	unsigned int cnt;
@@ -4078,7 +4077,7 @@ void emit_select(char *s, char *f, int ll)
     if(a->segCount > 1)
         tmp_size = a->maxRecs;
 		
-    map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
+    boost::unordered_map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
     vector<thrust::device_vector<int_type> > distinct_val; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_hash; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_tmp;
@@ -4360,14 +4359,18 @@ void emit_store_binary(char *s, char *f)
     };
     total_count = 0;
     total_segments = 0;
-    fact_file_loaded = 0;
-
-    while(!fact_file_loaded)	{
-        cout << "LOADING " << f_file << " " << separator << endl;
-        if(a->text_source)
-            fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
-        a->Store(f,"", limit, 1);
-    };
+    
+	if(fact_file_loaded) {
+		a->Store(f,"", limit, 1);	
+	}
+	else { 
+		while(!fact_file_loaded)	{
+			cout << "LOADING " << f_file << " " << separator << endl;
+			if(a->text_source)
+				fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
+			a->Store(f,"", limit, 1);
+		};
+	};	
 
     if(stat[f] == statement_count && !a->keep) {
         a->free();
@@ -4452,6 +4455,7 @@ void emit_load(char *s, char *f, int d, char* sep)
     a->maxRecs = a->mRecCount;
     a->segCount = 0;
     varNames[s] = a;
+	fact_file_loaded = 0;
 
     if(stat[s] == statement_count)  {
         a->free();

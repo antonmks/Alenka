@@ -35,7 +35,7 @@ unsigned int total_max;
 unsigned int process_count;
 map <unsigned int, unsigned int> str_offset;
 long long int totalRecs = 0;
-bool fact_file_loaded = 0;
+bool fact_file_loaded = 1;
 char map_check;
 void* d_v = NULL;
 void* s_v = NULL;
@@ -745,47 +745,48 @@ unsigned long long int CudaSet::readSegmentsFromFile(unsigned int segNum, unsign
 
 void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum)
 {
+
+
     unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
     const unsigned int len = char_size[type_index[colIndex]];
-
+		
     fread(&sz, 4, 1, f);
     char* d_array = new char[sz*len];
     fread((void*)d_array, sz*len, 1, f);
-
     void* d;
     cudaMalloc((void **) &d, sz*len);
     cudaMemcpy( d, (void *) d_array, sz*len, cudaMemcpyHostToDevice);
     delete[] d_array;
+	
 
     fread(&fit_count, 4, 1, f);
     fread(&bits_encoded, 4, 1, f);
     fread(&vals_count, 4, 1, f);
     fread(&real_count, 4, 1, f);
-
+	
+	thrust::device_ptr<unsigned int> param = thrust::device_malloc<unsigned int>(2);
+    param[1] = fit_count;
+    param[0] = bits_encoded;
+	
     unsigned long long int* int_array = new unsigned long long int[vals_count];
     fread((void*)int_array, 1, vals_count*8, f);
     fclose(f);
-
+	
     void* d_val;
     cudaMalloc((void **) &d_val, vals_count*8);
     cudaMemcpy(d_val, (void *) int_array, vals_count*8, cudaMemcpyHostToDevice);
-    delete[] int_array;
+    delete[] int_array;	
 
     void* d_int;
     cudaMalloc((void **) &d_int, real_count*4);
 
     // convert bits to ints and then do gather
 	
-    void* d_v;
-    cudaMalloc((void **) &d_v, 8);
-    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-    dd_v[1] = fit_count;
-    dd_v[0] = bits_encoded;
 
     thrust::counting_iterator<unsigned int> begin(0);
-    decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v);
+    decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
     thrust::for_each(begin, begin + real_count, ff);
-
+	
     //thrust::device_ptr<unsigned int> dd_r((unsigned int*)d_int);
     //for(int z = 0 ; z < 3; z++)
     //cout << "DD " << dd_r[z] << endl;
@@ -802,7 +803,8 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
         str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
     else
         str_gather(d_int, real_count, d, alloced_tmp, len);
-
+		
+		
     if(!prm.empty()) {
         str_offset[colIndex] = str_offset[colIndex] + prm_count[segNum];
     }
@@ -818,7 +820,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
 
     cudaFree(d);
     cudaFree(d_val);
-    cudaFree(d_v);
+    thrust::device_free(param);
     cudaFree(d_int);
 }
 
@@ -861,6 +863,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment)
     }
     else {
         unsigned long long int data_offset;
+		
         if (partial_load) 
             data_offset = readSegmentsFromFile(segment,colIndex);
 
@@ -1105,6 +1108,67 @@ void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, uns
     thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());
 };
 
+void CudaSet::compress(char* file_name, unsigned int offset, unsigned int check_type, unsigned int check_val, void* d, unsigned int mCount)
+{
+    char str[100];
+    char col_pos[3];
+	
+	total_count = total_count + mCount;
+	total_segments = total_segments + 1;
+	if (mCount > total_max)
+		total_max = mCount;
+	
+
+	for(unsigned int i = 0; i< mColumnCount; i++) {			    
+		strcpy(str, file_name);
+		strcat(str,".");
+		itoaa(cols[i],col_pos);
+		strcat(str,col_pos);
+		curr_file = str;
+		strcat(str,".");
+		itoaa(total_segments-1,col_pos);
+		strcat(str,col_pos);	
+	
+		if(type[i] == 0) {
+			thrust::device_ptr<int_type> d_col((int_type*)d);					
+			thrust::copy(h_columns_int[type_index[i]].begin() + offset, h_columns_int[type_index[i]].begin() + offset + mCount, d_col);
+			pfor_compress( d, mCount*int_size, str, h_columns_int[type_index[i]], 0, 0);
+		}
+		else if(type[i] == 1) {
+			if(decimal[i]) {
+				thrust::device_ptr<float_type> d_col((float_type*)d);				
+				thrust::copy(h_columns_float[type_index[i]].begin() + offset, h_columns_float[type_index[i]].begin() + offset + mCount, d_col);
+				thrust::device_ptr<long long int> d_col_dec((long long int*)d);
+				thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
+				pfor_compress( d, mCount*float_size, str, h_columns_float[type_index[i]], 1, 0);
+			}
+			else { // do not compress -- float
+				fstream binary_file(str,ios::out|ios::binary|fstream::app);
+				binary_file.write((char *)&mCount, 4);
+				binary_file.write((char *)(h_columns_float[type_index[i]].data() + offset),mCount*float_size);
+				unsigned int comp_type = 3;
+				binary_file.write((char *)&comp_type, 4);
+				binary_file.close();
+			};
+		}
+		else { //char
+			compress_char(str, i, mCount, offset);
+		};	   
+
+        if(check_type == 1) {
+			if(fact_file_loaded) {
+                writeHeader(file_name, cols[i]);
+            }
+		}
+		else {
+			if(check_val == 0) {
+				writeHeader(file_name, cols[i]);
+			};
+		};
+		
+	}; 
+}	
+
 
 void CudaSet::writeHeader(char* file_name, unsigned int col) {
 
@@ -1135,7 +1199,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
         return;
     };
 
-    unsigned int mCount;
+    unsigned int mCount, cnt;
 
     if(limit != 0 && limit < mRecCount)
         mCount = limit;
@@ -1206,17 +1270,14 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
     }
     else if(text_source) {  //writing a binary file using a text file as a source
 
-        char str[100];
-        char col_pos[3];
-        total_count = total_count + mCount;
-        total_segments = total_segments + 1;
-        if (mCount > total_max)
-            total_max = mCount;
+        //char str[100];
+        //char col_pos[3];
 
         void* d;
         CUDA_SAFE_CALL(cudaMalloc((void **) &d, mCount*float_size));
 
-        for(unsigned int i = 0; i< mColumnCount; i++) {
+		compress(file_name, 0, 1, 0, d, mCount);
+        /*for(unsigned int i = 0; i< mColumnCount; i++) {
             strcpy(str, file_name);
             strcat(str,".");
             itoaa(cols[i],col_pos);
@@ -1250,7 +1311,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
                 };
             }
             else { //char
-                compress_char(str, i, mCount);
+                compress_char(str, i, mCount, 0);
             };
 
             if(fact_file_loaded) {
@@ -1258,6 +1319,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
             };
 
         };
+		*/
 
 
         for(unsigned int i = 0; i< mColumnCount; i++)
@@ -1269,14 +1331,71 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
     }
     else { //writing a binary file using a binary file as a source
         fact_file_loaded = 1;
-        // do it for every segment
+		unsigned int offset = 0;
+		
+		void* d;
+		if(mRecCount < process_count) {
+			CUDA_SAFE_CALL(cudaMalloc((void **) &d, mRecCount*float_size));
+		}
+		else {
+			CUDA_SAFE_CALL(cudaMalloc((void **) &d, process_count*float_size));
+		};  
+		
+		
+		if(!not_compressed) { // records are compressed, for example after filter op.
+		//decompress to host
+		    queue<string> op_vx;
+			for ( map<string,int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it ) {
+				op_vx.push((*it).first);
+			};	
+			
+			allocColumns(this, op_vx);
+			unsigned int oldCnt = mRecCount;
+			mRecCount = 0;
+			resize(oldCnt);
+			mRecCount = oldCnt;
+			for(unsigned int i = 0; i < segCount; i++) {   
+				cnt = 0;
+				copyColumns(this, op_vx, i, cnt);		
+				reset_offsets();
+				CopyToHost(0, mRecCount);
+				offset = offset + mRecCount;		
+				compress(file_name, 0, 0, i - (segCount-1), d, mRecCount);		
+			};			
+			//mRecCount = offset;			
+		}
+		else {
+		
+		
+		// now we have decompressed records on the host
+		//call setSegments and compress columns in every segment		
+		
+			segCount = mRecCount/process_count + 1;	
+			offset = 0;	
+		
+			for(unsigned int z = 0; z < segCount; z++) {   
+		
+				if(z < segCount-1) {
+					if(mRecCount < process_count) {
+						mCount = mRecCount;
+					}
+					else {
+						mCount = process_count;
+					} 				
+				}	
+				else
+					mCount = mRecCount - (segCount-1)*process_count;
 
-        // will add this later
+				compress(file_name, offset, 0, z - (segCount-1), d, mCount);
+				offset = offset + mCount;		
+			};	
+			cudaFree(d);        
+		};	
     };
 }
 
 
-void CudaSet::compress_char(string file_name, unsigned int index, unsigned int mCount)
+void CudaSet::compress_char(string file_name, unsigned int index, unsigned int mCount, unsigned int offset)
 {
     std::map<string,unsigned int> dict;
     std::vector<string> dict_ordered;
@@ -1290,7 +1409,7 @@ void CudaSet::compress_char(string file_name, unsigned int index, unsigned int m
 
     for (unsigned int i = 0 ; i < mCount; i++) {
 
-        strncpy(field, h_columns_char[type_index[index]] + i*len, char_size[type_index[index]]);
+        strncpy(field, h_columns_char[type_index[index]] + (i+offset)*len, char_size[type_index[index]]);
 
         if((iter = dict.find(field)) != dict.end()) {
             dict_val.push_back(iter->second);

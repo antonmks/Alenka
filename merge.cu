@@ -59,7 +59,7 @@ void create_c(CudaSet* c, CudaSet* b)
     };
 }
 
-void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<long long int, unsigned int>& mymap, map<string,string> aliases,
+void add(CudaSet* c, CudaSet* b, queue<string> op_v3, boost::unordered_map<long long int, unsigned int>& mymap, map<string,string> aliases,
          vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
          vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
 {
@@ -69,7 +69,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<long long int, unsigne
         create_c(c,b);
     }
 
-    map<long long int, unsigned int>::const_iterator got;
+    boost::unordered_map<long long int, unsigned int>::const_iterator got;
 
     b->CopyToHost(0, b->mRecCount);
 
@@ -84,7 +84,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<long long int, unsigne
         opv.push_back(b->columnNames[aliases[op_v3.front()]]);
         op_v3.pop();
     };
-	
 	
     unsigned int idx, curr;    
     unsigned long long int loc;
@@ -287,7 +286,7 @@ void count_simple(CudaSet* c)
 };
 
 
-void count_avg(CudaSet* c, map<long long int, unsigned int>& mymap, vector<thrust::device_vector<int_type> >& distinct_hash)
+void count_avg(CudaSet* c, boost::unordered_map<long long int, unsigned int>& mymap, vector<thrust::device_vector<int_type> >& distinct_hash)
 {
     int countIndex;
 

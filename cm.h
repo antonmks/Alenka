@@ -37,6 +37,7 @@ using namespace std;
 #include <thrust/gather.h>
 #include <thrust/sort.h>
 #include <thrust/functional.h>
+#include <boost/unordered_map.hpp>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
 #include <string>
@@ -349,9 +350,10 @@ public:
     void GroupBy(std::stack<string> columnRef, unsigned int int_col_count);
     void addDeviceColumn(int_type* col, int colIndex, string colName, unsigned int recCount);
     void addDeviceColumn(float_type* col, int colIndex, string colName, unsigned int recCount);
+	void compress(char* file_name, unsigned int offset, unsigned int check_type, unsigned int check_val, void* d, unsigned int mCount);
     void writeHeader(char* file_name, unsigned int col); 
     void Store(char* file_name, char* sep, unsigned int limit, bool binary);
-    void compress_char(string file_name, unsigned int index, unsigned int mCount);
+    void compress_char(string file_name, unsigned int index, unsigned int mCount, unsigned int offset);
     int LoadBigFile(const char* file_name, const char* sep);
     void free();
     bool* logical_and(bool* column1, bool* column2);
