@@ -40,6 +40,48 @@ void str_copy_if(char* source, const size_t mRecCount, char* dest, thrust::devic
 	else if(len  == 101) T_str_copy_if<101>().operator()(source, mRecCount, dest, d_grp);
 	else if(len  == 255) T_str_copy_if<255>().operator()(source, mRecCount, dest, d_grp);
 }
+
+
+/// Filtering on device static strings (functor)
+template<unsigned int len>
+struct T_str_copy_if_host {
+	inline void operator()(char* source, const size_t mRecCount, char* dest, thrust::host_vector<bool>& grp) {
+
+		thrust::copy_if((Str<len> *)source, (Str<len> *)source + mRecCount, grp.begin(), (Str<len> *)dest, thrust::identity<bool>());
+	}
+};
+
+
+void str_copy_if_host(char* source, size_t mRecCount, char* dest, thrust::host_vector<bool>& grp, unsigned int len)
+{
+	T_unroll_functor<UNROLL_COUNT, T_str_copy_if_host> str_copy_if_host_functor;
+    if (str_copy_if_host_functor(source, mRecCount, dest, grp, len)) {}
+}
+
+template<unsigned int len>
+struct T_str_merge_by_key {
+	inline void operator()(const thrust::host_vector<unsigned long long int>& keys,
+					       const thrust::host_vector<unsigned long long int>& hh,
+                           const char* values_first1, const char* values_first2, char* tmp)
+   {
+	thrust::merge_by_key(keys.begin(), keys.end(),
+                         hh.begin(), hh.end(),
+						 (Str<len> *)values_first1, (Str<len> *)values_first2,
+				         thrust::make_discard_iterator(), (Str<len> *)tmp);
+  
+	}
+};
+
+void str_merge_by_key(thrust::host_vector<unsigned long long int>& keys,
+					  thrust::host_vector<unsigned long long int>& hh,
+                      char* values_first1, char* values_first2,
+				      unsigned int len,
+                      char* tmp)
+{
+	T_unroll_functor<UNROLL_COUNT, T_str_merge_by_key> str_merge_by_key_functor;
+	if (str_merge_by_key_functor(keys, hh, values_first1, values_first2, tmp, len)) {}
+    
+}
 // ---------------------------------------------------------------------------
 
 /*
@@ -63,5 +105,8 @@ void str_grp(char* d_char, const size_t real_count, thrust::device_ptr<bool>& d_
 	else if(len  == 101) T_str_grp<101>().operator()(d_char, real_count, d_group);
 	else if(len  == 255) T_str_grp<255>().operator()(d_char, real_count, d_group);
 }
+
+				 
+
 // ---------------------------------------------------------------------------
 */

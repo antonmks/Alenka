@@ -2018,9 +2018,8 @@ void emit_select(char *s, char *f, int ll)
 
     unsigned int long long tmp_size = a->mRecCount;
     if(a->segCount > 1)
-        tmp_size = a->maxRecs;
-		
-    boost::unordered_map<long long int, unsigned int> mymap; //this is where we keep the hashes of the records
+        tmp_size = a->maxRecs;		
+    
     vector<thrust::device_vector<int_type> > distinct_val; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_hash; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_tmp;
@@ -2094,7 +2093,7 @@ void emit_select(char *s, char *f, int ll)
             };
 
             if (ll != 0 && cycle_count > 1  ) {
-                add(c,b,op_v3, mymap, aliases, distinct_tmp, distinct_val, distinct_hash, a);
+                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);
             }
             else {
                 //copy b to c
@@ -2123,7 +2122,7 @@ void emit_select(char *s, char *f, int ll)
     b->deAllocOnDevice();
 
     if (ll != 0) {
-        count_avg(c, mymap, distinct_hash);
+        count_avg(c, distinct_hash);
     }
     else {
         if(one_liner) {
@@ -2463,11 +2462,13 @@ int main(int ac, char **av)
 
     cudppCreate(&theCudpp);
 
-    long long int r30 = RAND_MAX*rand()+rand();
+    /*long long int r30 = RAND_MAX*rand()+rand();
     long long int s30 = RAND_MAX*rand()+rand();
     long long int t4  = rand() & 0xf;
 
     hash_seed = (r30 << 34) + (s30 << 4) + t4;
+	*/
+	hash_seed = 100;
 
     if (ac == 1) {
         cout << "Usage : alenka -l process_count script.sql" << endl;

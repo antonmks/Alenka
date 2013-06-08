@@ -60,5 +60,14 @@ void str_sort(char* tmp, size_t RecCount, unsigned int* permutation, bool desc_o
 */
 void str_copy_if(char* source, size_t mRecCount, char* dest, thrust::device_ptr<bool>& d_grp, unsigned int len);
 
+void str_copy_if_host(char* source, size_t mRecCount, char* dest, thrust::host_vector<bool>& grp, unsigned int len);
+
+void str_merge_by_key(thrust::host_vector<unsigned long long int>& keys,
+					  thrust::host_vector<unsigned long long int>& hh,
+					  char* values_first1, char* values_first2,
+					  unsigned int len,
+					  char* tmp);
+
+
 //---------------------------------------------------------------------------
 #endif	/// STRINGS_H

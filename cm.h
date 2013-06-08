@@ -36,8 +36,9 @@ using namespace std;
 #include <thrust/unique.h>
 #include <thrust/gather.h>
 #include <thrust/sort.h>
+#include <thrust/merge.h>
+#include <thrust/reduce.h>
 #include <thrust/functional.h>
-#include <boost/unordered_map.hpp>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
 #include <string>
@@ -61,7 +62,7 @@ typedef thrust::device_ptr<int> IndexIterator1;
 
 extern size_t int_size;
 extern size_t float_size;
-extern unsigned long long int hash_seed;
+extern unsigned int hash_seed;
 extern queue<string> op_type;
 extern queue<string> op_value;
 extern queue<int_type> op_nums;
