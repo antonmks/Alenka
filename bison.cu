@@ -2656,8 +2656,6 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
   return os;
 }
 
-/*hopefully will get a good performance on a gpu */
-// a few days later ... seems like Star Benchmark at a scale 1000 is disk bound ... 
 void star_join(char *s, string j1)
 {
    //need to copy to gpu all dimension keys, sort the dimension tables and
@@ -3183,6 +3181,15 @@ void emit_join(char *s, char *j1, int grp)
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
 {
+
+/*float time;
+cudaEvent_t start, stop;
+
+cudaEventCreate(&start);
+cudaEventCreate(&stop) ;
+cudaEventRecord(start, 0) ;
+*/
+
 	
 	//cout << "j2 " << j2 << endl;
 	//cout << "j1 " << j1 << endl;
@@ -3410,14 +3417,21 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     curr_segment = 10000000;	
 	thrust::device_vector<int> p_tmp;	
 	thrust::device_vector<unsigned int> v_l;
-	MGPU_MEM(int) aIndicesDevice, bIndicesDevice;		
+	MGPU_MEM(int) aIndicesDevice, bIndicesDevice;	
+	
+/*cudaEventRecord(stop, 0) ;
+cudaEventSynchronize(stop) ;
+ cudaEventElapsedTime(&time, start, stop);
+   printf("Time before:  %3.1f ms \n", time);
+	cudaEventRecord(start, 0) ;
+	*/
 	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
         cout << "segment " << i << " " << getFreeMem() <<  '\xd';
-        cnt_l = 0;
 
-		std::clock_t start3 = std::clock();
+        cnt_l = 0;
+		
         if (left->type[colInd1]  != 2) {
             copyColumns(left, lc, i, cnt_l);		
         }
@@ -3425,6 +3439,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		    left->d_columns_int.resize(0);
             left->add_hashed_strings(f1, i, left->d_columns_int.size());
         };
+		
 		
 	    if(left->prm.empty()) {
             //copy all records
@@ -3455,6 +3470,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			char join_kind = join_type.front();
 			join_type.pop();
 			
+
 			if (join_kind == 'I')
 				res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
 								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
@@ -3475,8 +3491,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
 								&aIndicesDevice, &bIndicesDevice,
 								mgpu::less<int_type>(), *context);
+								
+
 			
-		
 			//cout << "total " << res_count << endl;
 			int* r1 = aIndicesDevice->get(); 
             thrust::device_ptr<int> d_res1((int*)r1);
@@ -3488,8 +3505,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				p_tmp.resize(res_count);
 				thrust::sequence(p_tmp.begin(), p_tmp.end(),-1);
 				thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive());		
-			};				
-			
+			};		
+
 			
 			//std::cout<< endl << "join time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;            
 	
@@ -3531,8 +3548,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         if(right->d_columns_float[right->type_index[colInd4]].size() == 0)
                             unsigned int cnt_r = load_queue(rc, right, 0, f4, rcount);									
 		                
-						//thrust::permutation_iterator<ElementIterator_float,IndexIterator2> iter(left->d_columns_float[left->type_index[colInd3]].begin(), p_tmp.begin());
-                        //thrust::permutation_iterator<ElementIterator_float,IndexIterator1> iter1(right->d_columns_float[right->type_index[colInd4]].begin(), d_res2);						
 						thrust::device_ptr<float_type> d_tmp((float_type*)temp);	
 						thrust::device_ptr<float_type> d_tmp1((float_type*)temp1);	
 		                thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_float[left->type_index[colInd3]].begin(), d_tmp, is_positive());						
@@ -3547,9 +3562,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 						thrust::device_ptr<int_type> d_tmp1((int_type*)temp1);	
 		                thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_int[left->type_index[colInd3]].begin(), d_tmp, is_positive());						
                         thrust::gather_if(d_res2, d_res2+res_count, d_res2, right->d_columns_int[right->type_index[colInd4]].begin(), d_tmp1, is_positive());												
-					    //thrust::permutation_iterator<ElementIterator_int,IndexIterator2> iter(left->d_columns_int[left->type_index[colInd3]].begin(), p_tmp.begin());
-                        //thrust::permutation_iterator<ElementIterator_int,IndexIterator1> iter1(right->d_columns_int[right->type_index[colInd4]].begin(), d_res2);
-			
                         thrust::transform(d_tmp, d_tmp+res_count, d_tmp1, d_add, thrust::equal_to<int_type>());
                     };
 
@@ -3573,12 +3585,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
             if(res_count) {			
 
-			    
                 offset = c->mRecCount;
                 if(i == 0 && left->segCount != 1) {
                     c->reserve(res_count*(left->segCount+1));
 				};	
                 c->resize_join(res_count);
+				
+				
+				
                 queue<string> op_sel1(op_sel_s);
                 unsigned int colInd, c_colInd;
 				
@@ -3590,7 +3604,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				else
 					CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
 
-					
                 while(!op_sel1.empty()) {
 				
                     while(!cc.empty())
@@ -3608,6 +3621,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         reset_offsets();				
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);//possible that in some cases a join column would be copied to device twice
+						
 						
                         //gather
                         if(left->type[colInd] == 0) {
@@ -3668,18 +3682,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         //cout << "Couldn't find field " << op_sel1.front() << endl;
                         //exit(0);
                     };
-                    op_sel1.pop();
-					
+                    op_sel1.pop();					
                 };
 				cudaFree(temp);
             };	
         };
-    };
+    };	
 
     left->deAllocOnDevice();
     right->deAllocOnDevice();
-    c->deAllocOnDevice();
-	
+    c->deAllocOnDevice();	
 
     unsigned int i = 0;	
     while(!col_aliases.empty() && tab == join_tab_cnt) {
@@ -3701,6 +3713,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	};
 	
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+	
 }
 
 

@@ -269,15 +269,15 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 
-//using namespace thrust::system::cuda::experimental;
+using namespace thrust::system::cuda::experimental;
 
 class CudaSet
 {
 public:
-    std::vector<thrust::host_vector<int_type> > h_columns_int;
-    std::vector<thrust::host_vector<float_type> > h_columns_float;
-	//std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-    //std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
+    //std::vector<thrust::host_vector<int_type> > h_columns_int;
+    //std::vector<thrust::host_vector<float_type> > h_columns_float;
+	std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
+    std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;	
 	unsigned int prealloc_char_size;
 

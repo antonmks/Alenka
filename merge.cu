@@ -477,7 +477,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
 
     if (c->mRecCount != 0) {
 
-        unsigned int dis_count = 0;		
+        //unsigned int dis_count = 0;		
 		if (h_merge.size()) {
 			for(unsigned int k = 0; k < c->mColumnCount; k++)	{
 			
