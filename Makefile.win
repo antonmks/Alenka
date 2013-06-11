@@ -10,7 +10,7 @@ alenka : cm.obj merge.obj \
 		 atof.obj cm.obj bison.obj mgpucontext.obj format.obj
 
 
-nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_20 -c -I . -I ..\thrust
+nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_20 -c -I . -I ..\thrust 
 
 cm.obj : cm.cu cm.h	
 	$(nvcc) cm.cu 
@@ -38,10 +38,10 @@ itoa.obj : itoa.cu itoa.h
 	$(nvcc) itoa.cu
 atof.obj : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
-mgpucontext.obj : moderngpu/src/mgpucontext.cpp 	
-	$(nvcc) moderngpu/src/mgpucontext.cpp
-format.obj : moderngpu/src/format.cpp 	
-	$(nvcc) moderngpu/src/format.cpp
+mgpucontext.obj : moderngpu-master/src/mgpucontext.cpp 	
+	$(nvcc) moderngpu-master/src/mgpucontext.cpp
+format.obj : moderngpu-master/src/format.cpp 	
+	$(nvcc) moderngpu-master/src/format.cpp
 
 	
 clean : del bison.obj merge.obj \
