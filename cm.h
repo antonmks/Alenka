@@ -36,8 +36,9 @@ using namespace std;
 #include <thrust/unique.h>
 #include <thrust/gather.h>
 #include <thrust/sort.h>
+#include <thrust/merge.h>
+#include <thrust/reduce.h>
 #include <thrust/functional.h>
-#include <boost/unordered_map.hpp>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
 #include <string>
@@ -61,7 +62,7 @@ typedef thrust::device_ptr<int> IndexIterator1;
 
 extern size_t int_size;
 extern size_t float_size;
-extern unsigned long long int hash_seed;
+extern unsigned int hash_seed;
 extern queue<string> op_type;
 extern queue<string> op_value;
 extern queue<int_type> op_nums;
@@ -268,15 +269,15 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 
-//using namespace thrust::system::cuda::experimental;
+using namespace thrust::system::cuda::experimental;
 
 class CudaSet
 {
 public:
-    std::vector<thrust::host_vector<int_type> > h_columns_int;
-    std::vector<thrust::host_vector<float_type> > h_columns_float;
-	//std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-    //std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
+    //std::vector<thrust::host_vector<int_type> > h_columns_int;
+    //std::vector<thrust::host_vector<float_type> > h_columns_float;
+	std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
+    std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;	
 	unsigned int prealloc_char_size;
 
