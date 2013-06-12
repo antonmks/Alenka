@@ -3490,10 +3490,8 @@ cudaEventSynchronize(stop) ;
 				res_count = RelationalJoin<MgpuJoinKindOuter>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
 								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
 								&aIndicesDevice, &bIndicesDevice,
-								mgpu::less<int_type>(), *context);
-								
-
-			
+								mgpu::less<int_type>(), *context);								
+		
 			//cout << "total " << res_count << endl;
 			int* r1 = aIndicesDevice->get(); 
             thrust::device_ptr<int> d_res1((int*)r1);
@@ -3569,18 +3567,18 @@ cudaEventSynchronize(stop) ;
 						new_cnt = thrust::count(d_add, d_add+res_count, 1);	
 						thrust::stable_partition(d_res2, d_res2 + res_count, d_add, thrust::identity<unsigned int>());
 						thrust::stable_partition(p_tmp.begin(), p_tmp.end(), d_add, thrust::identity<unsigned int>());
-						thrust::device_free(d_add);
+						thrust::device_free(d_add);						
 						res_count = new_cnt;
 					}
 					else { //otherwise we consider it a valid left join result with non-nulls on the left side and nulls on the right side
 						thrust::transform(d_res2, d_res2 + res_count, d_add , d_res2, set_minus());	
 					};
                 };
-				
+				cudaFree(temp);
+				cudaFree(temp1);				
             };			
             
-            tot_count = tot_count + res_count;
-			
+            tot_count = tot_count + res_count;			
 		
 			
             if(res_count) {			
@@ -3589,8 +3587,7 @@ cudaEventSynchronize(stop) ;
                 if(i == 0 && left->segCount != 1) {
                     c->reserve(res_count*(left->segCount+1));
 				};	
-                c->resize_join(res_count);
-				
+                c->resize_join(res_count);	
 				
 				
                 queue<string> op_sel1(op_sel_s);
@@ -3598,14 +3595,15 @@ cudaEventSynchronize(stop) ;
 				
 		        void* temp;
 				unsigned int max_c = max_char(c);
-
-				if(max_c > float_size)
+		
+				if(max_c > float_size) {
 					CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*max_c));
+				}	
 				else
 					CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
 
                 while(!op_sel1.empty()) {
-				
+
                     while(!cc.empty())
                         cc.pop();
 
@@ -3622,20 +3620,19 @@ cudaEventSynchronize(stop) ;
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);//possible that in some cases a join column would be copied to device twice
 						
-						
                         //gather
                         if(left->type[colInd] == 0) {
 							thrust::device_ptr<int_type> d_tmp((int_type*)temp);	
 							thrust::sequence(d_tmp, d_tmp+res_count,0,0);
                             //thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(left->d_columns_int[left->type_index[colInd]].begin(), p_tmp.begin());
-							thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());
+							thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());
 							thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);
                         }
                         else if(left->type[colInd] == 1) {
 						    thrust::device_ptr<float_type> d_tmp((float_type*)temp);	
 							thrust::sequence(d_tmp, d_tmp+res_count,0,0);
                             //thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(left->d_columns_float[left->type_index[colInd]].begin(), p_tmp.begin());
-							thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_float[left->type_index[colInd]].begin(), d_tmp, is_positive());
+							thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[left->type_index[colInd]].begin(), d_tmp, is_positive());
                             thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset);
                         }
                         else { //strings
@@ -4528,8 +4525,6 @@ int main(int ac, char **av)
     AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
     context->SetAllocator(standardAlloc);
 	
-
-
     cudppCreate(&theCudpp);
 
     /*long long int r30 = RAND_MAX*rand()+rand();
