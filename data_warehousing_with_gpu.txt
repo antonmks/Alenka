@@ -22,7 +22,7 @@ After that we can create database files running separate scripts for every table
 
 C := LOAD 'lineorder.tbl' USING ('|') AS (lo_orderkey{1}:int, lo_custkey{3}:int, lo_partkey{4}:int, lo_suppkey{5}:int,
                                           lo_orderdate{6}:int, lo_quantity{9}:int, lo_extendedprice{10}:decimal,
-										  lo_discount{12}:int, lo_revenue{13}:decimal, lo_supplycost{14}:decimal, tax{15}:int);
+                                          lo_discount{12}:int, lo_revenue{13}:decimal, lo_supplycost{14}:decimal, tax{15}:int);
 STORE C INTO 'lineorder' BINARY;
 
 C := LOAD 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int,
@@ -33,11 +33,12 @@ C := LOAD 'customer.tbl' USING ('|') AS (c_custkey{1}:int, c_city{4}:varchar(10)
                                          c_region{6}:varchar(12));
 STORE C INTO 'customer' BINARY;
 
-C := LOAD 'part.tbl' USING ('|') AS (p_partkey{1}:int, p_name{2}:varchar(22), p_mfgr{3}:varchar(6), p_category{4}:varchar(12),
-                                     p_brand1{5}:varchar(9));
+C := LOAD 'part.tbl' USING ('|') AS (p_partkey{1}:int, p_name{2}:varchar(22), p_mfgr{3}:varchar(6), 
+                                     p_category{4}:varchar(12), p_brand1{5}:varchar(9));
 STORE C INTO 'part' BINARY;
 
-C := LOAD 'supplier.tbl' USING ('|') AS (s_suppkey{1}:int, s_city{4}:varchar(10), s_nation{5}:varchar(15), s_region{6}:varchar(12));
+C := LOAD 'supplier.tbl' USING ('|') AS (s_suppkey{1}:int, s_city{4}:varchar(10),
+                                         s_nation{5}:varchar(15), s_region{6}:varchar(12));
 STORE C INTO 'supplier' BINARY;
 
 As soon as we created the data files we can run SQL queries :
@@ -45,7 +46,8 @@ As soon as we created the data files we can run SQL queries :
 This query will compare revenue for some product classes, for suppliers in a certain region,
 grouped by more restrictive product classes and all years of orders;
 
-L := LOAD 'lineorder' BINARY AS (lo_partkey{4}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, lo_revenue{13}:int);
+L := LOAD 'lineorder' BINARY AS (lo_partkey{4}:int, lo_suppkey{5}:int,
+                                 lo_orderdate{6}:int, lo_revenue{13}:int);
 D := LOAD 'date' BINARY AS (d_datekey{1}:int, d_year{5}:int);
 S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_region{6}:varchar(12));
 P := LOAD 'part' BINARY AS (p_partkey{1}:int,  p_category{4}:varchar(12),  p_brand{5}:varchar(9));
@@ -67,7 +69,8 @@ STORE R1 INTO 'ss21.txt' USING ('|');
 
 And this query we want to place restrictions on three dimensions :
 
-L := LOAD 'lineorder' BINARY AS (lo_custkey{3}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, lo_revenue{13}:decimal);
+L := LOAD 'lineorder' BINARY AS (lo_custkey{3}:int, lo_suppkey{5}:int, lo_orderdate{6}:int,
+                                 lo_revenue{13}:decimal);
 D := LOAD 'date' BINARY AS (d_datekey{1}:int, d_year{5}:int);
 S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_city{4}:varchar(10));
 C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_city{4}:varchar(10));
@@ -91,7 +94,8 @@ STORE R1 INTO 'ss33.txt' USING ('|');
 
 By default Alenka uses sort/merge join, but when appropriate, it uses star schema bitmap join. 
 
-Now lets time a few TPC-H benchmark queries to see how Alenka performs in comparison to published TPC-H results :
+Now lets time a few TPC-H benchmark queries to see how Alenka performs 
+in comparison to published TPC-H results :
 
 Our hardware setup : 
 CPU - Pentium G620, 2 cores
