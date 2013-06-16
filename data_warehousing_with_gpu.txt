@@ -67,7 +67,7 @@ R1 := ORDER R BY d_year1, p_brand1;
 	 
 STORE R1 INTO 'ss21.txt' USING ('|');
 
-And this query we want to place restrictions on three dimensions :
+And this query places restrictions on three dimensions :
 
 L := LOAD 'lineorder' BINARY AS (lo_custkey{3}:int, lo_suppkey{5}:int, lo_orderdate{6}:int,
                                  lo_revenue{13}:decimal);
