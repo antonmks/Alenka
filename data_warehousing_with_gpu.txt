@@ -127,3 +127,5 @@ using very inexpensive hardware and free open source software.
 
 Alenka can be downloaded at https://github.com/antonmks/Alenka
 If you decide to use Alenka in a project, we offer free email/Skype support.
+
+antonmks@gmail.com
