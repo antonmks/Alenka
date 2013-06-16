@@ -1,10 +1,9 @@
 Open Source Data Warehousing with GPU
 
-Data warehouses today contain a massive amounts of data. To get the answers to the important business questions
+Data warehouses today contain a massive amounts of data. To get the answers to the business questions
 the companies buy large servers with a lot of storage capacity and use expensive proprietary software.
-In this paper we propose to use inexpensive, consumer-grade GPUs for data processing.
-We evaluate the benefits of using a massively parallel GPU based database engine, build a data warehouse
-and run a handful of queries to estimate the performance of our software.
+This article proposes to use inexpensive, consumer-grade GPUs for data warehouse data processing.
+It shows how to create a  data warehouse using open source software and how to compose and run SQL queries on a GPU. 
 
 Alenka is an open source data engine that implements relational operators on a GPU. Supported operators include 
 GroupBy, Sort, Join(sort/merge and hash) and Filter. 
