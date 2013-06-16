@@ -1,10 +1,10 @@
 Open Source Data Warehousing with GPU
 
 Data warehouses today contain a massive amounts of data. To get the answers to the important business questions
-the companies buy large servers with a lot of storage capacity and install expensive database software.
-In this paper we propose to use inexpensive, consumer-grade GPUs to offload the data processing.
-We evaluate the benefits of using a massively parallel GPU based database engine, build a database
-and run a handful of queries to estimate a performance of our database engine.
+the companies buy large servers with a lot of storage capacity and use expensive proprietary software.
+In this paper we propose to use inexpensive, consumer-grade GPUs for data processing.
+We evaluate the benefits of using a massively parallel GPU based database engine, build a data warehouse
+and run a handful of queries to estimate the performance of our software.
 
 Alenka is an open source data engine that implements relational operators on a GPU. Supported operators include 
 GroupBy, Sort, Join(sort/merge and hash) and Filter. 
@@ -18,7 +18,7 @@ FOR-Delta and dictionary compression. All compression and decompression routines
 Let's build a simple star schema database based on a well-known star schema benchmark.
 First we create tab-separated data files lineorders, data, customer and part using dbgen
 with scale parameter set to 1000, so the lineorder table will have 6 billion items.
-After that we can create database files running separate scripts for every table :
+After that we can create database files running separate Alenka scripts for every table :
 
 C := LOAD 'lineorder.tbl' USING ('|') AS (lo_orderkey{1}:int, lo_custkey{3}:int, lo_partkey{4}:int, lo_suppkey{5}:int,
                                           lo_orderdate{6}:int, lo_quantity{9}:int, lo_extendedprice{10}:decimal,
@@ -79,12 +79,10 @@ DF := FILTER D BY d_year >= 1992 AND d_year <= 1997;
 CF := FILTER C BY c_city == "UNITED KI1" OR c_city == "UNITED KI5";
 SF := FILTER S BY s_city == "UNITED KI1" OR s_city == "UNITED KI5";
 
-
 LS := SELECT lo_revenue AS lo_revenue, d_year AS d_year, c_city AS c_city, s_city AS s_city
       FROM L JOIN SF on lo_suppkey = s_suppkey
              JOIN CF on lo_custkey = c_custkey
-             JOIN DF on lo_orderdate = d_datekey;	  
-	  
+             JOIN DF on lo_orderdate = d_datekey;	  	  
   
 R := SELECT SUM(lo_revenue) AS revenue, d_year AS d_year1, c_city AS c_city1, s_city AS s_city1 FROM LS
      GROUP BY c_city, s_city, d_year;
@@ -122,7 +120,7 @@ MS SQL       49   2.2    5.6   3.5
 Alenka       29   3.6   15.0   2.2
 	 
 As we can see Alenka outperforms MS SQL Server when queries consists of scans and filters. 
-It trails behind when queries include join operations. On the whole, it provides an acceptable performance
+It is slower when queries include join operations. On the whole, it provides an acceptable performance
 using very inexpensive hardware and free open source software.
 
 Alenka can be downloaded at https://github.com/antonmks/Alenka
