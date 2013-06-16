@@ -1,0 +1,123 @@
+Open Source Data Warehousing with GPU
+
+Data warehouses today contain a massive amounts of data. To get the answers to the important business questions
+the companies buy large servers with a lot of storage capacity and install expensive database software.
+In this paper we propose to use inexpensive, consumer-grade GPUs to offload the data processing.
+We evaluate the benefits of using a massively parallel GPU based database engine, build a database
+and run a handful of queries to estimate a performance of our database engine.
+
+Alenka is an open source data engine that implements relational operators on a GPU. Supported operators include GroupBy, Sort,
+Join(sort/merge and hash) and Filter. All operations run on a GPU and thus take advantage of a massive memory bandwidth
+of modern gpus.  Alenka is a columnar database so the database columns are stored in different files. 
+Each column is automatically compressed and split into several segments.
+Supported compression algorithms include FOR(frame of reference),
+FOR-Delta and dictionary compression. All compression and decompression routines are vectorized and executed on a GPU. 
+
+
+Let's build a simple star schema database based on a well-known star schema benchmark.
+First we create tab-separated data files lineorders, data, customer and part using dbgen with scale parameter set to 1000, so
+the lineorder table will have 6 billion items.
+After that we can create database files running separate scripts for every table :
+
+C := LOAD 'lineorder.tbl' USING ('|') AS (lo_orderkey{1}:int, lo_custkey{3}:int, lo_partkey{4}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, 
+                                          lo_quantity{9}:int, lo_extendedprice{10}:decimal, lo_discount{12}:int, lo_revenue{13}:decimal,
+										  lo_supplycost{14}:decimal, tax{15}:int);
+STORE C INTO 'lineorder' BINARY;
+
+C := LOAD 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int, d_yearmonth{7}:varchar(7), 
+                                     d_weeknuminyear{12}:int);
+STORE C INTO 'date' BINARY;
+
+C := LOAD 'customer.tbl' USING ('|') AS (c_custkey{1}:int, c_city{4}:varchar(10), c_nation{5}:varchar(15), c_region{6}:varchar(12));
+STORE C INTO 'customer' BINARY;
+
+C := LOAD 'part.tbl' USING ('|') AS (p_partkey{1}:int, p_name{2}:varchar(22), p_mfgr{3}:varchar(6), p_category{4}:varchar(12),
+                                     p_brand1{5}:varchar(9));
+STORE C INTO 'part' BINARY;
+
+C := LOAD 'supplier.tbl' USING ('|') AS (s_suppkey{1}:int, s_city{4}:varchar(10), s_nation{5}:varchar(15), s_region{6}:varchar(12));
+STORE C INTO 'supplier' BINARY;
+
+As soon as we created the data files we can run SQL queries :
+
+This query will compare revenue for some product classes, for suppliers in a certain region,
+grouped by more restrictive product classes and all years of orders;
+
+L := LOAD 'lineorder' BINARY AS (lo_partkey{4}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, lo_revenue{13}:int);
+D := LOAD 'date' BINARY AS (d_datekey{1}:int, d_year{5}:int);
+S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_region{6}:varchar(12));
+P := LOAD 'part' BINARY AS (p_partkey{1}:int,  p_category{4}:varchar(12),  p_brand{5}:varchar(9));
+
+PF := FILTER P BY p_category == "MFGR#12";
+SF := FILTER S BY s_region == "AMERICA";
+
+LS := SELECT lo_revenue AS lo_revenue,  p_brand AS p_brand, d_year AS d_year
+      FROM L JOIN SF on lo_suppkey = s_suppkey
+             JOIN PF on lo_partkey = p_partkey
+             JOIN D on lo_orderdate = d_datekey; 
+
+R := SELECT SUM(lo_revenue) AS lo_revenue1, d_year AS d_year1, p_brand AS p_brand1 FROM LS
+     GROUP BY d_year, p_brand;
+	 
+R1 := ORDER R BY d_year1, p_brand1;	 
+	 
+STORE R1 INTO 'ss21.txt' USING ('|');
+
+And this query we want to place restrictions on three dimensions :
+
+L := LOAD 'lineorder' BINARY AS (lo_custkey{3}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, lo_revenue{13}:decimal);
+D := LOAD 'date' BINARY AS (d_datekey{1}:int, d_year{5}:int);
+S := LOAD 'supplier' BINARY AS (s_suppkey{1}:int, s_city{4}:varchar(10));
+C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_city{4}:varchar(10));
+
+DF := FILTER D BY d_year >= 1992 AND d_year <= 1997;
+CF := FILTER C BY c_city == "UNITED KI1" OR c_city == "UNITED KI5";
+SF := FILTER S BY s_city == "UNITED KI1" OR s_city == "UNITED KI5";
+
+
+LS := SELECT lo_revenue AS lo_revenue, d_year AS d_year, c_city AS c_city, s_city AS s_city
+      FROM L JOIN SF on lo_suppkey = s_suppkey
+             JOIN CF on lo_custkey = c_custkey
+             JOIN DF on lo_orderdate = d_datekey;	  
+	  
+  
+R := SELECT SUM(lo_revenue) AS revenue, d_year AS d_year1, c_city AS c_city1, s_city AS s_city1 FROM LS
+     GROUP BY c_city, s_city, d_year;
+	 
+R1 := ORDER R BY d_year1 ASC, revenue DESC;		 	 
+STORE R1 INTO 'ss33.txt' USING ('|');
+
+By default Alenka uses sort/merge join, but when appropriate, it uses star schema bitmap join. 
+
+Now lets time a few TPC-H benchmark queries to see how Alenka performs in comparison to published TPC-H results :
+
+Our hardware setup : 
+CPU - Pentium G620, 2 cores
+GPU - NVidia GTX Titan, 6GB of DDR5 memory
+Host Memory - 16GB of DDR3 memory
+1 Vertex3 120GB SSD 
+
+Our software :
+Alenka (https://github.com/antonmks/Alenka)
+Windows7 64bit
+NVidia's Cuda 5.0
+
+From current TPC-H results at scale 300 :
+HP Proliant DL785 G6 
+8 AMD Opteron 2.8 GHz CPUs, 48 cores
+256 GB of memory
+194 disk drives
+MS SQL Server 2008
+
+Dataset : 300GB
+
+             Q1    Q2    Q3    Q6     (seconds)
+MS SQL       49   2.2    5.6   3.5
+Alenka       29   3.6   15.0   2.2
+	 
+As we can see Alenka outperforms MS SQL Server when queries consists of scans and filters. 
+It trails behind when queries include join operations. On the whole, it provides an acceptable performance
+using very inexpensive hardware and free open source software.
+
+Alenka can be downloaded at https://github.com/antonmks/Alenka
+If you decide to use Alenka in a project, we offer free email/Skype support.
