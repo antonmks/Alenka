@@ -6,8 +6,9 @@ In this paper we propose to use inexpensive, consumer-grade GPUs to offload the 
 We evaluate the benefits of using a massively parallel GPU based database engine, build a database
 and run a handful of queries to estimate a performance of our database engine.
 
-Alenka is an open source data engine that implements relational operators on a GPU. Supported operators include GroupBy, Sort,
-Join(sort/merge and hash) and Filter. All operations run on a GPU and thus take advantage of a massive memory bandwidth
+Alenka is an open source data engine that implements relational operators on a GPU. Supported operators include 
+GroupBy, Sort, Join(sort/merge and hash) and Filter. 
+All operations run on a GPU and thus take advantage of a massive memory bandwidth
 of modern gpus.  Alenka is a columnar database so the database columns are stored in different files. 
 Each column is automatically compressed and split into several segments.
 Supported compression algorithms include FOR(frame of reference),
@@ -15,20 +16,21 @@ FOR-Delta and dictionary compression. All compression and decompression routines
 
 
 Let's build a simple star schema database based on a well-known star schema benchmark.
-First we create tab-separated data files lineorders, data, customer and part using dbgen with scale parameter set to 1000, so
-the lineorder table will have 6 billion items.
+First we create tab-separated data files lineorders, data, customer and part using dbgen
+with scale parameter set to 1000, so the lineorder table will have 6 billion items.
 After that we can create database files running separate scripts for every table :
 
-C := LOAD 'lineorder.tbl' USING ('|') AS (lo_orderkey{1}:int, lo_custkey{3}:int, lo_partkey{4}:int, lo_suppkey{5}:int, lo_orderdate{6}:int, 
-                                          lo_quantity{9}:int, lo_extendedprice{10}:decimal, lo_discount{12}:int, lo_revenue{13}:decimal,
-										  lo_supplycost{14}:decimal, tax{15}:int);
+C := LOAD 'lineorder.tbl' USING ('|') AS (lo_orderkey{1}:int, lo_custkey{3}:int, lo_partkey{4}:int, lo_suppkey{5}:int,
+                                          lo_orderdate{6}:int, lo_quantity{9}:int, lo_extendedprice{10}:decimal,
+										  lo_discount{12}:int, lo_revenue{13}:decimal, lo_supplycost{14}:decimal, tax{15}:int);
 STORE C INTO 'lineorder' BINARY;
 
-C := LOAD 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int, d_yearmonth{7}:varchar(7), 
-                                     d_weeknuminyear{12}:int);
+C := LOAD 'date.tbl' USING ('|') AS (d_datekey{1}:int, d_month{4}:varchar(9), d_year{5}:int, d_yearmonthnum{6}:int,
+                                     d_yearmonth{7}:varchar(7), d_weeknuminyear{12}:int);
 STORE C INTO 'date' BINARY;
 
-C := LOAD 'customer.tbl' USING ('|') AS (c_custkey{1}:int, c_city{4}:varchar(10), c_nation{5}:varchar(15), c_region{6}:varchar(12));
+C := LOAD 'customer.tbl' USING ('|') AS (c_custkey{1}:int, c_city{4}:varchar(10), c_nation{5}:varchar(15), 
+                                         c_region{6}:varchar(12));
 STORE C INTO 'customer' BINARY;
 
 C := LOAD 'part.tbl' USING ('|') AS (p_partkey{1}:int, p_name{2}:varchar(22), p_mfgr{3}:varchar(6), p_category{4}:varchar(12),
