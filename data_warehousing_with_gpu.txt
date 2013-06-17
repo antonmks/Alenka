@@ -118,8 +118,8 @@ Dataset : 300GB
 MS SQL       49   2.2    5.6   3.5
 Alenka       29   3.6   15.0   2.2
 	 
-As we can see Alenka outperforms MS SQL Server when queries consists of scans and filters. 
-It is slower when queries include join operations. On the whole, it provides an acceptable performance
+As we can see Alenka outperforms MS SQL Server when queries consists of groups and filters. 
+Alenka is slower when queries include join operations. On the whole, it provides an acceptable performance
 using very inexpensive hardware and free open source software.
 
 Alenka can be downloaded at https://github.com/antonmks/Alenka
