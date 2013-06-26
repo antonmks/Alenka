@@ -3311,6 +3311,7 @@ cudaEventRecord(start, 0) ;
     field_names.insert(f2);
 
     bool str_join = 0;
+	unsigned int cnt_r;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
 
     if (right->type[colInd2]  == 2) {
@@ -3319,6 +3320,7 @@ cudaEventRecord(start, 0) ;
         for(unsigned int i = 0; i < right->segCount; i++) {
             right->add_hashed_strings(f2, i, right->d_columns_int.size()-1);
         };
+		cnt_r = right->d_columns_int[right->d_columns_int.size()-1].size();
     };
 
     // need to allocate all right columns
@@ -3337,7 +3339,7 @@ cudaEventRecord(start, 0) ;
         op_vd.pop();
     };
 	
-    unsigned int cnt_r = load_queue(op_alt, right, str_join, f2, rcount);
+    cnt_r = load_queue(op_alt, right, str_join, f2, rcount);
 	
     if(str_join) {
         colInd2 = right->mColumnCount+1;
@@ -3346,8 +3348,12 @@ cudaEventRecord(start, 0) ;
 
 
     //here we need to make sure that right column is ordered. If not then we order it and keep the permutation
+	thrust::device_ptr<unsigned long long int> d_col_r((unsigned long long int*)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()));					
+	
     bool sorted;
-    if(!decimal_join)
+	if(str_join) 
+	    sorted = thrust::is_sorted(d_col_r, d_col_r + cnt_r);
+    else if(!decimal_join)
         sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);
     else
         sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);
@@ -3369,7 +3375,10 @@ cudaEventRecord(start, 0) ;
         void* d;
         CUDA_SAFE_CALL(cudaMalloc((void **) &d, cnt_r*mm));        
 		
-        thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
+		if(str_join) 
+			thrust::sort_by_key(d_col_r, d_col_r + cnt_r, v);
+		else
+			thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
 
         unsigned int i;
         while(!ss.empty()) {
@@ -3436,18 +3445,21 @@ cudaEventSynchronize(stop) ;
             copyColumns(left, lc, i, cnt_l);		
         }
         else {
-		    left->d_columns_int.resize(0);
-            left->add_hashed_strings(f1, i, left->d_columns_int.size());
-        };
-		
+		    //left->d_columns_int.resize(0);
+            left->add_hashed_strings(f1, i, left->d_columns_int.size()-1);
+        };		
 		
 	    if(left->prm.empty()) {
             //copy all records
-            cnt_l = left->mRecCount;
+			if (left->type[colInd1]  != 2) 
+				cnt_l = left->mRecCount;
+			else
+				cnt_l = left->d_columns_int[left->d_columns_int.size()-1].size();
         }
         else {
             cnt_l = left->prm_count[i];
         };
+		
 		
 				
         if (cnt_l) {
@@ -3460,44 +3472,56 @@ cudaEventSynchronize(stop) ;
 				
 			// sort the left index column, save the permutation vector, it might be needed later
 			
+			//thrust::transform(left->d_columns_int[idx].begin(), left->d_columns_int[idx].begin() + cnt_l, left->d_columns_int[idx].begin(), absolute());
             v_l.resize(cnt_l);
 			thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
 			
-			thrust::sort_by_key(left->d_columns_int[idx].begin(), left->d_columns_int[idx].begin() + cnt_l, v_l.begin());			    						
+			thrust::device_ptr<unsigned long long int> d_col((unsigned long long int*)thrust::raw_pointer_cast(left->d_columns_int[idx].data()));					
+			thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());			    						
 		    //cout << endl << "j1 " << getFreeMem() << endl;
 			//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+			//cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl; 
+			
 			
 			char join_kind = join_type.front();
 			join_type.pop();
 			
+		
+			if (left->type[colInd1] == 2) {
+					res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
+									thrust::raw_pointer_cast(d_col_r), cnt_r,
+									&aIndicesDevice, &bIndicesDevice,
+									mgpu::less<unsigned long long int>(), *context);			
+			}
+			else {
 
-			if (join_kind == 'I')
-				res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
-								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
-								&aIndicesDevice, &bIndicesDevice,
-								mgpu::less<int_type>(), *context);
-			else if(join_kind == 'L')					
-				res_count = RelationalJoin<MgpuJoinKindLeft>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
-								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
-								&aIndicesDevice, &bIndicesDevice,
-								mgpu::less<int_type>(), *context);
-			else if(join_kind == 'R')					
-				res_count = RelationalJoin<MgpuJoinKindRight>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
-								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
-								&aIndicesDevice, &bIndicesDevice,
-								mgpu::less<int_type>(), *context);
-			else if(join_kind == 'O')					
-				res_count = RelationalJoin<MgpuJoinKindOuter>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
-								thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
-								&aIndicesDevice, &bIndicesDevice,
-								mgpu::less<int_type>(), *context);								
+				if (join_kind == 'I')
+					res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
+									thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
+									&aIndicesDevice, &bIndicesDevice,
+									mgpu::less<int_type>(), *context);
+				else if(join_kind == 'L')					
+					res_count = RelationalJoin<MgpuJoinKindLeft>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
+									thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
+									&aIndicesDevice, &bIndicesDevice,
+									mgpu::less<int_type>(), *context);
+				else if(join_kind == 'R')					
+					res_count = RelationalJoin<MgpuJoinKindRight>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
+									thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
+									&aIndicesDevice, &bIndicesDevice,
+									mgpu::less<int_type>(), *context);
+				else if(join_kind == 'O')					
+					res_count = RelationalJoin<MgpuJoinKindOuter>(thrust::raw_pointer_cast(left->d_columns_int[idx].data()), cnt_l,
+									thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
+									&aIndicesDevice, &bIndicesDevice,
+									mgpu::less<int_type>(), *context);								
+			};						
 		
 			//cout << "total " << res_count << endl;
 			int* r1 = aIndicesDevice->get(); 
             thrust::device_ptr<int> d_res1((int*)r1);
 			int* r2 = bIndicesDevice->get(); 
-			thrust::device_ptr<int> d_res2((int*)r2);			
-			
+			thrust::device_ptr<int> d_res2((int*)r2);		            
 		
 			if(res_count) {			
 				p_tmp.resize(res_count);
