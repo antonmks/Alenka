@@ -13,7 +13,6 @@
  */
 
 #include "merge.h"
-#include <thrust/transform.h>
 
 struct MurmurHash64D
 {

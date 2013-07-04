@@ -19,6 +19,8 @@
 #include "cm.h"
 #include "atof.h"
 #include "compress.cu"
+#include "sorts.cu"
+
 
 
 #ifdef _WIN64
@@ -40,6 +42,7 @@ char map_check;
 void* d_v = NULL;
 void* s_v = NULL;
 unsigned int oldCount;
+queue<string> op_sort;
 queue<string> op_type;
 queue<string> op_value;
 queue<int_type> op_nums;
@@ -62,7 +65,6 @@ struct is_match
         return x != 4294967295;
     }
 };
-
 
 
 struct f_equal_to
@@ -1112,13 +1114,52 @@ void CudaSet::compress(char* file_name, unsigned int offset, unsigned int check_
 {
     char str[100];
     char col_pos[3];
+	thrust::device_vector<unsigned int> permutation;
 	
 	total_count = total_count + mCount;
 	total_segments = total_segments + 1;
 	if (mCount > total_max)
 		total_max = mCount;
 	
+	if(!op_sort.empty()) { //sort the segment
+		//copy the key columns to device		
+		queue<string> sf(op_sort);				
+		
+		permutation.resize(mRecCount);
+		thrust::sequence(permutation.begin(), permutation.begin() + mRecCount,0,1);
+		unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation.data());
+		void* temp;	
+        cout << "sorting " << getFreeMem() << endl; 
+		
+		unsigned int max_c = max_char(this, sf);				
 
+		if(max_c > float_size)
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, mRecCount*max_c));
+		else
+			CUDA_SAFE_CALL(cudaMalloc((void **) &temp, mRecCount*float_size));
+		
+        string sort_type = "ASC";		
+
+        while(!sf.empty()) {
+            int colInd = columnNames[sf.front()];
+			
+			allocColumnOnDevice(colInd, maxRecs);
+			CopyColumnToGpu(colInd);			
+			
+            if (type[colInd] == 0)
+                update_permutation(d_columns_int[type_index[colInd]], raw_ptr, mRecCount, sort_type, (int_type*)temp);
+            else if (type[colInd] == 1)
+                update_permutation(d_columns_float[type_index[colInd]], raw_ptr, mRecCount, sort_type, (float_type*)temp);
+            else {
+                update_permutation_char(d_columns_char[type_index[colInd]], raw_ptr, mRecCount, sort_type, (char*)temp, char_size[type_index[colInd]]);
+            };
+			deAllocColumnOnDevice(colInd);
+			sf.pop();
+        };	
+        cudaFree(temp);		
+	};
+	
+	
 	for(unsigned int i = 0; i< mColumnCount; i++) {			    
 		strcpy(str, file_name);
 		strcat(str,".");
@@ -1128,21 +1169,41 @@ void CudaSet::compress(char* file_name, unsigned int offset, unsigned int check_
 		strcat(str,".");
 		itoaa(total_segments-1,col_pos);
 		strcat(str,col_pos);	
+		
+		if(!op_sort.empty()) {
+			allocColumnOnDevice(i, maxRecs);
+			CopyColumnToGpu(i);			
+		};	
 	
 		if(type[i] == 0) {
 			thrust::device_ptr<int_type> d_col((int_type*)d);					
-			thrust::copy(h_columns_int[type_index[i]].begin() + offset, h_columns_int[type_index[i]].begin() + offset + mCount, d_col);
+			if(!op_sort.empty()) {
+				thrust::gather(permutation.begin(), permutation.end(), d_columns_int[type_index[i]].begin(), d_col);
+			}
+			else {
+				thrust::copy(h_columns_int[type_index[i]].begin() + offset, h_columns_int[type_index[i]].begin() + offset + mCount, d_col);
+			};	
 			pfor_compress( d, mCount*int_size, str, h_columns_int[type_index[i]], 0, 0);
 		}
 		else if(type[i] == 1) {
 			if(decimal[i]) {
 				thrust::device_ptr<float_type> d_col((float_type*)d);				
-				thrust::copy(h_columns_float[type_index[i]].begin() + offset, h_columns_float[type_index[i]].begin() + offset + mCount, d_col);
+				if(!op_sort.empty()) {
+					thrust::gather(permutation.begin(), permutation.end(), d_columns_float[type_index[i]].begin(), d_col);
+				}
+				else {
+					thrust::copy(h_columns_float[type_index[i]].begin() + offset, h_columns_float[type_index[i]].begin() + offset + mCount, d_col);
+				};	
 				thrust::device_ptr<long long int> d_col_dec((long long int*)d);
 				thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
 				pfor_compress( d, mCount*float_size, str, h_columns_float[type_index[i]], 1, 0);
 			}
 			else { // do not compress -- float
+				thrust::device_ptr<float_type> d_col((float_type*)d);				
+				if(!op_sort.empty()) {
+					thrust::gather(permutation.begin(), permutation.end(), d_columns_float[type_index[i]].begin(), d_col);
+					thrust::copy(d_col, d_col+mRecCount, h_columns_float[type_index[i]].begin());
+				};
 				fstream binary_file(str,ios::out|ios::binary|fstream::app);
 				binary_file.write((char *)&mCount, 4);
 				binary_file.write((char *)(h_columns_float[type_index[i]].data() + offset),mCount*float_size);
@@ -1152,6 +1213,14 @@ void CudaSet::compress(char* file_name, unsigned int offset, unsigned int check_
 			};
 		}
 		else { //char
+			if(!op_sort.empty()) {				
+				unsigned int*  h_permutation = new unsigned int[mRecCount];
+				thrust::copy(permutation.begin(), permutation.end(), h_permutation);
+				char* t = new char[char_size[type_index[i]]*mRecCount];
+				apply_permutation_char_host(h_columns_char[type_index[i]], h_permutation, mRecCount, t, char_size[type_index[i]]);
+				thrust::copy(t, t+ char_size[type_index[i]]*mRecCount, h_columns_char[type_index[i]]);
+				delete [] t;
+			};	
 			compress_char(str, i, mCount, offset);
 		};	   
 
@@ -1167,11 +1236,12 @@ void CudaSet::compress(char* file_name, unsigned int offset, unsigned int check_
 		};
 		
 	}; 
+	permutation.resize(0);
+	permutation.shrink_to_fit();
 }	
 
 
 void CudaSet::writeHeader(char* file_name, unsigned int col) {
-
     char str[100];
     char col_pos[3];
 
@@ -1189,6 +1259,29 @@ void CudaSet::writeHeader(char* file_name, unsigned int col) {
     binary_file.write((char *)&cnt_counts[ff], 4);
     binary_file.close();
 };
+
+
+void CudaSet::writeSortHeader(char* file_name)
+{
+    char str[100];
+	unsigned int idx;
+
+    strcpy(str, file_name);
+    strcat(str,".sort");
+
+    fstream binary_file(str,ios::out|ios::binary|ios::app);
+	idx = op_sort.size();
+	binary_file.write((char *)&idx, 4);
+	queue<string> os(op_sort);
+	while(!os.empty()) {
+	    idx = columnNames[os.front()];
+		binary_file.write((char *)&idx, 4);
+		os.pop();
+	};	
+    binary_file.close();
+
+}
+
 
 void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary )
 {
@@ -1277,6 +1370,7 @@ void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary 
         CUDA_SAFE_CALL(cudaMalloc((void **) &d, mCount*float_size));
 
 		compress(file_name, 0, 1, 0, d, mCount);
+		writeSortHeader(file_name);
         /*for(unsigned int i = 0; i< mColumnCount; i++) {
             strcpy(str, file_name);
             strcat(str,".");
@@ -1983,6 +2077,22 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     mRecCount = Recs;
 	oldRecCount = Recs;
     load_file_name = file_name;
+	
+	strcpy(f1, file_name);
+    strcat(f1, ".sort");
+	cout << "opening " << f1 << endl;
+    f = fopen (f1 , "rb" );
+	if(f != NULL) {
+		unsigned int sz, idx;
+		fread((char *)&sz, 4, 1, f);
+		for(unsigned int j = 0; j < sz; j++) {
+			fread((char *)&idx, 4, 1, f);
+			sorted_fields.push(idx);
+			//cout << "presorted on " << idx << endl;
+		};	
+		fclose(f);
+	};	
+	
 
     for(unsigned int i=0; i < mColumnCount; i++) {
 
@@ -2609,6 +2719,21 @@ unsigned int max_char(CudaSet* a, set<string> field_names)
     return max_char;
 };
 
+unsigned int max_char(CudaSet* a, queue<string> field_names)
+{
+    unsigned int max_char = 0, i;
+    while (!field_names.empty()) {
+        i = a->columnNames[field_names.front()];	
+		if (a->type[i] == 2) {
+			if (a->char_size[a->type_index[i]] > max_char)
+				max_char = a->char_size[a->type_index[i]];
+		};
+		field_names.pop();
+	};	
+    return max_char;
+};
+
+
 
 unsigned int max_tmp(CudaSet* a)
 {
@@ -2659,5 +2784,45 @@ void setSegments(CudaSet* a, queue<string> cols)
 	};
 
 };
+
+void update_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
+{
+
+    str_gather((void*)permutation, RecCount, (void*)key, (void*)tmp, len);
+
+    // stable_sort the permuted keys and update the permutation
+    if (SortType.compare("DESC") == 0 )
+        str_sort(tmp, RecCount, permutation, 1, len);
+    else
+        str_sort(tmp, RecCount, permutation, 0, len);
+}
+
+void update_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len)
+{
+    str_gather_host(permutation, RecCount, (void*)key, (void*)tmp, len);
+
+    if (SortType.compare("DESC") == 0 )
+        str_sort_host(tmp, RecCount, permutation, 1, len);
+    else
+        str_sort_host(tmp, RecCount, permutation, 0, len);
+
+}
+
+
+
+void apply_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, char* tmp, unsigned int len)
+{
+    // copy keys to temporary vector
+    cudaMemcpy( (void*)tmp, (void*) key, RecCount*len, cudaMemcpyDeviceToDevice);
+    // permute the keys
+    str_gather((void*)permutation, RecCount, (void*)tmp, (void*)key, len);
+}
+
+
+void apply_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, char* res, unsigned int len)
+{
+    str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);
+}
+
 
 

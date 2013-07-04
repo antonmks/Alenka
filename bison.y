@@ -62,6 +62,7 @@
     void emit_join_tab(char *s, char tp);
     void emit_distinct();
 	void emit_join();
+	void emit_sort(char* s);
 
 %}
 
@@ -129,8 +130,10 @@
 %token RIGHT
 %token OUTER
 %token AND
+%token SORT
+%token SEGMENTS
 
-%type <intval> load_list  opt_where opt_limit
+%type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
 %start stmt_list
 %%
@@ -161,7 +164,7 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 { emit_join($1,$6,$7); }
 | STORE NAME INTO FILENAME USING '(' FILENAME ')' opt_limit
 { emit_store($2,$4,$7); }
-| STORE NAME INTO FILENAME opt_limit BINARY
+| STORE NAME INTO FILENAME opt_limit BINARY sort_def
 { emit_store_binary($2,$4); }
 ;
 
@@ -256,6 +259,10 @@ opt_limit: { /* nil */
 }
      | LIMIT INTNUM { emit_limit($2); };
 
+sort_def: { /* nil */
+    $$ = 0
+}
+     |SORT SEGMENTS BY NAME { emit_sort($4); };
 
 %%
 
@@ -264,11 +271,11 @@ opt_limit: { /* nil */
 #include "merge.h"
 #include "zone_map.h"
 #include "atof.h"
-#include "sorts.cu"
 #include "cudpp_src_2.0/include/cudpp_hash.h"
 #include "moderngpu-master/include/kernels/join.cuh"
 #include "moderngpu-master/include/util/mgpucontext.h"
 #include "sstream"
+#include "sorts.cu"
 
 string to_string1(long long int i) {
 	stringstream res;
@@ -447,6 +454,12 @@ void emit_var_desc(char *s)
     op_value.push("DESC");
 }
 
+void emit_sort(char *s)
+{
+	op_sort.push(s); 
+}
+
+
 
 void emit_varchar(char *s, int c, char *f, int d)
 {
@@ -498,7 +511,7 @@ void emit_join_tab(char *s, char tp)
 };
 
 
-void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, unsigned int segment)
+void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
 {
     //std::clock_t start1 = std::clock();
     unsigned int sz = a->mRecCount;
@@ -1125,15 +1138,6 @@ void emit_join(char *s, char *j1, int grp)
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
 {
 
-/*float time;
-cudaEvent_t start, stop;
-
-cudaEventCreate(&start);
-cudaEventCreate(&stop) ;
-cudaEventRecord(start, 0) ;
-*/
-
-	
 	//cout << "j2 " << j2 << endl;
 	//cout << "j1 " << j1 << endl;
     
@@ -1368,20 +1372,14 @@ cudaEventRecord(start, 0) ;
     queue<string> lc(cc);
     curr_segment = 10000000;	
 	thrust::device_vector<int> p_tmp;	
-	thrust::device_vector<unsigned int> v_l;
+	thrust::device_vector<unsigned int> v_l(left->maxRecs);
 	MGPU_MEM(int) aIndicesDevice, bIndicesDevice;	
 	
-/*cudaEventRecord(stop, 0) ;
-cudaEventSynchronize(stop) ;
- cudaEventElapsedTime(&time, start, stop);
-   printf("Time before:  %3.1f ms \n", time);
-	cudaEventRecord(start, 0) ;
-	*/
-	
+
     for (unsigned int i = 0; i < left->segCount; i++) {
 
-        cout << "segment " << i << " " << getFreeMem() <<  '\xd';
-
+        cout << "segment " << i <<  '\xd';
+		
         cnt_l = 0;
 		
         if (left->type[colInd1]  != 2) {
@@ -1391,6 +1389,7 @@ cudaEventSynchronize(stop) ;
 		    //left->d_columns_int.resize(0);
             left->add_hashed_strings(f1, i, left->d_columns_int.size()-1);
         };		
+		
 		
 	    if(left->prm.empty()) {
             //copy all records
@@ -1403,8 +1402,7 @@ cudaEventSynchronize(stop) ;
             cnt_l = left->prm_count[i];
         };
 		
-		
-				
+	
         if (cnt_l) {
  
             unsigned int idx;
@@ -1415,20 +1413,28 @@ cudaEventSynchronize(stop) ;
 				
 			// sort the left index column, save the permutation vector, it might be needed later
 			
-            v_l.resize(cnt_l);
+            //v_l.resize(cnt_l);
 			thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
 			
 			thrust::device_ptr<unsigned long long int> d_col((unsigned long long int*)thrust::raw_pointer_cast(left->d_columns_int[idx].data()));					
-			thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());			    						
+			bool do_sort = 1;
+			if(!left->sorted_fields.empty()) {
+				if(left->sorted_fields.front() == idx) {
+					do_sort = 0;
+					//cout << endl << " do not sort " << endl;
+				};	
+			}
+			if(do_sort)
+				thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());			    						
 		    //cout << endl << "j1 " << getFreeMem() << endl;
 			//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 			//cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl; 
 			
 			
 			char join_kind = join_type.front();
-			join_type.pop();
+			join_type.pop();			
+
 			
-		
 			if (left->type[colInd1] == 2) {
 					res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
 									thrust::raw_pointer_cast(d_col_r), cnt_r,
@@ -1457,7 +1463,10 @@ cudaEventSynchronize(stop) ;
 									thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()), cnt_r,
 									&aIndicesDevice, &bIndicesDevice,
 									mgpu::less<int_type>(), *context);								
-			};						
+			};	
+
+//printf("Time :  %3.1f ms \n", time);
+			
 		
 			//cout << "total " << res_count << endl;
 			int* r1 = aIndicesDevice->get(); 
@@ -1465,13 +1474,13 @@ cudaEventSynchronize(stop) ;
 			int* r2 = bIndicesDevice->get(); 
 			thrust::device_ptr<int> d_res2((int*)r2);		            
 		
-			if(res_count) {			
+			if(res_count) {						
 				p_tmp.resize(res_count);
 				thrust::sequence(p_tmp.begin(), p_tmp.end(),-1);
 				thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive());		
 			};		
-
 			
+		
 			//std::cout<< endl << "join time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;            
 	
             // check if the join is a multicolumn join
@@ -1559,6 +1568,7 @@ cudaEventSynchronize(stop) ;
                 queue<string> op_sel1(op_sel_s);
                 unsigned int colInd, c_colInd;
 				
+								
 		        void* temp;
 				unsigned int max_c = max_char(c);
 		
@@ -1567,6 +1577,8 @@ cudaEventSynchronize(stop) ;
 				}	
 				else
 					CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
+					
+				
 
                 while(!op_sel1.empty()) {
 
@@ -1585,14 +1597,15 @@ cudaEventSynchronize(stop) ;
                         reset_offsets();				
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);//possible that in some cases a join column would be copied to device twice
+					
 						
                         //gather
                         if(left->type[colInd] == 0) {
 							thrust::device_ptr<int_type> d_tmp((int_type*)temp);	
 							thrust::sequence(d_tmp, d_tmp+res_count,0,0);
                             //thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(left->d_columns_int[left->type_index[colInd]].begin(), p_tmp.begin());
-							thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());
-							thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);
+							thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());							
+							thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);							
                         }
                         else if(left->type[colInd] == 1) {
 						    thrust::device_ptr<float_type> d_tmp((float_type*)temp);	
@@ -1647,10 +1660,12 @@ cudaEventSynchronize(stop) ;
                     };
                     op_sel1.pop();					
                 };
-				cudaFree(temp);
+				cudaFree(temp);				
             };	
-        };
+        };		
     };	
+	
+		
 
     left->deAllocOnDevice();
     right->deAllocOnDevice();
@@ -1674,6 +1689,12 @@ cudaEventSynchronize(stop) ;
         varNames[j2]->free();
         varNames.erase(j2);
 	};
+	
+	//printf("total cpy Time :  %3.1f ms \n", total_ctime);
+	//printf("total half Time :  %3.1f ms \n", half);
+	//printf("total Time :  %3.1f ms \n", total_time);
+	//printf("total mmm :  %3.1f ms \n", mmm);
+	//printf("total gather Time :  %3.1f ms \n", total_gtime);
 	
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 	
@@ -2103,7 +2124,7 @@ void emit_select(char *s, char *f, int ll)
 
         if(a->mRecCount) {
             if (ll != 0) {
-                order_inplace(a,op_v2,field_names,i);
+                order_inplace(a,op_v2,field_names);
                 a->GroupBy(op_v2, int_col_count);
             };			
 						
@@ -2225,6 +2246,7 @@ void emit_filter(char *s, char *f, int e)
 
         b = a->copyDeviceStruct();
         b->name = s;
+		b->sorted_fields = a->sorted_fields;
 
         unsigned int cycle_count = 1, cnt = 0;
         allocColumns(a, op_value);
@@ -2340,7 +2362,7 @@ void emit_store_binary(char *s, char *f)
 	}
 	else { 
 		while(!fact_file_loaded)	{
-			cout << "LOADING " << f_file << " " << separator << endl;
+			cout << "LOADING " << f_file << " mem: " << getFreeMem() << endl;
 			if(a->text_source)
 				fact_file_loaded = a->LoadBigFile(f_file.c_str(), separator.c_str());
 			a->Store(f,"", limit, 1);
@@ -2463,6 +2485,9 @@ void clean_queues()
     while(!typevars.empty()) typevars.pop();
     while(!sizevars.empty()) sizevars.pop();
     while(!cols.empty()) cols.pop();
+	while(!op_sort.empty()) op_sort.pop();
+	
+	
 
     sel_count = 0;
     join_cnt = 0;

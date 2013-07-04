@@ -28,8 +28,8 @@ using namespace std;
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/adjacent_difference.h>
+#include <thrust/transform.h>
 #include <thrust/partition.h>
-#include <thrust/reduce.h>
 #include <thrust/fill.h>
 #include <thrust/scan.h>
 #include <thrust/device_ptr.h>
@@ -64,6 +64,7 @@ extern size_t int_size;
 extern size_t float_size;
 extern unsigned int hash_seed;
 extern queue<string> op_type;
+extern queue<string> op_sort;
 extern queue<string> op_value;
 extern queue<int_type> op_nums;
 extern queue<float_type> op_nums_f;
@@ -91,6 +92,7 @@ template<typename T>
     // no-op
   }
 };
+
 
 template<typename T>
   struct uninitialized_allocator
@@ -308,6 +310,7 @@ public:
     char* load_file_name;
     unsigned int oldRecCount;
     bool source, text_source, tmp_table;
+	queue<unsigned int> sorted_fields; //segment is sorted by fields
 	
 
     unsigned int* type; // 0 - integer, 1-float_type, 2-char
@@ -353,6 +356,7 @@ public:
     void addDeviceColumn(float_type* col, int colIndex, string colName, unsigned int recCount);
 	void compress(char* file_name, unsigned int offset, unsigned int check_type, unsigned int check_val, void* d, unsigned int mCount);
     void writeHeader(char* file_name, unsigned int col); 
+	void writeSortHeader(char* file_name);
     void Store(char* file_name, char* sep, unsigned int limit, bool binary);
     void compress_char(string file_name, unsigned int index, unsigned int mCount, unsigned int offset);
     int LoadBigFile(const char* file_name, const char* sep);
@@ -399,6 +403,12 @@ unsigned int max_tmp(CudaSet* a);
 void reset_offsets();
 void setSegments(CudaSet* a, queue<string> cols);
 unsigned int max_char(CudaSet* a, set<string> field_names);
+unsigned int max_char(CudaSet* a, queue<string> field_names);
+void update_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len);
+void update_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, string SortType, char* tmp, unsigned int len);
+void apply_permutation_char(char* key, unsigned int* permutation, unsigned int RecCount, char* tmp, unsigned int len);
+void apply_permutation_char_host(char* key, unsigned int* permutation, unsigned int RecCount, char* res, unsigned int len);
+
 
 #endif
 

@@ -1,3 +1,6 @@
+07/04/2013
+  Major join performance improvements due to addition of local segments sort option.
+
 05/27/2013
   Added a sorted merge joins as default join type.
   Added support for left, right and outer joins.

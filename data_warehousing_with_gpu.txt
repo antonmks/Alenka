@@ -116,7 +116,7 @@ Dataset : 300GB
 
              Q1    Q2    Q3    Q6     (seconds)
 MS SQL       49   2.2    5.6   3.5
-Alenka       29   3.6   15.0   2.2
+Alenka       29   3.6    7.8   2.2
 	 
 As we can see Alenka outperforms MS SQL Server when queries consists of groups and filters. 
 Alenka is slower when queries include join operations. On the whole, it provides an acceptable performance

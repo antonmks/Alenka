@@ -60,6 +60,8 @@ DISTINCT { return DISTINCT; }
 LEFT { return LEFT; }
 RIGHT { return RIGHT; }
 OUTER { return OUTER; }
+SORT {return SORT; }
+SEGMENTS {return SEGMENTS; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }
