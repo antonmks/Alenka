@@ -49,7 +49,7 @@ public:
 	unsigned char comparison(const Str& other) const {
 			if(size % 4 == 0) {
 			/// Speedup in 3 - 3.5 times (compare aligned data by 4 bytes)
-			//static_assert(sizeof(unsigned int) == 4, "You can't use this optimized class, because it can't compare data by 4 bytes!");
+			static_assert(sizeof(unsigned int) == 4, "You can't use this optimized class, because it can't compare data by 4 bytes!");
 			unsigned int const* data4_first = reinterpret_cast<unsigned int const*>(data);
 			unsigned int const* data4_second = reinterpret_cast<unsigned int const *>(other.data);
 			/// Unrolls loops is especially important for CUDA-pipelines

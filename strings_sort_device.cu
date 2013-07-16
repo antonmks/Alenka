@@ -88,7 +88,7 @@ static inline void optimized_str_sort(char* tmp, const size_t RecCount, thrust::
 template<>
 struct T_str_sort<8> {
 	inline void operator()(char* tmp, const size_t RecCount, thrust::device_ptr<unsigned int> &dev_per, const bool desc_order) {
-		//static_assert(sizeof(unsigned long long) == 8, "The size of unsigned long long is not equal to 8 bytes. Comment out this functor!");
+		static_assert(sizeof(unsigned long long) == 8, "The size of unsigned long long is not equal to 8 bytes. Comment out this functor!");
 		optimized_str_sort<unsigned long long>(tmp, RecCount, dev_per, desc_order, T_swap_le_be_64());
 	}
 };
@@ -97,7 +97,7 @@ struct T_str_sort<8> {
 template<>
 struct T_str_sort<4> {
 	inline void operator()(char* tmp, const size_t RecCount, thrust::device_ptr<unsigned int> &dev_per, const bool desc_order) {
-		//static_assert(sizeof(unsigned int) == 4, "The size of unsigned int is not equal to 4 bytes. Comment out this functor!");
+		static_assert(sizeof(unsigned int) == 4, "The size of unsigned int is not equal to 4 bytes. Comment out this functor!");
 		optimized_str_sort<unsigned int>(tmp, RecCount, dev_per, desc_order, T_swap_le_be_32());
 	}
 };
@@ -106,7 +106,7 @@ struct T_str_sort<4> {
 template<>
 struct T_str_sort<2> {
 	inline void operator()(char* tmp, const size_t RecCount, thrust::device_ptr<unsigned int> &dev_per, const bool desc_order) {
-		//static_assert(sizeof(unsigned short int) == 2, "The size of unsigned short int is not equal to 2 bytes. Comment out this functor!");
+		static_assert(sizeof(unsigned short int) == 2, "The size of unsigned short int is not equal to 2 bytes. Comment out this functor!");
 		optimized_str_sort<unsigned short int>(tmp, RecCount, dev_per, desc_order, T_swap_le_be_16());
 	}
 };
@@ -115,7 +115,7 @@ struct T_str_sort<2> {
 template<>
 struct T_str_sort<1> {
 	inline void operator()(char* tmp, const size_t RecCount, thrust::device_ptr<unsigned int> &dev_per, const bool desc_order) {
-		//static_assert(sizeof(unsigned char) == 1, "The size of unsigned char is not equal to 1 bytes. Comment out this functor!");
+		static_assert(sizeof(unsigned char) == 1, "The size of unsigned char is not equal to 1 bytes. Comment out this functor!");
 		optimized_str_sort<unsigned char>(tmp, RecCount, dev_per, desc_order, T_swap_le_be_8());
 	}
 };
