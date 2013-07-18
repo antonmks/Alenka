@@ -3168,11 +3168,12 @@ void emit_join(char *s, char *j1, int grp)
 					op_join.pop();
 				}
 				else {
-					if(!op_join.empty())
+					if(!op_join.empty()) {
 						j = op_join.front();	
+						op_join.pop();
+					}	
 					else
-						j = j1;			  
-					op_join.pop();
+						j = j1;			  					
 					j2 = s + to_string1((long long int)i-1);
 				};
 				emit_multijoin(tab_name, j, j2, i, s);
@@ -4588,7 +4589,7 @@ int main(int ac, char **av)
     context->SetAllocator(standardAlloc);
 	
     cudppCreate(&theCudpp);
-
+	
     /*long long int r30 = RAND_MAX*rand()+rand();
     long long int s30 = RAND_MAX*rand()+rand();
     long long int t4  = rand() & 0xf;
@@ -4639,6 +4640,9 @@ int main(int ac, char **av)
         cout << "SQL scan parse worked" << endl;
     else
         cout << "SQL scan parse failed" << endl;
+		
+	std::cout<< "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) <<'\n';
+
 
     if(alloced_sz)
         cudaFree(alloced_tmp);

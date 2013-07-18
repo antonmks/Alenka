@@ -31,6 +31,8 @@
 using namespace std;
 using namespace thrust::placeholders;
 
+
+std::clock_t tot;
 unsigned long long int total_count = 0;
 unsigned int total_segments = 0;
 unsigned int total_max;
@@ -217,9 +219,6 @@ char *mystrtok(char **m,char *s,char c)
 }
 
 
-
-
-
 void allocColumns(CudaSet* a, queue<string> fields);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, unsigned int& count);
 void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, unsigned int count, unsigned int g_size);
@@ -234,7 +233,7 @@ unsigned int curr_segment = 10000000;
 size_t getFreeMem();
 char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment);
 
-
+float total_time1 = 0;
 
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, int_type Recs)
@@ -689,9 +688,9 @@ CudaSet* CudaSet::copyDeviceStruct()
 }
 
 
-
 unsigned long long int CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
 {
+    
     char f1[100];
     strcpy(f1, load_file_name);
     strcat(f1,".");
@@ -704,6 +703,9 @@ unsigned long long int CudaSet::readSegmentsFromFile(unsigned int segNum, unsign
     itoaa(segNum,col_pos);
     strcat(f1,col_pos);
 
+	std::clock_t start1 = std::clock();
+	
+	
     FILE* f;
 
     f = fopen(f1, "rb" );
@@ -739,8 +741,11 @@ unsigned long long int CudaSet::readSegmentsFromFile(unsigned int segNum, unsign
     else {
         decompress_char(f, colIndex, segNum);
     };
+	
+	tot = tot +    ( std::clock() - start1 );
 
     fclose(f);
+	
     return 0;
 };
 
@@ -1281,6 +1286,7 @@ void CudaSet::writeSortHeader(char* file_name)
     binary_file.close();
 
 }
+
 
 
 void CudaSet::Store(char* file_name, char* sep, unsigned int limit, bool binary )
@@ -2182,7 +2188,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type>>());
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
