@@ -2278,7 +2278,7 @@ void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as)
         }
         else if ((a->type)[index] == 1) {
             d_columns_float.push_back(thrust::device_vector<float_type>());
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type>>());
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
             type[i] = 1;
             type_index[i] = h_columns_float.size()-1;
         }
