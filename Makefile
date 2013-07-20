@@ -10,7 +10,7 @@ alenka : bison.o merge.o \
 		 atof.o cm.o mgpucontext.o format.o
 		 
 
-nvcc = /usr/local/cuda/bin/nvcc --machine 64 -O3 -arch=sm_20 --compiler-options "-std=c++0x" -c
+nvcc = /usr/local/cuda/bin/nvcc --machine 64 -O3 -arch=sm_20 -c
 
 bison.o : bison.cu cm.h sorts.cu
 	$(nvcc) bison.cu
