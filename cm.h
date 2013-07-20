@@ -81,6 +81,9 @@ extern unsigned int oldCount;
 extern void* alloced_tmp;
 extern unsigned int alloced_sz;
 
+extern std::clock_t tot;
+
+
 template<typename T>
   struct uninitialized_host_allocator
     : std::allocator<T>
