@@ -14,13 +14,13 @@
  */
 
 #include <cctype>
+#include <algorithm>
 #include <functional>
 #include <numeric>
 #include "cm.h"
 #include "atof.h"
 #include "compress.cu"
 #include "sorts.cu"
-
 
 
 #ifdef _WIN64
