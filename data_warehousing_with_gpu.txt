@@ -89,37 +89,34 @@ R := SELECT SUM(lo_revenue) AS revenue, d_year AS d_year1, c_city AS c_city1, s_
 R1 := ORDER R BY d_year1 ASC, revenue DESC;		 	 
 STORE R1 INTO 'ss33.txt' USING ('|');
 
-By default Alenka uses sort/merge join, but when appropriate, it uses star schema bitmap join. 
+By default Alenka uses sort/merge join, but when appropriate it uses star schema bitmap join. 
 
 Now lets time a few TPC-H benchmark queries to see how Alenka performs 
 in comparison to published TPC-H results :
 
-Our hardware setup : 
+My hardware setup : 
 CPU - Pentium G620, 2 cores
-GPU - NVidia GTX Titan, 6GB of DDR5 memory
+GPU - NVidia GTX Titan, 6GB of DDR5 GPU memory
 Host Memory - 16GB of DDR3 memory
 1 Vertex3 120GB SSD 
+AlenkaDB (https://github.com/antonmks/Alenka)
+Total cost : 1,700 USD
 
-Our software :
-Alenka (https://github.com/antonmks/Alenka)
-Windows7 64bit
-NVidia's Cuda 5.0
+From current top 10 TPC-H results at scale 1000 :
+IBM Power 780 Model 9179-MHB 
+8 IBM POWER7 4.1GHz CPUs, 32 cores
+512 GB of memory
+52 x 69GB SAS SSD
+Sybase IQ Single Application Server Edition v.15.2
+Total cost : $1,128,288 USD
 
-From current TPC-H results at scale 300 :
-HP Proliant DL785 G6 
-8 AMD Opteron 2.8 GHz CPUs, 48 cores
-256 GB of memory
-194 disk drives
-MS SQL Server 2008
+TPC-H dataset : 1000 GB
 
-Dataset : 300GB
-
-             Q1    Q2    Q3    Q6     (seconds)
-MS SQL       49   2.2    5.6   3.5
-Alenka       29   3.6    7.8   2.2
+             Q1    Q3    Q6     (seconds)
+SYBASE       118   27   2.5
+Alenka       72    23   4.0     (hot run =  total run time - disk reads)
 	 
-As we can see Alenka outperforms MS SQL Server when queries consists of groups and filters. 
-Alenka is slower when queries include join operations. On the whole, it provides an acceptable performance
+As we can see AlenkaDB performance is similar to that of much more expensive server.
 using very inexpensive hardware and free open source software.
 
 Alenka can be downloaded at https://github.com/antonmks/Alenka

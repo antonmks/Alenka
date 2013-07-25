@@ -298,7 +298,7 @@ CudaSet::~CudaSet()
 void CudaSet::allocColumnOnDevice(unsigned int colIndex, unsigned long long int RecordCount)
 {
     if (type[colIndex] == 0) {
-        d_columns_int[type_index[colIndex]].resize(RecordCount);
+		d_columns_int[type_index[colIndex]].resize(RecordCount);
     }
     else if (type[colIndex] == 1)
         d_columns_float[type_index[colIndex]].resize(RecordCount);
@@ -2326,7 +2326,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 
     unsigned int index;
 	i = 0;
-    while(!op_sel.empty()) {
+    while(!op_sel.empty() && (columnNames.find(op_sel.front()) ==  columnNames.end())) {
 
         if((it = a->columnNames.find(op_sel.front())) !=  a->columnNames.end()) {
             index = it->second;
@@ -2357,21 +2357,18 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
         }
         else if((it = b->columnNames.find(op_sel.front())) !=  b->columnNames.end()) {
             index = it->second;
-
 			columnNames[op_sel.front()] = i;
             cols[i] = i;
             decimal[i] = b->decimal[index];
 
             if ((b->type)[index] == 0) {
                 d_columns_int.push_back(thrust::device_vector<int_type>());
-                //h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >());
 				h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >());
                 type[i] = 0;
                 type_index[i] = h_columns_int.size()-1;
             }
             else if ((b->type)[index] == 1) {
                 d_columns_float.push_back(thrust::device_vector<float_type>());
-                //h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >());
 				h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
                 type[i] = 1;
                 type_index[i] = h_columns_float.size()-1;
@@ -2660,7 +2657,7 @@ unsigned int load_queue(queue<string> c1, CudaSet* right, bool str_join, string 
         };
         c1.pop();
     };
-    if(!str_join) {
+    if(!str_join && right->columnNames.find(f2) !=  right->columnNames.end()) {
         cc.push(f2);
     };
 
