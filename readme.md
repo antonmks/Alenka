@@ -101,9 +101,17 @@ IBM Power 780 Model 9179-MHB
 Sybase IQ Single Application Server Edition v.15.2
 Total cost : $1,128,288 USD
 
-             Q1    Q3    Q6     (seconds)
-SYBASE       118   27   2.5
-Alenka       72    23   4.0     (hot run =  total run time - disk reads)
+<table>
+  <tr>
+    <th></th><th>Q1</th><th>Q3</th><th>Q6</th>
+  </tr>
+  <tr>
+    <td>SYBASE</td><td>118</td><td>27</td><td>2.5</td>
+  </tr>
+  <tr>
+    <td>Alenka</td><td>72</td><td>23</td><td>4.0</td>
+  </tr>
+</table>
 
 [![githalytics.com alpha](https://cruel-carlota.pagodabox.com/924b3b89c15fc603702a40b6ef0a718f "githalytics.com")](http://githalytics.com/antonmks/Alenka)
 
