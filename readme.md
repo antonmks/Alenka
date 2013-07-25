@@ -103,6 +103,7 @@ Top #7 TPC-H result at scale 1000 (Total cost : $1,128,288 USD):
 - Sybase IQ Single Application Server Edition v.15.2
 
 
+Results of TPC-H Queries Q1,Q3 and Q6 in seconds ( the lower values are better )
 
 <table>
   <tr>
