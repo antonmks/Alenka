@@ -116,6 +116,8 @@ Top #7 TPC-H result at scale 1000 (Total cost : $1,128,288 USD):
   </tr>
 </table>
 
+*Alenka run time calculated as total run time - disk time.
+
 [![githalytics.com alpha](https://cruel-carlota.pagodabox.com/924b3b89c15fc603702a40b6ef0a718f "githalytics.com")](http://githalytics.com/antonmks/Alenka)
 
 ---
