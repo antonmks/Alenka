@@ -81,6 +81,30 @@ Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create y
 
 `STORE RES INTO 'results.txt' USING ('|') LIMIT 10;`
 
+### How fast is it?
+
+Using TPC-H benchmark at the scale 1000 (1TB of data) we compared the following systems :
+
+My system : 
+CPU - Pentium G620, 2 cores
+GPU - NVidia GTX Titan, 6GB of DDR5 GPU memory
+16GB of memory
+1 Vertex3 120GB SSD 
+AlenkaDB (https://github.com/antonmks/Alenka)
+Total cost : 1,700 USD
+
+From current top 10 TPC-H results at scale 1000 :
+IBM Power 780 Model 9179-MHB 
+8 IBM POWER7 4.1GHz CPUs, 32 cores
+512 GB of memory
+52 x 69GB SAS SSD
+Sybase IQ Single Application Server Edition v.15.2
+Total cost : $1,128,288 USD
+
+             Q1    Q3    Q6     (seconds)
+SYBASE       118   27   2.5
+Alenka       72    23   4.0     (hot run =  total run time - disk reads)
+
 [![githalytics.com alpha](https://cruel-carlota.pagodabox.com/924b3b89c15fc603702a40b6ef0a718f "githalytics.com")](http://githalytics.com/antonmks/Alenka)
 
 ---
