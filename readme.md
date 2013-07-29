@@ -107,13 +107,13 @@ Results of TPC-H Queries Q1,Q3 and Q6 in seconds ( the lower values are better )
 
 <table>
   <tr>
-    <th></th><th>Q1</th><th>Q3</th><th>Q6</th>
+    <th></th><th>Q1</th><th>Q2</th><th>Q3</th>
   </tr>
   <tr>
-    <td>IBM+Sybase</td><td>118</td><td>27</td><td>2.5</td>
+    <td>IBM+Sybase</td><td>118</td><td>7.8</td><td>27</td>
   </tr>
   <tr>
-    <td>Titan+Alenka</td><td>72</td><td>23</td><td>4.0</td>
+    <td>Titan+Alenka</td><td>72</td><td>6.1</td><td>23</td>
   </tr>
 </table>
 
