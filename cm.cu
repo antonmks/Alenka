@@ -483,7 +483,7 @@ void CudaSet::resize_join(unsigned int addRecs)
 {    
     mRecCount = mRecCount + addRecs;
 	bool prealloc = 0;
-    for(unsigned int i=0; i <mColumnCount; i++) {
+    for(unsigned int i=0; i < mColumnCount; i++) {
         if(type[i] == 0) {
             h_columns_int[type_index[i]].resize(mRecCount);
         }
@@ -1643,9 +1643,20 @@ void CudaSet::free()  {
         if(type[i] == 2 && h_columns_char[type_index[i]] && prm.empty()) {
             delete [] h_columns_char[type_index[i]];
             h_columns_char[type_index[i]] = NULL;
-        };
-    };
-
+        }
+		else {
+			if(type[i] == 0 ) {			
+				h_columns_int[type_index[i]].resize(0);
+				h_columns_int[type_index[i]].shrink_to_fit();
+			}	
+			else if(type[i] == 1) {			
+		        h_columns_float[type_index[i]].resize(0);
+				h_columns_float[type_index[i]].shrink_to_fit();
+			};			
+        }
+    }
+    
+			
     if(!prm.empty()) { // free the sources
         string some_field;
         map<string,int>::iterator it=columnNames.begin();
@@ -1663,6 +1674,7 @@ void CudaSet::free()  {
 
     for(unsigned int i = 0; i < prm.size(); i++)
         delete [] prm[i];
+		
 };
 
 
@@ -2099,6 +2111,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 		fclose(f);
 	};	
 	
+	tmp_table = 0;
 
     for(unsigned int i=0; i < mColumnCount; i++) {
 
@@ -2129,14 +2142,14 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(cnt + 9));
             d_columns_float.push_back(thrust::device_vector<float_type >());
             type_index[i] = h_columns_float.size()-1;
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type>(cnt + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type>>(cnt + 9));
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
@@ -2167,6 +2180,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 	prealloc_char_size = 0;
 
     file_p = NULL;
+	tmp_table = 0;
 
     mRecCount = Recs;
 	oldRecCount = Recs;
@@ -2303,13 +2317,15 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 	mColumnCount = 0;
 	queue<string> q_cnt(op_sel);
 	unsigned int i = 0;
+	set<string> field_names;
 	while(!q_cnt.empty()) {
         if(a->columnNames.find(q_cnt.front()) !=  a->columnNames.end() || b->columnNames.find(q_cnt.front()) !=  b->columnNames.end())  {
-		    mColumnCount++;
+			field_names.insert(q_cnt.front());
 		};
         q_cnt.pop();
     }	
-
+	mColumnCount = field_names.size();
+	
     type = new unsigned int[mColumnCount];
     cols = new unsigned int[mColumnCount];
     decimal = new bool[mColumnCount];
@@ -2333,7 +2349,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
             cols[i] = i;
             decimal[i] = a->decimal[i];
 			columnNames[op_sel.front()] = i;
-
+			
             if (a->type[index] == 0)  {
                 d_columns_int.push_back(thrust::device_vector<int_type>());
                 h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >());
@@ -2342,7 +2358,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
             }
             else if ((a->type)[index] == 1) {
                 d_columns_float.push_back(thrust::device_vector<float_type>());
-                h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
+                h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());				
                 type[i] = 1;
                 type_index[i] = h_columns_float.size()-1;
             }
@@ -2357,19 +2373,19 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
         }
         else if((it = b->columnNames.find(op_sel.front())) !=  b->columnNames.end()) {
             index = it->second;
-			columnNames[op_sel.front()] = i;
+			columnNames[op_sel.front()] = i;			
             cols[i] = i;
             decimal[i] = b->decimal[index];
 
             if ((b->type)[index] == 0) {
                 d_columns_int.push_back(thrust::device_vector<int_type>());
 				h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >());
-                type[i] = 0;
+				type[i] = 0;
                 type_index[i] = h_columns_int.size()-1;
             }
             else if ((b->type)[index] == 1) {
                 d_columns_float.push_back(thrust::device_vector<float_type>());
-				h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
+				h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());				
                 type[i] = 1;
                 type_index[i] = h_columns_float.size()-1;
             }

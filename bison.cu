@@ -3194,10 +3194,12 @@ void emit_join(char *s, char *j1, int grp)
         varNames.erase(s);
     };
 
-    if(stat[j1] == statement_count) {
+    /*if(stat[j1] == statement_count) {
         varNames[j1]->free();
         varNames.erase(j1);
     };
+	*/
+	
 
     if(stat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
         varNames[op_join.front()]->free();
@@ -3206,13 +3208,12 @@ void emit_join(char *s, char *j1, int grp)
    
 }
 
-bool show = 0;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
 {
 
-	//cout << "j2 " << j2 << endl;
-	//cout << "j1 " << j1 << endl;
+//	cout << "j2 " << j2 << endl;
+//	cout << "j1 " << j1 << endl;
     
 
     if(varNames.find(j1) == varNames.end() || varNames.find(j2) == varNames.end()) {
@@ -3281,6 +3282,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         return;
     };
 	
+	//cout << "tab = " << tab << " " << join_tab_cnt << endl;
 	if(join_tab_cnt > 1 && tab < join_tab_cnt)
 	    c->tmp_table = 1;
 	else
@@ -3494,6 +3496,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     for (unsigned int i = 0; i < left->segCount; i++) {
 
         cout << "segment " << i <<  '\xd';
+		//cout << "segment " << i <<  endl;
 				
         cnt_l = 0;
 		
@@ -3676,7 +3679,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				};	
                 c->resize_join(res_count);	
 				
-				
                 queue<string> op_sel1(op_sel_s);
                 unsigned int colInd, c_colInd;
 				
@@ -3784,7 +3786,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     };	
 	
 		
-
     left->deAllocOnDevice();
     right->deAllocOnDevice();
     c->deAllocOnDevice();	
@@ -3802,20 +3803,26 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	cout << endl << "join count " << tot_count << endl;
     for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
         setMap[(*it).first] = s;
+		
 
     if(right->tmp_table == 1) {
-        varNames[j2]->free();
+        right->free();
         varNames.erase(j2);
+	}
+	else {
+		if(stat[j2] == statement_count) {
+			right->free();
+			varNames.erase(j2);
+		};
+		
 	};
 	
-	//printf("total cpy Time :  %3.1f ms \n", total_ctime);
-	//printf("total half Time :  %3.1f ms \n", half);
-	//printf("total Time :  %3.1f ms \n", total_time);
-	//printf("total mmm :  %3.1f ms \n", mmm);
-	//printf("total gather Time :  %3.1f ms \n", total_gtime);
+	if(stat[j1] == statement_count) {
+        left->free();
+        varNames.erase(j1);
+    };	
 	
-    std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-	
+    std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;	
 }
 
 
@@ -4097,7 +4104,12 @@ void emit_select(char *s, char *f, int ll)
     };
 
     CudaSet *a;
-    a = varNames.find(f)->second;
+	if(varNames.find(f) != varNames.end())
+		a = varNames.find(f)->second;
+	else {
+		cout << "Couldn't find " << f  << endl;
+		exit(0);
+    };	
 	
     if(a->mRecCount == 0) {
         CudaSet *c;
