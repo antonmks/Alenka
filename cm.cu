@@ -2149,7 +2149,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type>>(cnt + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(cnt + 9));
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
