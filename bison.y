@@ -1130,10 +1130,12 @@ void emit_join(char *s, char *j1, int grp)
 	*/
 	
 
-    if(stat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
-        varNames[op_join.front()]->free();
-        varNames.erase(op_join.front());
-    };
+	if(op_join.size()) {
+		if(stat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
+			varNames[op_join.front()]->free();
+			varNames.erase(op_join.front());
+		};
+	};	
    
 }
 
