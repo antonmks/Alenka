@@ -777,7 +777,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
 	
     unsigned long long int* int_array = new unsigned long long int[vals_count];
     fread((void*)int_array, 1, vals_count*8, f);
-    fclose(f);
+    //fclose(f);
 	
     void* d_val;
     cudaMalloc((void **) &d_val, vals_count*8);
