@@ -82,6 +82,29 @@ void str_merge_by_key(thrust::host_vector<unsigned long long int>& keys,
 	if (str_merge_by_key_functor(keys, hh, values_first1, values_first2, tmp, len)) {}
     
 }
+
+template<unsigned int len>
+struct T_str_merge_by_key1 {
+	inline void operator()(long long int* keys,
+                           char* values_first1, const char* values_first2, char* tmp, size_t offset1, size_t offset2)
+   {
+	thrust::merge_by_key(keys, keys + offset1,
+                         keys + offset1, keys + offset2,
+						 (Str<len> *)values_first1, (Str<len> *)values_first2,
+				         thrust::make_discard_iterator(), (Str<len> *)tmp);
+  
+	}
+};
+
+void str_merge_by_key1(long long int* keys,
+                      char* values_first1, char* values_first2,
+				      unsigned int len,
+                      char* tmp, size_t offset1, size_t offset2)
+{
+	T_unroll_functor<UNROLL_COUNT, T_str_merge_by_key1> str_merge_by_key_functor;
+	if (str_merge_by_key_functor(keys, values_first1, values_first2, tmp, offset1, offset2, len)) {}
+    
+}
 // ---------------------------------------------------------------------------
 
 /*

@@ -1,12 +1,12 @@
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o itoa.o \
+		 select.o zone_map.o \
 		 atof.o cm.o mgpucontext.o format.o
 	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o itoa.o \
+		 select.o zone_map.o \
 		 atof.o cm.o mgpucontext.o format.o
 		 
 
@@ -32,8 +32,6 @@ select.o : select.cu cm.h select.h
 	$(nvcc) select.cu
 zone_map.o : zone_map.cu cm.h zone_map.h
 	$(nvcc) zone_map.cu
-itoa.o : itoa.cu itoa.h
-	$(nvcc) itoa.cu
 atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
 cm.o : cm.cu cm.h	

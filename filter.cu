@@ -116,7 +116,7 @@ struct cmp_functor_str_like_right
 
 
 unsigned long long int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
-                              CudaSet* b, unsigned int segment, thrust::device_vector<unsigned int>& dev_p)
+                              CudaSet* b, unsigned int segment)
 {
 
     stack<string> exe_type;
@@ -409,7 +409,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                         float_type* s3 = exe_vectors_f.top();
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
-                        exe_vectors_f.push(a->op(s3,n1, ss,1));
+                        exe_vectors_f.push(a->op(s3,(float_type)n1, ss,1));
                         cudaFree(s3);
                     }
                 }
@@ -428,7 +428,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                         float_type* s3 = exe_vectors_f.top();
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
-                        exe_vectors_f.push(a->op(s3,n1, ss,0));
+                        exe_vectors_f.push(a->op(s3,(float_type)n1, ss,0));
                         cudaFree(s3);
                     }
                 }
@@ -453,7 +453,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     }
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR") == 0) {
-                    n1_f = exe_nums.top();
+                    n1_f = exe_nums_f.top();
                     exe_nums.pop();
 
                     if (s2.compare("VECTOR") == 0 ) {
@@ -579,7 +579,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     cudaMalloc((void **) &d_v, 8);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
                     dd_v[0] = a->char_size[a->type_index[colIndex1]];
-                    dd_v[1] = s1_val.length();
+                    dd_v[1] = (unsigned int)s1_val.length();
                     void* d_res;
                     cudaMalloc((void **) &d_res, a->mRecCount);
 
@@ -697,7 +697,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
-                        bool_vectors.push(a->compare(t,n1_f,cmp_type));
+                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s1_val);
@@ -715,7 +715,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     if (a->type[(a->columnNames)[s2_val]] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         exe_type.push("VECTOR");
-                        bool_vectors.push(a->compare(t,n1_f,cmp_type));
+                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -731,7 +731,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1,cmp_type));
+                    bool_vectors.push(a->compare(s3,(float_type)n1,cmp_type));
                     cudaFree(s3);
                 }
 
@@ -752,7 +752,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1,cmp_type));
+                    bool_vectors.push(a->compare(s3,(float_type)n1,cmp_type));
                     cudaFree(s3);
                 }
 
@@ -784,7 +784,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1_f,cmp_type));
+                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type));
                     cudaFree(s3);
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR F") == 0) {
@@ -803,7 +803,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1_f,cmp_type));
+                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type));
                     cudaFree(s3);
                 }
 
@@ -985,18 +985,15 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
 
 
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());
-    unsigned int count = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
-    b->mRecCount = b->mRecCount + count;
-
-    b->prm.push_back(new unsigned int[count]);
-    b->prm_count.push_back(count);
-    b->prm_index.push_back('R');
+    b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
+    b->prm_index = 'R';
     thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
-                    bp, dev_p.begin(), thrust::identity<bool>());
+                    bp, b->prm_d.begin(), thrust::identity<bool>());
 
-    cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
+    //cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
 
-    b->type_index = a->type_index;
+    if(segment == a->segCount-1)
+        b->type_index = a->type_index;
     cudaFree(bool_vectors.top());
     return b->mRecCount;
 }

@@ -90,7 +90,9 @@
      RIGHT = 306,
      OUTER = 307,
      SORT = 308,
-     SEGMENTS = 309
+     SEGMENTS = 309,
+     PRESORTED = 310,
+     PARTITION = 311
    };
 #endif
 
@@ -101,7 +103,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 69 "bison.y"
+#line 70 "bison.y"
 
     int intval;
     float floatval;
@@ -111,7 +113,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 115 "bison.tab.h"
+#line 117 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

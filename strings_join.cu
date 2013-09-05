@@ -62,4 +62,7 @@ void str_gather(void* d_int, const size_t real_count, void* d, void* d_char, con
 	else if(len  == 101) T_str_gather<101>().operator()(res, real_count, d, d_char);
 	else if(len  == 255) T_str_gather<255>().operator()(res, real_count, d, d_char);
 }
+
+
+
 // ---------------------------------------------------------------------------

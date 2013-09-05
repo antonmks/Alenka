@@ -15,7 +15,7 @@
 #include "strings.h"
 
 template <typename KeyType>
-void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned int RecCount, string SortType, KeyType* tmp)
+void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp)
 {
     thrust::device_ptr<unsigned int> dev_per(permutation);
     // temporary storage for keys
@@ -31,7 +31,7 @@ void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permu
 }
 
 template <typename KeyType>
-void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned int RecCount, string SortType, KeyType* tmp)
+void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp)
 {
     thrust::gather(permutation, permutation+RecCount, key, tmp);
 
@@ -44,7 +44,7 @@ void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned i
 
 
 template <typename KeyType>
-void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned int RecCount, KeyType* tmp)
+void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, KeyType* tmp)
 {
     thrust::device_ptr<unsigned int> dev_per(permutation);
     thrust::device_ptr<KeyType> temp(tmp);
@@ -55,7 +55,7 @@ void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permut
 }
 
 template <typename KeyType>
-void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned int RecCount, KeyType* res)
+void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, KeyType* res)
 {
     thrust::gather(permutation, permutation + RecCount, key, res);
 }

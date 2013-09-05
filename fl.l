@@ -62,6 +62,8 @@ RIGHT { return RIGHT; }
 OUTER { return OUTER; }
 SORT {return SORT; }
 SEGMENTS {return SEGMENTS; }
+PRESORTED {return PRESORTED; }
+PARTITION {return PARTITION; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }
@@ -69,16 +71,15 @@ SEGMENTS {return SEGMENTS; }
 -?"."[0-9]+ |
 -?[0-9]+E[-+]?[0-9]+ |
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
--?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atof(yytext) ;
-return APPROXNUM; }
+-?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atof(yytext) ;return APPROXNUM; }
 
 TRUE { yylval.intval = 1; return BOOL1; }
 UNKNOWN { yylval.intval = -1; return BOOL1; }
 FALSE { yylval.intval = 0; return BOOL1; }
 
 \"(\\.|\"\"|[^"\n])*\" { yylval.strval = strdup(yytext); return STRING; }
-'(\\.|[^'\n])*$ { yyerror("Unterminated string %s", yytext); }
-\"(\\.|[^"\n])*$ { yyerror("Unterminated string %s", yytext); }
+'(\\.|[^'\n])*$ { yyerror("Unterminated string %s", yytext); break;}
+\"(\\.|[^"\n])*$ { yyerror("Unterminated string %s", yytext); break;}
 
 
 [-+&~|^/%*(),.;:!{}] { return yytext[0]; }
@@ -96,15 +97,11 @@ FALSE { yylval.intval = 0; return BOOL1; }
 "<>" { yylval.subtok = 3; return COMPARISON; }
 
 '[A-Za-z0-9_:\\\.|;]*' { yylval.strval = strdup(yytext+1);
-yylval.strval[yyleng-2] = 0; 
-return FILENAME; }
+yylval.strval[yyleng-2] = 0; return FILENAME; }
 
-[A-Za-z][A-Za-z0-9_]* { yylval.strval = strdup(yytext);
-return NAME; }
-'[^'/\\.\n]+' { yylval.strval = strdup(yytext+1);
-yylval.strval[yyleng-2] = 0; 
-return FILENAME; }
-'[^'\n]*$ { printf("unterminated quoted name %s", yytext); }
+[A-Za-z][A-Za-z0-9_]* { yylval.strval = strdup(yytext);return NAME; }
+'[^'/\\.\n]+' { yylval.strval = strdup(yytext+1);yylval.strval[yyleng-2] = 0; return FILENAME; }
+'[^'\n]*$ { printf("unterminated quoted name %s", yytext); break;}
 
 
 [ \t\n] 

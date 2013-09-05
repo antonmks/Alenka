@@ -616,9 +616,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     CudaSet *t;
     FILE* f;
     unsigned int colIndex, cnt;
-    char f1[100];
-    char col_pos[3];
-
+    string f1;
 
     while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
@@ -628,14 +626,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             // copy t min and max values to a only if int, decimal or float
             if(t->type[colIndex] <= 1) {
 
-                strcpy(f1, t->load_file_name);
-                strcat(f1,".");
-                itoaa(t->cols[colIndex],col_pos);
-                strcat(f1,col_pos);
-                strcat(f1,".");
-                itoaa(segment,col_pos);
-                strcat(f1,col_pos);
-                f = fopen (f1 , "rb" );
+                f1 = t->load_file_name + "." + std::to_string(t->cols[colIndex]) + "." + std::to_string(segment);
+                f = fopen (f1.c_str() , "rb" );
 
                 fread((char *)&cnt, 4, 1, f);
                 if (t->type[colIndex] == 0) {
@@ -1164,7 +1156,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     if (a->type[(a->columnNames)[s2_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         exe_type.push("VECTOR");
-                        bool_vectors.push(host_compare(t,n1_f,cmp_type));
+                        bool_vectors.push(host_compare(t,(int_type)n1_f,cmp_type));
                     }
                     else {
                         float_type* t = a->get_host_float_by_name(s2_val);
@@ -1180,7 +1172,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(host_compare(s3,n1,cmp_type));
+                    bool_vectors.push(host_compare(s3,(float_type)n1,cmp_type));
                     cudaFree(s3);
                 }
 
@@ -1201,7 +1193,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(host_compare(s3,n1,cmp_type));
+                    bool_vectors.push(host_compare(s3,(float_type)n1,cmp_type));
                     cudaFree(s3);
                 }
 
@@ -1233,7 +1225,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(host_compare(s3,n1_f,cmp_type));
+                    bool_vectors.push(host_compare(s3,(int_type)n1_f,cmp_type));
                     cudaFree(s3);
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR F") == 0) {
@@ -1252,7 +1244,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(host_compare(s3,n1_f,cmp_type));
+                    bool_vectors.push(host_compare(s3,(int_type)n1_f,cmp_type));
                     cudaFree(s3);
                 }
 

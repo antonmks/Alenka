@@ -123,22 +123,10 @@ struct decompress_functor_int
     __host__ __device__
     void operator()(const IndexType & i) {
 
-
-        unsigned int bits = vals[0];
-        unsigned int fit_count = vals[1];
-        unsigned int int_sz = vals[2];
-
-        //find the source index
-        unsigned int src_idx = i/fit_count;
-        // find the exact location
-        unsigned int src_loc = i%fit_count;
-        //right shift the values
-        unsigned int shifted = int_sz - bits - src_loc*bits;
-        unsigned long long int tmp = source[src_idx]  >> shifted;
+        unsigned long long int tmp = source[i/vals[1]]  >> (vals[2] - vals[0] - (i%vals[1])*vals[0]);
         // set  the rest of bits to 0
-        tmp	= tmp << (int_sz - bits);
-        tmp	= tmp >> (int_sz - bits);
-
+        tmp	= tmp << (vals[2] - vals[0]);
+        tmp	= tmp >> (vals[2] - vals[0]);
         dest[i] = tmp + start_val[0];
 
     }
@@ -162,21 +150,10 @@ struct decompress_functor_float
     __host__ __device__
     void operator()(const IndexType & i) {
 
-
-        unsigned int bits = vals[0];
-        unsigned int fit_count = vals[1];
-        unsigned int int_sz = vals[2];
-
-        //find the source index
-        unsigned int src_idx = i/fit_count;
-        // find the exact location
-        unsigned int src_loc = i%fit_count;
-        //right shift the values
-        unsigned int shifted = int_sz - bits - src_loc*bits;
-        unsigned long long int tmp = source[src_idx]  >> shifted;
+        unsigned long long int tmp = source[i/vals[1]]  >> (vals[2] - vals[0] - (i%vals[1])*vals[0]);
         // set  the rest of bits to 0
-        tmp	= tmp << (int_sz - bits);
-        tmp	= tmp >> (int_sz - bits);
+        tmp	= tmp << (vals[2] - vals[0]);
+        tmp	= tmp >> (vals[2] - vals[0]);
 
         dest[i] = tmp + start_val[0];
 
@@ -262,7 +239,7 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
     dd_v[0] = bits;
     dd_v[1] = fit_count;
     dd_v[2] = bit_count;
-	
+
     thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
     thrust::for_each(begin, begin + orig_recCount, ff1);
@@ -276,7 +253,7 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
 
 
 template< typename T>
-unsigned long long int pfor_delta_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp, unsigned long long int sz)
+unsigned long long int pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp, unsigned long long int sz)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -393,9 +370,9 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
-    if(file_name) {
+    if(!file_name.empty()) {
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        fstream binary_file(file_name,ios::out|ios::binary|ios::app);
+        fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
         binary_file.write((char *)&cnt, 4);
         binary_file.write((char *)&real_lower, 8);
         binary_file.write((char *)&real_upper, 8);
@@ -441,7 +418,7 @@ unsigned long long int pfor_delta_compress(void* source, unsigned int source_len
 
 
 template< typename T>
-unsigned long long int pfor_compress(void* source, unsigned int source_len, char* file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp, unsigned long long int sz)
+unsigned long long int pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp, unsigned long long int sz)
 {
     unsigned int recCount;
     long long int orig_lower_val;
@@ -456,12 +433,12 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
     // check if sorted
 
     if (tp == 0) {
-	    recCount = source_len/int_size;
+        recCount = source_len/int_size;
         thrust::device_ptr<int_type> s((int_type*)source);
         sorted = thrust::is_sorted(s, s+recCount-1);
     }
     else {
-	    recCount = source_len/float_size;
+        recCount = source_len/float_size;
         thrust::device_ptr<long long int> s((long long int*)source);
         sorted = thrust::is_sorted(s, s+recCount);
     };
@@ -482,12 +459,12 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
-	     
+
         thrust::device_ptr<long long int> s((long long int*)source);
-	
+
         orig_lower_val = *(thrust::min_element(s, s + recCount));
-        orig_upper_val = *(thrust::max_element(s, s + recCount));		
-		
+        orig_upper_val = *(thrust::max_element(s, s + recCount));
+
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
@@ -549,9 +526,9 @@ unsigned long long int pfor_compress(void* source, unsigned int source_len, char
 
     //cout << file_name << " CNT  " << cnt << endl;
 
-    if(file_name) {
+    if(!file_name.empty()) {
         cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        fstream binary_file(file_name,ios::out|ios::binary|ios::app);
+        fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
         binary_file.write((char *)&cnt, 4);
         binary_file.write((char *)&orig_lower_val, 8);
         binary_file.write((char *)&orig_upper_val, 8);

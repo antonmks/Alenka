@@ -69,5 +69,9 @@ void str_merge_by_key(thrust::host_vector<unsigned long long int>& keys,
 					  char* tmp);
 
 
+void str_merge_by_key1(long long int* keys,
+					  char* values_first1, char* values_first2,
+					  unsigned int len,
+					  char* tmp, size_t offset1, size_t offset2);
 //---------------------------------------------------------------------------
 #endif	/// STRINGS_H

@@ -1,3 +1,6 @@
+09/05/2013 
+  Filters are done in-place, host memory usage is improved.
+
 07/04/2013
   Major join performance improvements due to addition of local segments sort option.
 
