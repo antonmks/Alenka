@@ -115,7 +115,7 @@ struct cmp_functor_str_like_right
 
 
 
-unsigned long long int filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
                               CudaSet* b, unsigned int segment)
 {
 
@@ -995,7 +995,7 @@ unsigned long long int filter(queue<string> op_type, queue<string> op_value, que
     if(segment == a->segCount-1)
         b->type_index = a->type_index;
     cudaFree(bool_vectors.top());
-    return b->mRecCount;
+    return;
 }
 
 

@@ -45,7 +45,7 @@ Sorted Merge Joins uses Sean Baxter's excellent moderngpu library(https://github
 
 To compile alenka run make on Linux or nmake on windows.
 
-Alenka have been tested on a 64bit Windows7 and Linux.
+Alenka have been tested on a 64bit Windows7. 
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
 
 

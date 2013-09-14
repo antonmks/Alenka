@@ -278,8 +278,6 @@ using namespace thrust::system::cuda::experimental;
 class CudaSet
 {
 public:
-    //std::vector<thrust::host_vector<int_type> > h_columns_int;
-    //std::vector<thrust::host_vector<float_type> > h_columns_float;
     std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
     std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
     std::vector<char*> h_columns_char;
@@ -301,7 +299,7 @@ public:
 
     std::map<unsigned int, size_t> type_index;
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size;
-    std::map<string,int> columnNames;
+    std::map<string,unsigned int> columnNames;
     std::map<string, FILE*> filePointers;
     bool *grp;
     queue<string> columnGroups;
@@ -353,11 +351,11 @@ public:
     void addDeviceColumn(int_type* col, int colIndex, string colName, size_t recCount);
     void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount);
     void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, void* d, size_t mCount);
-    void writeHeader(string file_name, unsigned int col);
+    void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
     void writeSortHeader(string file_name);
     void Store(string file_name, char* sep, unsigned int limit, bool binary);
     void compress_char(string file_name, unsigned int index, size_t mCount, size_t offset);
-    int LoadBigFile(const string file_name, const char* sep);
+    bool LoadBigFile(const string file_name, const char* sep);
     void free();
     bool* logical_and(bool* column1, bool* column2);
     bool* logical_or(bool* column1, bool* column2);
@@ -405,10 +403,13 @@ void update_permutation_char(char* key, unsigned int* permutation, size_t RecCou
 void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
-unsigned int load_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> op_g, queue<string> op_sel,
-                        queue<string> op_alt, bool decimal_join, bool& str_join, thrust::device_ptr<int_type>& d_col_r,
-                        size_t& rcount, unsigned int start_seg, unsigned int end_seg);
-
+size_t load_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> op_g, queue<string> op_sel,
+                        queue<string> op_alt, bool decimal_join, bool& str_join, 
+                        size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);
+unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> op_sel);
+void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> op_g, queue<string> op_sel,
+                bool decimal_join, bool& str_join, size_t& rcount);
+				
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);

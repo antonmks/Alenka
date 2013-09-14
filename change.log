@@ -1,3 +1,8 @@
+09/14/2013
+  Join tables that do not fit into limited GPU memory are partitioned :
+  STORE A INTO 'lineitem' BINARY SORT SEGMENTS BY orderkey PARTITION BY 2; 
+  This way it becomes possible to join huge tables that normally won't fit into GPU memory.
+
 09/05/2013 
   Filters are done in-place, host memory usage is improved.
 

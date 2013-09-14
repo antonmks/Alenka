@@ -518,7 +518,6 @@ void emit_join_tab(char *s, char tp)
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
 {
-    //std::clock_t start1 = std::clock();
     unsigned int sz = a->mRecCount;
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
     thrust::sequence(permutation, permutation+sz,0,1);
@@ -526,15 +525,15 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
     unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
     void* temp;
     // find the largest mRecSize of all data sources exe_type.top()
-    unsigned int maxSize = 0;
-    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
+    size_t maxSize = 0;
+    for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
         CudaSet *t = varNames[setMap[*it]];
         if(t->mRecCount > maxSize)
             maxSize = t->mRecCount;
     };
 
 
-    unsigned int max_c = max_char(a, field_names);
+    size_t max_c = max_char(a, field_names);
     //cout << "max_c " << max_c << " " << maxSize << " " << getFreeMem() << endl;
 
     if(max_c > float_size)
@@ -582,8 +581,6 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
 bool check_star_join(string j1)
 {
     queue<string> op_vals(op_value);
-    queue<string> op_j(op_join);
-    CudaSet* fact_table;
 
     for(unsigned int i=0; i < sel_count; i++) {
         op_vals.pop();
@@ -591,10 +588,9 @@ bool check_star_join(string j1)
     };
 
     if(join_tab_cnt > 1) {
-        fact_table = varNames[j1];
 
         while(op_vals.size()) {
-            if (fact_table->columnNames.find(op_vals.front()) != fact_table->columnNames.end()) {
+            if (varNames[j1]->columnNames.find(op_vals.front()) != varNames[j1]->columnNames.end()) {
                 op_vals.pop();
                 op_vals.pop();
             }
@@ -603,12 +599,9 @@ bool check_star_join(string j1)
             };
         };
         return 1;
-
     }
     else
         return 0;
-
-
 }
 
 std::ostream &operator<<(std::ostream &os, const uint2 &x)
@@ -708,8 +701,8 @@ void star_join(char *s, string j1)
             thrust::device_vector<unsigned int> v(cnt_r);
             thrust::sequence(v.begin(),v.end(),0,1);
 
-            unsigned int max_c	= max_char(right);
-            unsigned int mm;
+            size_t max_c = max_char(right);
+            size_t mm;
             if(max_c > 8)
                 mm = (max_c/8) + 1;
             else
@@ -797,7 +790,6 @@ void star_join(char *s, string j1)
 
     unsigned int res_count, tot_count = 0, offset = 0;
     size_t cnt_l, k = 0;
-    string ttt;
     queue<string> lc;
 
 
@@ -830,10 +822,9 @@ void star_join(char *s, string j1)
             };
 
 
-            unsigned int idx;
             if (cnt_l) {
 
-                idx = left->type_index[left->columnNames[lc.front()]];
+                unsigned int idx = left->type_index[left->columnNames[lc.front()]];
                 //cout << "left idx " << idx << endl;
                 //cout << "right col " << op_jj.front() << endl;
                 CudaSet* right = varNames.find(op_jj.front())->second;
@@ -1031,7 +1022,6 @@ void star_join(char *s, string j1)
                                     c->char_size[c->type_index[c_colInd]] * n_cnt, cudaMemcpyDeviceToHost);
                         thrust::device_free(d_tmp1);
                     }
-                    //cout << "right gathered " << endl;
                 }
 
                 op_sel1.pop();
@@ -1052,10 +1042,11 @@ void star_join(char *s, string j1)
     delete [] hash_table_handle;
 
     varNames[s] = c;
-    c->mRecCount = tot_count;
+    c->mRecCount = tot_count;	
     c->maxRecs = tot_count;
+	
     cout << endl << "join count " << tot_count << endl;
-    for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
+    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
     };
 };
@@ -1270,6 +1261,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     field_names.insert(f2);
 
     queue<string> op_vd(op_g);
+	queue<string> op_g1(op_g);
     queue<string> op_alt(op_sel);
     unsigned int jc = join_and_cnt[join_tab_cnt - tab];
     while(jc) {
@@ -1279,12 +1271,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         op_vd.pop();
     };
 
-    bool str_join = 0;
-    thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()));
+    bool str_join = 0;    
     size_t rcount = 0, cnt_r;
     //need to sort the entire dataset by a key before loading segment by segment
-    cnt_r = load_right(right, colInd2, f2, op_g, op_sel, op_alt, decimal_join, str_join, d_col_r, rcount, 0, right->segCount);
-
+	auto r_parts = calc_right_partition(left, right, op_sel);
+	r_parts = 1;
+	unsigned int start_part = 0;
+	sort_right(right, colInd2, f2, op_g, op_sel, decimal_join, str_join, rcount); //sort right 
+	
     queue<string> cc;
     if (left->type[colInd1]  == 2) {
         left->d_columns_int.push_back(thrust::device_vector<int_type>());
@@ -1305,14 +1299,32 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
     bool new_l = 1;
 
+	while(start_part != right->segCount) {
+
+	    bool rsz = 1;
+	    //if (start_part != 0)
+		//	rsz = 0;
+		right->deAllocOnDevice();
+		
+		if(start_part + r_parts >= right->segCount) {
+			//cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
+			cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
+			start_part = right->segCount;
+		}
+		else {
+			cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, start_part+r_parts, rsz);
+			start_part = start_part+r_parts;			
+		};
+	
+	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
-        cout << "segment " << i <<  '\xd';
+        cout << "segment " << i <<  '\xd';		
         //cout << "segment " << i <<  endl;
 
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
-            copyColumns(left, lc, i, cnt_l);
+            copyColumns(left, lc, i, cnt_l);			
         }
         else {
             left->add_hashed_strings(f1, i, left->d_columns_int.size()-1);
@@ -1328,7 +1340,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             cnt_l = left->mRecCount;
         };
 
-
+			
         if (cnt_l) {
 
             unsigned int idx;
@@ -1352,6 +1364,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 if(do_sort)
                     thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
             };
+			
+			if (left->d_columns_int[left->type_index[colInd1]][0] > right->d_columns_int[right->type_index[colInd2]][cnt_r-1] ||
+				left->d_columns_int[left->type_index[colInd1]][cnt_l-1] < right->d_columns_int[right->type_index[colInd2]][0]) {
+				//cout << "no need to join " << endl;	
+				//cout << "MIN MAX " << left->d_columns_int[left->type_index[colInd1]][0] << " - " << left->d_columns_int[left->type_index[colInd1]][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
+				continue;
+			};	
+			
+			
+
             //cout << endl << "j1 " << getFreeMem() << endl;
             //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
             //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
@@ -1361,6 +1383,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
 
             if (left->type[colInd1] == 2) {
+				thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()));
                 res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
                             thrust::raw_pointer_cast(d_col_r), cnt_r,
                             &aIndicesDevice, &bIndicesDevice,
@@ -1442,7 +1465,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     if (left->type[colInd3] == 1 && right->type[colInd4]  == 1) {
 
                         if(right->d_columns_float[right->type_index[colInd4]].size() == 0)
-                            unsigned int cnt_r = load_queue(rc, right, 0, f4, rcount, 0, right->segCount, 0, 0);
+                            load_queue(rc, right, 0, f4, rcount, 0, right->segCount, 0, 0);
 
                         thrust::device_ptr<float_type> d_tmp((float_type*)temp);
                         thrust::device_ptr<float_type> d_tmp1((float_type*)temp1);
@@ -1452,7 +1475,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     }
                     else {
                         if(right->d_columns_int[right->type_index[colInd4]].size() == 0) {
-                            unsigned int cnt_r = load_queue(rc, right, 0, f4, rcount, 0, right->segCount, 0, 0);
+                            load_queue(rc, right, 0, f4, rcount, 0, right->segCount, 0, 0);
                         };
                         thrust::device_ptr<int_type> d_tmp((int_type*)temp);
                         thrust::device_ptr<int_type> d_tmp1((int_type*)temp1);
@@ -1486,12 +1509,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 };
                 c->resize_join(res_count);
 
-                queue<string> op_sel1(op_sel_s);
+                queue<string> op_sel1(op_sel_s);				
+				
                 unsigned int colInd, c_colInd;
 
 
                 void* temp;
-                unsigned int max_c = max_char(c);
+                size_t max_c = max_char(c);
 
                 if(max_c > float_size) {
                     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*max_c));
@@ -1586,6 +1610,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
         };
     };
+	
+	};
 
 
     left->deAllocOnDevice();
@@ -1600,12 +1626,29 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     };
 
     varNames[s] = c;
-    c->mRecCount = tot_count;
-    c->maxRecs = tot_count;
+    c->mRecCount = tot_count;    
+	c->hostRecCount = tot_count;
     cout << endl << "join count " << tot_count << endl;
-    for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it )
+	
+	unsigned int tot_size = 0;	    
+    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
-
+		if(c->type[(*it).second] <= 1) 
+			tot_size = tot_size + tot_count*8;
+		else	
+			tot_size = tot_size + tot_count*c->char_size[c->type_index[(*it).second]];
+    };
+	if ((getFreeMem() - 300000000) > tot_size) {
+		c->maxRecs = tot_count;
+	}
+	else {
+		c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);		
+		c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
+	};	
+	
+	//c->segCount = 2;		
+	//c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
+	
 
     if(right->tmp_table == 1) {
         right->free();
@@ -1663,9 +1706,9 @@ void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> ex
     unsigned int* permutation = new unsigned int[a->mRecCount];
     thrust::sequence(permutation, permutation + a->mRecCount);
 
-    unsigned int maxSize =  a->mRecCount;
+    size_t maxSize =  a->mRecCount;
     char* temp;
-    unsigned int max_c = max_char(a);
+    size_t max_c = max_char(a);
 
     if(max_c > float_size)
         temp = new char[maxSize*max_c];
@@ -1675,7 +1718,7 @@ void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> ex
     // sort on host
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
-        int colInd = (a->columnNames).find(exe_type.top())->second;
+        auto colInd = (a->columnNames).find(exe_type.top())->second;
 
         if ((a->type)[colInd] == 0)
             update_permutation_host(a->h_columns_int[a->type_index[colInd]].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
@@ -1760,7 +1803,7 @@ void emit_order(char *s, char *f, int e, int ll)
     };
 
     queue<string> names;
-    for ( map<string,int>::iterator it=a->columnNames.begin() ; it != a->columnNames.end(); ++it )
+    for (auto it=a->columnNames.begin() ; it != a->columnNames.end(); ++it )
         names.push((*it).first);
 
     CudaSet *b = a->copyDeviceStruct();
@@ -1791,9 +1834,9 @@ void emit_order(char *s, char *f, int e, int ll)
 
         unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
 
-        unsigned int maxSize =  a->mRecCount;
+        size_t maxSize =  a->mRecCount;
         void* temp;
-        unsigned int max_c = max_char(a);
+        size_t max_c = max_char(a);
 
         if(max_c > float_size)
             CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
@@ -1970,7 +2013,7 @@ void emit_select(char *s, char *f, int ll)
 
 
 
-    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it)  {
+    for (auto it=field_names.begin(); it!=field_names.end(); ++it)  {
         op_vx.push(*it);
     };
 
@@ -2061,7 +2104,7 @@ void emit_select(char *s, char *f, int ll)
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 
             if(!b_set) {
-                for ( map<string,int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
+                for (auto it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
                     setMap[(*it).first] = s;
                 b_set = 1;
                 unsigned int old_cnt = b->mRecCount;
@@ -2120,7 +2163,7 @@ void emit_select(char *s, char *f, int ll)
     c->name = s;
     c->keep = 1;
 
-    for ( map<string,int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
+    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
     };
 
@@ -2168,7 +2211,6 @@ void emit_filter(char *s, char *f)
 
     a = varNames.find(f)->second;
     a->name = f;
-    std::clock_t start1 = std::clock();
 
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);

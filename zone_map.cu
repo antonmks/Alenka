@@ -279,7 +279,7 @@ char host_compare(float_type* column1, int_type* column2, int_type op_type)
             res = 'N';
     }
     else if (op_type == 1) { // <
-        if(fh_less(column1[1],column2[0]))
+        if(fh_less(column1[1],(float_type)column2[0]))
             res = 'A';
         else if(fh_greater_equal_to(column1[0],(float_type)column2[1]))
             res = 'N';

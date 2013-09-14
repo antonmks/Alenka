@@ -201,7 +201,7 @@ struct decompress_functor_str
 
 
 
-unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
+size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
 {
 
     unsigned int bits, cnt, fit_count, orig_recCount;
@@ -253,7 +253,7 @@ unsigned int pfor_decompress(void* destination, void* host, void* d_v, void* s_v
 
 
 template< typename T>
-unsigned long long int pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp, unsigned long long int sz)
+void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -364,61 +364,39 @@ unsigned long long int pfor_delta_compress(void* source, size_t source_len, stri
     thrust::reduce_by_key(add_seq, add_seq+recCount,s_copy1,thrust::make_discard_iterator(),
                           fin_seq);
 
-    //for(int i = 0; i < 10;i++)
-    //  cout << "FIN " << fin_seq[i] << endl;
-
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
+	
+	//cout << file_name << " CNT  " << cnt << " " << recCount << endl;
 
-    if(!file_name.empty()) {
-        cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
-        binary_file.write((char *)&cnt, 4);
-        binary_file.write((char *)&real_lower, 8);
-        binary_file.write((char *)&real_upper, 8);
-        binary_file.write((char *)host.data(),cnt*8);
-        binary_file.write((char *)&comp_type, 4);
-        binary_file.write((char *)&cnt, 4);
-        binary_file.write((char *)&recCount, 4);
-        binary_file.write((char *)&bits, 4);
-        binary_file.write((char *)&orig_lower_val, 8);
-        binary_file.write((char *)&fit_count, 4);
-        binary_file.write((char *)&start_val, 8);
-        binary_file.write((char *)&comp_type, 4);
-        binary_file.write((char *)&comp_type, 4); //filler
-        binary_file.close();
-        if(cnt_counts[curr_file] < cnt)
-            cnt_counts[curr_file] = cnt;
-    }
-    else {
-        char* hh;
-        //resize_compressed(host, sz, cnt*8 + 15*4, 0);
-        host.resize(sz+cnt+8);
-        hh = (char*)(host.data() + sz);
-        ((unsigned int*)hh)[0] = cnt;
-        ((long long int*)(hh+4))[0] = real_lower;
-        ((long long int*)(hh+12))[0] = real_upper;
-        cudaMemcpy( hh + 20, (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        ((unsigned int*)hh)[5+cnt*2] = comp_type;
-        ((unsigned int*)hh)[6+cnt*2] = cnt;
-        ((unsigned int*)hh)[7+cnt*2] = recCount;
-        ((unsigned int*)hh)[8+cnt*2] = bits;
-        ((long long int*)((char*)hh+36+cnt*8))[0] = orig_lower_val;
-        ((unsigned int*)hh)[11+cnt*2] = fit_count;
-        ((long long int*)((char*)hh+48+cnt*8))[0] = start_val;
-        ((unsigned int*)hh)[14+cnt*2] = comp_type;
-    };
-
+    cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
+    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
+    binary_file.write((char *)&cnt, 4);
+    binary_file.write((char *)&real_lower, 8);
+    binary_file.write((char *)&real_upper, 8);
+    binary_file.write((char *)host.data(),cnt*8);
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)&cnt, 4);
+    binary_file.write((char *)&recCount, 4);
+    binary_file.write((char *)&bits, 4);
+    binary_file.write((char *)&orig_lower_val, 8);
+    binary_file.write((char *)&fit_count, 4);
+    binary_file.write((char *)&start_val, 8);
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)&comp_type, 4); //filler
+    binary_file.close();
+    if(cnt_counts[curr_file] < cnt)
+        cnt_counts[curr_file] = cnt;	
+	
     thrust::device_free(fin_seq);
     cudaFree(ss);
     cudaFree(d_v1);
     cudaFree(s_v1);
-    return sz + cnt + 8;
 }
 
 
 template< typename T>
-unsigned long long int pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp, unsigned long long int sz)
+void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
 {
     unsigned int recCount;
     long long int orig_lower_val;
@@ -444,8 +422,10 @@ unsigned long long int pfor_compress(void* source, size_t source_len, string fil
     };
     //cout << "file " << file_name << " is sorted " << sorted << endl;
 
-    if(sorted)
-        return pfor_delta_compress(source, source_len, file_name, host, tp, sz);
+    if(sorted) {
+        pfor_delta_compress(source, source_len, file_name, host, tp);
+		return;
+	};	
 
 // sort the sequence
 
@@ -524,50 +504,28 @@ unsigned long long int pfor_compress(void* source, size_t source_len, string fil
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
-    //cout << file_name << " CNT  " << cnt << endl;
+    //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
 
-    if(!file_name.empty()) {
-        cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
-        binary_file.write((char *)&cnt, 4);
-        binary_file.write((char *)&orig_lower_val, 8);
-        binary_file.write((char *)&orig_upper_val, 8);
-        binary_file.write((char *)host.data(),cnt*8);
-        binary_file.write((char *)&comp_type, 4);
-        binary_file.write((char *)&cnt, 4);
-        binary_file.write((char *)&recCount, 4);
-        binary_file.write((char *)&bits, 4);
-        binary_file.write((char *)&orig_lower_val, 8);
-        binary_file.write((char *)&fit_count, 4);
-        binary_file.write((char *)&start_val, 8);
-        binary_file.write((char *)&comp_type, 4);
-        binary_file.write((char *)&comp_type, 4); //filler
-        binary_file.close();
-        if(cnt_counts[curr_file] < cnt)
-            cnt_counts[curr_file] = cnt;
-    }
-    else {
-        char* hh;
-        // resize host to sz + cnt*8 + 15
-        host.resize(sz+cnt+8);
-        hh = (char*)(host.data() + sz);
-        ((unsigned int*)hh)[0] = cnt;
-        ((long long int*)(hh+4))[0] = orig_lower_val;
-        ((long long int*)(hh+12))[0] = orig_upper_val;
-        cudaMemcpy( hh + 20, (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-        ((unsigned int*)hh)[5+cnt*2] = comp_type;
-        ((unsigned int*)hh)[6+cnt*2] = cnt;
-        ((unsigned int*)hh)[7+cnt*2] = recCount;
-        ((unsigned int*)hh)[8+cnt*2] = bits;
-        ((long long int*)(hh+36+cnt*8))[0] = orig_lower_val;
-        ((unsigned int*)hh)[11+cnt*2] = fit_count;
-        ((long long int*)(hh+48+cnt*8))[0] = start_val;
-        ((unsigned int*)hh)[14+cnt*2] = comp_type;
-    };
-
+    cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
+    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
+    binary_file.write((char *)&cnt, 4);
+    binary_file.write((char *)&orig_lower_val, 8);
+    binary_file.write((char *)&orig_upper_val, 8);
+    binary_file.write((char *)host.data(),cnt*8);
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)&cnt, 4);
+    binary_file.write((char *)&recCount, 4);
+    binary_file.write((char *)&bits, 4);
+    binary_file.write((char *)&orig_lower_val, 8);
+    binary_file.write((char *)&fit_count, 4);
+    binary_file.write((char *)&start_val, 8);
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)&comp_type, 4); //filler
+    binary_file.close();
+    if(cnt_counts[curr_file] < cnt)
+        cnt_counts[curr_file] = cnt;
     thrust::device_free(add_seq);
     cudaFree(d);
     cudaFree(d_v1);
     cudaFree(s_v1);
-    return sz + cnt + 8;
 }

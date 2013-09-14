@@ -186,7 +186,7 @@ using namespace thrust::placeholders;
 
 void create_c(CudaSet* c, CudaSet* b)
 {
-    map<string,int>::iterator it;
+    map<string,unsigned int>::iterator it;
     c->not_compressed = 1;
     c->segCount = 1;
 
@@ -254,7 +254,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::device_vector<unsigned int> off_count(1);
 
     thrust::counting_iterator<unsigned int> begin(0);
-    for(unsigned int z = 0; z < cycle_sz; z++) {
+    for(auto z = 0; z < cycle_sz; z++) {
         idx = opv[z];
 
         if(b->type[idx] == 0) {  //int
