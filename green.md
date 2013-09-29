@@ -81,9 +81,9 @@ Query 3 is a bit different - it involves joining a few tables :
     	revenue desc,
     	o_orderdate;
 	
-We can filter the segments very fast if lineitem table is presorted on shipdate and orders table is presorted on orderdate field. Remember that segments store min/max values!
+We can filter the segments very fast if lineitem table is presorted on l_shipdate and orders table is presorted on o_orderdate field. Remember that segments store min/max values!
 
-Additionally, when creating a database we can specify to sort every segment of lineitem table on orderkey - this way we can quickly join tables lineitem and orders using sort/merge join algorithm.
+Additionally, when creating a database we can specify the sort order of every segment of lineitem table on orderkey - this way we can quickly join tables lineitem and orders using sort/merge join algorithm.
 After that we perform a grouping operation and sort the results. The entire operation takes 23 seconds.
 
 Notice that results were obtained on a PC with following specs :
