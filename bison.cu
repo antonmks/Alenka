@@ -2619,7 +2619,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
     void* temp;
     // find the largest mRecSize of all data sources exe_type.top()
     size_t maxSize = 0;
-    for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
         CudaSet *t = varNames[setMap[*it]];
         if(t->mRecCount > maxSize)
             maxSize = t->mRecCount;
@@ -3139,7 +3139,7 @@ void star_join(char *s, string j1)
     c->maxRecs = tot_count;
 	
     cout << endl << "join count " << tot_count << endl;
-    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
+    for (map<string,unsigned int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
     };
 };
@@ -3367,7 +3367,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     bool str_join = 0;    
     size_t rcount = 0, cnt_r;
     //need to sort the entire dataset by a key before loading segment by segment
-	auto r_parts = calc_right_partition(left, right, op_sel);
+	unsigned int r_parts = calc_right_partition(left, right, op_sel);
 	r_parts = 1;
 	unsigned int start_part = 0;
 	sort_right(right, colInd2, f2, op_g, op_sel, decimal_join, str_join, rcount); //sort right 
@@ -3724,7 +3724,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     cout << endl << "join count " << tot_count << endl;
 	
 	unsigned int tot_size = 0;	    
-    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
+    for (map<string,unsigned int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
 		if(c->type[(*it).second] <= 1) 
 			tot_size = tot_size + tot_count*8;
@@ -3811,7 +3811,7 @@ void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> ex
     // sort on host
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
-        auto colInd = (a->columnNames).find(exe_type.top())->second;
+        unsigned int colInd = (a->columnNames).find(exe_type.top())->second;
 
         if ((a->type)[colInd] == 0)
             update_permutation_host(a->h_columns_int[a->type_index[colInd]].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
@@ -3896,7 +3896,7 @@ void emit_order(char *s, char *f, int e, int ll)
     };
 
     queue<string> names;
-    for (auto it=a->columnNames.begin() ; it != a->columnNames.end(); ++it )
+    for (map<string,unsigned int>::iterator it=a->columnNames.begin() ; it != a->columnNames.end(); ++it )
         names.push((*it).first);
 
     CudaSet *b = a->copyDeviceStruct();
@@ -4106,7 +4106,7 @@ void emit_select(char *s, char *f, int ll)
 
 
 
-    for (auto it=field_names.begin(); it!=field_names.end(); ++it)  {
+    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it)  {
         op_vx.push(*it);
     };
 
@@ -4197,7 +4197,7 @@ void emit_select(char *s, char *f, int ll)
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 
             if(!b_set) {
-                for (auto it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
+                for (map<string,unsigned int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
                     setMap[(*it).first] = s;
                 b_set = 1;
                 unsigned int old_cnt = b->mRecCount;
@@ -4256,7 +4256,7 @@ void emit_select(char *s, char *f, int ll)
     c->name = s;
     c->keep = 1;
 
-    for (auto it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
+    for ( map<string,unsigned int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
     };
 

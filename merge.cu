@@ -236,7 +236,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     vector<unsigned int> opv;
     queue<string> ss;
-    for(auto z = 0; z < cycle_sz; z++) {
+    for(unsigned int z = 0; z < cycle_sz; z++) {
         opv.push_back(b->columnNames[aliases[op_v3.front()]]);
         ss.push(aliases[op_v3.front()]);
         op_v3.pop();
@@ -254,7 +254,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::device_vector<unsigned int> off_count(1);
 
     thrust::counting_iterator<unsigned int> begin(0);
-    for(auto z = 0; z < cycle_sz; z++) {
+    for(unsigned int z = 0; z < cycle_sz; z++) {
         idx = opv[z];
 
         if(b->type[idx] == 0) {  //int

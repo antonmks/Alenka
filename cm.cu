@@ -548,7 +548,7 @@ void CudaSet::deAllocOnDevice()
 
     if(filtered) { // free the sources
         string some_field;
-        auto it=columnNames.begin();
+        map<string,unsigned int>::iterator it=columnNames.begin();
         some_field = (*it).first;
 
         if(setMap[some_field].compare(name)) {
@@ -620,7 +620,7 @@ CudaSet* CudaSet::copyDeviceStruct()
     a->segCount = segCount;
     a->maxRecs = maxRecs;
 
-    for ( auto it=columnNames.begin() ; it != columnNames.end(); ++it )
+    for ( map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
         a->columnNames[(*it).first] = (*it).second;
 
     for(unsigned int i=0; i < mColumnCount; i++) {
@@ -1110,7 +1110,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 	//for(unsigned int p = 0; p < partition_count; p++) {
 	//    cout << "partition " << p << endl;
 	total_segments++;
-	auto old_segments = total_segments;
+	unsigned int old_segments = total_segments;
 	size_t new_offset;
 	for(unsigned int i = 0; i< mColumnCount; i++) {
 		str = file_name + "." + std::to_string(cols[i]);
@@ -1324,7 +1324,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 
         char buffer [33];		
         queue<string> op_vx;
-        for (auto it=columnNames.begin() ; it != columnNames.end(); ++it )
+        for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
             op_vx.push((*it).first);
         curr_segment = 1000000;
         FILE *file_pr = fopen(file_name.c_str(), "w");
@@ -1417,7 +1417,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
         if(!not_compressed) { // records are compressed, for example after filter op.
             //decompress to host
             queue<string> op_vx;
-            for (auto it=columnNames.begin() ; it != columnNames.end(); ++it ) {
+            for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it ) {
                 op_vx.push((*it).first);
             };
 
@@ -1628,7 +1628,7 @@ void CudaSet::free()  {
 
     if(filtered) { // free the sources
         string some_field;
-        auto it=columnNames.begin();
+        map<string,unsigned int>::iterator it=columnNames.begin();
         some_field = (*it).first;
         CudaSet* t = varNames[setMap[some_field]];
         t->deAllocOnDevice();
@@ -2670,7 +2670,7 @@ size_t max_char(CudaSet* a)
 size_t max_char(CudaSet* a, set<string> field_names)
 {
     size_t max_char1 = 0, i;
-    for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
         i = a->columnNames[*it];
         if (a->type[i] == 2) {
             if (a->char_size[a->type_index[i]] > max_char1)
