@@ -177,6 +177,11 @@ struct T_unroll_functor {
 	T_unroll_functor<unroll_count-1, T_functor> next_unroll;		/// Next step of unrolling
 	T_functor<unroll_count> functor;							/// Current the unrolled functor
 
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, T6 &val6, const unsigned int len) {
+		if(len == unroll_count) { functor(val1, val2, val3, val4, val5, val6); return true; }
+		else return next_unroll(val1, val2, val3, val4, val5, val6, len);
+	}		
 	template<typename T1, typename T2, typename T3, typename T4, typename T5>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, const unsigned int len) {
 		if(len == unroll_count) { functor(val1, val2, val3, val4, val5); return true; }
@@ -196,6 +201,8 @@ struct T_unroll_functor {
 /// End of unroll (partial specialization)
 template<template<unsigned int> class T_functor>
 struct T_unroll_functor<0, T_functor> { 
+	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, T6 &val6, const unsigned int len) { return false; }
 	template<typename T1, typename T2, typename T3, typename T4, typename T5>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, const unsigned int len) { return false; }
 	template<typename T1, typename T2, typename T3, typename T4>
