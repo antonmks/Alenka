@@ -267,7 +267,6 @@ struct join_functor1
 
 
 
-
 #ifdef _WIN64
 typedef unsigned __int64 uint64_t;
 #endif
@@ -413,6 +412,7 @@ uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
+string int_to_string(int number);
 
 
 #endif

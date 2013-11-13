@@ -626,7 +626,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             // copy t min and max values to a only if int, decimal or float
             if(t->type[colIndex] <= 1) {
 
-                f1 = t->load_file_name + "." + std::to_string(t->cols[colIndex]) + "." + std::to_string(segment);
+                f1 = t->load_file_name + "." + int_to_string(t->cols[colIndex]) + "." + int_to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
 
                 fread((char *)&cnt, 4, 1, f);

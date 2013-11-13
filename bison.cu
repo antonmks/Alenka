@@ -3182,7 +3182,7 @@ void emit_join(char *s, char *j1, int grp)
                 if(i == join_tab_cnt)
                     tab_name = s;
                 else
-                    tab_name = s + std::to_string(i);
+                    tab_name = s + int_to_string(i);
 
                 string j, j2;
                 if(i == 1) {
@@ -3198,7 +3198,7 @@ void emit_join(char *s, char *j1, int grp)
                     }
                     else
                         j = j1;
-                    j2 = s + std::to_string(i-1);
+                    j2 = s + int_to_string(i-1);
                 };
                 emit_multijoin(tab_name, j, j2, i, s);
                 op_value = op_m;
@@ -4434,7 +4434,7 @@ void emit_load_binary(char *s, char *f, int d)
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
-    f1 += "." + std::to_string(cols.front()) + ".header";
+    f1 += "." + int_to_string(cols.front()) + ".header";
 
     FILE* ff = fopen(f1.c_str(), "rb");
     if(ff == NULL) {

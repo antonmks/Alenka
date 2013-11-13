@@ -309,7 +309,7 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
     size_t old_count;
     const unsigned int len = char_size[type_index[colIndex]];
 
-    string f1 = load_file_name + "." + std::to_string(cols[colIndex]) + "." + std::to_string(segment);
+    string f1 = load_file_name + "." + int_to_string(cols[colIndex]) + "." + int_to_string(segment);
 
     FILE* f;
     f = fopen (f1.c_str() , "rb" );
@@ -656,7 +656,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
 {
 
     string f1(load_file_name);
-    f1 += "." + std::to_string(cols[colIndex]) + "." + std::to_string(segNum);
+    f1 += "." + int_to_string(cols[colIndex]) + "." + int_to_string(segNum);
     unsigned int cnt;
 
     FILE* f;
@@ -816,7 +816,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
         };
     }
     else {
-
+	
         readSegmentsFromFile(segment,colIndex);
 
         if(type[colIndex] != 2) {
@@ -825,6 +825,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
             if(s_v == NULL)
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
         };
+		
 
         if(type[colIndex] == 0) {
             if(!alloced_switch) {
@@ -852,6 +853,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
             //cudaMemcpy( d_columns[colIndex], (void *) ((float_type*)h_columns[colIndex] + offset), count*float_size, cudaMemcpyHostToDevice);
             // will have to fix it later so uncompressed data will be written by segments too
         }
+		
     };
 }
 
@@ -1113,9 +1115,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 	unsigned int old_segments = total_segments;
 	size_t new_offset;
 	for(unsigned int i = 0; i< mColumnCount; i++) {
-		str = file_name + "." + std::to_string(cols[i]);
+		str = file_name + "." + int_to_string(cols[i]);
 		curr_file = str;
-		str += "." + std::to_string(total_segments-1);
+		str += "." + int_to_string(total_segments-1);
 		new_offset = 0;
 
 		if(!op_sort.empty()) {
@@ -1129,9 +1131,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 				thrust::gather(permutation.begin(), permutation.end(), d_columns_int[type_index[i]].begin(), d_col);
 				
 				for(unsigned int p = 0; p < partition_count; p++) {
-					str = file_name + "." + std::to_string(cols[i]);
+					str = file_name + "." + int_to_string(cols[i]);
 					curr_file = str;
-					str += "." + std::to_string(total_segments-1);
+					str += "." + int_to_string(total_segments-1);
 					if (p < partition_count - 1) {
 						pfor_compress( (int_type*)d + new_offset, partition_recs*int_size, str, h_columns_int[type_index[i]], 0);
 					}	
@@ -1156,9 +1158,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
 					
 					for(unsigned int p = 0; p < partition_count; p++) {
-						str = file_name + "." + std::to_string(cols[i]);
+						str = file_name + "." + int_to_string(cols[i]);
 						curr_file = str;
-						str += "." + std::to_string(total_segments-1);
+						str += "." + int_to_string(total_segments-1);
 						if (p < partition_count - 1)
 							pfor_compress( (int_type*)d + new_offset, partition_recs*float_size, str, h_columns_float[type_index[i]], 1);
 						else	
@@ -1180,9 +1182,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					thrust::gather(permutation.begin(), permutation.end(), d_columns_float[type_index[i]].begin(), d_col);
 					thrust::copy(d_col, d_col+mRecCount, h_columns_float[type_index[i]].begin());
 					for(unsigned int p = 0; p < partition_count; p++) {
-						str = file_name + "." + std::to_string(cols[i]);
+						str = file_name + "." + int_to_string(cols[i]);
 						curr_file = str;
-						str += "." + std::to_string(total_segments-1);
+						str += "." + int_to_string(total_segments-1);
 						unsigned int curr_cnt;
 						if (p < partition_count - 1)
 							curr_cnt = partition_recs;
@@ -1217,9 +1219,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 				thrust::copy(t, t+ char_size[type_index[i]]*mRecCount, h_columns_char[type_index[i]]);
 				delete [] t;
 				for(unsigned int p = 0; p < partition_count; p++) {		
-					str = file_name + "." + std::to_string(cols[i]);
+					str = file_name + "." + int_to_string(cols[i]);
 					curr_file = str;
-					str += "." + std::to_string(total_segments-1);
+					str += "." + int_to_string(total_segments-1);
 				
 					if (p < partition_count - 1)
 						compress_char(str, i, partition_recs, new_offset);
@@ -1255,7 +1257,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 
 
 void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_segs) {
-    string str = file_name + "." + std::to_string(col);
+    string str = file_name + "." + int_to_string(col);
     string ff = str;
     str += ".header";
 	
@@ -1558,7 +1560,7 @@ bool CudaSet::LoadBigFile(const string file_name, const char* sep)
     map<unsigned int,unsigned int> col_map;
     for(unsigned int i = 0; i < mColumnCount; i++) {
         col_map[cols[i]] = i;
-    };
+    };	
 
     while (count < process_count && fgets(line, 1000, file_p) != NULL) {
         strtok(line, "\n");
@@ -2099,7 +2101,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         cols[i] = colsRef.front();
         seq = 0;
 
-        f1 = file_name + "." + std::to_string(colsRef.front()) + ".header";
+        f1 = file_name + "." + int_to_string(colsRef.front()) + ".header";
         f = fopen (f1.c_str() , "rb" );
         for(unsigned int j = 0; j < 5; j++)
             fread((char *)&cnt, 4, 1, f);
@@ -3009,3 +3011,33 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
 	return right->segCount / ((tot_size/(getFreeMem() - 300000000)) + 1);
 		
 };
+
+
+string int_to_string(int number){
+    string number_string = "";
+    char ones_char;
+    int ones = 0;
+    while(true){
+        ones = number % 10;
+        switch(ones){
+            case 0: ones_char = '0'; break;
+            case 1: ones_char = '1'; break;
+            case 2: ones_char = '2'; break;
+            case 3: ones_char = '3'; break;
+            case 4: ones_char = '4'; break;
+            case 5: ones_char = '5'; break;
+            case 6: ones_char = '6'; break;
+            case 7: ones_char = '7'; break;
+            case 8: ones_char = '8'; break;
+            case 9: ones_char = '9'; break;
+            default : cout << ("Trouble converting number to string.");
+        }
+        number -= ones;
+        number_string = ones_char + number_string;
+        if(number == 0){
+            break;
+        }
+        number = number/10;
+    }
+    return number_string;
+}

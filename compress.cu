@@ -232,6 +232,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
     };
 
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 5), cnt*8, cudaMemcpyHostToDevice);
+  
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
     thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
@@ -268,7 +269,6 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 
     void* ss;
     CUDA_SAFE_CALL(cudaMalloc((void **) &ss, recCount*float_size));
-
 
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
