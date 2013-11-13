@@ -2721,7 +2721,7 @@ size_t max_tmp(CudaSet* a)
 
 
 void reset_offsets() {
-    map<unsigned int, unsigned long long int>::iterator iter;
+    map<unsigned int, size_t>::iterator iter;
 
     for (iter = str_offset.begin(); iter != str_offset.end(); ++iter) {
         iter->second = 0;
