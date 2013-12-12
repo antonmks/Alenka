@@ -17,12 +17,12 @@
 #include <algorithm>
 #include <functional>
 #include <numeric>
-#include <thrust/merge.h>
 #include "cm.h"
 #include "atof.h"
 #include "compress.cu"
 #include "sorts.cu"
 #include "filter.h"
+
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
@@ -121,7 +121,7 @@ struct f_not_equal_to
     __host__ __device__
     bool operator()(const float_type x, const float_type y)
     {
-        return !(((x-y) < EPSILON) && ((x-y) > -EPSILON));
+        return ((x-y) > EPSILON) || ((x-y) < -EPSILON);
     }
 };
 
@@ -874,7 +874,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
         };
     }
     else {
-        size_t totalRecs = 0;
+        size_t totals = 0;
         if(d_v == NULL)
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
         if(s_v == NULL)
@@ -887,23 +887,23 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
 
 
             if(type[colIndex] == 0) {
-                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totalRecs), h_columns_int[type_index[colIndex]].data(), d_v, s_v);
+                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totals), h_columns_int[type_index[colIndex]].data(), d_v, s_v);
             }
             else if(type[colIndex] == 1) {
                 if(decimal[colIndex]) {
-                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totalRecs) , h_columns_float[type_index[colIndex]].data(), d_v, s_v);
-                    thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totalRecs));
-                    thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin() + totalRecs, long_to_float());
+                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totals) , h_columns_float[type_index[colIndex]].data(), d_v, s_v);
+                    thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + totals));
+                    thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin() + totals, long_to_float());
                 }
                 // else  uncompressed float
                 //cudaMemcpy( d_columns[colIndex], (void *) ((float_type*)h_columns[colIndex] + offset), count*float_size, cudaMemcpyHostToDevice);
                 // will have to fix it later so uncompressed data will be written by segments too
             };
 
-            totalRecs = totalRecs + mRecCount;
+            totalRecs = totals + mRecCount;
         };
 
-        mRecCount = totalRecs;
+        mRecCount = totals;
     };
 }
 
@@ -1268,6 +1268,18 @@ void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_s
     binary_file.write((char *)&cnt_counts[ff], 4);
     binary_file.close();
 };
+
+void CudaSet::reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1) {
+    string str = file_name + "." + int_to_string(col);
+    string ff = str;
+    str += ".header";	
+    fstream binary_file(str.c_str(),ios::out|ios::binary);
+	binary_file.write((char *)&newRecs, 8);
+    binary_file.write((char *)&tot_segs, 4);
+	binary_file.write((char *)&maxRecs1, 4);
+    binary_file.close();
+};
+
 
 
 void CudaSet::writeSortHeader(string file_name)
@@ -1756,7 +1768,7 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
 {
     thrust::device_ptr<bool> res = thrust::device_malloc<bool>(mRecCount);
     thrust::device_ptr<float_type> dev_ptr(column1);
-
+	
     if (op_type == 2) // >
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_greater());
     else if (op_type == 1)  // <
@@ -1767,7 +1779,7 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_less_equal());
     else if (op_type == 4)// =
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_equal_to());
-    else // !=
+    else  // != 
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_not_equal_to());
 
     return thrust::raw_pointer_cast(res);

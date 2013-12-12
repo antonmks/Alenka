@@ -64,6 +64,9 @@ SORT {return SORT; }
 SEGMENTS {return SEGMENTS; }
 PRESORTED {return PRESORTED; }
 PARTITION {return PARTITION; }
+DELETE {return DELETE; }
+INSERT {return INSERT; }
+WHERE {return WHERE; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }

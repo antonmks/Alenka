@@ -984,13 +984,18 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     };
 
 
-    thrust::device_ptr<bool> bp((bool*)bool_vectors.top());
-    b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
+    thrust::device_ptr<bool> bp((bool*)bool_vectors.top());    
     b->prm_index = 'R';
-    thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
-                    bp, b->prm_d.begin(), thrust::identity<bool>());
-
-    //cudaMemcpy((void**)b->prm[segment], (void**)(thrust::raw_pointer_cast(dev_p.data())), 4*count, cudaMemcpyDeviceToHost);
+	if(a == b) { // DELETE OP		
+		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
+						bp, a->prm_d.begin(), not_identity<bool>());						
+		a->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 0);						
+	}
+	else { // FILTER OP
+		b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
+		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
+						bp, b->prm_d.begin(), thrust::identity<bool>());
+	};					
 
     if(segment == a->segCount-1)
         b->type_index = a->type_index;

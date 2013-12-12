@@ -16,11 +16,7 @@
 // PFOR and PFOR-DELTA Compression and decompression routines
 
 #include <stdio.h>
-#include <fstream>
 #include <iomanip>
-#include <exception>
-#include <thrust/device_vector.h>
-#include <thrust/iterator/discard_iterator.h>
 #include <thrust/extrema.h>
 #include "cm.h"
 
@@ -370,7 +366,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 	//cout << file_name << " CNT  " << cnt << " " << recCount << endl;
 
     cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
+    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&real_lower, 8);
     binary_file.write((char *)&real_upper, 8);
@@ -507,7 +503,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
 
     cudaMemcpy( host.data(), (void *)raw_src, cnt*8, cudaMemcpyDeviceToHost);
-    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::app);
+    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&orig_lower_val, 8);
     binary_file.write((char *)&orig_upper_val, 8);

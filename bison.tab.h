@@ -92,7 +92,10 @@
      SORT = 308,
      SEGMENTS = 309,
      PRESORTED = 310,
-     PARTITION = 311
+     PARTITION = 311,
+     DELETE = 312,
+     INSERT = 313,
+     WHERE = 314
    };
 #endif
 
@@ -103,17 +106,17 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 70 "bison.y"
+#line 71 "bison.y"
 
     int intval;
-    float floatval;
+    double floatval;
     char *strval;
     int subtok;
 
 
 
 /* Line 1676 of yacc.c  */
-#line 117 "bison.tab.h"
+#line 120 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
