@@ -71,6 +71,7 @@
 #line 17 "bison.y"
 
 
+
 #include "lex.yy.c"
 #include "cm.h"
 
@@ -124,7 +125,7 @@
 
 
 /* Line 189 of yacc.c  */
-#line 128 "bison.cu"
+#line 129 "bison.cu"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -218,7 +219,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 71 "bison.y"
+#line 72 "bison.y"
 
     int intval;
     double floatval;
@@ -228,7 +229,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 232 "bison.cu"
+#line 233 "bison.cu"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -240,7 +241,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 244 "bison.cu"
+#line 245 "bison.cu"
 
 #ifdef short
 # undef short
@@ -567,14 +568,14 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   152,   152,   153,   157,   160,   162,   164,   166,   168,
-     170,   172,   174,   176,   181,   182,   183,   184,   185,   186,
-     187,   188,   189,   190,   191,   192,   193,   194,   195,   196,
-     197,   198,   199,   203,   204,   205,   206,   207,   208,   210,
-     211,   212,   213,   214,   215,   216,   217,   219,   220,   224,
-     225,   228,   231,   235,   236,   240,   241,   245,   246,   249,
-     251,   254,   257,   261,   262,   263,   264,   265,   266,   267,
-     268,   270,   273,   275,   278,   279,   280
+       0,   153,   153,   154,   158,   161,   163,   165,   167,   169,
+     171,   173,   175,   177,   182,   183,   184,   185,   186,   187,
+     188,   189,   190,   191,   192,   193,   194,   195,   196,   197,
+     198,   199,   200,   204,   205,   206,   207,   208,   209,   211,
+     212,   213,   214,   215,   216,   217,   218,   220,   221,   225,
+     226,   229,   232,   236,   237,   241,   242,   246,   247,   250,
+     252,   255,   258,   262,   263,   264,   265,   266,   267,   268,
+     269,   271,   274,   276,   279,   280,   281
 };
 #endif
 
@@ -1657,336 +1658,336 @@ yyreduce:
         case 4:
 
 /* Line 1455 of yacc.c  */
-#line 157 "bison.y"
+#line 158 "bison.y"
     { emit("STMT"); ;}
     break;
 
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 161 "bison.y"
+#line 162 "bison.y"
     { emit_select((yyvsp[(1) - (7)].strval), (yyvsp[(6) - (7)].strval), (yyvsp[(7) - (7)].intval)); ;}
     break;
 
   case 6:
 
 /* Line 1455 of yacc.c  */
-#line 163 "bison.y"
+#line 164 "bison.y"
     {  emit_load((yyvsp[(1) - (12)].strval), (yyvsp[(4) - (12)].strval), (yyvsp[(11) - (12)].intval), (yyvsp[(7) - (12)].strval)); ;}
     break;
 
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 165 "bison.y"
+#line 166 "bison.y"
     {  emit_load_binary((yyvsp[(1) - (9)].strval), (yyvsp[(4) - (9)].strval), (yyvsp[(8) - (9)].intval)); ;}
     break;
 
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 167 "bison.y"
+#line 168 "bison.y"
     {  emit_filter((yyvsp[(1) - (5)].strval), (yyvsp[(4) - (5)].strval));;}
     break;
 
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 169 "bison.y"
+#line 170 "bison.y"
     {  emit_order((yyvsp[(1) - (6)].strval), (yyvsp[(4) - (6)].strval), (yyvsp[(6) - (6)].intval));;}
     break;
 
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 171 "bison.y"
+#line 172 "bison.y"
     { emit_join((yyvsp[(1) - (8)].strval),(yyvsp[(6) - (8)].strval),(yyvsp[(7) - (8)].intval)); ;}
     break;
 
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 173 "bison.y"
+#line 174 "bison.y"
     { emit_store((yyvsp[(2) - (9)].strval),(yyvsp[(4) - (9)].strval),(yyvsp[(7) - (9)].strval)); ;}
     break;
 
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 175 "bison.y"
+#line 176 "bison.y"
     { emit_store_binary((yyvsp[(2) - (7)].strval),(yyvsp[(4) - (7)].strval)); ;}
     break;
 
   case 13:
 
 /* Line 1455 of yacc.c  */
-#line 177 "bison.y"
+#line 178 "bison.y"
     {  emit_delete((yyvsp[(3) - (4)].strval));;}
     break;
 
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 181 "bison.y"
+#line 182 "bison.y"
     { emit_name((yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 182 "bison.y"
+#line 183 "bison.y"
     { emit("FIELDNAME %s.%s", (yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].strval)); ;}
     break;
 
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 183 "bison.y"
+#line 184 "bison.y"
     { emit("USERVAR %s", (yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 184 "bison.y"
+#line 185 "bison.y"
     { emit_string((yyvsp[(1) - (1)].strval)); ;}
     break;
 
   case 18:
 
 /* Line 1455 of yacc.c  */
-#line 185 "bison.y"
+#line 186 "bison.y"
     { emit_number((yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 19:
 
 /* Line 1455 of yacc.c  */
-#line 186 "bison.y"
+#line 187 "bison.y"
     { emit_float((yyvsp[(1) - (1)].floatval)); ;}
     break;
 
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 187 "bison.y"
+#line 188 "bison.y"
     { emit_decimal((yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 21:
 
 /* Line 1455 of yacc.c  */
-#line 188 "bison.y"
+#line 189 "bison.y"
     { emit("BOOL %d", (yyvsp[(1) - (1)].intval)); ;}
     break;
 
   case 22:
 
 /* Line 1455 of yacc.c  */
-#line 189 "bison.y"
+#line 190 "bison.y"
     { emit_varchar((yyvsp[(1) - (9)].strval), (yyvsp[(3) - (9)].intval), (yyvsp[(6) - (9)].strval), (yyvsp[(8) - (9)].intval));;}
     break;
 
   case 23:
 
 /* Line 1455 of yacc.c  */
-#line 190 "bison.y"
+#line 191 "bison.y"
     { emit_var((yyvsp[(1) - (6)].strval), (yyvsp[(3) - (6)].intval), (yyvsp[(6) - (6)].strval));;}
     break;
 
   case 24:
 
 /* Line 1455 of yacc.c  */
-#line 191 "bison.y"
+#line 192 "bison.y"
     { emit_var_asc((yyvsp[(1) - (2)].strval));;}
     break;
 
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 192 "bison.y"
+#line 193 "bison.y"
     { emit_var_desc((yyvsp[(1) - (2)].strval));;}
     break;
 
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 193 "bison.y"
+#line 194 "bison.y"
     { emit_count(); ;}
     break;
 
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 194 "bison.y"
+#line 195 "bison.y"
     { emit_sum(); ;}
     break;
 
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 195 "bison.y"
+#line 196 "bison.y"
     { emit_average(); ;}
     break;
 
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 196 "bison.y"
+#line 197 "bison.y"
     { emit_min(); ;}
     break;
 
   case 30:
 
 /* Line 1455 of yacc.c  */
-#line 197 "bison.y"
+#line 198 "bison.y"
     { emit_max(); ;}
     break;
 
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 198 "bison.y"
+#line 199 "bison.y"
     { emit_distinct(); ;}
     break;
 
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 199 "bison.y"
+#line 200 "bison.y"
     { emit_join(); ;}
     break;
 
   case 33:
 
 /* Line 1455 of yacc.c  */
-#line 203 "bison.y"
+#line 204 "bison.y"
     { emit_add(); ;}
     break;
 
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 204 "bison.y"
+#line 205 "bison.y"
     { emit_minus(); ;}
     break;
 
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 205 "bison.y"
+#line 206 "bison.y"
     { emit_mul(); ;}
     break;
 
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 206 "bison.y"
+#line 207 "bison.y"
     { emit_div(); ;}
     break;
 
   case 37:
 
 /* Line 1455 of yacc.c  */
-#line 207 "bison.y"
+#line 208 "bison.y"
     { emit("MOD"); ;}
     break;
 
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 208 "bison.y"
+#line 209 "bison.y"
     { emit("MOD"); ;}
     break;
 
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 210 "bison.y"
+#line 211 "bison.y"
     { emit_and(); ;}
     break;
 
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 211 "bison.y"
+#line 212 "bison.y"
     { emit_eq(); ;}
     break;
 
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 212 "bison.y"
+#line 213 "bison.y"
     { emit_or(); ;}
     break;
 
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 213 "bison.y"
+#line 214 "bison.y"
     { emit("XOR"); ;}
     break;
 
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 214 "bison.y"
+#line 215 "bison.y"
     { emit("SHIFT %s", (yyvsp[(2) - (3)].subtok)==1?"left":"right"); ;}
     break;
 
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 215 "bison.y"
+#line 216 "bison.y"
     { emit("NOT"); ;}
     break;
 
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 216 "bison.y"
+#line 217 "bison.y"
     { emit("NOT"); ;}
     break;
 
   case 46:
 
 /* Line 1455 of yacc.c  */
-#line 217 "bison.y"
+#line 218 "bison.y"
     { emit_cmp((yyvsp[(2) - (3)].subtok)); ;}
     break;
 
   case 47:
 
 /* Line 1455 of yacc.c  */
-#line 219 "bison.y"
+#line 220 "bison.y"
     { emit("CMPSELECT %d", (yyvsp[(2) - (5)].subtok)); ;}
     break;
 
   case 48:
 
 /* Line 1455 of yacc.c  */
-#line 220 "bison.y"
+#line 221 "bison.y"
     {emit("EXPR");;}
     break;
 
   case 49:
 
 /* Line 1455 of yacc.c  */
-#line 224 "bison.y"
+#line 225 "bison.y"
     { emit("ISBOOL %d", (yyvsp[(3) - (3)].intval)); ;}
     break;
 
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 225 "bison.y"
+#line 226 "bison.y"
     { emit("ISBOOL %d", (yyvsp[(4) - (4)].intval)); emit("NOT"); ;}
     break;
 
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 228 "bison.y"
+#line 229 "bison.y"
     { /* nil */
     (yyval.intval) = 0;
 ;}
@@ -1995,56 +1996,56 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 231 "bison.y"
+#line 232 "bison.y"
     { (yyval.intval) = (yyvsp[(3) - (3)].intval);}
     break;
 
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 235 "bison.y"
+#line 236 "bison.y"
     { (yyval.intval) = 1; emit_sel_name((yyvsp[(3) - (3)].strval));;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 236 "bison.y"
+#line 237 "bison.y"
     { (yyval.intval) = (yyvsp[(1) - (5)].intval) + 1; emit_sel_name((yyvsp[(5) - (5)].strval));;}
     break;
 
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 240 "bison.y"
+#line 241 "bison.y"
     { (yyval.intval) = 1; ;}
     break;
 
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 241 "bison.y"
+#line 242 "bison.y"
     {(yyval.intval) = (yyvsp[(1) - (3)].intval) + 1; ;}
     break;
 
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 245 "bison.y"
+#line 246 "bison.y"
     { (yyval.intval) = 1; ;}
     break;
 
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 246 "bison.y"
+#line 247 "bison.y"
     { (yyval.intval) = 1 + (yyvsp[(3) - (3)].intval); ;}
     break;
 
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 249 "bison.y"
+#line 250 "bison.y"
     { /* nil */
     (yyval.intval) = 0
 ;}
@@ -2053,77 +2054,77 @@ yyreduce:
   case 61:
 
 /* Line 1455 of yacc.c  */
-#line 254 "bison.y"
+#line 255 "bison.y"
     { emit("FILTER BY"); ;}
     break;
 
   case 62:
 
 /* Line 1455 of yacc.c  */
-#line 257 "bison.y"
+#line 258 "bison.y"
     { emit("DELETE"); ;}
     break;
 
   case 63:
 
 /* Line 1455 of yacc.c  */
-#line 261 "bison.y"
+#line 262 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(2) - (4)].strval), 'I');;}
     break;
 
   case 64:
 
 /* Line 1455 of yacc.c  */
-#line 262 "bison.y"
+#line 263 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (5)].strval), 'L');;}
     break;
 
   case 65:
 
 /* Line 1455 of yacc.c  */
-#line 263 "bison.y"
+#line 264 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (5)].strval), 'R');;}
     break;
 
   case 66:
 
 /* Line 1455 of yacc.c  */
-#line 264 "bison.y"
+#line 265 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (5)].strval), 'O');;}
     break;
 
   case 67:
 
 /* Line 1455 of yacc.c  */
-#line 265 "bison.y"
+#line 266 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(2) - (5)].strval), 'I'); ;}
     break;
 
   case 68:
 
 /* Line 1455 of yacc.c  */
-#line 266 "bison.y"
+#line 267 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (6)].strval), 'L'); ;}
     break;
 
   case 69:
 
 /* Line 1455 of yacc.c  */
-#line 267 "bison.y"
+#line 268 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (6)].strval), 'R'); ;}
     break;
 
   case 70:
 
 /* Line 1455 of yacc.c  */
-#line 268 "bison.y"
+#line 269 "bison.y"
     { (yyval.intval) = 1; emit_join_tab((yyvsp[(3) - (6)].strval), 'O'); ;}
     break;
 
   case 71:
 
 /* Line 1455 of yacc.c  */
-#line 270 "bison.y"
+#line 271 "bison.y"
     { /* nil */
     (yyval.intval) = 0
 ;}
@@ -2132,14 +2133,14 @@ yyreduce:
   case 72:
 
 /* Line 1455 of yacc.c  */
-#line 273 "bison.y"
+#line 274 "bison.y"
     { emit_limit((yyvsp[(2) - (2)].intval)); ;}
     break;
 
   case 73:
 
 /* Line 1455 of yacc.c  */
-#line 275 "bison.y"
+#line 276 "bison.y"
     { /* nil */
     (yyval.intval) = 0
 ;}
@@ -2148,28 +2149,28 @@ yyreduce:
   case 74:
 
 /* Line 1455 of yacc.c  */
-#line 278 "bison.y"
+#line 279 "bison.y"
     { emit_sort((yyvsp[(4) - (4)].strval), 0); ;}
     break;
 
   case 75:
 
 /* Line 1455 of yacc.c  */
-#line 279 "bison.y"
+#line 280 "bison.y"
     { emit_sort((yyvsp[(4) - (7)].strval), (yyvsp[(7) - (7)].intval)); ;}
     break;
 
   case 76:
 
 /* Line 1455 of yacc.c  */
-#line 280 "bison.y"
+#line 281 "bison.y"
     { emit_presort((yyvsp[(3) - (3)].strval)); ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 2173 "bison.cu"
+#line 2174 "bison.cu"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2381,7 +2382,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 282 "bison.y"
+#line 283 "bison.y"
 
 
 #include "filter.h"
@@ -2389,13 +2390,13 @@ yyreturn:
 #include "merge.h"
 #include "zone_map.h"
 #include "atof.h"
-#include "cudpp_src_2.0/include/cudpp_hash.h"
-#include "moderngpu-master/include/kernels/join.cuh"
-#include "moderngpu-master/include/util/mgpucontext.h"
+#include "cudpp-2.1/include/cudpp_hash.h"
+#include "moderngpu-master/include/moderngpu.cuh"
 #include "sstream"
 #include "sorts.cu"
 
 using namespace mgpu;
+
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
@@ -2433,6 +2434,7 @@ template< typename T>
 void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp);
 
 using namespace thrust::placeholders;
+
 
 
 void emit_name(char *name)
@@ -3423,7 +3425,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		right->deAllocOnDevice();
 		
 		if(start_part + r_parts >= right->segCount) {
-			//cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			start_part = right->segCount;
 		}
@@ -3432,11 +3433,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			start_part = start_part+r_parts;			
 		};
 	
+	cout << "left->segCount " << left->segCount << " " << endl;
+	cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
-        cout << "segment " << i <<  '\xd';		
-        //cout << "segment " << i <<  endl;
+        //cout << "segment " << i <<  '\xd';		
+        cout << "segment " << i <<  endl;
 
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
@@ -3490,9 +3493,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
 			
 
-            //cout << endl << "j1 " << getFreeMem() << endl;
-            //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-            //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
+            cout << endl << "j1 " << getFreeMem() << endl;
+            cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+            cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 
             char join_kind = join_type.front();
             join_type.pop();
@@ -3531,7 +3534,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
 
 
-            //cout << "total " << res_count << endl;
+            cout << "total " << res_count << endl;
             int* r1 = aIndicesDevice->get();
             thrust::device_ptr<int> d_res1((int*)r1);
             int* r2 = bIndicesDevice->get();
@@ -4655,7 +4658,7 @@ void emit_load_binary(char *s, char *f, int d)
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
-    cout << "Reading " << totalRecs << " records in " << segCount << " segments" << endl;
+    cout << "Reading " << totalRecs << " records" << endl;
     queue<string> names(namevars);
     while(!names.empty()) {
         setMap[names.front()] = s;
@@ -4749,13 +4752,12 @@ void clean_queues()
 }
 
 
-
 int main(int ac, char **av)
 {
-    extern FILE *yyin;
+	extern FILE *yyin;
     context = CreateCudaDevice(0, av, true);
-    AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
-    context->SetAllocator(standardAlloc);
+    //AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
+    //context->SetAllocator(standardAlloc);
 
     cudppCreate(&theCudpp);
     hash_seed = 100;
@@ -4813,6 +4815,7 @@ int main(int ac, char **av)
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     cudppDestroy(theCudpp);
 
+   return 0;
 }
 
 

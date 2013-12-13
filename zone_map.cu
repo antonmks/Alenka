@@ -617,6 +617,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     FILE* f;
     unsigned int colIndex, cnt;
     string f1;
+	
 
     while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
@@ -651,7 +652,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
         uniques.insert(fields.front());
         fields.pop();
     };
-
+	
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
@@ -1096,7 +1097,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-                    //cout << "comparing " << n1 << " and " << s1_val << endl;
 
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
@@ -1115,7 +1115,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-                    //cout << "comparingg " << n1 << " and " << s2_val << endl;
 
                     if (a->type[(a->columnNames)[s2_val]] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
@@ -1141,6 +1140,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         bool_vectors.push(host_compare(t,n1_f,cmp_type));
                     }
                     else {
+						
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,n1_f,cmp_type));

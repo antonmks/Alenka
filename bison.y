@@ -16,6 +16,7 @@
 
 %{
 
+
 #include "lex.yy.c"
 #include "cm.h"
 
@@ -286,13 +287,13 @@ sort_def: { /* nil */
 #include "merge.h"
 #include "zone_map.h"
 #include "atof.h"
-#include "cudpp_src_2.0/include/cudpp_hash.h"
-#include "moderngpu-master/include/kernels/join.cuh"
-#include "moderngpu-master/include/util/mgpucontext.h"
+#include "cudpp-2.1/include/cudpp_hash.h"
+#include "moderngpu-master/include/moderngpu.cuh"
 #include "sstream"
 #include "sorts.cu"
 
 using namespace mgpu;
+
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
@@ -330,6 +331,7 @@ template< typename T>
 void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp);
 
 using namespace thrust::placeholders;
+
 
 
 void emit_name(char *name)
@@ -1320,7 +1322,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		right->deAllocOnDevice();
 		
 		if(start_part + r_parts >= right->segCount) {
-			//cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			start_part = right->segCount;
 		}
@@ -1329,11 +1330,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			start_part = start_part+r_parts;			
 		};
 	
+	cout << "left->segCount " << left->segCount << " " << endl;
+	cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
-        cout << "segment " << i <<  '\xd';		
-        //cout << "segment " << i <<  endl;
+        //cout << "segment " << i <<  '\xd';		
+        cout << "segment " << i <<  endl;
 
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
@@ -1387,9 +1390,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
 			
 
-            //cout << endl << "j1 " << getFreeMem() << endl;
-            //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-            //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
+            cout << endl << "j1 " << getFreeMem() << endl;
+            cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+            cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 
             char join_kind = join_type.front();
             join_type.pop();
@@ -1428,7 +1431,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
 
 
-            //cout << "total " << res_count << endl;
+            cout << "total " << res_count << endl;
             int* r1 = aIndicesDevice->get();
             thrust::device_ptr<int> d_res1((int*)r1);
             int* r2 = bIndicesDevice->get();
@@ -2552,7 +2555,7 @@ void emit_load_binary(char *s, char *f, int d)
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
-    cout << "Reading " << totalRecs << " records in " << segCount << " segments" << endl;
+    cout << "Reading " << totalRecs << " records" << endl;
     queue<string> names(namevars);
     while(!names.empty()) {
         setMap[names.front()] = s;
@@ -2646,13 +2649,12 @@ void clean_queues()
 }
 
 
-
 int main(int ac, char **av)
 {
-    extern FILE *yyin;
+	extern FILE *yyin;
     context = CreateCudaDevice(0, av, true);
-    AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
-    context->SetAllocator(standardAlloc);
+    //AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
+    //context->SetAllocator(standardAlloc);
 
     cudppCreate(&theCudpp);
     hash_seed = 100;
@@ -2710,6 +2712,7 @@ int main(int ac, char **av)
     std::cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
     cudppDestroy(theCudpp);
 
+   return 0;
 }
 
 

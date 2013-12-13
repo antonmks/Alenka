@@ -130,8 +130,7 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
 
-
-
+	
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -692,7 +691,7 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     s1_val = exe_value.top();
-                    exe_value.pop();
+                    exe_value.pop();					
 
                     if (a->type[(a->columnNames)[s1_val]] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
@@ -986,7 +985,7 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());    
     b->prm_index = 'R';
-	if(a == b) { // DELETE OP		
+	if(a == b) { // DELETE OP	
 		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
 						bp, a->prm_d.begin(), not_identity<bool>());						
 		a->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 0);						

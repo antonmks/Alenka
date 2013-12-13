@@ -2,12 +2,12 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj \
-		 atof.obj bison.obj select.obj mgpucontext.obj format.obj
-	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda -lcudpp64 -lcudpp_hash64 -o alenka merge.obj \
+		 atof.obj bison.obj select.obj mgpucontext.obj 
+	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda -lcudpp64 -lcudpp_hash64 mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj \
-		 atof.obj cm.obj bison.obj mgpucontext.obj format.obj
+		 atof.obj cm.obj bison.obj 
 
 
 nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
@@ -36,14 +36,12 @@ zone_map.obj : zone_map.cu cm.h zone_map.h
 	$(nvcc) zone_map.cu
 atof.obj : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
-mgpucontext.obj : moderngpu-master/src/mgpucontext.cpp 	
-	$(nvcc) moderngpu-master/src/mgpucontext.cpp
-format.obj : moderngpu-master/src/format.cpp 	
-	$(nvcc) moderngpu-master/src/format.cpp
+mgpucontext.obj : moderngpu-master/src/mgpucontext.cu 	
+	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
 
 	
 clean : del bison.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj itoa.obj \
-		 atof.obj cm.obj
+		 atof.obj cm.obj mgpucontext.obj mgpuutil.obj

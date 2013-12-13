@@ -1109,9 +1109,8 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 			total_max = partition_recs;
 	};	
 	
-	//for(unsigned int p = 0; p < partition_count; p++) {
-	//    cout << "partition " << p << endl;
 	total_segments++;
+	cout << "now total = " << total_segments << endl;
 	unsigned int old_segments = total_segments;
 	size_t new_offset;
 	for(unsigned int i = 0; i< mColumnCount; i++) {
@@ -1234,15 +1233,24 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 			else
 				compress_char(str, i, mCount, offset);
 		};
-
+		
+		
 		if(check_type == 1) {
 			if(fact_file_loaded) {
-				writeHeader(file_name, cols[i], total_segments-1);
+				if(!op_sort.empty())
+					writeHeader(file_name, cols[i], total_segments-1);
+				else {
+                    cout << "here we write " << total_segments << endl;				
+					writeHeader(file_name, cols[i], total_segments);
+					};
 			}
 		}
 		else {
 			if(check_val == 0) {
-				writeHeader(file_name, cols[i], total_segments-1);
+				if(!op_sort.empty())
+					writeHeader(file_name, cols[i], total_segments-1);
+				else	
+					writeHeader(file_name, cols[i], total_segments);
 			};
 		};
 		total_segments = old_segments;
@@ -1261,8 +1269,9 @@ void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_s
     string ff = str;
     str += ".header";
 	
-    fstream binary_file(str.c_str(),ios::out|ios::binary|ios::app);
+    fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&total_count, 8);
+	cout << "Writing segs " << tot_segs << endl;
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
     binary_file.write((char *)&cnt_counts[ff], 4);
@@ -1273,7 +1282,7 @@ void CudaSet::reWriteHeader(string file_name, unsigned int col, unsigned int tot
     string str = file_name + "." + int_to_string(col);
     string ff = str;
     str += ".header";	
-    fstream binary_file(str.c_str(),ios::out|ios::binary);
+    fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
 	binary_file.write((char *)&newRecs, 8);
     binary_file.write((char *)&tot_segs, 4);
 	binary_file.write((char *)&maxRecs1, 4);
@@ -1782,7 +1791,7 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
     else  // != 
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_not_equal_to());
 
-    return thrust::raw_pointer_cast(res);
+    return thrust::raw_pointer_cast(res);	
 }
 
 
@@ -2823,7 +2832,7 @@ void filter_op(char *s, char *f, unsigned int segment)
             b->prm_d.resize(a->maxRecs);
 
         map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-        //cout << "MAP CHECK segment " << segment << " " << map_check <<  '\xd';
+        cout << "MAP CHECK segment " << segment << " " << map_check <<  '\xd';
         //cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
         reset_offsets();
         if(map_check == 'R') {

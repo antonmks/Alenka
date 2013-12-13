@@ -39,7 +39,7 @@ STORE J_N INTO 'mytest.txt' USING ('|') LIMIT 100;
 
 
 To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest(1.7) version of Thrust.
-You also need to download and compile CUDPP library(code.google.com/p/cudpp/?), after compilation put library files into Alenka's directory.
+You also need to download and compile CUDPP library(http://cudpp.github.io), after compilation put library files into Alenka's directory.
 New groupby op requires Boost's unordered map, so make sure that you got Boost installed too.
 Sorted Merge Joins uses Sean Baxter's excellent moderngpu library(https://github.com/NVlabs/moderngpu) so you need to download and unzip it into the source directory as well.
 

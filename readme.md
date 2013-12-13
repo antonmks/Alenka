@@ -4,7 +4,7 @@
 
 Download [Alenka](https://github.com/antonmks/Alenka/archive/master.zip)
 
-Download [CUDPP](http://code.google.com/p/cudpp) library 
+Download [CUDPP](http://cudpp.github.io/) library 
 
 Download [ModernGpu](https://github.com/NVlabs/moderngpu) library
 
