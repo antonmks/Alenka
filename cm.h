@@ -360,7 +360,7 @@ public:
     void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount);
     void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, void* d, size_t mCount);
     void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
-	void CudaSet::reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
+	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
     void Store(string file_name, char* sep, unsigned int limit, bool binary);
     void compress_char(string file_name, unsigned int index, size_t mCount, size_t offset);
