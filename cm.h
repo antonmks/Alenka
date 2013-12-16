@@ -424,6 +424,7 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 string int_to_string(int number);
+void delete_records(char* f);
 
 
 #endif

@@ -57,6 +57,7 @@
     void emit_store_binary(char *s, char *f);
     void emit_filter(char *s, char *f);
 	void emit_delete(char *f);
+	void emit_insert(char *f, char* s);
     void emit_order(char *s, char *f, int e, int ll = 0);
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
@@ -176,6 +177,8 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 { emit_store_binary($2,$4); }
 | DELETE FROM NAME del_where
 {  emit_delete($3);}
+| INSERT INTO NAME SELECT expr_list FROM NAME
+{  emit_insert($3, $7);}
 ;
 
 expr:
@@ -327,11 +330,8 @@ ContextPtr context;
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
 
-template< typename T>
-void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp);
 
 using namespace thrust::placeholders;
-
 
 
 void emit_name(char *name)
@@ -1330,8 +1330,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			start_part = start_part+r_parts;			
 		};
 	
-	cout << "left->segCount " << left->segCount << " " << endl;
-	cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+	//cout << "left->segCount " << left->segCount << " " << endl;
+	//cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
@@ -2202,6 +2202,11 @@ void emit_select(char *s, char *f, int ll)
     std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 }
 
+void emit_insert(char *f, char* s) {
+
+
+};
+
 void emit_delete(char *f)
 {
     statement_count++;
@@ -2220,168 +2225,8 @@ void emit_delete(char *f)
         return;
     };
 
-    CudaSet *a;
-    a = varNames.find(f)->second;
-    a->name = f;	
-	size_t totalRemoved = 0;
-	size_t maxRecs = 0;
-
-    if(!a->keep) { // temporary variable
-		cout << "Delete operator is only applicable to disk based sets" << endl;
-		cout << "for deleting records from derived sets please use filter operator " << endl;
-		exit(0);
-    }
-    else {  // read matching segments, delete, compress and write on a disk replacing the original segments
-
-		string str, str_old;
-	    queue<string> op_vx;
-		size_t cnt;
-		for (map<string,unsigned int>::iterator it=a->columnNames.begin() ; it != a->columnNames.end(); ++it ) {
-            op_vx.push((*it).first);        		
-		};	
-		allocColumns(a, op_vx);
-		a->prm_d.resize(a->maxRecs);
-		a->resize(a->maxRecs);
-		size_t cc = a->mRecCount;
-		size_t tmp;
-		
-        void* d;
-        CUDA_SAFE_CALL(cudaMalloc((void **) &d, a->maxRecs*float_size));	
-        unsigned int new_seg_count = 0;
-		
-		for(unsigned int i = 0; i < a->segCount; i++) {          
-
-			map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
-			cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
-			reset_offsets();
-			if(map_check != 'N') {			
-			
-			    cnt = 0;
-				copyColumns(a, op_vx, i, cnt);
-				tmp = a->mRecCount;
-				cout << "recs in segment " << tmp << endl;
-				reset_offsets();
-		
-				if(a->mRecCount) {						
-					filter(op_type,op_value,op_nums, op_nums_f, a, a, i);
-					cout << "Remained recs count" << a->mRecCount << endl;
-					if(a->mRecCount > maxRecs)
-						maxRecs = a->mRecCount;
-										
-					if (a->mRecCount) {
-					
-					    totalRemoved = totalRemoved + (tmp - a->mRecCount);
-					    if (a->mRecCount == tmp) { //none deleted
-							cout << "rename " << i << " to " << new_seg_count << endl;
-							if(new_seg_count != i) {
-								for(unsigned int z = 0; z< a->mColumnCount; z++) {
-							
-									str_old = a->load_file_name + "." + int_to_string(a->cols[z]);
-									str_old += "." + int_to_string(i);
-									str = a->load_file_name + "." + int_to_string(a->cols[z]);
-									str += "." + int_to_string(new_seg_count);								
-								
-									remove(str.c_str());
-									rename(str_old.c_str(), str.c_str());
-								};	
-							};   
-							new_seg_count++;
-							
-						}
-						else { //some deleted
-					        cout << "writing segment " << new_seg_count << endl;
-							for(unsigned int z = 0; z< a->mColumnCount; z++) {
-								str = a->load_file_name + "." + int_to_string(a->cols[z]);
-								str += "." + int_to_string(new_seg_count);
-
-								if(a->type[z] == 0) {
-									thrust::device_ptr<int_type> d_col((int_type*)d);
-									thrust::gather(a->prm_d.begin(), a->prm_d.begin() + a->mRecCount, a->d_columns_int[a->type_index[z]].begin(), d_col);				
-									pfor_compress( d, a->mRecCount*int_size, str, a->h_columns_int[a->type_index[z]], 0);
-								}
-								else if(a->type[z] == 1){
-									thrust::device_ptr<float_type> d_col((float_type*)d);
-									if(a->decimal[z]) {
-										thrust::gather(a->prm_d.begin(), a->prm_d.begin() + a->mRecCount, a->d_columns_float[a->type_index[z]].begin(), d_col);
-										thrust::device_ptr<long long int> d_col_dec((long long int*)d);
-										thrust::transform(d_col,d_col+a->mRecCount, d_col_dec, float_to_long());
-										pfor_compress( d, a->mRecCount*float_size, str, a->h_columns_float[a->type_index[z]], 1);					
-									}
-									else {
-										thrust::gather(a->prm_d.begin(), a->prm_d.begin() + a->mRecCount, a->d_columns_float[a->type_index[z]].begin(), d_col);
-										thrust::copy(d_col, d_col + a->mRecCount, a->h_columns_float[a->type_index[z]].begin());	
-										fstream binary_file(str.c_str(),ios::out|ios::binary);
-										binary_file.write((char *)&a->mRecCount, 4);
-										binary_file.write((char *)(a->h_columns_float[a->type_index[z]].data()),a->mRecCount*float_size);
-										unsigned int comp_type = 3;
-										binary_file.write((char *)&comp_type, 4);
-										binary_file.close();													
-									
-									};
-								}
-								else {								
-							        void* t;
-									CUDA_SAFE_CALL(cudaMalloc((void **) &t, a->mRecCount*a->char_size[a->type_index[z]]));
-									apply_permutation_char(a->d_columns_char[a->type_index[z]], (unsigned int*)thrust::raw_pointer_cast(a->prm_d.data()), a->mRecCount, (char*)t, a->char_size[a->type_index[z]]);
-									cudaMemcpy(a->h_columns_char[a->type_index[z]], t, a->char_size[a->type_index[z]]*a->mRecCount, cudaMemcpyDeviceToHost);
-									cudaFree(t);
-									a->compress_char(str, z, a->mRecCount, 0);
-								};	
-							};															
-							new_seg_count++;				
-						};	
-					}
-					else {
-						totalRemoved = totalRemoved + tmp;
-					};
-				}					
-			}
-            else {				
-				if(new_seg_count != i) {
-					cout << "rename " << i << " to " << new_seg_count << endl;
-					for(unsigned int z = 0; z< a->mColumnCount; z++) {
-							
-						str_old = a->load_file_name + "." + int_to_string(a->cols[z]);
-						str_old += "." + int_to_string(i);
-						str = a->load_file_name + "." + int_to_string(a->cols[z]);
-						str += "." + int_to_string(new_seg_count);								
-								
-						remove(str.c_str());														
-						rename(str_old.c_str(), str.c_str());												
-					};						
-				};		
-				new_seg_count++;	
-				maxRecs	= a->maxRecs;			
-			};	
-			cout << "TOTAL REM " << totalRemoved << endl;
-		};	
-		
-		if (new_seg_count < a->segCount) {
-			for(unsigned int i = new_seg_count; i < a->segCount; i++) {
-				cout << "delete segment " << i << endl;
-				for(unsigned int z = 0; z< a->mColumnCount; z++) {							
-					str = a->load_file_name + "." + int_to_string(a->cols[z]);
-					str += "." + int_to_string(i);								
-					remove(str.c_str());	
-				};	
-			};					
-		};
-		
-		for(unsigned int z = 0; z< a->mColumnCount; z++) {
-			a->reWriteHeader(a->load_file_name, a->cols[z], new_seg_count, totalRecs-totalRemoved, maxRecs);				
-		};		
-		
-
-		
-		a->mRecCount = cc;
-		a->prm_d.resize(0);
-		a->segCount = new_seg_count;
-        a->deAllocOnDevice();
-		cudaFree(d);
-    };	
-	
-
-    cout << "DELETE " << f << " " << a->keep << endl;	
+	delete_records(f);	
+    cout << "DELETE " << f <<  endl;	
 	clean_queues();
 	
 }	
