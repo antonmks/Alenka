@@ -36,7 +36,7 @@ atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
 cm.o : cm.cu cm.h	
 	$(nvcc) cm.cu
-mgpucontext.o : moderngpu-master/src/mgpucontext.cpp 	
+mgpucontext.o : moderngpu-master/src/mgpucontext.cu 	
 	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
 	
 clean : del bison.o merge.o \
