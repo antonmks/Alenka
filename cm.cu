@@ -3109,7 +3109,7 @@ void delete_records(char* f) {
 		
 				if(a->mRecCount) {						
 					filter(op_type,op_value,op_nums, op_nums_f, a, a, i);
-					cout << "Remained recs count" << a->mRecCount << endl;
+					cout << "Remained recs count " << a->mRecCount << endl;
 					if(a->mRecCount > maxRecs)
 						maxRecs = a->mRecCount;
 										
@@ -3166,8 +3166,8 @@ void delete_records(char* f) {
 								}
 								else {								
 							        void* t;
-									CUDA_SAFE_CALL(cudaMalloc((void **) &t, a->mRecCount*a->char_size[a->type_index[z]]));
-									apply_permutation_char(a->d_columns_char[a->type_index[z]], (unsigned int*)thrust::raw_pointer_cast(a->prm_d.data()), a->mRecCount, (char*)t, a->char_size[a->type_index[z]]);
+									CUDA_SAFE_CALL(cudaMalloc((void **) &t, tmp*a->char_size[a->type_index[z]]));
+									apply_permutation_char(a->d_columns_char[a->type_index[z]], (unsigned int*)thrust::raw_pointer_cast(a->prm_d.data()), tmp, (char*)t, a->char_size[a->type_index[z]]);
 									cudaMemcpy(a->h_columns_char[a->type_index[z]], t, a->char_size[a->type_index[z]]*a->mRecCount, cudaMemcpyDeviceToHost);
 									cudaFree(t);
 									a->compress_char(str, z, a->mRecCount, 0);
