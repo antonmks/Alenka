@@ -306,7 +306,7 @@ public:
     queue<float_type> fil_nums_f;
 
     std::map<unsigned int, size_t> type_index;
-    size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size;
+    size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size, totalRecs;
     std::map<string,unsigned int> columnNames;
     std::map<string, FILE*> filePointers;
     bool *grp;
@@ -425,6 +425,7 @@ int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 string int_to_string(int number);
 void delete_records(char* f);
+void insert_records(char* f, char* s);
 
 
 #endif

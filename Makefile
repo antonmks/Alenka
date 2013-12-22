@@ -3,17 +3,19 @@ alenka : bison.o merge.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o \
 		 atof.o cm.o mgpucontext.o 
-	/usr/local/cuda/bin/nvcc -O3 -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
+	nvcc -O3 -arch=sm_35 -L . -lcudpp -lcudpp_hash mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o \
 		 atof.o cm.o 
 		 
 
-nvcc = /usr/local/cuda/bin/nvcc --machine 64 -O3 -arch=sm_20 -c
+nvcc = nvcc --machine 64 -O3 -arch=sm_35 -c
 
+cm.o : cm.cu cm.h	
+	$(nvcc) cm.cu
 bison.o : bison.cu cm.h sorts.cu
-	$(nvcc) bison.cu
+	$(nvcc) -I moderngpu/include/ bison.cu
 merge.o : merge.cu cm.h merge.h
 	$(nvcc) merge.cu
 MurmurHash2_64.o : MurmurHash2_64.cu cm.h 
@@ -34,8 +36,6 @@ zone_map.o : zone_map.cu cm.h zone_map.h
 	$(nvcc) zone_map.cu
 atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
-cm.o : cm.cu cm.h	
-	$(nvcc) cm.cu
 mgpucontext.o : moderngpu-master/src/mgpucontext.cu 	
 	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
 	

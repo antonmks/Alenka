@@ -714,7 +714,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
-
+	
     b->grp_type = new unsigned int[colCount];
 
     for(unsigned int j=0; j < colCount; j++) {
@@ -854,6 +854,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         col_val.pop();
         grp_type1.pop();
     };
+	
 
     if (a->columnGroups.empty()) {
         if(!one_line)

@@ -1218,7 +1218,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         c = new CudaSet(left, right, op_sel_s, op_sel_s_as);
         varNames[res_name] = c;
         clean_queues();
-        cout << "Join result " << res_name << " : " << c->mRecCount << endl;
         return;
     };
 
@@ -1335,9 +1334,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	
     for (unsigned int i = 0; i < left->segCount; i++) {
 
-        //cout << "segment " << i <<  '\xd';		
-        cout << "segment " << i <<  endl;
-
+        cout << "segment " << i <<  '\xd';		
+        
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
             copyColumns(left, lc, i, cnt_l);			
@@ -1390,9 +1388,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
 			
 
-            cout << endl << "j1 " << getFreeMem() << endl;
-            cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-            cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
+            //cout << endl << "j1 " << getFreeMem() << endl;
+            //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+            //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 
             char join_kind = join_type.front();
             join_type.pop();
@@ -1431,7 +1429,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
 
 
-            cout << "total " << res_count << endl;
             int* r1 = aIndicesDevice->get();
             thrust::device_ptr<int> d_res1((int*)r1);
             int* r2 = bIndicesDevice->get();
@@ -2092,9 +2089,9 @@ void emit_select(char *s, char *f, int ll)
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "segment " << i << " select mem " << getFreeMem() << '\xd';
-		
+				
         cnt = 0;
-        copyColumns(a, op_vx, i, cnt);
+        copyColumns(a, op_vx, i, cnt);		
         reset_offsets();
         op_s = op_v2;
         s_cnt = 0;
@@ -2128,13 +2125,14 @@ void emit_select(char *s, char *f, int ll)
                 b->resize(varNames[setMap[op_vx.front()]]->maxRecs);
                 b->mRecCount = old_cnt;
             };
+			
 
             if (!c_set) {
                 c = new CudaSet(0, col_count);
                 create_c(c,b);
                 c_set = 1;
             };
-
+			
             if (ll != 0 && cycle_count > 1  ) {
                 add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);
             }
@@ -2142,6 +2140,7 @@ void emit_select(char *s, char *f, int ll)
                 //copy b to c
                 unsigned int c_offset = c->mRecCount;
                 c->resize(b->mRecCount);
+				
                 for(unsigned int j=0; j < b->mColumnCount; j++) {
                     if (b->type[j] == 0) {
                         thrust::copy(b->d_columns_int[b->type_index[j]].begin(), b->d_columns_int[b->type_index[j]].begin() + b->mRecCount, c->h_columns_int[c->type_index[j]].begin() + c_offset);
@@ -2158,7 +2157,8 @@ void emit_select(char *s, char *f, int ll)
             };
         };
     };
-
+	
+	
     a->mRecCount = ol_count;
     a->mRecCount = a->hostRecCount;
     a->deAllocOnDevice();
@@ -2173,7 +2173,7 @@ void emit_select(char *s, char *f, int ll)
             count_simple(c);
         };
     };
-
+	
     reset_offsets();
     c->maxRecs = c->mRecCount;
     c->name = s;
@@ -2183,7 +2183,6 @@ void emit_select(char *s, char *f, int ll)
         setMap[(*it).first] = s;
     };
 
-    cout << endl << "final select " << c->mRecCount << endl;
     clean_queues();
 
     varNames[s] = c;
@@ -2202,7 +2201,35 @@ void emit_select(char *s, char *f, int ll)
     std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 }
 
+
+//Both the source and destination of the insert operator can be either derived or permanent dataset
+//But for now lets see if I can code only permanent to permanent code path and get away with it
 void emit_insert(char *f, char* s) {
+    statement_count++;
+    if (scan_state == 0) {
+        if (stat.find(f) == stat.end()) {
+            cout << "Delete : couldn't find variable " << f << endl;
+            exit(1);
+        };
+        if (stat.find(s) == stat.end()) {
+            cout << "Delete : couldn't find variable " << s << endl;
+            exit(1);
+        };
+		
+        stat[f] = statement_count;
+		stat[s] = statement_count;
+        clean_queues();
+        return;
+    };
+
+    if(varNames.find(f) == varNames.end() || varNames.find(s) == varNames.end()) {
+        clean_queues();
+        return;
+    };
+	
+	insert_records(f,s);	
+    cout << "INSERT " << f << " " << s << endl;	
+	clean_queues();
 
 
 };
@@ -2395,19 +2422,20 @@ void emit_load_binary(char *s, char *f, int d)
         cout << "Couldn't open file " << f1 << endl;
         exit(0);
     };
-    fread((char *)&totalRecs, 8, 1, ff);
+	size_t totRecs;
+    fread((char *)&totRecs, 8, 1, ff);
     fread((char *)&segCount, 4, 1, ff);
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
-    cout << "Reading " << totalRecs << " records" << endl;
+    cout << "Reading " << totRecs << " records" << endl;
     queue<string> names(namevars);
     while(!names.empty()) {
         setMap[names.front()] = s;
         names.pop();
     };
 
-    a = new CudaSet(namevars, typevars, sizevars, cols,totalRecs, f);
+    a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f);
     a->segCount = segCount;
     a->maxRecs = maxRecs;
     a->keep = 1;

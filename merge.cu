@@ -194,10 +194,12 @@ void create_c(CudaSet* c, CudaSet* b)
     for (  it=b->columnNames.begin() ; it != b->columnNames.end(); ++it ) {
         c->columnNames[(*it).first] = (*it).second;
     };
+	
 
     c->grp_type = new unsigned int[c->mColumnCount];
 
     for(unsigned int i=0; i < b->mColumnCount; i++) {
+	
         c->cols[i] = b->cols[i];
         c->type[i] = b->type[i];
         c->grp_type[i] = b->grp_type[i];

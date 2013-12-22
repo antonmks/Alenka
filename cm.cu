@@ -39,7 +39,7 @@ size_t total_count = 0, total_max;
 unsigned int total_segments = 0;
 unsigned int process_count;
 map <unsigned int, size_t> str_offset;
-size_t totalRecs = 0, alloced_sz = 0;
+size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
 char map_check;
 void* d_v = NULL;
@@ -900,7 +900,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
                 // will have to fix it later so uncompressed data will be written by segments too
             };
 
-            totalRecs = totals + mRecCount;
+            //totalRecs = totals + mRecCount;
         };
 
         mRecCount = totals;
@@ -1102,7 +1102,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 	if(mCount < partition_count || partition_count == 0)
 		partition_count = 1;
 	unsigned int partition_recs = mCount/partition_count;
-	cout << "partition recs " << partition_recs << endl;
+	//cout << "partition recs " << partition_recs << endl;
 
 	if(!op_sort.empty()) {
 	    if(total_max < partition_recs)
@@ -1110,7 +1110,6 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 	};	
 	
 	total_segments++;
-	cout << "now total = " << total_segments << endl;
 	unsigned int old_segments = total_segments;
 	size_t new_offset;
 	for(unsigned int i = 0; i< mColumnCount; i++) {
@@ -1240,7 +1239,6 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 				if(!op_sort.empty())
 					writeHeader(file_name, cols[i], total_segments-1);
 				else {
-                    cout << "here we write " << total_segments << endl;				
 					writeHeader(file_name, cols[i], total_segments);
 					};
 			}
@@ -1271,7 +1269,6 @@ void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_s
 	
     fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&total_count, 8);
-	cout << "Writing segs " << tot_segs << endl;
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
     binary_file.write((char *)&cnt_counts[ff], 4);
@@ -1493,27 +1490,23 @@ void CudaSet::compress_char(string file_name, unsigned int index, size_t mCount,
     std::vector<string> dict_ordered;
     std::vector<unsigned int> dict_val;
     map<string,unsigned int>::iterator iter;
-    unsigned int bits_encoded;
-    char* field;
+    unsigned int bits_encoded, ss;    
     unsigned int len = char_size[type_index[index]];
-
-    field = new char[len];
 
     for (unsigned int i = 0 ; i < mCount; i++) {
 
-        strncpy(field, h_columns_char[type_index[index]] + (i+offset)*len, char_size[type_index[index]]);
-
-        if((iter = dict.find(field)) != dict.end()) {
+		string f(h_columns_char[type_index[index]] + (i+offset)*len, len);
+		
+        if((iter = dict.find(f)) != dict.end()) {
             dict_val.push_back(iter->second);
         }
-        else {
-            string f = field;
-            dict[f] = (unsigned int)dict.size();
-            dict_val.push_back((unsigned int)dict.size()-1);
+        else {            
+			ss = (unsigned int)dict.size();
+            dict[f] = ss;
+            dict_val.push_back(ss);
             dict_ordered.push_back(f);
         };
     };
-    delete [] field;
 
     bits_encoded = (unsigned int)ceil(log2(double(dict.size()+1)));
 
@@ -1540,11 +1533,12 @@ void CudaSet::compress_char(string file_name, unsigned int index, size_t mCount,
     binary_file.write((char *)&vals_count, 4);
     unsigned int real_count = (unsigned int)dict_val.size();
     binary_file.write((char *)&real_count, 4);
+	
 
     for(unsigned int i = 0; i < dict_val.size(); i++) {
 
         val = val | dict_val[i];
-
+		
         if(curr_cnt < fit_count)
             val = val << bits_encoded;
 
@@ -2084,6 +2078,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     not_compressed = 0;
     mRecCount = Recs;
     hostRecCount = Recs;
+	totalRecs = Recs;
     load_file_name = file_name;
 
     f1 = file_name + ".sort";
@@ -2497,7 +2492,7 @@ void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, s
 
 size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
     if (segment == a->segCount-1) {
-	    cout << "SEGREC " << a->hostRecCount << " " << a->maxRecs << " " << segment << endl;
+	    //cout << "SEGREC " << a->hostRecCount << " " << a->maxRecs << " " << segment << endl;
         return a->hostRecCount - a->maxRecs*segment;
     }
     else
@@ -2510,6 +2505,8 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
 {
     set<string> uniques;
     CudaSet *t;
+	
+	//cout << "copy " << getFreeMem() << endl;
 
     if(a->filtered) { //filter the segment
         if(flt) {
@@ -2528,8 +2525,11 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 if(a->mRecCount) {
                     t = varNames[setMap[fields.front()]];
                     alloced_switch = 1;
+					//cout << "cpy " << fields.front() << endl;
                     t->CopyColumnToGpu(t->columnNames[fields.front()], segment);	
+					//cout << "cpy end " << fields.front() << endl;
                     gatherColumns(a, t, fields.front(), segment, count);					
+					//cout << "cpy gtr " << fields.front() << endl;
                     alloced_switch = 0;
                 };
             }
@@ -2822,7 +2822,7 @@ void filter_op(char *s, char *f, unsigned int segment)
         b = new CudaSet(0,1);
     }
     else {
-        //cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
+        cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 
         b = varNames[s];
         size_t cnt = 0;
@@ -2833,10 +2833,8 @@ void filter_op(char *s, char *f, unsigned int segment)
 
         map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
         cout << "MAP CHECK segment " << segment << " " << map_check <<  '\xd';
-        //cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
         reset_offsets();
         if(map_check == 'R') {
-            //a->hostRecCount = a->mRecCount;
             copyColumns(a, b->fil_value, segment, cnt);
             filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f,a, b, segment);
         }
@@ -2845,7 +2843,6 @@ void filter_op(char *s, char *f, unsigned int segment)
         };
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
-        //cout << endl << "filter is finished " << b->mRecCount << " " << getFreeMem()  << endl;
     }
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
@@ -3063,6 +3060,48 @@ string int_to_string(int number){
     return number_string;
 }
 
+
+void insert_records(char* f, char* s) {
+	char buf[4096];
+    size_t size, maxRecs;
+	string str_s, str_d;
+
+	CudaSet *a;
+    a = varNames.find(s)->second;
+    a->name = s;	
+	CudaSet *b;
+    b = varNames.find(f)->second;
+    b->name = f;	
+	
+	
+	for(unsigned int i = 0; i < a->segCount; i++) {          	
+		for(unsigned int z = 0; z< a->mColumnCount; z++) {							
+			str_s = a->load_file_name + "." + int_to_string(a->cols[z]) + "." + int_to_string(i);		
+			str_d = b->load_file_name + "." + int_to_string(b->cols[z]) + "." + int_to_string(b->segCount + i);
+			FILE* source = fopen(str_s.c_str(), "rb");
+			FILE* dest = fopen(str_d.c_str(), "wb");
+			while (size = fread(buf, 1, BUFSIZ, source)) {
+				fwrite(buf, 1, size, dest);
+			}
+			fclose(source);
+			fclose(dest);
+		};		
+	};
+	
+	if(a->maxRecs > b->maxRecs)
+		maxRecs = a->maxRecs;
+	else	
+		maxRecs = b->maxRecs;
+		
+	for(unsigned int z = 0; z< a->mColumnCount; z++) {
+		b->reWriteHeader(b->load_file_name, b->cols[z], a->segCount + b->segCount, a->totalRecs + b->totalRecs, maxRecs);				
+	};		
+	
+	
+};
+
+
+
 void delete_records(char* f) {
 
     CudaSet *a;
@@ -3213,9 +3252,8 @@ void delete_records(char* f) {
 		};
 		
 		for(unsigned int z = 0; z< a->mColumnCount; z++) {
-			a->reWriteHeader(a->load_file_name, a->cols[z], new_seg_count, totalRecs-totalRemoved, maxRecs);				
-		};		
-		
+			a->reWriteHeader(a->load_file_name, a->cols[z], new_seg_count, a->totalRecs-totalRemoved, maxRecs);				
+		};				
 
 		
 		a->mRecCount = cc;

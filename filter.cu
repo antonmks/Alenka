@@ -981,6 +981,7 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             }
         };
     };
+	
 
 
     thrust::device_ptr<bool> bp((bool*)bool_vectors.top());    
