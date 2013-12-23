@@ -2506,13 +2506,11 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
     set<string> uniques;
     CudaSet *t;
 	
-	//cout << "copy " << getFreeMem() << endl;
-
     if(a->filtered) { //filter the segment
         if(flt) {
             filter_op(a->fil_s, a->fil_f, segment);
         };
-        if(rsz) {
+        if(rsz) {		    
             a->resizeDevice(count);
             a->devRecCount = count+a->mRecCount;
         };
@@ -2525,16 +2523,14 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 if(a->mRecCount) {
                     t = varNames[setMap[fields.front()]];
                     alloced_switch = 1;
-					//cout << "cpy " << fields.front() << endl;
                     t->CopyColumnToGpu(t->columnNames[fields.front()], segment);	
-					//cout << "cpy end " << fields.front() << endl;
                     gatherColumns(a, t, fields.front(), segment, count);					
-					//cout << "cpy gtr " << fields.front() << endl;
                     alloced_switch = 0;
                 };
             }
             else {
-                a->CopyColumnToGpu(a->columnNames[fields.front()], segment, count);
+				if(a->mRecCount)
+					a->CopyColumnToGpu(a->columnNames[fields.front()], segment, count);
             };
             uniques.insert(fields.front());
         };
@@ -2832,7 +2828,7 @@ void filter_op(char *s, char *f, unsigned int segment)
             b->prm_d.resize(a->maxRecs);
 
         map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-        cout << "MAP CHECK segment " << segment << " " << map_check <<  '\xd';
+        cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
         reset_offsets();
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);

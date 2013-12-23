@@ -4199,16 +4199,17 @@ void emit_select(char *s, char *f, int ll)
     bool one_liner;
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
-        cout << "segment " << i << " select mem " << getFreeMem() << '\xd';
+        cout << "segment " << i << " select mem " << getFreeMem() << endl;
 				
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);		
+		
         reset_offsets();
         op_s = op_v2;
         s_cnt = 0;
 
 
-        while(!op_s.empty()) {
+        while(!op_s.empty() && a->mRecCount != 0) {
 
             int colInd = (a->columnNames).find(op_s.top())->second;
             if (a->type[colInd] == 2) {
@@ -4274,8 +4275,16 @@ void emit_select(char *s, char *f, int ll)
     a->mRecCount = a->hostRecCount;
     a->deAllocOnDevice();
     b->deAllocOnDevice();
-
-
+	
+    if(!c_set) {
+        CudaSet *c;
+        c = new CudaSet(0,1);
+        varNames[s] = c;
+        clean_queues();
+        return;
+    };
+	
+	
     if (ll != 0) {
         count_avg(c, distinct_hash);
     }
@@ -4637,8 +4646,6 @@ int main(int ac, char **av)
 {
 	extern FILE *yyin;
     context = CreateCudaDevice(0, av, true);
-    //AllocPtr standardAlloc(new CudaAllocSimple(&context->Device()));
-    //context->SetAllocator(standardAlloc);
 
     cudppCreate(&theCudpp);
     hash_seed = 100;
