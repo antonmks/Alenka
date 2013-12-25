@@ -13,6 +13,7 @@
  */
 
 #include "merge.h"
+#include "zone_map.h"
 
 
 struct MurmurHash64D
@@ -178,7 +179,6 @@ typedef thrust::device_vector<int_type>::iterator    IntIterator;
 typedef thrust::tuple<IntIterator,IntIterator> IteratorTuple;
 typedef thrust::zip_iterator<IteratorTuple> ZipIterator;
 unsigned int hash_seed = 100;
-
 thrust::host_vector<unsigned long long int> h_merge;
 
 using namespace std;
@@ -197,6 +197,7 @@ void create_c(CudaSet* c, CudaSet* b)
 	
 
     c->grp_type = new unsigned int[c->mColumnCount];
+	h_merge.clear();
 
     for(unsigned int i=0; i < b->mColumnCount; i++) {
 	
@@ -226,17 +227,14 @@ void create_c(CudaSet* c, CudaSet* b)
 void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases,
          vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
          vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
-{
-
+{		
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
         create_c(c,b);
     }
 
-    //cout << endl << "start b and c " << b->mRecCount << " " << c->mRecCount << endl;
-
-    size_t cycle_sz = op_v3.size();
-
+    size_t cycle_sz = op_v3.size();	
+	
     vector<unsigned int> opv;
     queue<string> ss;
     for(unsigned int z = 0; z < cycle_sz; z++) {
@@ -287,7 +285,8 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     };
 
     //for(int i = 0; i < cycle_sz*b->mRecCount;i++)
-    //cout << "SUM " << sum[i] << endl;
+    //cout << "SUM " << sum[0] << endl;
+	
 
     len[0] = 8*cycle_sz;
     MurmurHash64D_F ff(thrust::raw_pointer_cast(sum.data()),
@@ -296,7 +295,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::for_each(begin, begin + b->mRecCount, ff);
 
     //for(int i = 0; i < b->mRecCount;i++)
-    //cout << "DEV HASH " << hashes[i] << endl;
+    //cout << "DEV HASH " << hashes[0] << endl;
 
     // sort the results by hash
     thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(b->mRecCount);
@@ -309,6 +308,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     void* d;
     CUDA_SAFE_CALL(cudaMalloc((void **) &d, b->mRecCount*max_c));
     thrust::sort_by_key(hashes.begin(), hashes.end(), v);
+	
 
     for(unsigned int i = 0; i < b->mColumnCount; i++) {
 
@@ -337,8 +337,9 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     char* tmp = new char[max_c*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
     //lets merge every column
-
+	
     for(unsigned int i = 0; i < b->mColumnCount; i++) {
+	
 
         if(b->type[i] == 0) {
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
@@ -351,14 +352,16 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_float[c->type_index[i]].begin(), b->h_columns_float[b->type_index[i]].begin(),
-                                 thrust::make_discard_iterator(), (float_type*)tmp);
-            thrust::copy((float_type*)tmp, (float_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_float[c->type_index[i]].begin());
+                                 thrust::make_discard_iterator(), (float_type*)tmp);										 
+            thrust::copy((float_type*)tmp, (float_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_float[c->type_index[i]].begin());			
+			
         }
         else {
             str_merge_by_key(h_merge, hh, c->h_columns_char[c->type_index[i]], b->h_columns_char[b->type_index[i]], b->char_size[b->type_index[i]], tmp);
             thrust::copy(tmp, tmp + (h_merge.size() + b->mRecCount)*b->char_size[b->type_index[i]],	c->h_columns_char[c->type_index[i]]);
         };
     };
+	
 
     //merge the keys
     thrust::merge(h_merge.begin(), h_merge.end(),
@@ -368,6 +371,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     h_merge.resize(h_merge.size() + b->mRecCount);
     thrust::copy((unsigned long long int*)tmp, (unsigned long long int*)tmp + cpy_sz, h_merge.begin());
     delete [] tmp;
+	
 
     //cout << endl << "end b and c " << b->mRecCount << " " << c->mRecCount << endl;
     //for(int i = 0; i < h_merge.size();i++)

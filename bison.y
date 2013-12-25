@@ -238,6 +238,7 @@ opt_group_list: { /* nil */
 expr_list:
 expr AS NAME { $$ = 1; emit_sel_name($3);}
 | expr_list ',' expr AS NAME { $$ = $1 + 1; emit_sel_name($5);}
+| '*' { emit_sel_name("*");}
 ;
 
 load_list:
@@ -1973,6 +1974,7 @@ void emit_select(char *s, char *f, int ll)
         CudaSet *c;
         c = new CudaSet(0,1);
         varNames[s] = c;
+		c->name = s;
         clean_queues();
         cout << "SELECT " << s << " count : 0,  Mem " << getFreeMem() << endl;
         return;
@@ -2054,6 +2056,7 @@ void emit_select(char *s, char *f, int ll)
     size_t ol_count = a->mRecCount, cnt;
     a->hostRecCount = a->mRecCount;
     b = new CudaSet(0, col_count);
+	b->name = "tmp b in select";
     bool b_set = 0, c_set = 0;
 
     size_t tmp_size = a->mRecCount;
@@ -2086,13 +2089,14 @@ void emit_select(char *s, char *f, int ll)
 
     unsigned int s_cnt;
     bool one_liner;
-
+	
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         cout << "segment " << i << " select mem " << getFreeMem() << endl;
 				
-        cnt = 0;
-        copyColumns(a, op_vx, i, cnt);		
+        cnt = 0;		
+        copyColumns(a, op_vx, i, cnt);			
 		
+
         reset_offsets();
         op_s = op_v2;
         s_cnt = 0;
@@ -2116,7 +2120,7 @@ void emit_select(char *s, char *f, int ll)
             };
 
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
-
+			
             if(!b_set) {
                 for (map<string,unsigned int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
                     setMap[(*it).first] = s;
@@ -2127,15 +2131,18 @@ void emit_select(char *s, char *f, int ll)
                 b->mRecCount = old_cnt;
             };
 			
+		
 
-            if (!c_set) {
+            if (!c_set && b->mRecCount > 0) {
                 c = new CudaSet(0, col_count);
                 create_c(c,b);
                 c_set = 1;
+				c->name = s;
             };
 			
-            if (ll != 0 && cycle_count > 1  ) {
-                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);
+
+            if (ll != 0 && cycle_count > 1  && b->mRecCount > 0) {
+                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);	
             }
             else {
                 //copy b to c
@@ -2154,7 +2161,6 @@ void emit_select(char *s, char *f, int ll)
                                    b->char_size[b->type_index[j]] * b->mRecCount, cudaMemcpyDeviceToHost);
                     };
                 };
-
             };
         };
     };
@@ -2169,6 +2175,7 @@ void emit_select(char *s, char *f, int ll)
         CudaSet *c;
         c = new CudaSet(0,1);
         varNames[s] = c;
+		c->name = s;
         clean_queues();
         return;
     };
@@ -2205,7 +2212,7 @@ void emit_select(char *s, char *f, int ll)
 
     if(stat[f] == statement_count && a->keep == 0) {
         a->free();
-        varNames.erase(f);
+        varNames.erase(f);		
     };
     std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 }
@@ -2236,9 +2243,9 @@ void emit_insert(char *f, char* s) {
         return;
     };
 	
+	cout << "INSERT " << f << " " << s << endl;	
 	insert_records(f,s);	
-    cout << "INSERT " << f << " " << s << endl;	
-	clean_queues();
+    clean_queues();
 
 
 };
@@ -2448,6 +2455,7 @@ void emit_load_binary(char *s, char *f, int d)
     a->segCount = segCount;
     a->maxRecs = maxRecs;
     a->keep = 1;
+	a->name = s;
     varNames[s] = a;
 
     if(stat[s] == statement_count )  {

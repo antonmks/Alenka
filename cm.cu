@@ -1333,11 +1333,13 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
     };
 
     size_t mCount;
+	bool print_all = 0;
 
     if(limit != 0 && limit < mRecCount)
         mCount = limit;
     else {
         mCount = mRecCount;
+		print_all = 1;
 	};	
 
     if(binary == 0) {
@@ -1352,12 +1354,13 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
             cout << "Could not open file " << file_name << endl;
 
 
-        if(prm_d.size() || source)
+        if(prm_d.size() || source) {
             allocColumns(this, op_vx);
+		};	
         unsigned int curr_seg = 0;
         size_t cnt = 0;
         size_t curr_count, sum_printed = 0;
-        while(sum_printed < mCount) {
+        while(sum_printed < mCount || print_all) {
 
             if(prm_d.size() || source)  {
                 copyColumns(this, op_vx, curr_seg, cnt);
@@ -1366,7 +1369,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                 resize(mRecCount);
                 mRecCount = olRecs;
                 CopyToHost(0,mRecCount);
-                if(sum_printed + mRecCount <= mCount)
+                if(sum_printed + mRecCount <= mCount || print_all)
                     curr_count = mRecCount;
                 else {
                     curr_count = mCount - sum_printed;
@@ -1397,10 +1400,12 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                         fputs(sep, file_pr);
                     };
                 };
-                if (i != mCount -1)
+                if (i != mCount -1 && ( i != curr_count-1 && curr_seg != segCount))
                     fputs("\n",file_pr);
             };
             curr_seg++;
+			if(curr_seg == segCount)
+				print_all = 0;
         };
         fclose(file_pr);
     }
@@ -1624,7 +1629,7 @@ void CudaSet::free()  {
 
     if (!seq)
         delete seq;
-
+		
     for(unsigned int i = 0; i < mColumnCount; i++ ) {
         if(type[i] == 2 && h_columns_char[type_index[i]] && prm_d.size() == 0) {
             delete [] h_columns_char[type_index[i]];
@@ -2821,14 +2826,17 @@ void filter_op(char *s, char *f, unsigned int segment)
         cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 
         b = varNames[s];
+		b->name = s;
         size_t cnt = 0;
         allocColumns(a, b->fil_value);
 
         if (b->prm_d.size() == 0)
             b->prm_d.resize(a->maxRecs);
 
-        map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-        cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		//cout << "MAP CHECK start " << segment << " " << map_check << " " << a->filtered <<  endl;	
+		map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
+		cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		
         reset_offsets();
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);
@@ -2840,6 +2848,8 @@ void filter_op(char *s, char *f, unsigned int segment)
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
     }
+	cout << "filter res " << b->mRecCount << endl;
+	
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
@@ -3061,37 +3071,69 @@ void insert_records(char* f, char* s) {
 	char buf[4096];
     size_t size, maxRecs;
 	string str_s, str_d;
+	
+	cout << "insert start " << f << " " << s << endl;
 
+	if(varNames.find(s) == varNames.end()) {
+		cout << "couldn't find " << s << endl;
+		exit(0);
+	};	
 	CudaSet *a;
     a = varNames.find(s)->second;
     a->name = s;	
+	
+	if(varNames.find(f) == varNames.end()) {
+		cout << "couldn't find " << f << endl;
+		exit(0);
+	};	
+	
 	CudaSet *b;
     b = varNames.find(f)->second;
     b->name = f;	
 	
+	// if both source and destination are on disk
+	if(a->keep) {
+		for(unsigned int i = 0; i < a->segCount; i++) {          	
+			for(unsigned int z = 0; z< a->mColumnCount; z++) {							
+				str_s = a->load_file_name + "." + int_to_string(a->cols[z]) + "." + int_to_string(i);		
+				str_d = b->load_file_name + "." + int_to_string(b->cols[z]) + "." + int_to_string(b->segCount + i);
+				FILE* source = fopen(str_s.c_str(), "rb");
+				FILE* dest = fopen(str_d.c_str(), "wb");
+				while (size = fread(buf, 1, BUFSIZ, source)) {
+					fwrite(buf, 1, size, dest);
+				}
+				fclose(source);
+				fclose(dest);
+			};		
+		};
 	
-	for(unsigned int i = 0; i < a->segCount; i++) {          	
-		for(unsigned int z = 0; z< a->mColumnCount; z++) {							
-			str_s = a->load_file_name + "." + int_to_string(a->cols[z]) + "." + int_to_string(i);		
-			str_d = b->load_file_name + "." + int_to_string(b->cols[z]) + "." + int_to_string(b->segCount + i);
-			FILE* source = fopen(str_s.c_str(), "rb");
-			FILE* dest = fopen(str_d.c_str(), "wb");
-			while (size = fread(buf, 1, BUFSIZ, source)) {
-				fwrite(buf, 1, size, dest);
-			}
-			fclose(source);
-			fclose(dest);
-		};		
-	};
-	
-	if(a->maxRecs > b->maxRecs)
-		maxRecs = a->maxRecs;
-	else	
-		maxRecs = b->maxRecs;
+		if(a->maxRecs > b->maxRecs)
+			maxRecs = a->maxRecs;
+		else	
+			maxRecs = b->maxRecs;
 		
-	for(unsigned int z = 0; z< a->mColumnCount; z++) {
-		b->reWriteHeader(b->load_file_name, b->cols[z], a->segCount + b->segCount, a->totalRecs + b->totalRecs, maxRecs);				
-	};		
+		for(unsigned int z = 0; z< a->mColumnCount; z++) {
+			b->reWriteHeader(b->load_file_name, b->cols[z], a->segCount + b->segCount, a->totalRecs + b->totalRecs, maxRecs);				
+		};		
+	}
+ 	else { //if both source and destination are in memory
+		size_t oldCount = a->mRecCount;
+		cout << "resizing " << a->mRecCount << " to " << b->mRecCount << endl;
+		cout << "resized " << endl;
+		a->resize(b->mRecCount);		
+		for(unsigned int z = 0; z< a->mColumnCount; z++) {	
+            cout << "cp index " << z << endl;		
+			if(a->type[z] == 0) {
+				thrust::copy(b->h_columns_int[b->type_index[z]].begin(), b->h_columns_int[b->type_index[z]].begin() + b->mRecCount, a->h_columns_int[a->type_index[z]].begin() + oldCount);
+			}
+			else if(a->type[z] == 1) {
+				thrust::copy(b->h_columns_float[b->type_index[z]].begin(), b->h_columns_float[b->type_index[z]].begin() + b->mRecCount, a->h_columns_float[a->type_index[z]].begin() + oldCount);			
+			}
+			else {
+				cudaMemcpy(a->h_columns_char[a->type_index[z]] + a->char_size[a->type_index[z]]*oldCount, b->h_columns_char[b->type_index[z]], b->char_size[b->type_index[z]]*b->mRecCount, cudaMemcpyHostToHost);			
+			};		
+		};	
+	};
 	
 	
 };

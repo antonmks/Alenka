@@ -485,7 +485,6 @@ int_type* host_op(int_type* column1, int_type d, string op_type, int reverse)
         }
 
     };
-
     return temp;
 
 }
@@ -1426,6 +1425,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
         };
     };
+
 
     return bool_vectors.top();
 
