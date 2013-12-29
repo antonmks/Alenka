@@ -357,7 +357,7 @@ public:
     int_type* get_host_int_by_name(string name);
     void GroupBy(std::stack<string> columnRef, unsigned int int_col_count);
     void addDeviceColumn(int_type* col, int colIndex, string colName, size_t recCount);
-    void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount);
+    void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount, bool is_decimal);
     void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, void* d, size_t mCount);
     void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
 	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);

@@ -1032,7 +1032,7 @@ void CudaSet::addDeviceColumn(int_type* col, int colIndex, string colName, size_
     thrust::copy(d_col, d_col+recCount, d_columns_int[type_index[colIndex]].begin());
 };
 
-void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount)
+void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount, bool is_decimal)
 {
     if (columnNames.find(colName) == columnNames.end()) {
         columnNames[colName] = colIndex;
@@ -1046,6 +1046,7 @@ void CudaSet::addDeviceColumn(float_type* col, int colIndex, string colName, siz
             d_columns_float[type_index[colIndex]].resize(recCount);
     };
 
+	decimal[colIndex] = is_decimal;
     thrust::device_ptr<float_type> d_col((float_type*)col);
     thrust::copy(d_col, d_col+recCount, d_columns_float[type_index[colIndex]].begin());
 };
@@ -1171,6 +1172,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					thrust::copy(h_columns_float[type_index[i]].begin() + offset, h_columns_float[type_index[i]].begin() + offset + mCount, d_col);
 					thrust::device_ptr<long long int> d_col_dec((long long int*)d);
 					thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
+					cout << "pfor1 on " << str << endl;
 					pfor_compress( d, mCount*float_size, str, h_columns_float[type_index[i]], 1);					
 				};
 			}
@@ -1199,6 +1201,8 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					};					
 				}
 				else {
+				
+				    cout << "do not compress " << str << endl;
 					fstream binary_file(str.c_str(),ios::out|ios::binary|fstream::app);
 					binary_file.write((char *)&mCount, 4);
 					binary_file.write((char *)(h_columns_float[type_index[i]].data() + offset),mCount*float_size);
@@ -1271,6 +1275,7 @@ void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_s
     binary_file.write((char *)&total_count, 8);
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
+	cout << "writing " << total_count << " " << tot_segs << " " << total_max << endl;
     binary_file.write((char *)&cnt_counts[ff], 4);
     binary_file.close();
 };
@@ -1375,12 +1380,13 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                     curr_count = mCount - sum_printed;
                 };
             }
-            else
+            else {
                 curr_count = mCount;
+			};	
 
             sum_printed = sum_printed + mRecCount;
             string ss;
-
+			
             for(unsigned int i=0; i < curr_count; i++) {
                 for(unsigned int j=0; j < mColumnCount; j++) {
                     if (type[j] == 0) {
@@ -1400,7 +1406,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                         fputs(sep, file_pr);
                     };
                 };
-                if (i != mCount -1 && ( i != curr_count-1 && curr_seg != segCount))
+                if (i != mCount -1 && (curr_seg != segCount || i < curr_count))
                     fputs("\n",file_pr);
             };
             curr_seg++;
@@ -1538,7 +1544,6 @@ void CudaSet::compress_char(string file_name, unsigned int index, size_t mCount,
     binary_file.write((char *)&vals_count, 4);
     unsigned int real_count = (unsigned int)dict_val.size();
     binary_file.write((char *)&real_count, 4);
-	
 
     for(unsigned int i = 0; i < dict_val.size(); i++) {
 
@@ -2522,7 +2527,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
     };
 
 
-    while(!fields.empty()) {
+	while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
             if(a->filtered) {
                 if(a->mRecCount) {
@@ -2534,13 +2539,14 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 };
             }
             else {
-				if(a->mRecCount)
+				if(a->mRecCount) {
 					a->CopyColumnToGpu(a->columnNames[fields.front()], segment, count);
+				};	
             };
             uniques.insert(fields.front());
         };
         fields.pop();
-    };
+    };	
 }
 
 
@@ -3092,7 +3098,7 @@ void insert_records(char* f, char* s) {
     b->name = f;	
 	
 	// if both source and destination are on disk
-	if(a->keep) {
+	if(a->source && b->source) {
 		for(unsigned int i = 0; i < a->segCount; i++) {          	
 			for(unsigned int z = 0; z< a->mColumnCount; z++) {							
 				str_s = a->load_file_name + "." + int_to_string(a->cols[z]) + "." + int_to_string(i);		
@@ -3116,23 +3122,58 @@ void insert_records(char* f, char* s) {
 			b->reWriteHeader(b->load_file_name, b->cols[z], a->segCount + b->segCount, a->totalRecs + b->totalRecs, maxRecs);				
 		};		
 	}
- 	else { //if both source and destination are in memory
-		size_t oldCount = a->mRecCount;
-		cout << "resizing " << a->mRecCount << " to " << b->mRecCount << endl;
-		cout << "resized " << endl;
-		a->resize(b->mRecCount);		
-		for(unsigned int z = 0; z< a->mColumnCount; z++) {	
-            cout << "cp index " << z << endl;		
-			if(a->type[z] == 0) {
-				thrust::copy(b->h_columns_int[b->type_index[z]].begin(), b->h_columns_int[b->type_index[z]].begin() + b->mRecCount, a->h_columns_int[a->type_index[z]].begin() + oldCount);
+ 	else if(!a->source && !b->source) { //if both source and destination are in memory
+		size_t oldCount = b->mRecCount;
+		b->resize(a->mRecCount);		
+		for(unsigned int z = 0; z< b->mColumnCount; z++) {	
+			if(b->type[z] == 0) {
+				thrust::copy(a->h_columns_int[a->type_index[z]].begin(), a->h_columns_int[a->type_index[z]].begin() + a->mRecCount, b->h_columns_int[b->type_index[z]].begin() + oldCount);
 			}
-			else if(a->type[z] == 1) {
-				thrust::copy(b->h_columns_float[b->type_index[z]].begin(), b->h_columns_float[b->type_index[z]].begin() + b->mRecCount, a->h_columns_float[a->type_index[z]].begin() + oldCount);			
+			else if(b->type[z] == 1) {
+				thrust::copy(a->h_columns_float[a->type_index[z]].begin(), a->h_columns_float[a->type_index[z]].begin() + a->mRecCount, b->h_columns_float[b->type_index[z]].begin() + oldCount);			
 			}
 			else {
-				cudaMemcpy(a->h_columns_char[a->type_index[z]] + a->char_size[a->type_index[z]]*oldCount, b->h_columns_char[b->type_index[z]], b->char_size[b->type_index[z]]*b->mRecCount, cudaMemcpyHostToHost);			
+				cudaMemcpy(b->h_columns_char[b->type_index[z]] + b->char_size[b->type_index[z]]*oldCount, a->h_columns_char[a->type_index[z]], a->char_size[a->type_index[z]]*a->mRecCount, cudaMemcpyHostToHost);			
 			};		
 		};	
+	}
+	else if(!a->source && b->source) {
+        void* d;
+        if(a->mRecCount < process_count) {
+            CUDA_SAFE_CALL(cudaMalloc((void **) &d, a->mRecCount*float_size));
+        }
+        else {
+            CUDA_SAFE_CALL(cudaMalloc((void **) &d, process_count*float_size));
+        };
+		
+		total_segments = b->segCount;
+		total_count = a->mRecCount;
+		total_max = process_count;
+		unsigned int segCount = (a->mRecCount/process_count + 1);
+        size_t offset = 0, mCount;
+
+        for(unsigned int z = 0; z < segCount; z++) {
+            if(z < segCount-1) {
+                if(a->mRecCount < process_count) {
+                    mCount = a->mRecCount;
+                }
+                else {
+                    mCount = process_count;
+                }
+            }
+			else {
+				mCount = a->mRecCount - (segCount-1)*process_count;			
+			};				
+			a->compress(b->load_file_name, offset, 0, z - (segCount-1), d, mCount);
+            offset = offset + mCount;
+        };
+		//update headers
+		total_count = a->mRecCount + b->mRecCount;
+		cout << "and now lets write " << a->mRecCount << " " <<  b->mRecCount << endl;
+		for(unsigned int i = 0; i< b->mColumnCount; i++) {
+			b->writeHeader(b->load_file_name, b->cols[i], total_segments);
+		};	
+        cudaFree(d);
 	};
 	
 	

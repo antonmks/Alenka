@@ -204,6 +204,7 @@ void create_c(CudaSet* c, CudaSet* b)
         c->cols[i] = b->cols[i];
         c->type[i] = b->type[i];
         c->grp_type[i] = b->grp_type[i];
+		c->decimal[i] = b->decimal[i];
 
         if (b->type[i] == 0) {
             c->h_columns_int.push_back(thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >());
