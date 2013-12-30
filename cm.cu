@@ -1300,12 +1300,13 @@ void CudaSet::writeSortHeader(string file_name)
 
     if(!op_sort.empty()) {
         str += ".sort";
-        fstream binary_file(str.c_str(),ios::out|ios::binary|ios::app);
+        fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
         idx = (unsigned int)op_sort.size();
         binary_file.write((char *)&idx, 4);
         queue<string> os(op_sort);
         while(!os.empty()) {
-            idx = columnNames[os.front()];
+            idx = cols[columnNames[os.front()]];
+			cout << "sorted on " << idx << endl;
             binary_file.write((char *)&idx, 4);
             os.pop();
         };
@@ -1313,12 +1314,12 @@ void CudaSet::writeSortHeader(string file_name)
     }
     else if(!op_presort.empty()) {
         str += ".presort";
-        fstream binary_file(str.c_str(),ios::out|ios::binary|ios::app);
+        fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
         idx = (unsigned int)op_presort.size();
         binary_file.write((char *)&idx, 4);
         queue<string> os(op_presort);
         while(!os.empty()) {
-            idx = columnNames[os.front()];
+            idx = cols[columnNames[os.front()]];
             binary_file.write((char *)&idx, 4);
             os.pop();
         };
@@ -2854,7 +2855,7 @@ void filter_op(char *s, char *f, unsigned int segment)
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
     }
-	cout << "filter res " << b->mRecCount << endl;
+	//cout << "filter res " << b->mRecCount << endl;
 	
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }

@@ -3351,7 +3351,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     if(join_tab_cnt > 1 && tab < join_tab_cnt)
         c->tmp_table = 1;
     else
-        c->tmp_table = 0;
+        c->tmp_table = 0;	
 
     unsigned int colInd1, colInd2;
     string tmpstr;
@@ -3437,7 +3437,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     thrust::device_vector<int> p_tmp;
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
-    bool new_l = 1;
 
 	while(start_part != right->segCount) {
 
@@ -3461,7 +3460,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     for (unsigned int i = 0; i < left->segCount; i++) {
 
         cout << "segment " << i <<  '\xd';		
-        
+		        
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
             copyColumns(left, lc, i, cnt_l);			
@@ -3492,18 +3491,18 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             // sort the left index column, save the permutation vector, it might be needed later
 
             thrust::device_ptr<int_type> d_col((int_type*)thrust::raw_pointer_cast(left->d_columns_int[idx].data()));
-            if(new_l) {
-                thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
+            thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
 
-                bool do_sort = 1;
-                if(!left->sorted_fields.empty()) {
-                    if(left->sorted_fields.front() == idx) {
-                        do_sort = 0;
-                    };
-                }
-                if(do_sort)
-                    thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
-            };
+            bool do_sort = 1;
+            if(!left->sorted_fields.empty()) {
+				//cout << "checking sort " << left->sorted_fields.front() << " vs " << left->cols[idx] << endl;
+                if(left->sorted_fields.front() == left->cols[idx]) {
+                    do_sort = 0;
+					//cout << "no need to sort " << left->sorted_fields.empty() << " " << left->sorted_fields.front() << endl;
+                };
+            }
+            if(do_sort)
+                thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
 			
 			if (left->d_columns_int[left->type_index[colInd1]][0] > right->d_columns_int[right->type_index[colInd2]][cnt_r-1] ||
 				left->d_columns_int[left->type_index[colInd1]][cnt_l-1] < right->d_columns_int[right->type_index[colInd2]][0]) {
@@ -3519,8 +3518,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 
             char join_kind = join_type.front();
-            join_type.pop();
-
+            
 
             if (left->type[colInd1] == 2) {
 				thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()));
@@ -3553,6 +3551,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
             };
+			
+			//cout << "RES " << res_count << endl;
 
 
             int* r1 = aIndicesDevice->get();
@@ -3805,7 +3805,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         left->free();
         varNames.erase(j1);
     };
-
+	join_type.pop();	
     std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 }
 

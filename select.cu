@@ -780,11 +780,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                     thrust::copy_if(a->d_columns_float[a->type_index[colIndex]].begin(), a->d_columns_float[a->type_index[colIndex]].begin() + a->mRecCount,
                                     d_grp, count_diff, thrust::identity<bool>());
-                    b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , colCount-j-1, col_val.top(), res_size);
+                    b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , colCount-j-1, col_val.top(), res_size, a->decimal[colIndex]);
                     thrust::device_free(count_diff);
                 }
                 else
-                    b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount);
+                    b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[a->type_index[colIndex]].data()) , colCount-j-1, col_val.top(), a->mRecCount, a->decimal[colIndex]);
             }
             else if(a->type[colIndex] == 2) { //varchar
 
@@ -837,14 +837,14 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         if(col_type.top() == 3) {        //float
 
             if (!a->columnGroups.empty()) {
-                b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), res_size);
+                b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), res_size, 1);
             }
             else {
                 if(!one_line) {
-                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount);
+                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), a->mRecCount, 1);
                 }
                 else {
-                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), 1);
+                    b->addDeviceColumn(exe_vectors1_d.top() , colCount-j-1, col_val.top(), 1, 1);
                 };
             };
             cudaFree(exe_vectors1_d.top());
