@@ -1172,7 +1172,6 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					thrust::copy(h_columns_float[type_index[i]].begin() + offset, h_columns_float[type_index[i]].begin() + offset + mCount, d_col);
 					thrust::device_ptr<long long int> d_col_dec((long long int*)d);
 					thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
-					cout << "pfor1 on " << str << endl;
 					pfor_compress( d, mCount*float_size, str, h_columns_float[type_index[i]], 1);					
 				};
 			}
@@ -1340,7 +1339,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 
     size_t mCount;
 	bool print_all = 0;
-
+	
     if(limit != 0 && limit < mRecCount)
         mCount = limit;
     else {
@@ -1349,16 +1348,46 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 	};	
 
     if(binary == 0) {
+	
+		FILE *file_pr = fopen(file_name.c_str(), "w");
+        if (file_pr  == NULL)
+            cout << "Could not open file " << file_name << endl;
+		char buffer [33];			
+		string ss;
+		
+		if(not_compressed && prm_d.size() == 0) {
+            for(unsigned int i=0; i < mCount; i++) {
+                for(unsigned int j=0; j < mColumnCount; j++) {
+                    if (type[j] == 0) {
+                        sprintf(buffer, "%lld", (h_columns_int[type_index[j]])[i] );
+                        fputs(buffer,file_pr);
+                        fputs(sep, file_pr);
+                    }
+                    else if (type[j] == 1) {
+                        sprintf(buffer, "%.2f", (h_columns_float[type_index[j]])[i] );
+                        fputs(buffer,file_pr);
+                        fputs(sep, file_pr);
+                    }
+                    else {
+                        ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+                        trim(ss);
+                        fputs(ss.c_str(), file_pr);
+                        fputs(sep, file_pr);
+                    };
+                };
+                if (i != mCount -1 )
+                    fputs("\n",file_pr);
+            };		
+		
+		}
+		else {
 
-        char buffer [33];		
+
         queue<string> op_vx;
         for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
             op_vx.push((*it).first);
         curr_segment = 1000000;
-        FILE *file_pr = fopen(file_name.c_str(), "w");
-        if (file_pr  == NULL)
-            cout << "Could not open file " << file_name << endl;
-
+        
 
         if(prm_d.size() || source) {
             allocColumns(this, op_vx);
@@ -1366,13 +1395,13 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
         unsigned int curr_seg = 0;
         size_t cnt = 0;
         size_t curr_count, sum_printed = 0;
+		resize(maxRecs);		
         while(sum_printed < mCount || print_all) {
 
             if(prm_d.size() || source)  {
                 copyColumns(this, op_vx, curr_seg, cnt);
                 // if host arrays are empty
-                size_t olRecs = mRecCount;
-                resize(mRecCount);
+                size_t olRecs = mRecCount;                
                 mRecCount = olRecs;
                 CopyToHost(0,mRecCount);
                 if(sum_printed + mRecCount <= mCount || print_all)
@@ -1385,8 +1414,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                 curr_count = mCount;
 			};	
 
-            sum_printed = sum_printed + mRecCount;
-            string ss;
+            sum_printed = sum_printed + mRecCount;            
 			
             for(unsigned int i=0; i < curr_count; i++) {
                 for(unsigned int j=0; j < mColumnCount; j++) {
@@ -1415,6 +1443,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 				print_all = 0;
         };
         fclose(file_pr);
+		};
     }
     else if(text_source) {  //writing a binary file using a text file as a source
 
@@ -2535,7 +2564,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                     t = varNames[setMap[fields.front()]];
                     alloced_switch = 1;
                     t->CopyColumnToGpu(t->columnNames[fields.front()], segment);	
-                    gatherColumns(a, t, fields.front(), segment, count);					
+                    gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
                 };
             }
