@@ -41,6 +41,7 @@ unsigned int process_count;
 map <unsigned int, size_t> str_offset;
 size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
+bool verbose;
 char map_check;
 void* d_v = NULL;
 void* s_v = NULL;
@@ -671,24 +672,20 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
     if(type[colIndex] == 0) {
         fread(h_columns_int[type_index[colIndex]].data(), 4, 1, f);
         cnt = ((unsigned int*)(h_columns_int[type_index[colIndex]].data()))[0];
-        //cout << "start fread " << f1 << " " << (cnt+8)*8 - 4 << endl;
         rr = fread((unsigned int*)(h_columns_int[type_index[colIndex]].data()) + 1, 1, (cnt+8)*8 - 4, f);
         if(rr != (cnt+8)*8 - 4) {
             cout << "Couldn't read  " << (cnt+8)*8 - 4 << " bytes from " << f1  << endl;
             exit(0);
         };
-        //cout << "end fread " << rr << endl;
     }
     else if(type[colIndex] == 1) {
         fread(h_columns_float[type_index[colIndex]].data(), 4, 1, f);
         cnt = ((unsigned int*)(h_columns_float[type_index[colIndex]].data()))[0];
-        //cout << "start fread " << f1 << " " << (cnt+8)*8 - 4 << endl;
         rr = fread((unsigned int*)(h_columns_float[type_index[colIndex]].data()) + 1, 1, (cnt+8)*8 - 4, f);
         if(rr != (cnt+8)*8 - 4) {
             cout << "Couldn't read  " << (cnt+8)*8 - 4 << " bytes from " << f1  << endl;
             exit(0);
         };
-        //cout << "end fread " << rr << endl;
     }
     else {
         decompress_char(f, colIndex, segNum);
@@ -739,18 +736,8 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
     thrust::for_each(begin, begin + real_count, ff);
 
-    //thrust::device_ptr<unsigned int> dd_r((unsigned int*)d_int);
-    //for(int z = 0 ; z < 3; z++)
-    //cout << "DD " << dd_r[z] << endl;
-
-    //void* d_char;
-    //cudaMalloc((void **) &d_char, real_count*len);
-    //cudaMemset(d_char, 0, real_count*len);
-    //str_gather(d_int, real_count, d, d_char, len);
     if(str_offset.count(colIndex) == 0)
         str_offset[colIndex] = 0;
-    //cout << "str off " << str_offset[colIndex] << endl;
-    //cout << "prm cnt of seg " << segNum << " is " << prm.empty() << endl;
     if(!alloced_switch)
         str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
     else
@@ -763,10 +750,6 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     else {
         str_offset[colIndex] = str_offset[colIndex] + real_count;
     };
-
-    //if(d_columns_char[type_index[colIndex]])
-    //    cudaFree(d_columns_char[type_index[colIndex]]);
-    //d_columns_char[type_index[colIndex]] = (char*)d_char;
 
     mRecCount = real_count;
 
@@ -1103,8 +1086,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 	if(mCount < partition_count || partition_count == 0)
 		partition_count = 1;
 	unsigned int partition_recs = mCount/partition_count;
-	//cout << "partition recs " << partition_recs << endl;
-
+	
 	if(!op_sort.empty()) {
 	    if(total_max < partition_recs)
 			total_max = partition_recs;
@@ -1199,9 +1181,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 						binary_file.close();
 					};					
 				}
-				else {
-				
-				    cout << "do not compress " << str << endl;
+				else {				
 					fstream binary_file(str.c_str(),ios::out|ios::binary|fstream::app);
 					binary_file.write((char *)&mCount, 4);
 					binary_file.write((char *)(h_columns_float[type_index[i]].data() + offset),mCount*float_size);
@@ -1304,7 +1284,8 @@ void CudaSet::writeSortHeader(string file_name)
         queue<string> os(op_sort);
         while(!os.empty()) {
             idx = cols[columnNames[os.front()]];
-			cout << "sorted on " << idx << endl;
+			if(verbose)
+				cout << "sorted on " << idx << endl;
             binary_file.write((char *)&idx, 4);
             os.pop();
         };
@@ -2134,7 +2115,8 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         for(unsigned int j = 0; j < sz; j++) {
             fread((char *)&idx, 4, 1, f);
             sorted_fields.push(idx);
-            cout << "segment sorted on " << idx << endl;
+			if(verbose)
+				cout << "segment sorted on " << idx << endl;
         };
         fclose(f);
     };
@@ -2147,7 +2129,8 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         for(unsigned int j = 0; j < sz; j++) {
             fread((char *)&idx, 4, 1, f);
             presorted_fields.push(idx);
-            cout << "presorted on " << idx << endl;
+			if(verbose)
+				cout << "presorted on " << idx << endl;
         };
         fclose(f);
     };
@@ -2537,7 +2520,6 @@ void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, s
 
 size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
     if (segment == a->segCount-1) {
-	    //cout << "SEGREC " << a->hostRecCount << " " << a->maxRecs << " " << segment << endl;
         return a->hostRecCount - a->maxRecs*segment;
     }
     else
@@ -2857,14 +2839,13 @@ void filter_op(char *s, char *f, unsigned int segment)
 
     a = varNames.find(f)->second;
     a->name = f;
-    //std::clock_t start1 = std::clock();
-    //std::cout<< "filt disk time start " <<  (( tot ) / (double)CLOCKS_PER_SEC ) <<'\n';
 
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);
     }
     else {
-        cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
+		if(verbose)
+			cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 
         b = varNames[s];
 		b->name = s;
@@ -2889,8 +2870,7 @@ void filter_op(char *s, char *f, unsigned int segment)
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
     }
-	//cout << "filter res " << b->mRecCount << endl;
-	
+	//cout << "filter res " << b->mRecCount << endl;	
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
@@ -3111,9 +3091,7 @@ string int_to_string(int number){
 void insert_records(char* f, char* s) {
 	char buf[4096];
     size_t size, maxRecs;
-	string str_s, str_d;
-	
-	cout << "insert start " << f << " " << s << endl;
+	string str_s, str_d;	
 
 	if(varNames.find(s) == varNames.end()) {
 		cout << "couldn't find " << s << endl;
@@ -3204,7 +3182,7 @@ void insert_records(char* f, char* s) {
         };
 		//update headers
 		total_count = a->mRecCount + b->mRecCount;
-		cout << "and now lets write " << a->mRecCount << " " <<  b->mRecCount << endl;
+		//cout << "and now lets write " << a->mRecCount << " " <<  b->mRecCount << endl;
 		for(unsigned int i = 0; i< b->mColumnCount; i++) {
 			b->writeHeader(b->load_file_name, b->cols[i], total_segments);
 		};	
@@ -3250,19 +3228,19 @@ void delete_records(char* f) {
 		for(unsigned int i = 0; i < a->segCount; i++) {          
 
 			map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
-			cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
+			if(verbose)
+				cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
 			reset_offsets();
 			if(map_check != 'N') {			
 			
 			    cnt = 0;
 				copyColumns(a, op_vx, i, cnt);
-				tmp = a->mRecCount;
-				cout << "recs in segment " << tmp << endl;
+				tmp = a->mRecCount;				
 				reset_offsets();
 		
 				if(a->mRecCount) {						
 					filter(op_type,op_value,op_nums, op_nums_f, a, a, i);
-					cout << "Remained recs count " << a->mRecCount << endl;
+					//cout << "Remained recs count " << a->mRecCount << endl;
 					if(a->mRecCount > maxRecs)
 						maxRecs = a->mRecCount;
 										
@@ -3270,7 +3248,7 @@ void delete_records(char* f) {
 					
 					    totalRemoved = totalRemoved + (tmp - a->mRecCount);
 					    if (a->mRecCount == tmp) { //none deleted
-							cout << "rename " << i << " to " << new_seg_count << endl;
+							//cout << "rename " << i << " to " << new_seg_count << endl;
 							if(new_seg_count != i) {
 								for(unsigned int z = 0; z< a->mColumnCount; z++) {
 							
@@ -3287,7 +3265,7 @@ void delete_records(char* f) {
 							
 						}
 						else { //some deleted
-					        cout << "writing segment " << new_seg_count << endl;
+					        //cout << "writing segment " << new_seg_count << endl;
 							for(unsigned int z = 0; z< a->mColumnCount; z++) {
 								str = a->load_file_name + "." + int_to_string(a->cols[z]);
 								str += "." + int_to_string(new_seg_count);
@@ -3336,7 +3314,7 @@ void delete_records(char* f) {
 			}
             else {				
 				if(new_seg_count != i) {
-					cout << "rename " << i << " to " << new_seg_count << endl;
+					//cout << "rename " << i << " to " << new_seg_count << endl;
 					for(unsigned int z = 0; z< a->mColumnCount; z++) {
 							
 						str_old = a->load_file_name + "." + int_to_string(a->cols[z]);
@@ -3351,12 +3329,12 @@ void delete_records(char* f) {
 				new_seg_count++;	
 				maxRecs	= a->maxRecs;			
 			};	
-			cout << "TOTAL REM " << totalRemoved << endl;
+			//cout << "TOTAL REM " << totalRemoved << endl;
 		};	
 		
 		if (new_seg_count < a->segCount) {
 			for(unsigned int i = new_seg_count; i < a->segCount; i++) {
-				cout << "delete segment " << i << endl;
+				//cout << "delete segment " << i << endl;
 				for(unsigned int z = 0; z< a->mColumnCount; z++) {							
 					str = a->load_file_name + "." + int_to_string(a->cols[z]);
 					str += "." + int_to_string(i);								

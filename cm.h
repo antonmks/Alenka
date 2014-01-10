@@ -81,6 +81,7 @@ extern unsigned int partition_count;
 extern map<string,string> setMap; //map to keep track of column names and set names
 extern std::clock_t tot;
 extern std::clock_t tot_fil;
+extern bool verbose;
 
 
 template<typename T>
