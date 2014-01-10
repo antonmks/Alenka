@@ -67,6 +67,7 @@ PARTITION {return PARTITION; }
 DELETE {return DELETE; }
 INSERT {return INSERT; }
 WHERE {return WHERE; }
+DISPLAY {return DISPLAY; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }

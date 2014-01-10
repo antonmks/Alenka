@@ -362,7 +362,7 @@ public:
     void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
 	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
-    void Store(string file_name, char* sep, unsigned int limit, bool binary);
+    void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
     void compress_char(string file_name, unsigned int index, size_t mCount, size_t offset);
     bool LoadBigFile(const string file_name, const char* sep);
     void free();
@@ -426,7 +426,6 @@ size_t getFreeMem();
 string int_to_string(int number);
 void delete_records(char* f);
 void insert_records(char* f, char* s);
-
 
 #endif
 

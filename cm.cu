@@ -1274,7 +1274,6 @@ void CudaSet::writeHeader(string file_name, unsigned int col, unsigned int tot_s
     binary_file.write((char *)&total_count, 8);
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
-	cout << "writing " << total_count << " " << tot_segs << " " << total_max << endl;
     binary_file.write((char *)&cnt_counts[ff], 4);
     binary_file.close();
 };
@@ -1328,9 +1327,9 @@ void CudaSet::writeSortHeader(string file_name)
 
 
 
-void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary )
+void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary, bool term)
 {
-    if (mRecCount == 0 && binary == 1) { // write tails
+    if (mRecCount == 0 && binary == 1 && !term) { // write tails
         for(unsigned int i = 0; i< mColumnCount; i++) {
             writeHeader(file_name, cols[i], total_segments);
         };
@@ -1349,9 +1348,15 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 
     if(binary == 0) {
 	
-		FILE *file_pr = fopen(file_name.c_str(), "w");
-        if (file_pr  == NULL)
-            cout << "Could not open file " << file_name << endl;
+		FILE *file_pr;
+		if(!term) {
+			file_pr = fopen(file_name.c_str(), "w");
+			if (file_pr  == NULL)
+				cout << "Could not open file " << file_name << endl;
+		}
+		else
+			file_pr = stdout;
+			
 		char buffer [33];			
 		string ss;
 		
@@ -1382,67 +1387,67 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 		}
 		else {
 
+			queue<string> op_vx;
+			for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
+				op_vx.push((*it).first);
+			curr_segment = 1000000;        
 
-        queue<string> op_vx;
-        for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
-            op_vx.push((*it).first);
-        curr_segment = 1000000;
-        
-
-        if(prm_d.size() || source) {
-            allocColumns(this, op_vx);
-		};	
-        unsigned int curr_seg = 0;
-        size_t cnt = 0;
-        size_t curr_count, sum_printed = 0;
-		resize(maxRecs);		
-        while(sum_printed < mCount || print_all) {
-
-            if(prm_d.size() || source)  {
-                copyColumns(this, op_vx, curr_seg, cnt);
-                // if host arrays are empty
-                size_t olRecs = mRecCount;                
-                mRecCount = olRecs;
-                CopyToHost(0,mRecCount);
-                if(sum_printed + mRecCount <= mCount || print_all)
-                    curr_count = mRecCount;
-                else {
-                    curr_count = mCount - sum_printed;
-                };
-            }
-            else {
-                curr_count = mCount;
+			if(prm_d.size() || source) {
+				allocColumns(this, op_vx);
 			};	
+			unsigned int curr_seg = 0;
+			size_t cnt = 0;
+			size_t curr_count, sum_printed = 0;
+			resize(maxRecs);		
+			while(sum_printed < mCount || print_all) {
 
-            sum_printed = sum_printed + mRecCount;            
+				if(prm_d.size() || source)  {
+					copyColumns(this, op_vx, curr_seg, cnt);
+                // if host arrays are empty
+					size_t olRecs = mRecCount;                
+					mRecCount = olRecs;
+					CopyToHost(0,mRecCount);
+					if(sum_printed + mRecCount <= mCount || print_all)
+						curr_count = mRecCount;
+					else {
+						curr_count = mCount - sum_printed;
+					};
+				}
+				else {
+					curr_count = mCount;
+				};	
+
+				sum_printed = sum_printed + mRecCount;            
 			
-            for(unsigned int i=0; i < curr_count; i++) {
-                for(unsigned int j=0; j < mColumnCount; j++) {
-                    if (type[j] == 0) {
-                        sprintf(buffer, "%lld", (h_columns_int[type_index[j]])[i] );
-                        fputs(buffer,file_pr);
-                        fputs(sep, file_pr);
-                    }
-                    else if (type[j] == 1) {
-                        sprintf(buffer, "%.2f", (h_columns_float[type_index[j]])[i] );
-                        fputs(buffer,file_pr);
-                        fputs(sep, file_pr);
-                    }
-                    else {
-                        ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
-                        trim(ss);
-                        fputs(ss.c_str(), file_pr);
-                        fputs(sep, file_pr);
-                    };
-                };
-                if (i != mCount -1 && (curr_seg != segCount || i < curr_count))
-                    fputs("\n",file_pr);
-            };
-            curr_seg++;
-			if(curr_seg == segCount)
-				print_all = 0;
-        };
-        fclose(file_pr);
+				for(unsigned int i=0; i < curr_count; i++) {
+					for(unsigned int j=0; j < mColumnCount; j++) {
+						if (type[j] == 0) {
+							sprintf(buffer, "%lld", (h_columns_int[type_index[j]])[i] );
+							fputs(buffer,file_pr);
+							fputs(sep, file_pr);
+						}
+						else if (type[j] == 1) {
+							sprintf(buffer, "%.2f", (h_columns_float[type_index[j]])[i] );
+							fputs(buffer,file_pr);
+							fputs(sep, file_pr);
+						}
+						else {
+							ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+							trim(ss);
+							fputs(ss.c_str(), file_pr);
+							fputs(sep, file_pr);
+						};
+					};
+					if (i != mCount -1 && (curr_seg != segCount || i < curr_count))
+						fputs("\n",file_pr);
+				};
+				curr_seg++;
+				if(curr_seg == segCount)
+					print_all = 0;
+			};
+			if(!term) {
+				fclose(file_pr);
+			};	
 		};
     }
     else if(text_source) {  //writing a binary file using a text file as a source
@@ -2871,7 +2876,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 
 		//cout << "MAP CHECK start " << segment << " " << map_check << " " << a->filtered <<  endl;	
 		map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-		cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
         reset_offsets();
         if(map_check == 'R') {

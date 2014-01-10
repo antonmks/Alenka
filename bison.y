@@ -67,6 +67,7 @@
     void emit_join();
     void emit_sort(char* s, int p);
     void emit_presort(char* s);
+	void emit_display(char *s, char* sep);
 
 %}
 
@@ -141,6 +142,7 @@
 %token DELETE
 %token INSERT
 %token WHERE
+%token DISPLAY
 
 %type <intval> load_list  opt_where opt_limit sort_def del_where
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -179,6 +181,8 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_delete($3);}
 | INSERT INTO NAME SELECT expr_list FROM NAME
 {  emit_insert($3, $7);}
+| DISPLAY NAME USING '(' FILENAME ')' opt_limit
+{  emit_display($2, $5);}
 ;
 
 expr:
@@ -1157,6 +1161,7 @@ void emit_join(char *s, char *j1, int grp)
 }
 
 
+
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
 {
 
@@ -1537,7 +1542,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 else
                     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
 
-
                 while(!op_sel1.empty()) {
 
 
@@ -1553,10 +1557,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         // copy field's segment to device, gather it and copy to the host
                         colInd = left->columnNames[op_sel1.front()];
 
-                        reset_offsets();
-                        allocColumns(left, cc);
+						reset_offsets();
+						allocColumns(left, cc);
                         copyColumns(left, cc, i, k, 0, 0);//possible that in some cases a join column would be copied to device twice
-
+						
                         //gather
                         if(left->type[colInd] == 0) {
                             thrust::device_ptr<int_type> d_tmp((int_type*)temp);
@@ -1572,22 +1576,21 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         }
                         else { //strings
                             thrust::device_ptr<char> d_tmp((char*)temp);
-
                             thrust::fill(d_tmp, d_tmp+res_count*left->char_size[left->type_index[colInd]],0);
                             str_gather(thrust::raw_pointer_cast(p_tmp.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
                                        (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
-
-
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
                         };
+
+						
                         if(colInd != colInd1)
                             left->deAllocColumnOnDevice(colInd);
 
                     }
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
                         colInd = right->columnNames[op_sel1.front()];
-
+					
                         //gather
                         if(right->type[colInd] == 0) {
                             thrust::device_ptr<int_type> d_tmp((int_type*)temp);
@@ -1611,8 +1614,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
 
-
-                        };
+                        };					
                     }
                     else {
                         //cout << "Couldn't find field " << op_sel1.front() << endl;
@@ -1642,7 +1644,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     varNames[s] = c;
     c->mRecCount = tot_count;    
 	c->hostRecCount = tot_count;
-    cout << endl << "join count " << tot_count << endl;
+    //cout << "join count " << tot_count << endl;
 	
 	unsigned int tot_size = 0;	    
     for (map<string,unsigned int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
@@ -2275,6 +2277,41 @@ void emit_delete(char *f)
 }	
 
 
+void emit_display(char *f, char* sep)
+{
+   statement_count++;
+    if (scan_state == 0) {
+        if (stat.find(f) == stat.end()) {
+            cout << "Delete : couldn't find variable " << f << endl;
+            exit(1);
+        };
+        stat[f] = statement_count;
+        clean_queues();
+        return;
+    };
+
+    if(varNames.find(f) == varNames.end()) {
+        clean_queues();
+        return;
+    };
+
+    CudaSet* a = varNames.find(f)->second;
+    int limit = 0;
+    if(!op_nums.empty()) {
+        limit = op_nums.front();
+        op_nums.pop();
+    };
+
+    a->Store("",sep, limit, 0, 1);
+	cout << endl << "That was a DISPLAY command " << endl;
+
+	clean_queues();
+    if(stat[f] == statement_count  && a->keep == 0) {
+        a->free();
+        varNames.erase(f);
+    };
+	
+}
 
 
 void emit_filter(char *s, char *f)

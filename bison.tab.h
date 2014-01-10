@@ -95,7 +95,8 @@
      PARTITION = 311,
      DELETE = 312,
      INSERT = 313,
-     WHERE = 314
+     WHERE = 314,
+     DISPLAY = 315
    };
 #endif
 
@@ -106,7 +107,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 73 "bison.y"
+#line 74 "bison.y"
 
     int intval;
     double floatval;
@@ -116,7 +117,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 120 "bison.tab.h"
+#line 121 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
