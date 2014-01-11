@@ -2591,7 +2591,7 @@ int main(int ac, char **av)
 		statement_count = 0;
 		
 		extern FILE *yyin;
-		context = CreateCudaDevice(0, av, true);
+		context = CreateCudaDevice(0, av, verbose);
 
 		cudppCreate(&theCudpp);
 		hash_seed = 100;		
