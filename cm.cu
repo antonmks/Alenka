@@ -198,7 +198,7 @@ static inline std::string &trim(std::string &s) {
     return ltrim(rtrim(s));
 }
 
-char *mystrtok(char **m,char *s,char c)
+char *mystrtok(char **m,char *s,const char c)
 {
     char *p=s?s:*m;
     if( !*p )
@@ -1607,7 +1607,7 @@ bool CudaSet::LoadBigFile(const string file_name, const char* sep)
         strtok(line, "\n");
         current_column = 0;
 
-        for(t=mystrtok(&p,line,'|'); t; t=mystrtok(&p,0,'|')) {
+        for(t=mystrtok(&p,line,*sep); t; t=mystrtok(&p,0,*sep)) {
             current_column++;
             if(col_map.find(current_column) == col_map.end()) {
                 continue;
@@ -2839,6 +2839,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 
     a = varNames.find(f)->second;
     a->name = f;
+	//std::clock_t start1 = std::clock();	
 
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);
@@ -2847,6 +2848,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 		if(verbose)
 			cout << "FILTER " << s << " " << f << " " << getFreeMem() << endl;
 
+		
         b = varNames[s];
 		b->name = s;
         size_t cnt = 0;

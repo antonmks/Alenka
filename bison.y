@@ -964,7 +964,6 @@ void star_join(char *s, string j1)
 
                 }
                 else {
-
                     string right_tab_name;
                     queue<string> op_j(op_join);
                     while(!op_j.empty()) {
@@ -1029,7 +1028,6 @@ void star_join(char *s, string j1)
                         thrust::device_free(d_tmp1);
                     }
                 }
-
                 op_sel1.pop();
             };
         };
@@ -1535,7 +1533,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         colInd = left->columnNames[op_sel1.front()];
 
 						reset_offsets();
-						allocColumns(left, cc);
+						allocColumns(left, cc);				
                         copyColumns(left, cc, i, k, 0, 0);//possible that in some cases a join column would be copied to device twice
 						
                         //gather
@@ -1590,7 +1588,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
-
                         };					
                     }
                     else {
