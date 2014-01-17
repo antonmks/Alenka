@@ -2574,8 +2574,10 @@ void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment) {
     if (val == 'A') {
         b->mRecCount = getSegmentRecCount(a,segment);
     }
+	else if (val == 'N') {
+        b->mRecCount = 0;
+    }
 }
-
 
 
 void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, size_t offset, size_t g_size)
