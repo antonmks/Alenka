@@ -1327,7 +1327,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         else {
             left->add_hashed_strings(f1, i, left->d_columns_int.size()-1);
         };
-
+		
         if(!left->filtered) {
             if (left->type[colInd1]  != 2)
                 cnt_l = left->mRecCount;
@@ -1407,7 +1407,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 mgpu::less<int_type>(), *context);
             };
 			
-			//cout << "RES " << res_count << endl;
+			//cout << "RES " << res_count << " seg " << i << endl;
 
 
             int* r1 = aIndicesDevice->get();
@@ -1492,6 +1492,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 cudaFree(temp);
                 cudaFree(temp1);
             };
+			//cout << "tot res " << res_count << endl;
 
             tot_count = tot_count + res_count;
 
@@ -1517,8 +1518,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 else
                     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
 
+				bool copied = 0;	
+				thrust::host_vector<unsigned int> prm_vh;
+				
                 while(!op_sel1.empty()) {
-
 
                     while(!cc.empty())
                         cc.pop();
@@ -1526,42 +1529,140 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     cc.push(op_sel1.front());
                     if(c->columnNames.find(op_sel1.front()) != c->columnNames.end()) {
                         c_colInd = c->columnNames[op_sel1.front()];
-                    };
+                    };					
 
+					bool cmp_type;
+					
                     if(left->columnNames.find(op_sel1.front()) !=  left->columnNames.end()) {
                         // copy field's segment to device, gather it and copy to the host
                         colInd = left->columnNames[op_sel1.front()];
 
 						reset_offsets();
-						allocColumns(left, cc);				
-                        copyColumns(left, cc, i, k, 0, 0);//possible that in some cases a join column would be copied to device twice
+						if(left->filtered)
+							cmp_type = varNames[setMap[op_sel1.front()]]->compTypes[op_sel1.front()];
+						else
+							cmp_type = left->compTypes[op_sel1.front()];
 						
-                        //gather
-                        if(left->type[colInd] == 0) {
-                            thrust::device_ptr<int_type> d_tmp((int_type*)temp);
-                            thrust::sequence(d_tmp, d_tmp+res_count,0,0);
-                            thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());
-                            thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);
-                        }
-                        else if(left->type[colInd] == 1) {
-                            thrust::device_ptr<float_type> d_tmp((float_type*)temp);
-                            thrust::sequence(d_tmp, d_tmp+res_count,0,0);
-                            thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[left->type_index[colInd]].begin(), d_tmp, is_positive());
-                            thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset);
-                        }
-                        else { //strings
-                            thrust::device_ptr<char> d_tmp((char*)temp);
-                            thrust::fill(d_tmp, d_tmp+res_count*left->char_size[left->type_index[colInd]],0);
-                            str_gather(thrust::raw_pointer_cast(p_tmp.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
-                                       (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
-                            cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
-                                        c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
-                        };
-
 						
-                        if(colInd != colInd1)
-                            left->deAllocColumnOnDevice(colInd);
+						if ((((left->type[colInd] == 0) || ((left->type[colInd] == 1) && 
+							   left->decimal[colInd])) && cmp_type == 0) && (colInd != colInd1) && left->not_compressed == 0) { // do the processing on host												
+							
+							void* h;	
+							unsigned int cnt, lower_val, bits;		
 
+							if(verbose)
+								cout << "processing " << op_sel1.front() << " " << cmp_type << endl;
+							
+							if(!copied) {								
+								if(left->filtered) {
+									thrust::device_vector<unsigned int> prm_v(res_count);
+									thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->prm_d.begin(), prm_v.begin());
+									prm_vh = prm_v;									
+								}	
+								else {
+									prm_vh = p_tmp;
+								};
+								copied = 1;
+							};								
+							
+							CudaSet *t = varNames[setMap[op_sel1.front()]];
+							unsigned int t_ind = t->columnNames[op_sel1.front()];
+							t->readSegmentsFromFile(i, t_ind);
+							
+							if(t->type[t->columnNames[op_sel1.front()]] == 0) {
+								h = t->h_columns_int[t->type_index[t_ind]].data();								
+							}
+							else {
+								h = t->h_columns_float[t->type_index[t_ind]].data();
+							};	
+							
+							cnt = ((unsigned int*)h)[0];
+							lower_val = ((unsigned int*)h)[1];
+							bits = ((unsigned int*)((char*)h + cnt))[8];	
+							//cout << cnt << " " << lower_val << " " << bits << endl;																
+		
+							if(bits == 8) {
+								if(left->type[colInd] == 0) {	
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (char*)((unsigned int*)h + 6), c->h_columns_int[c->type_index[c_colInd]].begin() + offset, is_positive());
+								}	
+								else {	
+									int_type* ptr = (int_type*)c->h_columns_float[c->type_index[c_colInd]].data();
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (char*)((unsigned int*)h + 6), ptr + offset, is_positive());
+								};										
+							}
+							else if(bits == 16) {
+								if(left->type[colInd] == 0) {	
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[c->type_index[c_colInd]].begin() + offset, is_positive());
+								}	
+								else {	
+									int_type* ptr = (int_type*)c->h_columns_float[c->type_index[c_colInd]].data();
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned short int*)((unsigned int*)h + 6), ptr + offset, is_positive());
+								};
+							}
+							else if(bits == 32) {
+								if(left->type[colInd] == 0) {	
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[c->type_index[c_colInd]].begin() + offset, is_positive());
+								}	
+								else {	
+									int_type* ptr = (int_type*)c->h_columns_float[c->type_index[c_colInd]].data();
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned int*)((unsigned int*)h + 6), ptr + offset, is_positive());
+								};	
+							}
+							else if(bits == 64) {
+								if(left->type[colInd] == 0) {	
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (int_type*)((unsigned int*)h + 6), c->h_columns_int[c->type_index[c_colInd]].begin() + offset, is_positive());
+								}	
+								else {	
+									int_type* ptr = (int_type*)c->h_columns_float[c->type_index[c_colInd]].data();
+									thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (int_type*)((unsigned int*)h + 6), ptr + offset, is_positive());
+								};
+							};
+							
+							if(left->type[colInd] == 0) {	
+								thrust::transform(c->h_columns_int[c->type_index[c_colInd]].begin() + offset, c->h_columns_int[c->type_index[c_colInd]].begin() + offset + res_count, 
+												  thrust::make_constant_iterator(lower_val), c->h_columns_int[c->type_index[c_colInd]].begin() + offset, thrust::plus<int_type>()); 																	
+							}
+							else {
+								int_type* ptr = (int_type*)c->h_columns_float[c->type_index[c_colInd]].data();
+								thrust::transform(ptr + offset, ptr + offset + res_count, 
+												  thrust::make_constant_iterator(lower_val), ptr + offset, thrust::plus<int_type>()); 																						
+								thrust::transform(ptr + offset, ptr + offset + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset, long_to_float());													
+							};							
+							
+						}
+						else {						
+						
+							allocColumns(left, cc);				
+							copyColumns(left, cc, i, k, 0, 0);//possible that in some cases a join column would be copied to device twice
+						
+							//gather
+							if(left->type[colInd] == 0) {
+								thrust::device_ptr<int_type> d_tmp((int_type*)temp);
+								thrust::sequence(d_tmp, d_tmp+res_count,0,0);												
+								thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[left->type_index[colInd]].begin(), d_tmp, is_positive());								
+								thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);
+							}
+							else if(left->type[colInd] == 1) {
+								thrust::device_ptr<float_type> d_tmp((float_type*)temp);
+								thrust::sequence(d_tmp, d_tmp+res_count,0,0);
+								thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[left->type_index[colInd]].begin(), d_tmp, is_positive());
+								thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[c->type_index[c_colInd]].begin() + offset);
+							}
+							else { //strings
+								thrust::device_ptr<char> d_tmp((char*)temp);
+								thrust::fill(d_tmp, d_tmp+res_count*left->char_size[left->type_index[colInd]],0);
+								
+							
+								str_gather(thrust::raw_pointer_cast(p_tmp.data()), res_count, (void*)left->d_columns_char[left->type_index[colInd]],
+										(void*) thrust::raw_pointer_cast(d_tmp), left->char_size[left->type_index[colInd]]);
+								cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
+											c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
+							};
+							
+						
+							if(colInd != colInd1)
+								left->deAllocColumnOnDevice(colInd);							
+						}
                     }
                     else if(right->columnNames.find(op_sel1.front()) !=  right->columnNames.end()) {
                         colInd = right->columnNames[op_sel1.front()];
@@ -1570,7 +1671,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         if(right->type[colInd] == 0) {
                             thrust::device_ptr<int_type> d_tmp((int_type*)temp);
                             thrust::sequence(d_tmp, d_tmp+res_count,0,0);
-                            thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[right->type_index[colInd]].begin(), d_tmp, is_positive());
+                            thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[right->type_index[colInd]].begin(), d_tmp, is_positive());							
                             thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[c->type_index[c_colInd]].begin() + offset);
                         }
                         else if(right->type[colInd] == 1) {
@@ -1582,10 +1683,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         else { //strings
 
                             thrust::device_ptr<char> d_tmp((char*)temp);
-                            thrust::sequence(d_tmp, d_tmp+res_count*right->char_size[right->type_index[colInd]],0,0);
+                            thrust::sequence(d_tmp, d_tmp+res_count*right->char_size[right->type_index[colInd]],0,0);							
                             str_gather(thrust::raw_pointer_cast(d_res2), res_count, (void*)right->d_columns_char[right->type_index[colInd]],
-                                       (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);
-
+                                       (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[colInd]]);									   
                             cudaMemcpy( (void*)&c->h_columns_char[c->type_index[c_colInd]][offset*c->char_size[c->type_index[c_colInd]]], (void*) thrust::raw_pointer_cast(d_tmp),
                                         c->char_size[c->type_index[c_colInd]] * res_count, cudaMemcpyDeviceToHost);
                         };					
@@ -1594,11 +1694,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         //cout << "Couldn't find field " << op_sel1.front() << endl;
                         //exit(0);
                     };
-                    op_sel1.pop();
+                    op_sel1.pop();					
                 };
                 cudaFree(temp);
             };
         };
+		
     };
 	
 	};
@@ -2455,9 +2556,8 @@ void emit_load_binary(char *s, char *f, int d)
         names.pop();
     };
 
-    a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f);
-    a->segCount = segCount;
-    a->maxRecs = maxRecs;
+	a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
+    a->segCount = segCount;    
     a->keep = 1;
 	a->name = s;
     varNames[s] = a;

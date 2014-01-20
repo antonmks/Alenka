@@ -51,8 +51,13 @@ using namespace std;
 #include <limits>
 #include <fstream>
 
-typedef double float_type;
 typedef long long int int_type;
+typedef unsigned int int32_type;
+typedef unsigned short int int16_type;
+typedef char int8_type;
+
+typedef double float_type;
+
 typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
 typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
 typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
@@ -242,6 +247,16 @@ struct uint2_split_left
     }
 };
 
+struct long_to_float
+{
+    __host__ __device__
+    float_type operator()(const long long int x)
+    {
+        return (((float_type)x)/100.0);
+    }
+};
+
+
 
 struct join_functor1
 {
@@ -288,12 +303,21 @@ class CudaSet
 {
 public:
     std::vector<thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-    std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
+    std::vector<thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
+	/*std::vector<thrust::host_vector<int32_type, pinned_allocator<int32_type> > > h_columns_int32;
+	std::vector<thrust::host_vector<int16_type, pinned_allocator<int16_type> > > h_columns_int16;
+	std::vector<thrust::host_vector<int8_type, pinned_allocator<int8_type> > > h_columns_int8;	
+	*/
     std::vector<char*> h_columns_char;
 
     std::vector<thrust::device_vector<int_type > > d_columns_int;
-    std::vector<thrust::device_vector<float_type > > d_columns_float;
-    std::vector<char*> d_columns_char;
+	/*std::vector<thrust::device_vector<int32_type > > d_columns_int32;
+	std::vector<thrust::device_vector<int16_type > > d_columns_int16;
+	std::vector<thrust::device_vector<int8_type > > d_columns_int8;	
+	*/
+    std::vector<thrust::device_vector<float_type > > d_columns_float;	
+    std::vector<char*> d_columns_char;	
+	
     std::vector<size_t> char_size;
 
     thrust::device_vector<unsigned int> prm_d;
@@ -309,6 +333,7 @@ public:
     std::map<unsigned int, size_t> type_index;
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size, totalRecs;
     std::map<string,unsigned int> columnNames;
+	std::map<string,bool> compTypes; // pfor delta or not
     std::map<string, FILE*> filePointers;
     bool *grp;
     queue<string> columnGroups;
@@ -327,7 +352,7 @@ public:
 
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
-    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
+    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     CudaSet(queue<string> op_sel, queue<string> op_sel_as);
