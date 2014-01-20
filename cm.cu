@@ -2090,6 +2090,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     file_p = NULL;
     FILE* f;
     string f1;
+	unsigned int cnt, bytes;
 
     prealloc_char_size = 0;
     not_compressed = 0;
@@ -2126,13 +2127,16 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         fclose(f);
     };
 
-
     tmp_table = 0;
-    filtered = 0;
-	unsigned int cnt;
+    filtered = 0;	
 
     for(unsigned int i=0; i < mColumnCount; i++) {
 
+		f1 = file_name + "." + int_to_string(colsRef.front()) + ".0";
+		f = fopen (f1.c_str() , "rb" );
+		fread((char *)&bytes, 4, 1, f);
+		fclose(f);
+		
         columnNames[nameRef.front()] = i;
         cols[i] = colsRef.front();
         seq = 0;		
@@ -2151,21 +2155,21 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[i] = 0;
             decimal[i] = 0;
-            h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >(maxRecs + 9));
+            h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >(bytes/8 + 10));
             d_columns_int.push_back(thrust::device_vector<int_type>());
             type_index[i] = h_columns_int.size()-1;
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(maxRecs + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
             d_columns_float.push_back(thrust::device_vector<float_type >());
             type_index[i] = h_columns_float.size()-1;
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(maxRecs + 9));
+            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }

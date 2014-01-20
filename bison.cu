@@ -3687,7 +3687,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							unsigned int cnt, lower_val, bits;		
 
 							if(verbose)
-								cout << "processing " << op_sel1.front() << " " << cmp_type << endl;
+								cout << "processing " << op_sel1.front() << " " << i << cmp_type << endl;
 							
 							if(!copied) {								
 								if(left->filtered) {
