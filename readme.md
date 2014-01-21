@@ -23,10 +23,11 @@ This is a GPU based database engine written to use vector based processing and h
     CUDA programming model allows a single operation to be applied to an entire set of data at once.
 	
   * Smart compression  
-    Ultra fast compression and decompression performed directly inside GPU.
+    Ultra fast compression and decompression on GPU.
+	Database operations on compressed data.
 	
   * Column-based storage  
-    Minimize disk I/O by only accessing the relevant data.
+    Minimizes disk I/O by only accessing the relevant data.
 
   * Data skipping  
     Better performance without indexes.	
