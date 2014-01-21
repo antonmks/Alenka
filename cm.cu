@@ -1319,6 +1319,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
         mCount = mRecCount;
 		print_all = 1;
 	};	
+	//cout << "mCount " << mCount << " " << mRecCount << endl;
 
     if(binary == 0) {
 	
@@ -1377,12 +1378,26 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 
 				if(prm_d.size() || source)  {
 					copyColumns(this, op_vx, curr_seg, cnt);
+					if(curr_seg == 0) {
+						if(limit != 0 && limit < mRecCount) {
+							mCount = limit;
+							print_all = 0;
+						}	
+						else {
+							mCount = mRecCount;
+							print_all = 1;
+						};	
+					
+					};
+					
                 // if host arrays are empty
 					size_t olRecs = mRecCount;                
 					mRecCount = olRecs;
 					CopyToHost(0,mRecCount);
-					if(sum_printed + mRecCount <= mCount || print_all)
+					//cout << "start " << sum_printed << " " <<  mRecCount << " " <<  mCount << endl;
+					if(sum_printed + mRecCount <= mCount || print_all) {
 						curr_count = mRecCount;
+					}	
 					else {
 						curr_count = mCount - sum_printed;
 					};
@@ -1392,8 +1407,9 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 				};	
 
 				sum_printed = sum_printed + mRecCount;            
+				//cout << "sum printed " << sum_printed << " " << curr_count << " " << curr_seg << endl;
 			
-				for(unsigned int i=0; i < curr_count; i++) {
+				for(unsigned int i=0; i < curr_count; i++) {				
 					for(unsigned int j=0; j < mColumnCount; j++) {
 						if (type[j] == 0) {
 							sprintf(buffer, "%lld", (h_columns_int[type_index[j]])[i] );
