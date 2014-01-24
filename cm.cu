@@ -1190,6 +1190,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 				thrust::copy(permutation.begin(), permutation.end(), h_permutation);
 				char* t = new char[char_size[type_index[i]]*mRecCount];
 				apply_permutation_char_host(h_columns_char[type_index[i]], h_permutation, mRecCount, t, char_size[type_index[i]]);
+				delete [] h_permutation;
 				thrust::copy(t, t+ char_size[type_index[i]]*mRecCount, h_columns_char[type_index[i]]);
 				delete [] t;
 				for(unsigned int p = 0; p < partition_count; p++) {		
