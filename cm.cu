@@ -50,6 +50,7 @@ void* s_v = NULL;
 queue<string> op_sort;
 queue<string> op_presort;
 queue<string> op_type;
+bool op_case = 0;
 queue<string> op_value;
 queue<int_type> op_nums;
 queue<float_type> op_nums_f;
@@ -662,17 +663,25 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
     size_t rr;	
 
     if(type[colIndex] == 0) {	    
+		if(1 > h_columns_int[type_index[colIndex]].size())
+			h_columns_int[type_index[colIndex]].resize(1);		
         fread(h_columns_int[type_index[colIndex]].data(), 4, 1, f);
-        cnt = ((unsigned int*)(h_columns_int[type_index[colIndex]].data()))[0];
+        cnt = ((unsigned int*)(h_columns_int[type_index[colIndex]].data()))[0];		
+		if(cnt > h_columns_int[type_index[colIndex]].size()/8 +10)
+			h_columns_int[type_index[colIndex]].resize(cnt/8 + 10);
         rr = fread((unsigned int*)(h_columns_int[type_index[colIndex]].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
-            cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
+            cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
             exit(0);
         };
     }
     else if(type[colIndex] == 1) {
+		if(1 > h_columns_float[type_index[colIndex]].size())
+			h_columns_float[type_index[colIndex]].resize(1);		
         fread(h_columns_float[type_index[colIndex]].data(), 4, 1, f);
         cnt = ((unsigned int*)(h_columns_float[type_index[colIndex]].data()))[0];
+		if(cnt > h_columns_float[type_index[colIndex]].size()/8 + 10)
+			h_columns_float[type_index[colIndex]].resize(cnt/8 + 10);				
         rr = fread((unsigned int*)(h_columns_float[type_index[colIndex]].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
             cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
@@ -2165,28 +2174,31 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 				fread((char *)&cnt, 4, 1, f);
 			fclose(f);
 			compTypes[nameRef.front()] = cnt;
-			//cout << "creating " <<  " " << cnt << " " << maxRecs <<  endl;
 		};		
 		
         
         if ((typeRef.front()).compare("int") == 0) {
             type[i] = 0;
             decimal[i] = 0;
-            h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >(bytes/8 + 10));
+            //h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >(bytes/8 + 10));
+			h_columns_int.push_back(thrust::host_vector<int_type, pinned_allocator<int_type> >());
+			//cout << "creating " <<  name << " " << nameRef.front() << " " << bytes/8 + 10 <<  endl;
             d_columns_int.push_back(thrust::device_vector<int_type>());
             type_index[i] = h_columns_int.size()-1;
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[i] = 1;
             decimal[i] = 0;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
+            //h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
+			h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
             d_columns_float.push_back(thrust::device_vector<float_type >());
             type_index[i] = h_columns_float.size()-1;
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[i] = 1;
             decimal[i] = 1;
-            h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
+            //h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >(bytes/8 + 10));
+			h_columns_float.push_back(thrust::host_vector<float_type, pinned_allocator<float_type> >());
             d_columns_float.push_back(thrust::device_vector<float_type>());
             type_index[i] = h_columns_float.size()-1;
         }
@@ -2859,8 +2871,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 
     a = varNames.find(f)->second;
     a->name = f;
-	std::clock_t start1 = std::clock();	
-
+	
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);
     }
@@ -2884,7 +2895,9 @@ void filter_op(char *s, char *f, unsigned int segment)
         reset_offsets();
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);
+			std::clock_t start1 = std::clock();	
             filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f,a, b, segment);
+			//std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
         }
         else  {
             setPrm(a,b,map_check,segment);

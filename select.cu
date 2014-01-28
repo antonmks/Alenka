@@ -63,6 +63,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
+		//cout << ss << endl;
 
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
@@ -132,6 +133,19 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else if (ss.compare("SUM") == 0) {
 
+				    /*if(op_case) {
+						cout << "found case " << endl;
+						op_case = 0;
+						while(!exe_type.empty())
+						{
+						cout << "CASE type " << exe_type.top() << endl;
+						exe_type.pop();
+						exit(0);
+						}						
+
+					};	
+					*/
+					
                     grp_type = "SUM";
                     s1 = exe_type.top();
                     exe_type.pop();

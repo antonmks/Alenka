@@ -68,6 +68,7 @@
     void emit_sort(char* s, int p);
     void emit_presort(char* s);
 	void emit_display(char *s, char* sep);
+	void emit_case();
 
 %}
 
@@ -143,6 +144,12 @@
 %token INSERT
 %token WHERE
 %token DISPLAY
+%token CASE
+%token WHEN
+%token THEN
+%token ELSE
+%token END
+
 
 %type <intval> load_list  opt_where opt_limit sort_def del_where
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -226,12 +233,15 @@ expr '+' expr { emit_add(); }
 /* recursive selects and comparisons thereto */
 | expr COMPARISON '(' select_stmt ')' { emit("CMPSELECT %d", $2); }
 | '(' expr ')' {emit("EXPR");}
+| CASE WHEN expr THEN expr ELSE expr END { emit_case(); }
 ;
 
 expr:
 expr IS BOOL1 { emit("ISBOOL %d", $3); }
 | expr IS NOT BOOL1 { emit("ISBOOL %d", $4); emit("NOT"); }
 ;
+
+
 
 opt_group_list: { /* nil */
     $$ = 0;
@@ -1520,9 +1530,17 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
 				bool copied = 0;	
 				thrust::host_vector<unsigned int> prm_vh;
+				std::map<string,bool> processed;
 				
                 while(!op_sel1.empty()) {
-
+				
+					if (processed.find(op_sel1.front()) != processed.end()) {
+						op_sel1.pop();
+						continue;
+					}	
+					else	
+						processed[op_sel1.front()] = 1;
+						
                     while(!cc.empty())
                         cc.pop();
 
@@ -1543,7 +1561,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 						else
 							cmp_type = left->compTypes[op_sel1.front()];
 						
-						
 						if ((((left->type[colInd] == 0) || ((left->type[colInd] == 1) && 
 							   left->decimal[colInd])) && cmp_type == 0) && (colInd != colInd1) && left->not_compressed == 0) { // do the processing on host												
 							
@@ -1551,7 +1568,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							unsigned int cnt, lower_val, bits;		
 
 							if(verbose)
-								cout << "processing " << op_sel1.front() << " " << i << cmp_type << endl;
+								cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
 							
 							if(!copied) {								
 								if(left->filtered) {
@@ -1633,7 +1650,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 						else {						
 						
 							allocColumns(left, cc);				
-							copyColumns(left, cc, i, k, 0, 0);//possible that in some cases a join column would be copied to device twice
+							copyColumns(left, cc, i, k, 0, 0);
 						
 							//gather
 							if(left->type[colInd] == 0) {
@@ -1699,7 +1716,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 cudaFree(temp);
             };
         };
-		
     };
 	
 	};
@@ -2341,6 +2357,20 @@ void emit_delete(char *f)
 	
 }	
 
+void emit_case()
+{
+	op_case = 1;
+	if (scan_state == 1)
+		cout << "emit case " << endl;
+	//extract releveant values and pass to modified filter	
+	// get a bool vector back
+/*						while(!op_type.empty())
+						{
+						cout << "CASE type " << op_type.front() << endl;
+						op_type.pop();
+						}				
+*/						
+}
 
 void emit_display(char *f, char* sep)
 {
@@ -2630,8 +2660,7 @@ void clean_queues()
     while(!op_sort.empty()) op_sort.pop();
     while(!op_presort.empty()) op_presort.pop();
 
-
-
+	op_case = 0;
     sel_count = 0;
     join_cnt = 0;
     join_col_cnt = 0;
