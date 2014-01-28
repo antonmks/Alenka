@@ -470,7 +470,7 @@ void CudaSet::resize_join(size_t addRecs)
 void CudaSet::resize(size_t addRecs)
 {
     mRecCount = mRecCount + addRecs;
-    for(unsigned int i=0; i <mColumnCount; i++) {
+	    for(unsigned int i=0; i <mColumnCount; i++) {
         if(type[i] == 0) {
             h_columns_int[type_index[i]].resize(mRecCount);
         }
@@ -1380,10 +1380,13 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 			if(prm_d.size() || source) {
 				allocColumns(this, op_vx);
 			};	
+			
 			unsigned int curr_seg = 0;
 			size_t cnt = 0;
 			size_t curr_count, sum_printed = 0;
-			resize(maxRecs);		
+			mRecCount = 0;
+			resize(maxRecs);	
+			
 			while(sum_printed < mCount || print_all) {
 
 				if(prm_d.size() || source)  {
