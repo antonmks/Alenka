@@ -3458,11 +3458,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     size_t rcount = 0, cnt_r;
     //need to sort the entire dataset by a key before loading segment by segment
 	unsigned int r_parts = calc_right_partition(left, right, op_sel);
-	r_parts = 1;
+	//r_parts = 1;
 	unsigned int start_part = 0;
 	sort_right(right, colInd2, f2, op_g, op_sel, decimal_join, str_join, rcount); //sort right 
-	
     queue<string> cc;
+	
     if (left->type[colInd1]  == 2) {
         left->d_columns_int.push_back(thrust::device_vector<int_type>());
     }
@@ -3496,10 +3496,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			cnt_r = load_right(right, colInd2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, start_part+r_parts, rsz);
 			start_part = start_part+r_parts;			
 		};
-	
-	//cout << "left->segCount " << left->segCount << " " << endl;
-	//cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-	
+
     for (unsigned int i = 0; i < left->segCount; i++) {
 
 		if(verbose)
@@ -3512,6 +3509,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         else {
             left->add_hashed_strings(f1, i, left->d_columns_int.size()-1);
         };
+		
+		//cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << " " << left->mRecCount << endl;
 		
         if(!left->filtered) {
             if (left->type[colInd1]  != 2)
@@ -3545,20 +3544,17 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             }
             if(do_sort)
                 thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
+				
+            //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+            //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
+				
 			
 			if (left->d_columns_int[left->type_index[colInd1]][0] > right->d_columns_int[right->type_index[colInd2]][cnt_r-1] ||
 				left->d_columns_int[left->type_index[colInd1]][cnt_l-1] < right->d_columns_int[right->type_index[colInd2]][0]) {
 				continue;
 			};	
 			
-			
-
-            //cout << endl << "j1 " << getFreeMem() << endl;
-            //cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-            //cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
-
             char join_kind = join_type.front();
-            
 
             if (left->type[colInd1] == 2) {
 				thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[right->type_index[colInd2]].data()));
@@ -3705,7 +3701,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
 				bool copied = 0;	
 				thrust::host_vector<unsigned int> prm_vh;
-				std::map<string,bool> processed;
+				std::map<string,bool> processed;				
+				
+				//std::clock_t start1 = std::clock();	
 				
                 while(!op_sel1.empty()) {
 				
@@ -3888,6 +3886,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     };
                     op_sel1.pop();					
                 };
+				//std::cout<< "gather time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
                 cudaFree(temp);
             };
         };

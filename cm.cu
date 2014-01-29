@@ -814,7 +814,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
 
         if(type[colIndex] == 0) {
             if(!alloced_switch) {
-                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data()), h_columns_int[type_index[colIndex]].data(), d_v, s_v);
+                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + offset), h_columns_int[type_index[colIndex]].data(), d_v, s_v);
             }
             else {
                 mRecCount = pfor_decompress(alloced_tmp, h_columns_int[type_index[colIndex]].data(), d_v, s_v);
@@ -823,8 +823,8 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
         else if(type[colIndex] == 1) {
             if(decimal[colIndex]) {
                 if(!alloced_switch) {
-                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()) , h_columns_float[type_index[colIndex]].data(), d_v, s_v);
-                    thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data()));
+                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + offset) , h_columns_float[type_index[colIndex]].data(), d_v, s_v);
+                    thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[type_index[colIndex]].data() + offset));
                     thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[type_index[colIndex]].begin(), long_to_float());
                 }
                 else {
@@ -2732,6 +2732,7 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
         else
             copyColumns(right, cc, i, cnt_r, rsz, flt);
         cnt_r = cnt_r + right->mRecCount;
+		//cout << "RIGHT SEG " <<  i << " " << cnt_r << " " << right->d_columns_int[1][0] << "-" << right->d_columns_int[1][cnt_r-1] << endl;			
     };
     right->mRecCount = cnt_r;
     return cnt_r;
@@ -2938,7 +2939,9 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
         cnt_r = load_queue(op_alt1, right, str_join, empty, rcount, 0, right->segCount);
     }
     else {
-        return; //assume already presorted data
+        queue<string> op_alt1;
+        op_alt1.push(f2);
+        cnt_r = load_queue(op_alt1, right, str_join, empty, rcount, 0, right->segCount); 
     };
 
     if(str_join) {
@@ -2958,9 +2961,8 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
         sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);
 
 
-
     if(!sorted) {
-
+	
         thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
         thrust::sequence(v, v + cnt_r, 0, 1);
 
@@ -2981,11 +2983,16 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
             thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
         };
 		
+		if(!right->not_compressed) {
+			right->mRecCount = 0;		
+			right->resize(cnt_r);
+		};
+		
 		thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());
 		right->deAllocColumnOnDevice(colInd2);
-
+		
         unsigned int i;
-        while(!op_sel.empty()) {
+        while(!op_sel.empty()) {		
             if (right->columnNames.find(op_sel.front()) != right->columnNames.end()) {
                 i = right->columnNames[op_sel.front()];
 
@@ -3017,6 +3024,7 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
         };
         thrust::device_free(v);
         cudaFree(d);
+		right->not_compressed = 1;
     }						
 }						
 
@@ -3066,8 +3074,10 @@ size_t load_right(CudaSet* right, unsigned int colInd2, string f2, queue<string>
             };
             op_alt.pop();
         };
-        cnt_r = load_queue(op_alt1, right, str_join, empty, rcount, start_seg, end_seg, 0, 0);
+		if(!op_alt1.empty())
+			cnt_r = load_queue(op_alt1, right, str_join, empty, rcount, start_seg, end_seg, 0, 0);
     };
+	
 
 
     return cnt_r;
