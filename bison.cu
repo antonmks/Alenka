@@ -2486,12 +2486,11 @@ yyreturn:
 #include "sorts.cu"
 
 using namespace mgpu;
-
+using namespace thrust::placeholders;
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
 
-FILE *file_pointer;
 queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
@@ -2512,16 +2511,12 @@ unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 map<unsigned int, unsigned int> join_and_cnt;
 bool scan_state = 0;
-string separator, f_file;
 unsigned int int_col_count;
 CUDPPHandle theCudpp;
 ContextPtr context;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
-
-
-using namespace thrust::placeholders;
 
 
 void emit_name(char *name)
@@ -2733,14 +2728,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
             maxSize = t->mRecCount;
     };
 
-
-    size_t max_c = max_char(a, field_names);
-
-    if(max_c > float_size)
-        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
-    else
-        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
-
+    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char(a, field_names)));
     unsigned int str_count = 0;
 
 
@@ -2858,7 +2846,6 @@ void star_join(char *s, string j1)
             op_jj.pop();
 
         size_t rcount;
-        curr_segment = 10000000;
         queue<string> op_vd(op_g);
         queue<string> op_alt(op_sel);
         unsigned int jc = join_col_cnt;
@@ -3476,7 +3463,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
     size_t cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
     queue<string> lc(cc);
-    curr_segment = 10000000;
     thrust::device_vector<int> p_tmp;
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
@@ -3691,13 +3677,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
 
                 void* temp;
-                size_t max_c = max_char(c);
-
-                if(max_c > float_size) {
-                    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*max_c));
-                }
-                else
-                    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
+                CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*max_char(c)));
 
 				bool copied = 0;	
 				thrust::host_vector<unsigned int> prm_vh;
@@ -3976,12 +3956,7 @@ void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> ex
 
     size_t maxSize =  a->mRecCount;
     char* temp;
-    size_t max_c = max_char(a);
-
-    if(max_c > float_size)
-        temp = new char[maxSize*max_c];
-    else
-        temp = new char[maxSize*float_size];
+    temp = new char[maxSize*max_char(a)];
 
     // sort on host
 
@@ -4104,23 +4079,16 @@ void emit_order(char *s, char *f, int e, int ll)
         unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
 
         size_t maxSize =  a->mRecCount;
-        void* temp;
-        size_t max_c = max_char(a);
-
-        if(max_c > float_size)
-            CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_c));
-        else
-            CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*float_size));
-
+        void* temp;        
+        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char(a)));
+        
         varNames[setMap[exe_type.top()]]->hostRecCount = varNames[setMap[exe_type.top()]]->mRecCount;
-
 
         size_t rcount;
         a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount, 0, a->segCount);
 
         varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->hostRecCount;
-        //unsigned int str_count = 0;
-
+		
         for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
             int colInd = (a->columnNames).find(exe_type.top())->second;
             if ((a->type)[colInd] == 0)
@@ -4296,7 +4264,6 @@ void emit_select(char *s, char *f, int ll)
 
     CudaSet *b, *c;
 
-    curr_segment = 10000000;
     if(a->segCount <= 1)
         setSegments(a, op_vx);
     allocColumns(a, op_vx);
@@ -4704,19 +4671,29 @@ void emit_store_binary(char *s, char *f)
     };
     total_count = 0;
     total_segments = 0;
-
+	
     if(fact_file_loaded) {
         a->Store(f,"", limit, 1);
     }
     else {
-        while(!fact_file_loaded)	{
+		FILE* file_p;
+		if(a->text_source) {
+			file_p = fopen(a->load_file_name.c_str(), "r");
+		    if (file_p  == NULL) {
+				cout << "Could not open file " << a->load_file_name << endl;
+				exit(0);
+			};
+		};
+
+        while(!fact_file_loaded) {
 			if(verbose)
-				cout << "LOADING " << f_file << " mem: " << getFreeMem() << endl;
+				cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
             if(a->text_source)
-                fact_file_loaded = a->LoadBigFile(f_file, separator.c_str());
+                fact_file_loaded = a->LoadBigFile(file_p);
             a->Store(f,"", limit, 1);
         };
     };
+	a->writeSortHeader(f);
 
     if(stat[f] == statement_count && !a->keep) {
         a->free();
@@ -4790,11 +4767,8 @@ void emit_load(char *s, char *f, int d, char* sep)
     a->resize(process_count);
     a->keep = true;
     a->not_compressed = 1;
-
-    string separator1(sep);
-    separator = separator1;
-    string ff(f);
-    f_file = ff;
+    a->load_file_name = f;
+	a->separator = sep;
     a->maxRecs = a->mRecCount;
     a->segCount = 0;
     varNames[s] = a;

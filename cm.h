@@ -69,18 +69,17 @@ extern size_t int_size;
 extern size_t float_size;
 extern unsigned int hash_seed;
 extern queue<string> op_type;
+extern bool op_case;
 extern queue<string> op_sort;
 extern queue<string> op_presort;
 extern queue<string> op_value;
 extern queue<int_type> op_nums;
 extern queue<float_type> op_nums_f;
 extern queue<string> col_aliases;
-extern unsigned int curr_segment;
 extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
 extern unsigned int total_segments;
 extern unsigned int process_count;
 extern bool fact_file_loaded;
-extern char map_check;
 extern void* alloced_tmp;
 extern unsigned int partition_count;
 extern map<string,string> setMap; //map to keep track of column names and set names
@@ -319,7 +318,6 @@ public:
     std::vector<char*> d_columns_char;	
 	
     std::vector<size_t> char_size;
-
     thrust::device_vector<unsigned int> prm_d;
     char prm_index; // A - all segments values match, N - none match, R - some may match
 
@@ -338,10 +336,8 @@ public:
     bool *grp;
     queue<string> columnGroups;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
-    FILE *file_p;
-    unsigned int *seq;
     unsigned int mColumnCount;
-    string name, load_file_name;
+    string name, load_file_name, separator;
     bool source, text_source, tmp_table, keep, filtered;
     queue<unsigned int> sorted_fields; //segment is sorted by fields
     queue<unsigned int> presorted_fields; //globally sorted by fields
@@ -384,13 +380,13 @@ public:
     void GroupBy(std::stack<string> columnRef, unsigned int int_col_count);
     void addDeviceColumn(int_type* col, int colIndex, string colName, size_t recCount);
     void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount, bool is_decimal);
-    void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, void* d, size_t mCount);
+    void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, size_t mCount);
     void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
 	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
     void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
     void compress_char(string file_name, unsigned int index, size_t mCount, size_t offset);
-    bool LoadBigFile(const string file_name, const char* sep);
+    bool LoadBigFile(FILE* file_p);
     void free();
     bool* logical_and(bool* column1, bool* column2);
     bool* logical_or(bool* column1, bool* column2);

@@ -302,12 +302,8 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(b->mRecCount);
     thrust::sequence(v, v + b->mRecCount, 0, 1);
 
-    size_t max_c	= max_char(b);
-    if(max_c < 8) {
-        max_c = 8;
-    };
     void* d;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d, b->mRecCount*max_c));
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d, b->mRecCount*max_char(b)));
     thrust::sort_by_key(hashes.begin(), hashes.end(), v);
 	
 
@@ -335,7 +331,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     b->CopyToHost(0, b->mRecCount);
     thrust::host_vector<unsigned long long int> hh = hashes;
-    char* tmp = new char[max_c*(c->mRecCount + b->mRecCount)];
+    char* tmp = new char[max_char(b)*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
     //lets merge every column
 	
