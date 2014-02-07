@@ -146,6 +146,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 					};	
 					*/
 					
+					
                     grp_type = "SUM";
                     s1 = exe_type.top();
                     exe_type.pop();
@@ -204,7 +205,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                         unsigned int colIndex = (a->columnNames).find(s1_val)->second;
                         if (!a->columnGroups.empty()) {
-
+						
                             if((a->type)[colIndex] == 0) {
                                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 
@@ -223,7 +224,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                                 exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
                                 exe_type.push("VECTOR F");
-                            }
+                            }							
                         }
                         else {
                             if(a->type[colIndex] == 0) {

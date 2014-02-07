@@ -33,7 +33,7 @@
     void emit_eq();
     void emit_or();
     void emit_cmp(int val);
-    void emit_var(char *s, int c, char *f);
+    void emit_var(char *s, int c, char *f, char* ref, int ref_num);
     void emit_var_asc(char *s);
     void emit_var_desc(char *s);
     void emit_name(char *name);
@@ -49,7 +49,7 @@
     void emit_sel_name(char* name);
     void emit_limit(int val);
     void emit_union(char *s, char *f1, char *f2);
-    void emit_varchar(char *s, int c, char *f, int d);
+    void emit_varchar(char *s, int c, char *f, int d, char *ref, int ref_num);
     void emit_load(char *s, char *f, int d, char* sep);
     void emit_load_binary(char *s, char *f, int d);
     void emit_store(char *s, char *f, char* sep);
@@ -149,6 +149,7 @@
 %token THEN
 %token ELSE
 %token END
+%token REFERENCES
 
 
 %type <intval> load_list  opt_where opt_limit sort_def del_where
@@ -201,8 +202,10 @@ NAME { emit_name($1); }
 | APPROXNUM { emit_float($1); }
 | DECIMAL1 { emit_decimal($1); }
 | BOOL1 { emit("BOOL %d", $1); }
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8);}
-| NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' REFERENCES NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, $11, $13);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", 0);}
+| NAME '{' INTNUM '}' ':' NAME REFERENCES NAME '(' INTNUM ')' { emit_var($1, $3, $6, $8, $10);}
+| NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", 0);}
 | NAME ASC { emit_var_asc($1);}
 | NAME DESC { emit_var_desc($1);}
 | COUNT '(' expr ')' { emit_count(); }
@@ -306,7 +309,7 @@ sort_def: { /* nil */
 #include "zone_map.h"
 #include "atof.h"
 #include "cudpp-2.1/include/cudpp_hash.h"
-#include "moderngpu-master/include/moderngpu.cuh"
+//#include "moderngpu-master/include/moderngpu.cuh"
 #include "sstream"
 #include "sorts.cu"
 
@@ -320,6 +323,8 @@ queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
 queue<int> cols;
+queue<string> references;
+queue<int> references_nums;
 
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
@@ -456,12 +461,14 @@ void emit(char *s, ...)
 
 }
 
-void emit_var(char *s, int c, char *f)
+void emit_var(char *s, int c, char *f, char* ref, int ref_num)
 {
     namevars.push(s);
     typevars.push(f);
     sizevars.push(0);
     cols.push(c);
+	references.push(ref);
+	references_nums.push(ref_num);	
 }
 
 void emit_var_asc(char *s)
@@ -488,12 +495,14 @@ void emit_presort(char *s)
 }
 
 
-void emit_varchar(char *s, int c, char *f, int d)
+void emit_varchar(char *s, int c, char *f, int d, char *ref, int ref_num)
 {
     namevars.push(s);
     typevars.push(f);
     sizevars.push(d);
     cols.push(c);
+	references.push(ref);
+	references_nums.push(ref_num);
 }
 
 void emit_sel_name(char *s)
@@ -1291,6 +1300,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     thrust::device_vector<int> p_tmp;
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
+	std::vector<int> j_data;
 
 	while(start_part != right->segCount) {
 
@@ -1311,7 +1321,30 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     for (unsigned int i = 0; i < left->segCount; i++) {
 
 		if(verbose)
-			cout << "segment " << i <<  '\xd';		
+			cout << "segment " << i <<  '\xd';	
+			//cout << "segment " << i <<  endl;	
+		j_data.clear();		
+			
+		/*for (set<unsigned int>::iterator it = left->ref_joins[colInd1][i].begin(); it != left->ref_joins[colInd1][i].end(); it++) {
+			cout << "seg match " << *it << endl;
+		};
+		
+		for (set<unsigned int>::iterator it = right->orig_segs[left->ref_sets[colInd1]].begin(); it != right->orig_segs[left->ref_sets[colInd1]].end(); it++) {
+			cout << "right segs " << *it << endl;
+		};
+		*/
+		
+		if(left->ref_joins[colInd1][i].size() && right->orig_segs[left->ref_sets[colInd1]].size()) {
+			set_intersection(left->ref_joins[colInd1][i].begin(),left->ref_joins[colInd1][i].end(),
+							 right->orig_segs[left->ref_sets[colInd1]].begin(), right->orig_segs[left->ref_sets[colInd1]].end(),
+							 std::back_inserter(j_data));
+			if(j_data.empty()) 
+				continue;
+			//cout << "no need of a join " << endl;
+		};	
+
+	
+		//std::clock_t start2 = std::clock();		
 		        
         cnt_l = 0;
         if (left->type[colInd1]  != 2) {
@@ -1489,6 +1522,21 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             tot_count = tot_count + res_count;
 
             if(res_count) {
+			
+				for (map<string, set<unsigned int> >::iterator itr = left->orig_segs.begin(); itr != left->orig_segs.end(); itr++) {
+					for (set<unsigned int>::iterator it = itr->second.begin(); it != itr->second.end(); it++) {
+						//cout << "LEFT SEGS " << itr->first << " : " << *it << endl;
+						c->orig_segs[itr->first].insert(*it);
+					};						
+				};	
+
+				for (map<string, set<unsigned int> >::iterator itr = right->orig_segs.begin(); itr != right->orig_segs.end(); itr++) {
+					for (set<unsigned int>::iterator it = itr->second.begin(); it != itr->second.end(); it++) {
+						//cout << "RIGHT SEGS " << itr->first << " : " << *it << endl;
+						c->orig_segs[itr->first].insert(*it);
+					};						
+				};	
+					
 
                 offset = c->mRecCount;
                 if(i == 0 && left->segCount != 1) {
@@ -1695,6 +1743,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 cudaFree(temp);
             };
         };
+		//std::cout<< "join TT time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
     };
 	
 	};
@@ -2141,9 +2190,7 @@ void emit_select(char *s, char *f, int ll)
 			cout << "segment " << i << " select mem " << getFreeMem() << endl;
 				
         cnt = 0;		
-        copyColumns(a, op_vx, i, cnt);			
-		
-
+        copyColumns(a, op_vx, i, cnt);
         reset_offsets();
         op_s = op_v2;
         s_cnt = 0;
@@ -2567,6 +2614,8 @@ void emit_load_binary(char *s, char *f, int d)
     a->keep = 1;
 	a->name = s;
     varNames[s] = a;
+	for(unsigned int i = 0; i < segCount; i++)
+		a->orig_segs[f].insert(i); 
 
     if(stat[s] == statement_count )  {
         a->free();
@@ -2587,7 +2636,7 @@ void emit_load(char *s, char *f, int d, char* sep)
 
     CudaSet *a;
 
-    a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
+    a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_nums);
     a->mRecCount = 0;
     a->resize(process_count);
     a->keep = true;
@@ -2631,6 +2680,8 @@ void clean_queues()
     while(!sizevars.empty()) sizevars.pop();
     while(!cols.empty()) cols.pop();
     while(!op_sort.empty()) op_sort.pop();
+    while(!references.empty()) references.pop();
+    while(!references_nums.empty()) references_nums.pop();
     while(!op_presort.empty()) op_presort.pop();
 
 	op_case = 0;
@@ -2708,7 +2759,7 @@ int main(int ac, char **av)
 		
 		cudppDestroy(theCudpp);
 		if(verbose) {
-			cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+			//cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
 			cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
 		};	
 

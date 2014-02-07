@@ -50,6 +50,7 @@ using namespace std;
 #include <ctime>
 #include <limits>
 #include <fstream>
+#include "moderngpu-master/include/moderngpu.cuh"
 
 typedef long long int int_type;
 typedef unsigned int int32_type;
@@ -64,6 +65,7 @@ typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
 typedef thrust::device_vector<int>::iterator   IndexIterator2;
 typedef thrust::device_ptr<int> IndexIterator1;
 
+using namespace mgpu;
 
 extern size_t int_size;
 extern size_t float_size;
@@ -86,6 +88,7 @@ extern map<string,string> setMap; //map to keep track of column names and set na
 extern std::clock_t tot;
 extern std::clock_t tot_fil;
 extern bool verbose;
+extern ContextPtr context;
 
 
 template<typename T>
@@ -328,11 +331,11 @@ public:
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
 
-    std::map<unsigned int, size_t> type_index;
+    map<unsigned int, size_t> type_index;
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size, totalRecs;
-    std::map<string,unsigned int> columnNames;
-	std::map<string,bool> compTypes; // pfor delta or not
-    std::map<string, FILE*> filePointers;
+    map<string,unsigned int> columnNames;
+	map<string,bool> compTypes; // pfor delta or not
+    map<string, FILE*> filePointers;
     bool *grp;
     queue<string> columnGroups;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
@@ -345,9 +348,17 @@ public:
     bool* decimal; // column is decimal - affects only compression
     unsigned int* grp_type; // type of group : SUM, AVG, COUNT etc
     unsigned int* cols; // column positions in a file
+	
+	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
+	//but just boolean indicators.
+	map<unsigned int, string> ref_sets; // referencing datasets
+	map<unsigned int, unsigned int> ref_cols; // referencing dataset's column indexes
+	map<unsigned int, map<unsigned int, set<unsigned int> > > ref_joins; // columns referencing dataset segments 
+	//multimap<string, unsigned int> orig_segs; // map of datasets' segments present after operations of filtering and joining
+	map<string, set<unsigned int> > orig_segs;
 
 
-    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
+    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<int> &references_nums);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
@@ -407,7 +418,7 @@ public:
 protected:
 
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
-    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
+    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<int> &references_nums);
     void initialize(size_t RecordCount, unsigned int ColumnCount);
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     void initialize(queue<string> op_sel, queue<string> op_sel_as);

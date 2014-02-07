@@ -115,8 +115,8 @@ struct cmp_functor_str_like_right
 
 
 
-void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
-                              CudaSet* b, unsigned int segment)
+bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+             unsigned int segment)
 {
 
     stack<string> exe_type;
@@ -982,26 +982,5 @@ void filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-
-
-    thrust::device_ptr<bool> bp((bool*)bool_vectors.top());    
-    b->prm_index = 'R';
-	if(a == b) { // DELETE OP	
-		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
-						bp, a->prm_d.begin(), not_identity<bool>());						
-		a->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 0);						
-	}
-	else { // FILTER OP
-		b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
-		thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
-						bp, b->prm_d.begin(), thrust::identity<bool>());
-	};					
-
-    if(segment == a->segCount-1)
-        b->type_index = a->type_index;
-    cudaFree(bool_vectors.top());
-    return;
+	return bool_vectors.top();
 }
-
-
-

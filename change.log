@@ -1,3 +1,10 @@
+02/07/2014
+  Added support for sparse datasets : one can load the data like this now : 
+	A := LOAD 'lineitem.tbl' USING ('|') AS (orderkey{1}:int REFERENCES orders(1) ...
+  In order to use this you need to load orders first, then lineitems. Performance of many join operations 
+  is improved by 2X.
+
+
 09/14/2013
   Join tables that do not fit into limited GPU memory are partitioned :
   STORE A INTO 'lineitem' BINARY SORT SEGMENTS BY orderkey PARTITION BY 2; 

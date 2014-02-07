@@ -68,6 +68,12 @@ DELETE {return DELETE; }
 INSERT {return INSERT; }
 WHERE {return WHERE; }
 DISPLAY {return DISPLAY; }
+CASE {return CASE; }
+WHEN {return WHEN; }
+THEN {return THEN; }
+ELSE {return ELSE; }
+END {return END; }
+REFERENCES {return REFERENCES; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }
@@ -117,5 +123,6 @@ void PROC_FLUSH_BUF ( FILE * xFile )
         yy_delete_buffer ( YY_CURRENT_BUFFER );
         yy_switch_to_buffer ( yy_create_buffer ( xFile, YY_BUF_SIZE ) ); 
 }
+
 
 
