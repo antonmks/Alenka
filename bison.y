@@ -548,6 +548,7 @@ void emit_join_tab(char *s, char tp)
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
 {
+
     unsigned int sz = a->mRecCount;
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
     thrust::sequence(permutation, permutation+sz,0,1);
@@ -561,7 +562,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
         if(t->mRecCount > maxSize)
             maxSize = t->mRecCount;
     };
-
+	
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char(a, field_names)));
     unsigned int str_count = 0;
 
@@ -578,7 +579,6 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
             str_count++;
         };
     };
-
     str_count = 0;
 
     for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
@@ -594,10 +594,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names)
             str_count++;
         };
     };
-
     cudaFree(temp);
     thrust::device_free(permutation);
-
 }
 
 bool check_star_join(string j1)
@@ -935,7 +933,6 @@ void star_join(char *s, string j1)
                     colInd = left->columnNames[op_sel1.front()];
 
                     if(already_copied.count(op_sel1.front()) == 0) {
-                        reset_offsets();
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);
                     };
@@ -993,7 +990,6 @@ void star_join(char *s, string j1)
                     };
 
                     if(already_copied.count(var_map[right_tab_name]) == 0) {
-                        reset_offsets();
                         allocColumns(left, cc);
                         copyColumns(left, cc, i, k);
                     };
@@ -1581,7 +1577,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         // copy field's segment to device, gather it and copy to the host
                         colInd = left->columnNames[op_sel1.front()];
 
-						reset_offsets();
 						if(left->filtered)
 							cmp_type = varNames[setMap[op_sel1.front()]]->compTypes[op_sel1.front()];
 						else
@@ -1610,7 +1605,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							
 							CudaSet *t = varNames[setMap[op_sel1.front()]];
 							unsigned int t_ind = t->columnNames[op_sel1.front()];
-							t->readSegmentsFromFile(i, t_ind);
+							t->readSegmentsFromFile(i, t_ind, 0);
 							
 							if(t->type[t->columnNames[op_sel1.front()]] == 0) {
 								h = t->h_columns_int[t->type_index[t_ind]].data();								
@@ -2191,10 +2186,8 @@ void emit_select(char *s, char *f, int ll)
 				
         cnt = 0;		
         copyColumns(a, op_vx, i, cnt);
-        reset_offsets();
         op_s = op_v2;
         s_cnt = 0;
-
 
         while(!op_s.empty() && a->mRecCount != 0) {
 
@@ -2205,14 +2198,13 @@ void emit_select(char *s, char *f, int ll)
                 s_cnt++;
             };
             op_s.pop();
-        };
+        };		
 
         if(a->mRecCount) {
             if (ll != 0) {
                 order_inplace(a,op_v2,field_names);
                 a->GroupBy(op_v2, int_col_count);
             };
-
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 			
             if(!b_set) {
@@ -2284,7 +2276,6 @@ void emit_select(char *s, char *f, int ll)
         };
     };
 	
-    reset_offsets();
     c->maxRecs = c->mRecCount;
     c->name = s;
     c->keep = 1;
@@ -2602,7 +2593,8 @@ void emit_load_binary(char *s, char *f, int d)
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
-    //cout << "Reading " << totRecs << " records" << endl;
+	if(verbose)
+		cout << "Reading " << totRecs << " records" << endl;
     queue<string> names(namevars);
     while(!names.empty()) {
         setMap[names.front()] = s;
@@ -2689,7 +2681,6 @@ void clean_queues()
     join_cnt = 0;
     join_col_cnt = 0;
     distinct_cnt = 0;
-    reset_offsets();
     join_tab_cnt = 0;
     tab_cnt = 0;
     join_and_cnt.clear();
@@ -2698,7 +2689,7 @@ void clean_queues()
 
 int main(int ac, char **av)
 {
-
+	bool interactive = 0;
     if (ac < 2) {
         cout << "Usage : alenka [-l process_count] [-v] script.sql" << endl;
         exit(1);
@@ -2713,54 +2704,93 @@ int main(int ac, char **av)
 			}
 			else if(strcmp(av[i],"-v") == 0) {
 				verbose = 1;
+			}
+			else if(strcmp(av[i],"-i") == 0) {
+				interactive = 1;
 			};
 		};
 
-		if((yyin = fopen(av[ac-1], "r")) == NULL) {
-			perror(av[ac-1]);
-			exit(1);
-		};
+		if (!interactive) {
+			if((yyin = fopen(av[ac-1], "r")) == NULL) {
+				perror(av[ac-1]);
+				exit(1);
+			};
 
-		if(yyparse()) {
-			printf("SQL scan parse failed\n");
-			exit(1);
-		};
+			if(yyparse()) {
+				printf("SQL scan parse failed\n");
+				exit(1);
+			};
 
-		scan_state = 1;
+			scan_state = 1;
+			std::clock_t start1 = std::clock();
+			statement_count = 0;
+			clean_queues();
+			
+			yyin = fopen(av[ac-1], "r");
+			PROC_FLUSH_BUF ( yyin );
+			statement_count = 0;
+		
+			extern FILE *yyin;
+			context = CreateCudaDevice(0, av, verbose);
+			cudppCreate(&theCudpp);
+			hash_seed = 100;		
+		
+			if(!yyparse()) {
+				if(verbose)
+					cout << "SQL scan parse worked" << endl;
+			}		
+			else
+				cout << "SQL scan parse failed" << endl;		
 
-		std::clock_t start1 = std::clock();
-		statement_count = 0;
-		clean_queues();
-
-		if((yyin = fopen(av[ac-1], "r")) == NULL) {
-			perror(av[1]);
-			exit(1);
+			if(alloced_sz)
+				cudaFree(alloced_tmp);
+			fclose(yyin);			
+		
+			cudppDestroy(theCudpp);
+			if(verbose) {
+				//cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+				cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
+			};	
 		}
-
-		PROC_FLUSH_BUF ( yyin );
-		statement_count = 0;
+		else {
+			string script;
+			context = CreateCudaDevice(0, av, verbose);
+			cudppCreate(&theCudpp);
+			hash_seed = 100;	
+			getline(cin, script);
+			
+			while (script != "exit" && script != "EXIT") {				
+				
+				yy_scan_string(script.c_str());				
+				scan_state = 0;
+				statement_count = 0;
+				clean_queues();		
+				if(yyparse()) {
+					printf("SQL scan parse failed \n");
+					getline(cin, script);				
+					continue;
+				};
+				
+				scan_state = 1;
+				statement_count = 0;
+				clean_queues();		
+				yy_scan_string(script.c_str());
+				std::clock_t start1 = std::clock();
 		
-		extern FILE *yyin;
-		context = CreateCudaDevice(0, av, verbose);
+				if(!yyparse()) {
+					if(verbose)
+						cout << "SQL scan parse worked" << endl;
+				};
 
-		cudppCreate(&theCudpp);
-		hash_seed = 100;		
-		
-		if(!yyparse()) {
-			if(verbose)
-				cout << "SQL scan parse worked" << endl;
-		}		
-		else
-			cout << "SQL scan parse failed" << endl;		
+				if(verbose) {				
+					cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
+				};	
+				getline(cin, script);				
+			};	
+			if(alloced_sz)
+				cudaFree(alloced_tmp);
+			cudppDestroy(theCudpp);
 
-		if(alloced_sz)
-			cudaFree(alloced_tmp);
-		fclose(yyin);
-		
-		cudppDestroy(theCudpp);
-		if(verbose) {
-			//cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
-			cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
 		};	
 
 		return 0;

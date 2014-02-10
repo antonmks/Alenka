@@ -35,12 +35,9 @@ using namespace std;
 using namespace thrust::placeholders;
 
 
-std::clock_t tot = 0;
-std::clock_t tot_fil = 0;
 size_t total_count = 0, total_max;
 unsigned int total_segments = 0;
 unsigned int process_count;
-map <unsigned int, size_t> str_offset;
 size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
 bool verbose;
@@ -342,14 +339,14 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
 
     // convert bits to ints and then do gather
 
-    void* d_v;
-    cudaMalloc((void **) &d_v, 8);
-    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+    void* d_v1;
+    cudaMalloc((void **) &d_v1, 8);
+    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v1);
     dd_v[1] = fit_count;
     dd_v[0] = bits_encoded;
 
     thrust::counting_iterator<unsigned int> begin(0);
-    decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v);
+    decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)d_v1);
     thrust::for_each(begin, begin + real_count, ff);
 
     thrust::device_ptr<unsigned int> dd_val((unsigned int*)d_int);
@@ -378,7 +375,7 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
 
     cudaFree(d);
     cudaFree(d_val);
-    cudaFree(d_v);
+    cudaFree(d_v1);
     cudaFree(d_int);
 };
 
@@ -645,7 +642,7 @@ CudaSet* CudaSet::copyDeviceStruct()
 }
 
 
-void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
+void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, size_t offset)
 {
 	std::clock_t start1 = std::clock();	
     string f1(load_file_name);
@@ -687,7 +684,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
         };		
     }
     else {
-        decompress_char(f, colIndex, segNum);
+        decompress_char(f, colIndex, segNum, offset);
     };
     fclose(f);
 	if(verbose)
@@ -696,7 +693,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex)
 
 
 
-void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum)
+void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum, size_t offset)
 {
     unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
     const unsigned int len = char_size[type_index[colIndex]];
@@ -731,28 +728,14 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     void* d_int;
     cudaMalloc((void **) &d_int, real_count*4);
 
-    // convert bits to ints and then do gather
-
-
     thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
     thrust::for_each(begin, begin + real_count, ff);
 
-    if(str_offset.count(colIndex) == 0)
-        str_offset[colIndex] = 0;
     if(!alloced_switch)
-        str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + str_offset[colIndex]*len, len);
+		str_gather(d_int, real_count, d, d_columns_char[type_index[colIndex]] + offset*len, len);
     else
         str_gather(d_int, real_count, d, alloced_tmp, len);
-
-
-    if(filtered) {
-        str_offset[colIndex] = str_offset[colIndex] + prm_d.size();
-    }
-    else {
-        str_offset[colIndex] = str_offset[colIndex] + real_count;
-    };
-
     mRecCount = real_count;
 
     cudaFree(d);
@@ -802,7 +785,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size
     }
     else {
 	
-        readSegmentsFromFile(segment,colIndex);
+        readSegmentsFromFile(segment,colIndex, offset);
 
         if(type[colIndex] != 2) {
             if(d_v == NULL)
@@ -865,11 +848,10 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
         if(s_v == NULL)
             CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
 
-        str_offset[colIndex] = 0;
+		size_t cnt = 0;
         for(unsigned int i = 0; i < segCount; i++) {
 
-            readSegmentsFromFile(i,colIndex);
-
+            readSegmentsFromFile(i,colIndex, cnt);
 
             if(type[colIndex] == 0) {
                 mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[type_index[colIndex]].data() + totals), h_columns_int[type_index[colIndex]].data(), d_v, s_v);
@@ -884,6 +866,7 @@ void CudaSet::CopyColumnToGpu(unsigned int colIndex) // copy all segments
                 //cudaMemcpy( d_columns[colIndex], (void *) ((float_type*)h_columns[colIndex] + offset), count*float_size, cudaMemcpyHostToDevice);
                 // will have to fix it later so uncompressed data will be written by segments too
             };
+			cnt = cnt + mRecCount;
 
             //totalRecs = totals + mRecCount;
         };
@@ -1357,7 +1340,8 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                 if (i != mCount -1 )
                     fputs("\n",file_pr);
             };		
-		
+			if(!term)
+				fclose(file_pr);
 		}
 		else {
 
@@ -1439,7 +1423,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 			if(!term) {
 				fclose(file_pr);
 			};	
-		};
+		};		
     }
     else if(text_source) {  //writing a binary file using a text file as a source
 
@@ -1539,7 +1523,6 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
             for(unsigned int i = 0; i < segCount; i++) {
                 size_t cnt = 0;
                 copyColumns(this, op_vx, i, cnt);
-                reset_offsets();
                 CopyToHost(0, mRecCount);
                 offset = offset + mRecCount;
                 compress(file_name, 0, 0, i - (segCount-1), mRecCount);
@@ -2647,8 +2630,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 if(a->mRecCount) {
                     CudaSet *t = varNames[setMap[fields.front()]];
                     alloced_switch = 1;
-					std::clock_t start1 = std::clock();	
-                    t->CopyColumnToGpu(t->columnNames[fields.front()], segment);	
+                    t->CopyColumnToGpu(t->columnNames[fields.front()], segment);
                     gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
 					a->orig_segs[t->load_file_name].insert(segment);
@@ -2777,7 +2759,6 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
         rcount = right->mRecCount;
 
     queue<string> ct(cc);
-    reset_offsets();
 
     while(!ct.empty()) {
         if(right->filtered && rsz) {
@@ -2792,7 +2773,6 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
 
     size_t cnt_r = 0;
     for(unsigned int i = start_segment; i < end_segment; i++) {
-        reset_offsets();
         if(!right->filtered)
             copyColumns(right, cc, i, cnt_r, rsz, 0);
         else
@@ -2865,15 +2845,6 @@ size_t max_tmp(CudaSet* a)
 
 };
 
-
-void reset_offsets() {
-    map<unsigned int, size_t>::iterator iter;
-
-    for (iter = str_offset.begin(); iter != str_offset.end(); ++iter) {
-        iter->second = 0;
-    };
-
-};
 
 void setSegments(CudaSet* a, queue<string> cols)
 {
@@ -2962,7 +2933,6 @@ void filter_op(char *s, char *f, unsigned int segment)
 		char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
 		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
-        reset_offsets();
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);
 			//std::clock_t start1 = std::clock();	
@@ -3320,13 +3290,11 @@ void delete_records(char* f) {
 			map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
 			if(verbose)
 				cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
-			reset_offsets();
 			if(map_check != 'N') {			
 			
 			    cnt = 0;
 				copyColumns(a, op_vx, i, cnt);
 				tmp = a->mRecCount;				
-				reset_offsets();
 		
 				if(a->mRecCount) {						
 					bool* res = filter(op_type,op_value,op_nums, op_nums_f, a, i);
