@@ -3697,7 +3697,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 cudaFree(temp);
                 cudaFree(temp1);
             };
-			//cout << "tot res " << res_count << endl;
+			//if(verbose)
+			//	cout << "tot res " << res_count << endl;
 
             tot_count = tot_count + res_count;
 
@@ -3943,6 +3944,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     c->mRecCount = tot_count;    
 	c->hostRecCount = tot_count;
 	
+	if(verbose)
+		cout << endl << "tot res " << tot_count << endl;
+	
 	unsigned int tot_size = 0;	    
     for (map<string,unsigned int>::iterator it=c->columnNames.begin() ; it != c->columnNames.end(); ++it ) {
         setMap[(*it).first] = s;
@@ -3954,7 +3958,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	if ((getFreeMem() - 300000000) > tot_size) {
 		c->maxRecs = tot_count;
 	}
-	else {
+	else {	 
 		c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);		
 		c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
 	};	
@@ -4320,7 +4324,7 @@ void emit_select(char *s, char *f, int ll)
     if(a->segCount <= 1)
         setSegments(a, op_vx);
     allocColumns(a, op_vx);
-
+	
     unsigned int cycle_count;
     if(a->filtered)
         cycle_count = varNames[setMap[op_value.front()]]->segCount;
@@ -4333,19 +4337,20 @@ void emit_select(char *s, char *f, int ll)
 	b->name = "tmp b in select";
     bool b_set = 0, c_set = 0;
 
-    size_t tmp_size = a->mRecCount;
-    if(a->segCount > 1)
-        tmp_size = a->maxRecs;
+    //size_t tmp_size = a->mRecCount;
+    //if(a->segCount > 1)
+    //    tmp_size = a->maxRecs;
 
     vector<thrust::device_vector<int_type> > distinct_val; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_hash; //keeps array of DISTINCT values for every key
     vector<thrust::device_vector<int_type> > distinct_tmp;
 
-    for(unsigned int i = 0; i < distinct_cnt; i++) {
+   /* for(unsigned int i = 0; i < distinct_cnt; i++) {
         distinct_tmp.push_back(thrust::device_vector<int_type>(tmp_size));
         distinct_val.push_back(thrust::device_vector<int_type>());
         distinct_hash.push_back(thrust::device_vector<int_type>());
     };
+	*/
 
 
 // find out how many string columns we have. Add int_type columns to store string hashes for sort/groupby ops.
@@ -4370,6 +4375,7 @@ void emit_select(char *s, char *f, int ll)
 				
         cnt = 0;		
         copyColumns(a, op_vx, i, cnt);
+		//cout << "after cpy " << getFreeMem() << endl;
         op_s = op_v2;
         s_cnt = 0;
 
@@ -4378,7 +4384,8 @@ void emit_select(char *s, char *f, int ll)
             int colInd = (a->columnNames).find(op_s.top())->second;
             if (a->type[colInd] == 2) {
                 a->d_columns_int[int_col_count + s_cnt].resize(0);
-                a->add_hashed_strings(op_s.top(), i, int_col_count + s_cnt);
+				a->d_columns_int[int_col_count + s_cnt].shrink_to_fit();
+                a->add_hashed_strings(op_s.top(), i, int_col_count + s_cnt);				
                 s_cnt++;
             };
             op_s.pop();
@@ -4390,6 +4397,7 @@ void emit_select(char *s, char *f, int ll)
                 a->GroupBy(op_v2, int_col_count);
             };
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+			//cout << "after sel " << getFreeMem() << endl;
 			
             if(!b_set) {
                 for (map<string,unsigned int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -4399,13 +4407,11 @@ void emit_select(char *s, char *f, int ll)
                 b->mRecCount = 0;
                 b->resize(varNames[setMap[op_vx.front()]]->maxRecs);
                 b->mRecCount = old_cnt;
-            };
-			
-		
+            };		
 
             if (!c_set && b->mRecCount > 0) {
                 c = new CudaSet(0, col_count);
-                create_c(c,b);
+                create_c(c,b);				
                 c_set = 1;
 				c->name = s;
             };
@@ -4417,7 +4423,7 @@ void emit_select(char *s, char *f, int ll)
             else {
                 //copy b to c
                 unsigned int c_offset = c->mRecCount;
-                c->resize(b->mRecCount);
+                c->resize(b->mRecCount);				
 				
                 for(unsigned int j=0; j < b->mColumnCount; j++) {
                     if (b->type[j] == 0) {
@@ -4926,14 +4932,19 @@ int main(int ac, char **av)
 			else
 				cout << "SQL scan parse failed" << endl;		
 
-			if(alloced_sz)
-				cudaFree(alloced_tmp);
 			fclose(yyin);			
+			for (map<string,CudaSet*>::iterator it=varNames.begin() ; it != varNames.end(); ++it ) {
+				(*it).second->free();
+			};		
+			
+			if(alloced_sz) {
+				cudaFree(alloced_tmp);				
+			};	
 		
 			cudppDestroy(theCudpp);
 			if(verbose) {
 				//cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
-				cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
+				cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;		
 			};	
 		}
 		else {
@@ -4965,15 +4976,22 @@ int main(int ac, char **av)
 					if(verbose)
 						cout << "SQL scan parse worked" << endl;
 				};
-
+				for (map<string,CudaSet*>::iterator it=varNames.begin() ; it != varNames.end(); ++it ) {
+					(*it).second->free();					
+				};
+				varNames.clear();
+				
 				if(verbose) {				
 					cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
 				};	
 				getline(cin, script);				
 			};	
-			if(alloced_sz)
-				cudaFree(alloced_tmp);
 			cudppDestroy(theCudpp);
+			if(alloced_sz) {
+				cudaFree(alloced_tmp);				
+				alloced_sz = 0;
+			};	
+			
 
 		};	
 

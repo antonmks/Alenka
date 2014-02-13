@@ -213,7 +213,7 @@ void create_c(CudaSet* c, CudaSet* b)
         }
         else if (b->type[i] == 1) {
             c->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >());
-            c->d_columns_float.push_back(thrust::device_vector<float_type>());
+            c->d_columns_float.push_back(thrust::device_vector<float_type>());			
             c->type_index[i] = c->h_columns_float.size()-1;
         }
         else {
@@ -222,7 +222,7 @@ void create_c(CudaSet* c, CudaSet* b)
             c->char_size.push_back(b->char_size[b->type_index[i]]);
             c->type_index[i] = c->h_columns_char.size()-1;
         };
-    };
+    };	
 }
 
 void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases,
@@ -333,6 +333,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::host_vector<unsigned long long int> hh = hashes;
     char* tmp = new char[max_char(b)*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
+	
     //lets merge every column
 	
     for(unsigned int i = 0; i < b->mColumnCount; i++) {
@@ -369,7 +370,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::copy((unsigned long long int*)tmp, (unsigned long long int*)tmp + cpy_sz, h_merge.begin());
     delete [] tmp;
 	
-
     //cout << endl << "end b and c " << b->mRecCount << " " << c->mRecCount << endl;
     //for(int i = 0; i < h_merge.size();i++)
     //cout << "H " << h_merge[i] << endl;
@@ -582,6 +582,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     };
                 };
             };
+		
             c->mRecCount = res_count;
         };
 
@@ -591,6 +592,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                 if (c->type[k] == 0 ) { // int
                     //create a float column k
                     c->h_columns_float.push_back(thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(c->mRecCount));
+					c->d_columns_float.push_back(thrust::device_vector<float_type>());
                     size_t idx = c->h_columns_float.size()-1;
 
                     thrust::transform(c->h_columns_int[c->type_index[k]].begin(), c->h_columns_int[c->type_index[k]].begin() + c->mRecCount,

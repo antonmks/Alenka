@@ -222,6 +222,9 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     source = 1;
     text_source = 1;
     grp = NULL;
+	fil_f = NULL;
+	fil_s = NULL;
+	grp_type = NULL;
 };
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max)
@@ -233,6 +236,10 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     source = 1;
     text_source = 0;
     grp = NULL;
+	fil_f = NULL;
+	fil_s = NULL;
+	grp_type = NULL;
+
 };
 
 CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
@@ -242,6 +249,9 @@ CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
     source = 0;
     text_source = 0;
     grp = NULL;
+	fil_f = NULL;
+	fil_s = NULL;
+	grp_type = NULL;	
 };
 
 CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as)
@@ -251,6 +261,9 @@ CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as)
     source = 0;
     text_source = 0;
     grp = NULL;
+	fil_f = NULL;
+	fil_s = NULL;
+	grp_type = NULL;	
 };
 
 CudaSet::CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as)
@@ -260,6 +273,9 @@ CudaSet::CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_
     source = 0;
     text_source = 0;
     grp = NULL;
+	fil_f = NULL;
+	fil_s = NULL;
+	grp_type = NULL;	
 };
 
 
@@ -291,7 +307,6 @@ void CudaSet::allocColumnOnDevice(unsigned int colIndex, size_t RecordCount)
 
 void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, size_t i_cnt)
 {
-
     unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
     size_t old_count;
     const unsigned int len = char_size[type_index[colIndex]];
@@ -315,7 +330,7 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
     cudaMemcpy( d, (void *) hashes, sz*8, cudaMemcpyHostToDevice);
 
     thrust::device_ptr<unsigned long long int> dd_int((unsigned long long int*)d);
-
+	
     delete[] d_array;
     delete[] hashes;
 
@@ -336,12 +351,13 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
     delete[] int_array;
     void* d_int;
     cudaMalloc((void **) &d_int, real_count*4);
-
+	
     // convert bits to ints and then do gather
 
     void* d_v1;
     cudaMalloc((void **) &d_v1, 8);
     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v1);
+	
     dd_v[1] = fit_count;
     dd_v[0] = bits_encoded;
 
@@ -376,7 +392,7 @@ void CudaSet::decompress_char_hash(unsigned int colIndex, unsigned int segment, 
     cudaFree(d);
     cudaFree(d_val);
     cudaFree(d_v1);
-    cudaFree(d_int);
+    cudaFree(d_int);	
 };
 
 
@@ -504,12 +520,16 @@ void CudaSet::reserve(size_t Recs)
 void CudaSet::deAllocColumnOnDevice(unsigned int colIndex)
 {
     if (type[colIndex] == 0 && !d_columns_int.empty()) {
-        d_columns_int[type_index[colIndex]].resize(0);
-        d_columns_int[type_index[colIndex]].shrink_to_fit();
+		if(d_columns_int[type_index[colIndex]].size() > 0) {
+			d_columns_int[type_index[colIndex]].resize(0);
+			d_columns_int[type_index[colIndex]].shrink_to_fit();
+		};	
     }
     else if (type[colIndex] == 1 && !d_columns_float.empty()) {
-        d_columns_float[type_index[colIndex]].resize(0);
-        d_columns_float[type_index[colIndex]].shrink_to_fit();
+		if (d_columns_float[type_index[colIndex]].size() > 0) {
+			d_columns_float[type_index[colIndex]].resize(0);
+			d_columns_float[type_index[colIndex]].shrink_to_fit();
+		};	
     }
     else if (type[colIndex] == 2 && d_columns_char[type_index[colIndex]] != NULL) {
         cudaFree(d_columns_char[type_index[colIndex]]);
@@ -525,10 +545,24 @@ void CudaSet::allocOnDevice(size_t RecordCount)
 
 void CudaSet::deAllocOnDevice()
 {
-    for(unsigned int i=0; i <mColumnCount; i++)
+    for(unsigned int i=0; i < mColumnCount; i++)
         deAllocColumnOnDevice(i);
+		
+	for(unsigned int i=0; i < d_columns_int.size(); i++)	{
+		if(d_columns_int[i].size() > 0) {
+			d_columns_int[i].resize(0);
+			d_columns_int[i].shrink_to_fit();
+		};	
+	};	
 
-    if(!columnGroups.empty() && mRecCount !=0) {
+	for(unsigned int i=0; i < d_columns_float.size(); i++)	{
+		if(d_columns_float[i].size() > 0) {
+			d_columns_float[i].resize(0);
+			d_columns_float[i].shrink_to_fit();
+		};	
+	};	
+	
+    if(grp) {
         cudaFree(grp);
         grp = NULL;
     };
@@ -662,8 +696,8 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, s
 			h_columns_int[type_index[colIndex]].resize(1);		
         fread(h_columns_int[type_index[colIndex]].data(), 4, 1, f);
         cnt = ((unsigned int*)(h_columns_int[type_index[colIndex]].data()))[0];		
-		if(cnt > h_columns_int[type_index[colIndex]].size()/8 +10)
-			h_columns_int[type_index[colIndex]].resize(cnt/8 + 10);
+		if(cnt > h_columns_int[type_index[colIndex]].size()/8 + 10)
+			h_columns_int[type_index[colIndex]].resize(cnt/8 + 10);			
         rr = fread((unsigned int*)(h_columns_int[type_index[colIndex]].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
             cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
@@ -687,8 +721,8 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, s
         decompress_char(f, colIndex, segNum, offset);
     };
     fclose(f);
-	if(verbose)
-		std::cout<< "read from file time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
+	//if(verbose)
+	//	std::cout<< "read from file time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 };
 
 
@@ -1687,7 +1721,7 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 void CudaSet::free()  {
 	
     for(unsigned int i = 0; i < mColumnCount; i++ ) {
-        if(type[i] == 2 && h_columns_char[type_index[i]] && prm_d.size() == 0) {
+		if(type[i] == 2 && h_columns_char[type_index[i]]) {
             delete [] h_columns_char[type_index[i]];
             h_columns_char[type_index[i]] = NULL;
         }
@@ -1699,24 +1733,25 @@ void CudaSet::free()  {
             else if(type[i] == 1) {
                 h_columns_float[type_index[i]].resize(0);
                 h_columns_float[type_index[i]].shrink_to_fit();
-            };
+            };			
         }
-    }
-
-
-    if(filtered) { // free the sources
-        string some_field;
-        map<string,unsigned int>::iterator it=columnNames.begin();
-        some_field = (*it).first;
-        CudaSet* t = varNames[setMap[some_field]];
-        t->deAllocOnDevice();
     };
+	
+	prm_d.resize(0);
+	prm_d.shrink_to_fit();
+	deAllocOnDevice();
+	//cout << "dealloced " << name << " " << getFreeMem() << endl;
 
     delete type;
+	delete decimal;
+	if(grp_type)
+		delete grp_type;
     delete cols;
+	if(fil_s)
+		delete fil_s;
+	if(fil_f)	
+		delete fil_f;
 
-    if(!columnGroups.empty() && mRecCount !=0 && grp != NULL)
-        cudaFree(grp);
 };
 
 
@@ -2199,7 +2234,8 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 		    fread(&len, 4, 1, f);
 		    char* array = new char[len];
 		    fread((void*)array, len, 1, f);
-			ref_sets[i] = array;			
+			ref_sets[i] = array;
+			delete [] array;	
 			unsigned int z, segs, seg_num, curr_seg;
 			size_t res_count;
 		    fread((void*)&z, 4, 1, f);			
@@ -2912,6 +2948,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 
     a = varNames.find(f)->second;
     a->name = f;
+	std::clock_t start1 = std::clock();	
 	
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);
@@ -2934,8 +2971,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
         if(map_check == 'R') {
-            copyColumns(a, b->fil_value, segment, cnt);
-			//std::clock_t start1 = std::clock();	
+            copyColumns(a, b->fil_value, segment, cnt);			
             bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
 		    thrust::device_ptr<bool> bp((bool*)res);    
 			b->prm_index = 'R';
@@ -2945,7 +2981,6 @@ void filter_op(char *s, char *f, unsigned int segment)
 			if(segment == a->segCount-1)
 				b->type_index = a->type_index;
 			cudaFree(res);
-			//std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
         }
         else  {
             setPrm(a,b,map_check,segment);
