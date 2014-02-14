@@ -2,17 +2,21 @@ alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o \
-		 atof.o cm.o mgpucontext.o 
+		 atof.o cm.o mgpucontext.o row.o main.o
 	nvcc -O3 -arch=sm_20 -L . -lcudpp -lcudpp_hash mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o \
-		 atof.o cm.o 
+		 atof.o cm.o row.o main.o
 		 
 
 nvcc = nvcc --machine 64 -O3 -arch=sm_20 -c
 
-cm.o : cm.cu cm.h	
+main.o : main.cu alenka.h bison.cu
+	$(nvcc) main.cu 
+row.o :	row.c row.h
+	$(nvcc) row.c
+cm.o : cm.cu cm.h row.c row.h
 	$(nvcc) cm.cu
 bison.o : bison.cu cm.h sorts.cu
 	$(nvcc) -I moderngpu/include/ bison.cu
@@ -39,7 +43,7 @@ atof.o : atof.cu cm.h atof.h
 mgpucontext.o : moderngpu-master/src/mgpucontext.cu 	
 	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
 	
-clean : del bison.o merge.o \
+clean : rm bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \

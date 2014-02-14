@@ -4571,7 +4571,8 @@ void emit_display(char *f, char* sep)
         op_nums.pop();
     };
 
-    a->Store("",sep, limit, 0, 1);
+    //a->Store("",sep, limit, 0, 1);
+    a->Display(limit, 0, 1);
 	if(verbose)
 		cout << "DISPLAY " << f << endl;
 
@@ -4845,76 +4846,125 @@ void clean_queues()
     join_and_cnt.clear();
 }
 
+//external global to report errors
+extern char alenka_err[4048];
 
-int main(int ac, char **av)
+int alenkaExecute(char *s)
 {
+YY_BUFFER_STATE bp;
 
-    if (ac < 2) {
-        cout << "Usage : alenka [-l process_count] [-v] script.sql" << endl;
-        exit(1);
-    }
-	else {
+     std::clock_t start;
 
-		process_count = 6200000;
-		verbose = 0;
-		for (int i = 1; i < ac; i++) {
-			if(strcmp(av[i],"-l") == 0) {
-				process_count = atoff(av[i+1]);				
-			}
-			else if(strcmp(av[i],"-v") == 0) {
-				verbose = 1;
-			};
-		};
+        if(verbose)
+            start = std::clock();
+        bp = yy_scan_string(s);
+        yy_switch_to_buffer(bp);
+        int ret = yyparse();
+        //printf("execute: returned [%d]\n", ret);
+        if(!ret) {
+                alenka_err[0] = '\0';
+                if(verbose)
+                        cout << "SQL scan parse worked" << endl;
+        }
+        else
+        {
+                printf("SQL scan parse failed alenka_err=[i%s]\n",  alenka_err );
+                printf("Bad command was: [%s]\n", s);
+        }
+        yy_delete_buffer(bp);
+        if(verbose)
+                cout<< "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC ) << endl;
+        return ret;
+}
 
-		if((yyin = fopen(av[ac-1], "r")) == NULL) {
-			perror(av[ac-1]);
-			exit(1);
-		};
 
-		if(yyparse()) {
-			printf("SQL scan parse failed\n");
-			exit(1);
-		};
+void alenkaInit(char ** av)
+{
+        process_count = 6200000;
+        verbose = 0;
+        scan_state = 1;
+        statement_count = 0;
+        clean_queues();
+        context = CreateCudaDevice(0, av, true);
+        cudppCreate(&theCudpp);
+        printf("Alenka initialised\n");
+}
 
-		scan_state = 1;
 
-		std::clock_t start1 = std::clock();
-		statement_count = 0;
-		clean_queues();
+void alenkaClose()
+{
+        statement_count = 0;
+        hash_seed = 100;
 
-		if((yyin = fopen(av[ac-1], "r")) == NULL) {
-			perror(av[1]);
-			exit(1);
+        if(alloced_sz)
+                cudaFree(alloced_tmp);
+
+        cudppDestroy(theCudpp);
+}
+
+
+
+int execute_file(int ac, char **av)
+{
+	process_count = 6200000;
+	verbose = 0;
+	for (int i = 1; i < ac; i++) {
+		if(strcmp(av[i],"-l") == 0) {
+			process_count = atoff(av[i+1]);				
 		}
+		else if(strcmp(av[i],"-v") == 0) {
+			verbose = 1;
+		};
+	};
 
-		PROC_FLUSH_BUF ( yyin );
-		statement_count = 0;
+	if((yyin = fopen(av[ac-1], "r")) == NULL) {
+		perror(av[ac-1]);
+		exit(1);
+	};
+
+	if(yyparse()) {
+		printf("SQL scan parse failed\n");
+		exit(1);
+	};
+
+	scan_state = 1;
+
+	std::clock_t start1 = std::clock();
+	statement_count = 0;
+	clean_queues();
+
+	if((yyin = fopen(av[ac-1], "r")) == NULL) {
+		perror(av[1]);
+		exit(1);
+	}
+
+	PROC_FLUSH_BUF ( yyin );
+	statement_count = 0;
+	
+	extern FILE *yyin;
+	context = CreateCudaDevice(0, av, verbose);
+
+	cudppCreate(&theCudpp);
+	hash_seed = 100;		
+	
+	if(!yyparse()) {
+		if(verbose)
+			cout << "SQL scan parse worked" << endl;
+	}		
+	else
+		cout << "SQL scan parse failed" << endl;		
+
+	if(alloced_sz)
+		cudaFree(alloced_tmp);
+	fclose(yyin);
 		
-		extern FILE *yyin;
-		context = CreateCudaDevice(0, av, verbose);
-
-		cudppCreate(&theCudpp);
-		hash_seed = 100;		
-		
-		if(!yyparse()) {
-			if(verbose)
-				cout << "SQL scan parse worked" << endl;
-		}		
-		else
-			cout << "SQL scan parse failed" << endl;		
-
-		if(alloced_sz)
-			cudaFree(alloced_tmp);
-		fclose(yyin);
-		
-		cudppDestroy(theCudpp);
-		if(verbose) {
-			cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
-			cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
-		};	
-
-		return 0;
+	cudppDestroy(theCudpp);
+	if(verbose) {
+		cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+		cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
 	};	
+
+	return 0;
 }
 
 
