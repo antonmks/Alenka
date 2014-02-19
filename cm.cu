@@ -36,6 +36,7 @@ using namespace thrust::placeholders;
 
 
 size_t total_count = 0, total_max;
+std::clock_t tot;
 unsigned int total_segments = 0;
 unsigned int process_count;
 size_t alloced_sz = 0;
@@ -210,8 +211,6 @@ size_t max_tmp(CudaSet* a);
 size_t getFreeMem();
 char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment);
 void filter_op(char *s, char *f, unsigned int segment);
-
-float total_time1 = 0;
 
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<int> &references_nums)
@@ -721,6 +720,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, s
         decompress_char(f, colIndex, segNum, offset);
     };
     fclose(f);
+	tot = tot + (std::clock() - start1);
 	//if(verbose)
 	//	std::cout<< "read from file time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 };
@@ -731,20 +731,23 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
 {
     unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
     const unsigned int len = char_size[type_index[colIndex]];
-
+	std::clock_t start1 = std::clock();	
+	
     fread(&sz, 4, 1, f);
     char* d_array = new char[sz*len];
     fread((void*)d_array, sz*len, 1, f);
+	tot = tot + (std::clock() - start1);
     void* d;
     cudaMalloc((void **) &d, sz*len);
     cudaMemcpy( d, (void *) d_array, sz*len, cudaMemcpyHostToDevice);
     delete[] d_array;
 
-
+	start1 = std::clock();	
     fread(&fit_count, 4, 1, f);
     fread(&bits_encoded, 4, 1, f);
     fread(&vals_count, 4, 1, f);
     fread(&real_count, 4, 1, f);
+	tot = tot + (std::clock() - start1);
 
     thrust::device_ptr<unsigned int> param = thrust::device_malloc<unsigned int>(2);
     param[1] = fit_count;
@@ -752,6 +755,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
 
     unsigned long long int* int_array = new unsigned long long int[vals_count];
     fread((void*)int_array, 1, vals_count*8, f);
+	
     //fclose(f);
 
     void* d_val;
@@ -775,7 +779,7 @@ void CudaSet::decompress_char(FILE* f, unsigned int colIndex, unsigned int segNu
     cudaFree(d);
     cudaFree(d_val);
     thrust::device_free(param);
-    cudaFree(d_int);
+    cudaFree(d_int);	
 }
 
 

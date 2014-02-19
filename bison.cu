@@ -4913,6 +4913,7 @@ int main(int ac, char **av)
 
 			scan_state = 1;
 			std::clock_t start1 = std::clock();
+			tot = 0;
 			statement_count = 0;
 			clean_queues();
 			
@@ -4943,7 +4944,7 @@ int main(int ac, char **av)
 		
 			cudppDestroy(theCudpp);
 			if(verbose) {
-				//cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+				cout<< endl << "tot disk time " <<  (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
 				cout<< "cycle time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;		
 			};	
 		}

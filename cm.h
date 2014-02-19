@@ -377,8 +377,8 @@ public:
     void resizeDevice(size_t RecCount);
     bool onDevice(unsigned int i);
     CudaSet* copyDeviceStruct();
-    void readSegmentsFromFile(unsigned int segNum, unsigned int colIndex);
-    void decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum);
+    void readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, size_t offset);
+    void decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum, size_t offset);
     void CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size_t offset = 0);
     void CopyColumnToGpu(unsigned int colIndex);
     void CopyColumnToHost(int colIndex, size_t offset, size_t RecCount);
@@ -437,7 +437,6 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
                   unsigned int start_segment, unsigned int end_segment, bool rsz = 1, bool flt = 1);
 size_t max_char(CudaSet* a);
 size_t max_tmp(CudaSet* a);
-void reset_offsets();
 void setSegments(CudaSet* a, queue<string> cols);
 size_t max_char(CudaSet* a, set<string> field_names);
 size_t max_char(CudaSet* a, queue<string> field_names);
