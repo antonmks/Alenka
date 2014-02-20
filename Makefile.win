@@ -2,16 +2,21 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj \
-		 atof.obj bison.obj select.obj mgpucontext.obj 
-	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_20 -lcuda -lcudpp64 -lcudpp_hash64 mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
+		 atof.obj bison.obj select.obj mgpucontext.obj row.obj main.obj
+	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda -lcudpp64 -lcudpp_hash64 mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj \
-		 atof.obj cm.obj bison.obj 
+		 atof.obj cm.obj bison.obj row.obj main.obj 
 
 
-nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_20 -c
+nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
 
+
+row.obj : row.c row.h
+	$(nvcc) row.c
+main.obj : main.cu
+	$(nvcc) main.cu
 cm.obj : cm.cu cm.h	
 	$(nvcc) cm.cu 
 bison.obj : bison.cu cm.h sorts.cu
