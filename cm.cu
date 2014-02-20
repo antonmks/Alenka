@@ -24,6 +24,7 @@
 #include "compress.cu"
 #include "sorts.cu"
 #include "filter.h"
+#include "row.h"
 
 
 #ifdef _WIN64
@@ -1321,6 +1322,107 @@ void CudaSet::writeSortHeader(string file_name)
 
 using namespace mgpu;
 
+void CudaSet::Display(unsigned int limit, bool binary, bool term)
+{
+        #define MAXCOLS 128
+        #define MAXFIELDSIZE 128        
+
+        //-- This should/will be converted to an array holding pointers of malloced sized structures--
+        char    bigbuf[MAXCOLS * MAXFIELDSIZE];
+        char    *fields[MAXCOLS];
+        const   char *dcolumns[MAXCOLS];
+        size_t  mCount;         // num records in play
+        bool    print_all = 0;
+        string  ss;
+	int rows = 0;
+
+        if(limit != 0 && limit < mRecCount)
+            mCount = limit;
+        else {
+            mCount = mRecCount;
+            print_all = 1;
+        };
+
+        cout << "mRecCount=" << mRecCount << " mcount = " << mCount << " term " << term <<  " limit=" << limit << " print_all=" << print_all << endl;
+
+        map<unsigned int, string> ordered_columnNames;
+        for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
+                ordered_columnNames[it->second] = it->first;
+
+        unsigned int cc =0;
+        for (map<unsigned int, string>::iterator it=ordered_columnNames.begin() ; it != ordered_columnNames.end(); ++it )
+        {
+                fields[cc] = &(bigbuf[cc*MAXFIELDSIZE]);                        // a hack to avoid malloc overheads     - refine later
+                dcolumns[cc++] = it->second.c_str();
+        }
+
+     // The goal here is to loop fast and avoid any double handling of outgoing data - pointers are good.
+        if(not_compressed && prm_d.size() == 0) {
+            for(unsigned int i=0; i < mCount; i++) {                            // for each record
+                  for(unsigned int j=0; j < mColumnCount; j++) {                // for each col
+                    if (type[j] == 0)
+                        sprintf(fields[j], "%lld", (h_columns_int[type_index[j]])[i] );
+                    else if (type[j] == 1)
+                        sprintf(fields[j], "%.2f", (h_columns_float[type_index[j]])[i] );
+                    else {
+                        ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+                        fields[j] = (char *) ss.c_str();
+                    };
+                  };
+                  row_cb(NULL, mColumnCount, (char **)fields, (char **)dcolumns);
+                  rows++;
+            };
+        }
+        else {
+                        queue<string> op_vx;
+                        for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
+                                op_vx.push((*it).first);
+                        //curr_segment = 1000000;
+
+                        if(prm_d.size() || source) {
+                                allocColumns(this, op_vx);
+                        };
+                        unsigned int curr_seg = 0;
+                        size_t cnt = 0;
+                        size_t curr_count, sum_printed = 0;
+                        resize(maxRecs);
+                        while(sum_printed < mCount || print_all) {
+
+                                if(prm_d.size() || source)  {                            // if host arrays are empty
+                                        copyColumns(this, op_vx, curr_seg, cnt);
+                                        size_t olRecs = mRecCount;
+                                        mRecCount = olRecs;
+                                        CopyToHost(0,mRecCount);
+                                        if(sum_printed + mRecCount <= mCount || print_all)
+                                                curr_count = mRecCount;
+                                        else
+                                                curr_count = mCount - sum_printed;
+                                }
+                                else
+                                        curr_count = mCount;
+
+                                sum_printed = sum_printed + mRecCount;
+                                for(unsigned int i=0; i < curr_count; i++) {
+                                        for(unsigned int j=0; j < mColumnCount; j++) {
+                                                if (type[j] == 0)
+                                                        sprintf(fields[j], "%lld", (h_columns_int[type_index[j]])[i] );
+                                                else if (type[j] == 1)
+                                                        sprintf(fields[j], "%.2f", (h_columns_float[type_index[j]])[i] );
+                                                else {
+                                                        ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+                                                        fields[j] = (char *) ss.c_str();
+                                                };
+                                        };
+                                        row_cb(NULL, mColumnCount, (char **)fields, (char**)dcolumns);
+                                        rows++;
+                                };
+                                curr_seg++;
+                                if(curr_seg == segCount)
+                                        print_all = 0;
+                        };
+        };      // end else
+}
+ 
 void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary, bool term)
 {
     if (mRecCount == 0 && binary == 1 && !term) { // write tails

@@ -395,6 +395,7 @@ public:
     void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
 	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
+    void Display(unsigned int limit, bool binary, bool term);
     void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
     void compress_char(string file_name, unsigned int index, size_t mCount, size_t offset);
     bool LoadBigFile(FILE* file_p);
