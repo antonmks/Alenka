@@ -1,3 +1,6 @@
+02/20/2014
+  Added ability to use Alenka as a lib call.
+
 02/07/2014
   Added support for sparse datasets : one can load the data like this now : 
 	A := LOAD 'lineitem.tbl' USING ('|') AS (orderkey{1}:int REFERENCES orders(1) ...
