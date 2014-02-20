@@ -1,17 +1,20 @@
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o \
-		 atof.o cm.o mgpucontext.o 
+		 select.o zone_map.o atof.o cm.o mgpucontext.o 
 	nvcc -O3 -arch=sm_20 -L . -lcudpp -lcudpp_hash mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
-         MurmurHash2_64.o filter.o \
+		 MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o \
-		 atof.o cm.o 
+		 select.o zone_map.o atof.o cm.o \
+		 row.o main.o
 		 
 
 nvcc = nvcc --machine 64 -O3 -arch=sm_20 -c
 
+row.o : row.c row.h
+	$(nvcc) row.c
+main.o : main.cu
+	$(nvcc) main.cu
 cm.o : cm.cu cm.h	
 	$(nvcc) cm.cu
 bison.o : bison.cu cm.h sorts.cu
