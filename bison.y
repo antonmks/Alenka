@@ -312,6 +312,7 @@ sort_def: { /* nil */
 //#include "moderngpu-master/include/moderngpu.cuh"
 #include "sstream"
 #include "sorts.cu"
+#include "row.h"
 
 using namespace mgpu;
 using namespace thrust::placeholders;
@@ -2812,7 +2813,7 @@ bool interactive = 0;
 
 
 //external c global to report errors
-extern char alenka_err[4048];
+char alenka_err[4048];
 
 int alenkaExecute(char *s)
 {
