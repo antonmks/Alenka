@@ -301,6 +301,13 @@ typedef unsigned __int64 uint64_t;
 
 using namespace thrust::system::cuda::experimental;
 
+struct col_data {
+	unsigned int col_type;
+	unsigned int col_length;
+};
+extern map<string, map<string, col_data> > data_dict;
+
+
 class CudaSet
 {
 public:
@@ -342,8 +349,8 @@ public:
     unsigned int mColumnCount;
     string name, load_file_name, separator;
     bool source, text_source, tmp_table, keep, filtered;
-    queue<unsigned int> sorted_fields; //segment is sorted by fields
-    queue<unsigned int> presorted_fields; //globally sorted by fields
+    queue<string> sorted_fields; //segment is sorted by fields
+    queue<string> presorted_fields; //globally sorted by fields
     unsigned int* type; // 0 - integer, 1-float_type, 2-char
     bool* decimal; // column is decimal - affects only compression
     unsigned int* grp_type; // type of group : SUM, AVG, COUNT etc
@@ -352,20 +359,19 @@ public:
 	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
 	//but just boolean indicators.
 	map<unsigned int, string> ref_sets; // referencing datasets
-	map<unsigned int, unsigned int> ref_cols; // referencing dataset's column indexes
+	map<unsigned int, string> ref_cols; // referencing dataset's column names
 	map<unsigned int, map<unsigned int, set<unsigned int> > > ref_joins; // columns referencing dataset segments 
-	//multimap<string, unsigned int> orig_segs; // map of datasets' segments present after operations of filtering and joining
 	map<string, set<unsigned int> > orig_segs;
 
 
-    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<int> &references_nums);
+    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     CudaSet(queue<string> op_sel, queue<string> op_sel_as);
     ~CudaSet();
     void allocColumnOnDevice(unsigned int colIndex, size_t RecordCount);
-    void decompress_char_hash(unsigned int colIndex, unsigned int segment, size_t i_cnt);
+    void decompress_char_hash(string colname, unsigned int segment, size_t i_cnt);
     void add_hashed_strings(string field, unsigned int segment, size_t i_cnt);
     void resize(size_t addRecs);
     void resize_join(size_t addRecs);
@@ -377,10 +383,10 @@ public:
     void resizeDevice(size_t RecCount);
     bool onDevice(unsigned int i);
     CudaSet* copyDeviceStruct();
-    void readSegmentsFromFile(unsigned int segNum, unsigned int colIndex, size_t offset);
+    void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
     void decompress_char(FILE* f, unsigned int colIndex, unsigned int segNum, size_t offset);
-    void CopyColumnToGpu(unsigned int colIndex,  unsigned int segment, size_t offset = 0);
-    void CopyColumnToGpu(unsigned int colIndex);
+    void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
+    void CopyColumnToGpu(string colname);
     void CopyColumnToHost(int colIndex, size_t offset, size_t RecCount);
     void CopyColumnToHost(int colIndex);
     void CopyToHost(size_t offset, size_t count);
@@ -392,8 +398,8 @@ public:
     void addDeviceColumn(int_type* col, int colIndex, string colName, size_t recCount);
     void addDeviceColumn(float_type* col, int colIndex, string colName, size_t recCount, bool is_decimal);
     void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, size_t mCount);
-    void writeHeader(string file_name, unsigned int col, unsigned int tot_segs);
-	void reWriteHeader(string file_name, unsigned int col, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
+    void writeHeader(string file_name, string colname, unsigned int tot_segs);
+	void reWriteHeader(string file_name, string colname, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
     void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
@@ -419,7 +425,7 @@ public:
 protected:
 
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
-    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<int> &references_nums);
+    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     void initialize(size_t RecordCount, unsigned int ColumnCount);
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     void initialize(queue<string> op_sel, queue<string> op_sel_as);
@@ -459,6 +465,8 @@ size_t getFreeMem();
 string int_to_string(int number);
 void delete_records(char* f);
 void insert_records(char* f, char* s);
+void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
+void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 
 #endif
 

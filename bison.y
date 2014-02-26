@@ -33,8 +33,8 @@
     void emit_eq();
     void emit_or();
     void emit_cmp(int val);
-    void emit_var(char *s, int c, char *f, char* ref, int ref_num);
-    void emit_var_asc(char *s);
+    void emit_var(char *s, int c, char *f, char* ref, char* ref_name);
+	void emit_var_asc(char *s);
     void emit_var_desc(char *s);
     void emit_name(char *name);
     void emit_count();
@@ -49,9 +49,9 @@
     void emit_sel_name(char* name);
     void emit_limit(int val);
     void emit_union(char *s, char *f1, char *f2);
-    void emit_varchar(char *s, int c, char *f, int d, char *ref, int ref_num);
+    void emit_varchar(char *s, int c, char *f, int d, char *ref, char* ref_name);	
     void emit_load(char *s, char *f, int d, char* sep);
-    void emit_load_binary(char *s, char *f, int d);
+    void emit_load_binary(const char *s, const char *f, int d);
     void emit_store(char *s, char *f, char* sep);
     void emit_store_binary(char *s, char *f, char* sep);
     void emit_store_binary(char *s, char *f);
@@ -202,10 +202,10 @@ NAME { emit_name($1); }
 | APPROXNUM { emit_float($1); }
 | DECIMAL1 { emit_decimal($1); }
 | BOOL1 { emit("BOOL %d", $1); }
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' REFERENCES NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, $11, $13);}
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", 0);}
-| NAME '{' INTNUM '}' ':' NAME REFERENCES NAME '(' INTNUM ')' { emit_var($1, $3, $6, $8, $10);}
-| NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", 0);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' REFERENCES NAME '(' NAME ')' { emit_varchar($1, $3, $6, $8, $11, $13);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", "");}
+| NAME '{' INTNUM '}' ':' NAME REFERENCES NAME '(' NAME ')' { emit_var($1, $3, $6, $8, $10);}
+| NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", "");}
 | NAME ASC { emit_var_asc($1);}
 | NAME DESC { emit_var_desc($1);}
 | COUNT '(' expr ')' { emit_count(); }
@@ -325,7 +325,7 @@ queue<string> typevars;
 queue<int> sizevars;
 queue<int> cols;
 queue<string> references;
-queue<int> references_nums;
+queue<string> references_names;
 
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
@@ -337,7 +337,6 @@ unsigned int tab_cnt = 0;
 queue<string> op_join;
 queue<char> join_type;
 unsigned int partition_count;
-
 unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 map<unsigned int, unsigned int> join_and_cnt;
@@ -345,9 +344,25 @@ bool scan_state = 0;
 unsigned int int_col_count;
 CUDPPHandle theCudpp;
 ContextPtr context;
+map<string, map<string, bool> > used_vars;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
+
+void check_used_vars()
+{
+	for (map<string, map<string, col_data> >::iterator it=data_dict.begin() ; it != data_dict.end(); ++it ) {
+		
+		map<string, col_data> s = (*it).second;
+		queue<string> vars(op_value);
+		while(!vars.empty()) {
+			if(s.count(vars.front()) != 0) {
+				used_vars[(*it).first][vars.front()] = 1;
+			};
+			vars.pop();
+		}	
+	};	
+}
 
 
 void emit_name(char *name)
@@ -462,14 +477,14 @@ void emit(char *s, ...)
 
 }
 
-void emit_var(char *s, int c, char *f, char* ref, int ref_num)
+void emit_var(char *s, int c, char *f, char* ref, char* ref_name)
 {
     namevars.push(s);
     typevars.push(f);
     sizevars.push(0);
     cols.push(c);
 	references.push(ref);
-	references_nums.push(ref_num);	
+	references_names.push(ref_name);	
 }
 
 void emit_var_asc(char *s)
@@ -496,14 +511,14 @@ void emit_presort(char *s)
 }
 
 
-void emit_varchar(char *s, int c, char *f, int d, char *ref, int ref_num)
+void emit_varchar(char *s, int c, char *f, int d, char *ref, char* ref_name)
 {
     namevars.push(s);
     typevars.push(f);
     sizevars.push(d);
     cols.push(c);
 	references.push(ref);
-	references_nums.push(ref_num);
+	references_names.push(ref_name);
 }
 
 void emit_sel_name(char *s)
@@ -1065,20 +1080,21 @@ void emit_join(char *s, char *j1, int grp)
 
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(j1) == stat.end()) {
+        if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
             cout << "Join : couldn't find variable " << j1 << endl;
             exit(1);
         };
-        if (stat.find(op_join.front()) == stat.end()) {
+        if (stat.find(op_join.front()) == stat.end() && data_dict.count(op_join.front()) == 0) {
             cout << "Join : couldn't find variable " << op_join.front() << endl;
             exit(1);
         };
         stat[s] = statement_count;
         stat[j1] = statement_count;
+		check_used_vars();
         while(!op_join.empty()) {
             stat[op_join.front()] = statement_count;
             op_join.pop();
-        };
+        };		
         return;
     };
 
@@ -1288,7 +1304,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         cc.push(f1);
         allocColumns(left, cc);
     };
-
+	
 
     left->hostRecCount = left->mRecCount;
 
@@ -1298,7 +1314,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
 	std::vector<int> j_data;
-
+	
 	while(start_part != right->segCount) {
 
 	    bool rsz = 1;
@@ -1379,7 +1395,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
             bool do_sort = 1;
             if(!left->sorted_fields.empty()) {
-                if(left->sorted_fields.front() == left->cols[idx]) {
+                if(left->sorted_fields.front() == f1) {
                     do_sort = 0;
                 };
             }
@@ -1590,8 +1606,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							void* h;	
 							unsigned int cnt, lower_val, bits;		
 
-							if(verbose)
-								cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
+							//if(verbose)
+							//	cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
 							
 							if(!copied) {								
 								if(left->filtered) {
@@ -1607,7 +1623,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							
 							CudaSet *t = varNames[setMap[op_sel1.front()]];
 							unsigned int t_ind = t->columnNames[op_sel1.front()];
-							t->readSegmentsFromFile(i, t_ind, 0);
+							t->readSegmentsFromFile(i, op_sel1.front(), 0);
 							
 							if(t->type[t->columnNames[op_sel1.front()]] == 0) {
 								h = t->h_columns_int[t->type_index[t_ind]].data();								
@@ -1760,6 +1776,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     varNames[s] = c;
     c->mRecCount = tot_count;    
 	c->hostRecCount = tot_count;
+	c->name = s;
 	
 	if(verbose)
 		cout << endl << "tot res " << tot_count << endl;
@@ -1869,7 +1886,7 @@ void emit_order(char *s, char *f, int e, int ll)
         statement_count++;
 
     if (scan_state == 0 && ll == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Order : couldn't find variable " << f << endl;
             exit(1);
         };
@@ -1877,6 +1894,9 @@ void emit_order(char *s, char *f, int e, int ll)
         stat[f] = statement_count;
         return;
     };
+	
+	if (scan_state == 0)
+		check_used_vars();
 
     if(varNames.find(f) == varNames.end() ) {
         clean_queues();
@@ -2027,12 +2047,13 @@ void emit_select(char *s, char *f, int ll)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Select : couldn't find variable " << f << endl;
             exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;
+		check_used_vars();
         return;
     };
 
@@ -2192,7 +2213,6 @@ void emit_select(char *s, char *f, int ll)
 				
         cnt = 0;		
         copyColumns(a, op_vx, i, cnt);
-		//cout << "after cpy " << getFreeMem() << endl;
         op_s = op_v2;
         s_cnt = 0;
 
@@ -2214,7 +2234,6 @@ void emit_select(char *s, char *f, int ll)
                 a->GroupBy(op_v2, int_col_count);
             };
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
-			//cout << "after sel " << getFreeMem() << endl;
 			
             if(!b_set) {
                 for (map<string,unsigned int>::iterator it=b->columnNames.begin() ; it != b->columnNames.end(); ++it )
@@ -2316,15 +2335,15 @@ void emit_select(char *s, char *f, int ll)
 void emit_insert(char *f, char* s) {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Delete : couldn't find variable " << f << endl;
             exit(1);
         };
-        if (stat.find(s) == stat.end()) {
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             cout << "Delete : couldn't find variable " << s << endl;
             exit(1);
-        };
-		
+        };		
+		check_used_vars();	
         stat[f] = statement_count;
 		stat[s] = statement_count;
         clean_queues();
@@ -2348,11 +2367,12 @@ void emit_delete(char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end()  && data_dict.count(f) == 0) {
             cout << "Delete : couldn't find variable " << f << endl;
             exit(1);
         };
         stat[f] = statement_count;
+		check_used_vars();
         clean_queues();
         return;
     };
@@ -2387,11 +2407,12 @@ void emit_display(char *f, char* sep)
 {
    statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Delete : couldn't find variable " << f << endl;
             exit(1);
         };
         stat[f] = statement_count;
+		check_used_vars();
         clean_queues();
         return;
     };
@@ -2426,17 +2447,13 @@ void emit_filter(char *s, char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()) {
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Filter : couldn't find variable " << f << endl;
             exit(1);
         };
         stat[s] = statement_count;
-        stat[f] = statement_count;
-        clean_queues();
-        return;
-    };
-
-    if(varNames.find(f) == varNames.end()) {
+        stat[f] = statement_count;		
+		check_used_vars();
         clean_queues();
         return;
     };
@@ -2446,6 +2463,11 @@ void emit_filter(char *s, char *f)
 
     a = varNames.find(f)->second;
     a->name = f;
+	
+    for ( map<string,unsigned int>::iterator it=a->columnNames.begin() ; it != a->columnNames.end(); ++it ) {
+		setMap[(*it).first] = f;
+    };
+
 
     if(a->mRecCount == 0) {
         b = new CudaSet(0,1);
@@ -2468,6 +2490,7 @@ void emit_filter(char *s, char *f)
         b->prm_d.resize(a->maxRecs);
     };
     clean_queues();
+	
 
     if (varNames.count(s) > 0)
         varNames[s]->free();
@@ -2483,11 +2506,12 @@ void emit_store(char *s, char *f, char* sep)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end()) {
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             cout << "Store : couldn't find variable " << s << endl;
             exit(1);
         };
         stat[s] = statement_count;
+		check_used_vars();
         return;
     };
 
@@ -2517,11 +2541,12 @@ void emit_store_binary(char *s, char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end()) {
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             cout << "Store : couldn't find variable " << s << endl;
             exit(1);
         };
         stat[s] = statement_count;
+		check_used_vars();
         return;
     };
 
@@ -2574,7 +2599,7 @@ void emit_store_binary(char *s, char *f)
 };
 
 
-void emit_load_binary(char *s, char *f, int d)
+void emit_load_binary(const char *s, const char *f, int d)
 {
     statement_count++;
     if (scan_state == 0) {
@@ -2583,12 +2608,12 @@ void emit_load_binary(char *s, char *f, int d)
     };
 
 	if(verbose)
-		printf("BINARY LOAD: %s %s \n", s, f);
+		printf("BINARY LOAD: %s \n", s, f);
 
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
-    f1 += "." + int_to_string(cols.front()) + ".header";
+    f1 += "." + namevars.front() + ".header";
 
     FILE* ff = fopen(f1.c_str(), "rb");
     if(ff == NULL) {
@@ -2636,7 +2661,7 @@ void emit_load(char *s, char *f, int d, char* sep)
 
     CudaSet *a;
 
-    a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_nums);
+    a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_names);
     a->mRecCount = 0;
     a->resize(process_count);
     a->keep = true;
@@ -2681,7 +2706,7 @@ void clean_queues()
     while(!cols.empty()) cols.pop();
     while(!op_sort.empty()) op_sort.pop();
     while(!references.empty()) references.pop();
-    while(!references_nums.empty()) references_nums.pop();
+    while(!references_names.empty()) references_names.pop();
     while(!op_presort.empty()) op_presort.pop();
 
 	op_case = 0;
@@ -2692,6 +2717,36 @@ void clean_queues()
     join_tab_cnt = 0;
     tab_cnt = 0;
     join_and_cnt.clear();
+}
+
+void load_vars()
+{
+	map<string, map<string, bool> >::iterator it=used_vars.begin();
+	for ( map<string, map<string, bool> >::iterator it=used_vars.begin() ; it != used_vars.end(); ++it ) {
+		
+		while(!namevars.empty()) namevars.pop();
+		while(!typevars.empty()) typevars.pop();
+		while(!sizevars.empty()) sizevars.pop();
+		while(!cols.empty()) cols.pop();
+		//cout << "used vars " << (*it).first << endl;
+		map<string, bool> c = (*it).second;
+		for ( map<string, bool>::iterator sit=c.begin() ; sit != c.end(); ++sit ) {
+			//cout << "name " << (*sit).first << endl;
+			namevars.push((*sit).first);
+			if(data_dict[(*it).first][(*sit).first].col_type == 0)
+				typevars.push("int");
+			else if(data_dict[(*it).first][(*sit).first].col_type == 1)
+				typevars.push("float");
+			else if(data_dict[(*it).first][(*sit).first].col_type == 3)
+				typevars.push("decimal");	
+			else typevars.push("char");	
+			sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
+			cols.push(0);				
+		};
+		emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
+		
+	};	
+
 }
 
 
@@ -2713,6 +2768,8 @@ bool interactive = 0;
         };
     };
 
+	load_col_data(data_dict, "data.dictionary");
+		
     if (!interactive) {
         if((yyin = fopen(av[ac-1], "r")) == NULL) {
             perror(av[ac-1]);
@@ -2723,9 +2780,14 @@ bool interactive = 0;
             printf("SQL scan parse failed\n");
             exit(1);
         };
+		
+		//exit(0);
 
         scan_state = 1;
         std::clock_t start1 = std::clock();
+		
+		load_vars();
+		
         statement_count = 0;
         clean_queues();
 
@@ -2769,6 +2831,7 @@ bool interactive = 0;
 
         while (script != "exit" && script != "EXIT") {
 
+			used_vars.clear();
             yy_scan_string(script.c_str());
             scan_state = 0;
             statement_count = 0;
@@ -2780,6 +2843,9 @@ bool interactive = 0;
             };
 
             scan_state = 1;
+			
+			load_vars();
+			
             statement_count = 0;
             clean_queues();
             yy_scan_string(script.c_str());
@@ -2807,6 +2873,7 @@ bool interactive = 0;
 
 
     };
+	save_col_data(data_dict,"data.dictionary");
     return 0;
 }
 

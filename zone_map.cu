@@ -620,14 +620,19 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
     while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
-            t = varNames[setMap[fields.front()]];
+            //t = varNames[setMap[fields.front()]];
+			t = a;
             colIndex = t->columnNames[fields.front()];
 
             // copy t min and max values to a only if int, decimal or float
             if(t->type[colIndex] <= 1) {
 
-                f1 = t->load_file_name + "." + int_to_string(t->cols[colIndex]) + "." + int_to_string(segment);
+                f1 = t->load_file_name + "." + fields.front() + "." + int_to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
+				if(f == NULL) {
+					cout << "Error opening " << f1 << " file " << endl;
+					exit(0);
+				};
 
                 fread((char *)&cnt, 4, 1, f);
                 if (t->type[colIndex] == 0) {
@@ -646,7 +651,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
                 };
                 fclose(f);
-            };
+            };			
         };
         uniques.insert(fields.front());
         fields.pop();
