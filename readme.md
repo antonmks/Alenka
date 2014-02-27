@@ -45,7 +45,7 @@ Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create y
 
 ` C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_mktsegment{7}:varchar(10));`
 
-` L := LOAD 'lineitem' BINARY AS (l_orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);`
+` L := LOAD 'lineitem' BINARY AS (orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);`
 
 ##### Step 2 - Filter data
 
@@ -59,7 +59,7 @@ Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create y
 
 ` OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate,`
 ` o_shippriority AS o_shippriority, price AS price, discount AS discount`
-` FROM LF JOIN OFI ON l_orderkey = o_orderkey `
+` FROM LF JOIN OFI ON orderkey = o_orderkey `
 ` JOIN CF ON o_custkey = c_custkey;`
 
 ##### Step 4 - Group data
