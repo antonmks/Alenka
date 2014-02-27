@@ -3181,26 +3181,39 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
 
     if(!sorted) {
 	
-        thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
-        thrust::sequence(v, v + cnt_r, 0, 1);
-
-        void* d;
-        CUDA_SAFE_CALL(cudaMalloc((void **) &d, cnt_r*max_char(right)));
-
-        if(str_join) {
-            thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
-        }
-        else {
-            thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
-        };
+		thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
+		
+		// check if there is enough memory for a sort
+		if(getFreeMem() < cnt_r*8) {
+		
+			unsigned int* v_h = new unsigned int[cnt_r];
+			thrust::sequence(v_h, v_h + cnt_r, 0, 1);
+			
+			thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());		
+			thrust::sort_by_key(right->h_columns_int[right->type_index[colInd2]].begin(), right->h_columns_int[right->type_index[colInd2]].begin() + cnt_r, v_h);
+			thrust::copy(v_h, v_h+cnt_r, v);
+			
+			delete [] v_h;
+		}
+		else {
+			
+			thrust::sequence(v, v + cnt_r, 0, 1);
+			thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
+			thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());
+		};	
+		
+		cout << "sorted ok " << endl;
 		
 		if(!right->not_compressed) {
 			right->mRecCount = 0;		
 			right->resize(cnt_r);
 		};
 		
-		thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());
 		right->deAllocColumnOnDevice(colInd2);
+	
+		
+        void* d;
+        CUDA_SAFE_CALL(cudaMalloc((void **) &d, cnt_r*max_char(right)));
 		
         unsigned int i;
         while(!op_sel.empty()) {		
@@ -3237,6 +3250,7 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
         cudaFree(d);
 		right->not_compressed = 1;
     }						
+	cout << "sort end " << endl;
 }						
 
 
