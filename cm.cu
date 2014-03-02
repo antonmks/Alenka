@@ -3159,98 +3159,79 @@ void sort_right(CudaSet* right, unsigned int colInd2, string f2, queue<string> o
         cnt_r = right->d_columns_int[right->d_columns_int.size()-1].size();
     };
 
-    // need to allocate all right columns
-    queue<string> op_alt1;
-    op_alt1.push(f2);
-    cnt_r = load_queue(op_alt1, right, str_join, "", rcount, 0, right->segCount);
-
-    if(str_join) {
-        colInd2 = right->mColumnCount+1;
-        right->type_index[colInd2] = right->d_columns_int.size()-1;
-    };	
-
-    //here we need to make sure that right column is ordered. If not then we order it and keep the permutation
-    bool sorted;
-
-    if(str_join || !decimal_join) {
-        sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);
-    }
-    else
-        sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);
-
-
-    if(!sorted) {
 	
-		thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
-		
-		// check if there is enough memory for a sort
-		if(getFreeMem() < cnt_r*8) {
-		
-			unsigned int* v_h = new unsigned int[cnt_r];
-			thrust::sequence(v_h, v_h + cnt_r, 0, 1);
-			
-			thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());		
-			thrust::sort_by_key(right->h_columns_int[right->type_index[colInd2]].begin(), right->h_columns_int[right->type_index[colInd2]].begin() + cnt_r, v_h);
-			thrust::copy(v_h, v_h+cnt_r, v);
-			
-			delete [] v_h;
+	//sort the segments and merge them on a host
+	
+    // need to allocate all right columns
+		queue<string> op_alt1;
+		op_alt1.push(f2);
+		cnt_r = load_queue(op_alt1, right, str_join, "", rcount, 0, right->segCount);
+
+		if(str_join) {
+			colInd2 = right->mColumnCount+1;
+			right->type_index[colInd2] = right->d_columns_int.size()-1;
+		};	
+
+		//here we need to make sure that right column is ordered. If not then we order it and keep the permutation
+		bool sorted;
+
+		if(str_join || !decimal_join) {
+			sorted = thrust::is_sorted(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r);
 		}
-		else {
-			
+		else
+			sorted = thrust::is_sorted(right->d_columns_float[right->type_index[colInd2]].begin(), right->d_columns_float[right->type_index[colInd2]].begin() + cnt_r);
+
+
+		if(!sorted) {
+		
+			thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(cnt_r);
 			thrust::sequence(v, v + cnt_r, 0, 1);
 			thrust::sort_by_key(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, v);
-			thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());
-		};	
-		
-		cout << "sorted ok " << endl;
-		
-		if(!right->not_compressed) {
-			right->mRecCount = 0;		
+			thrust::copy(right->d_columns_int[right->type_index[colInd2]].begin(), right->d_columns_int[right->type_index[colInd2]].begin() + cnt_r, right->h_columns_int[right->type_index[colInd2]].begin());			
+
 			right->resize(cnt_r);
-		};
-		
-		right->deAllocColumnOnDevice(colInd2);
-	
-		
-        void* d;
-        CUDA_SAFE_CALL(cudaMalloc((void **) &d, cnt_r*max_char(right)));
-		
-        unsigned int i;
-        while(!op_sel.empty()) {		
-            if (right->columnNames.find(op_sel.front()) != right->columnNames.end()) {
-                i = right->columnNames[op_sel.front()];
+			
+			right->deAllocColumnOnDevice(colInd2);		
+			
+			void* d;
+			CUDA_SAFE_CALL(cudaMalloc((void **) &d, cnt_r*max_char(right)));
+			
+			unsigned int i;
+			while(!op_sel.empty()) {		
+				if (right->columnNames.find(op_sel.front()) != right->columnNames.end()) {
+					i = right->columnNames[op_sel.front()];
 
-                if(i != colInd2) {
+					if(i != colInd2) {
 
-                    queue<string> op_alt1;
-                    op_alt1.push(op_sel.front());
-                    cnt_r = load_queue(op_alt1, right, str_join, "", rcount, 0, right->segCount, 0, 0);
+						queue<string> op_alt2;
+						op_alt2.push(op_sel.front());
+						cnt_r = load_queue(op_alt2, right, str_join, "", rcount, 0, right->segCount, 0, 0);
+						cout << "next load " << cnt_r << endl;
 
-                    if(right->type[i] == 0) {
-                        thrust::device_ptr<int_type> d_tmp((int_type*)d);
-                        thrust::gather(v, v+cnt_r, right->d_columns_int[right->type_index[i]].begin(), d_tmp);
-                        thrust::copy(d_tmp, d_tmp + cnt_r, right->h_columns_int[right->type_index[i]].begin());
-                    }
-                    else if(right->type[i] == 1) {
-                        thrust::device_ptr<float_type> d_tmp((float_type*)d);
-                        thrust::gather(v, v+cnt_r, right->d_columns_float[right->type_index[i]].begin(), d_tmp);
-                        thrust::copy(d_tmp, d_tmp + cnt_r, right->h_columns_float[right->type_index[i]].begin());
-                    }
-                    else {
-                        thrust::device_ptr<char> d_tmp((char*)d);
-                        str_gather(thrust::raw_pointer_cast(v), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);			
-                        cudaMemcpy( (void*)right->h_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[right->type_index[i]], cudaMemcpyDeviceToHost);
-                    };
-					right->deAllocColumnOnDevice(i);
-                };
-            };
-            op_sel.pop();
-        };
-        thrust::device_free(v);
-        cudaFree(d);
-		right->not_compressed = 1;
-    }						
-	cout << "sort end " << endl;
+						if(right->type[i] == 0) {
+							thrust::device_ptr<int_type> d_tmp((int_type*)d);
+							thrust::gather(v, v+cnt_r, right->d_columns_int[right->type_index[i]].begin(), d_tmp);
+							thrust::copy(d_tmp, d_tmp + cnt_r, right->h_columns_int[right->type_index[i]].begin());
+						}
+						else if(right->type[i] == 1) {
+							thrust::device_ptr<float_type> d_tmp((float_type*)d);
+							thrust::gather(v, v+cnt_r, right->d_columns_float[right->type_index[i]].begin(), d_tmp);
+							thrust::copy(d_tmp, d_tmp + cnt_r, right->h_columns_float[right->type_index[i]].begin());
+						}
+						else {
+							thrust::device_ptr<char> d_tmp((char*)d);
+							str_gather(thrust::raw_pointer_cast(v), cnt_r, (void*)right->d_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[right->type_index[i]]);			
+							cudaMemcpy( (void*)right->h_columns_char[right->type_index[i]], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[right->type_index[i]], cudaMemcpyDeviceToHost);
+						};
+						right->deAllocColumnOnDevice(i);
+					};
+				};
+				op_sel.pop();
+			};
+			thrust::device_free(v);
+			cudaFree(d);
+			right->not_compressed = 1;
+		}								
 }						
 
 
@@ -3259,7 +3240,7 @@ size_t load_right(CudaSet* right, unsigned int colInd2, string f2, queue<string>
                         size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz) {
 
     size_t cnt_r = 0;
-    //right->hostRecCount = right->mRecCount;
+    right->hostRecCount = right->mRecCount;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
 
     if (right->type[colInd2]  == 2) {
@@ -3320,7 +3301,19 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
         };		
 		op_sel.pop();			
 	};		
-	return right->segCount / ((tot_size/(getFreeMem() - 300000000)) + 1);
+	
+	if(tot_size + 300000000 < getFreeMem())
+		return right->segCount;
+	else {	
+		if(right->segCount == 1) { //need to partition it. Not compressed.
+			right->segCount = ((tot_size + 300000000)/getFreeMem())+1;
+			right->maxRecs = (right->mRecCount/right->segCount)+1;
+			return 1;
+		}
+		else { //compressed
+			return right->segCount / ((tot_size+300000000)/getFreeMem());
+		};				
+	};	
 		
 };
 
