@@ -1385,8 +1385,9 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                     else if (type[j] == 1)
                         sprintf(fields[j], "%.2f", (h_columns_float[type_index[j]])[i] );
                     else {
-                        ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
-                        fields[j] = (char *) ss.c_str();
+						strncpy(fields[j], h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+                        //ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
+                        //fields[j] = (char *) ss.c_str();
                     };
                   };
                   row_cb(NULL, mColumnCount, (char **)fields, (char **)dcolumns);
