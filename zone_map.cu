@@ -614,7 +614,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     queue<string> fields(op_value);
     CudaSet *t;
     FILE* f;
-    unsigned int colIndex, cnt;
+    unsigned int cnt;
     string f1;
 	
 
@@ -622,10 +622,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
         if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
             //t = varNames[setMap[fields.front()]];
 			t = a;
-            colIndex = t->columnNames[fields.front()];
 
             // copy t min and max values to a only if int, decimal or float
-            if(t->type[colIndex] <= 1) {
+            if(t->type[fields.front()] <= 1) {
 
                 f1 = t->load_file_name + "." + fields.front() + "." + int_to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
@@ -635,19 +634,19 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 				};
 
                 fread((char *)&cnt, 4, 1, f);
-                if (t->type[colIndex] == 0) {
-                    a->h_columns_int[a->type_index[colIndex]].resize(2);
-                    fread((char *)&a->h_columns_int[a->type_index[colIndex]][0], 8, 1, f);
-                    fread((char *)&a->h_columns_int[a->type_index[colIndex]][1], 8, 1, f);
+                if (t->type[fields.front()] == 0) {
+                    a->h_columns_int[fields.front()].resize(2);
+                    fread((char *)&a->h_columns_int[fields.front()][0], 8, 1, f);
+                    fread((char *)&a->h_columns_int[fields.front()][1], 8, 1, f);
                     //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
                 }
                 else  {
                     long long int t;
-                    a->h_columns_float[a->type_index[colIndex]].resize(2);
+                    a->h_columns_float[fields.front()].resize(2);
                     fread((char *)&t, 8, 1, f);
-                    a->h_columns_float[a->type_index[colIndex]][0] = (float_type)t/100.0;
+                    a->h_columns_float[fields.front()][0] = (float_type)t/100.0;
                     fread((char *)&t, 8, 1, f);
-                    a->h_columns_float[a->type_index[colIndex]][1] = (float_type)t/100.0;
+                    a->h_columns_float[fields.front()][1] = (float_type)t/100.0;
                     //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
                 };
                 fclose(f);
@@ -735,7 +734,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                     exe_type.push("VECTOR F");
 
-                    if (a->type[(a->columnNames)[s1_val]] == 1) {
+                    if (a->type[s1_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_vectors_f.push(host_op(t,n1_f,ss,1));
                     }
@@ -753,7 +752,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                     exe_type.push("VECTOR F");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 1) {
+                    if (a->type[s2_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s2_val);
                         exe_vectors_f.push(host_op(t,n1_f,ss,0));
                     }
@@ -768,7 +767,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     n1 = exe_nums.top();
                     exe_nums.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 1) {
+                    if (a->type[s1_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(host_op(t,(float_type)n1,ss,1));
@@ -787,7 +786,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
 
 
-                    if (a->type[(a->columnNames)[s2_val]] == 1) {
+                    if (a->type[s2_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s2_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(host_op(t,(float_type)n1,ss,0));
@@ -806,9 +805,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t1 = a->get_host_int_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t = a->get_host_int_by_name(s2_val);
                             exe_type.push("VECTOR");
                             exe_vectors.push(host_op(t,t1,ss,0));
@@ -821,7 +820,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     }
                     else {
                         float_type* t = a->get_host_float_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_host_int_by_name(s2_val);
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(host_op(t1,t,ss,0));
@@ -839,7 +838,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
 
                         if (s1.compare("VECTOR") == 0 ) {
@@ -882,7 +881,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s1_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
 
                         if (s2.compare("VECTOR") == 0 ) {
@@ -1102,7 +1101,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s1_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,n1,cmp_type));
@@ -1120,7 +1119,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,n1,cmp_type));
@@ -1138,7 +1137,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s1_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,n1_f,cmp_type));
@@ -1157,7 +1156,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,(int_type)n1_f,cmp_type));
@@ -1259,7 +1258,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         bool_vectors.push(host_compare(s3,t,cmp_type));
                     }
@@ -1278,7 +1277,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         bool_vectors.push(host_compare(t,s3,cmp_type));
                     }
@@ -1297,7 +1296,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         bool_vectors.push(host_compare(s3,t,cmp_type));
                     }
@@ -1316,7 +1315,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         bool_vectors.push(host_compare(t,s3,cmp_type));
                     }
@@ -1382,9 +1381,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_host_int_by_name(s2_val);
                             bool_vectors.push(host_compare(t1,t,cmp_type));
                         }
@@ -1396,7 +1395,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     else {
                         cmp_type = reverse_op(cmp_type);
                         float_type* t = a->get_host_float_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_host_int_by_name(s2_val);
                             bool_vectors.push(host_compare(t,t1,cmp_type));
                         }

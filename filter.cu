@@ -213,7 +213,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     exe_type.push("VECTOR F");
 
-                    if (a->type[(a->columnNames)[s1_val]] == 1) {
+                    if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
                         exe_vectors_f.push(a->op(t,n1_f,ss,1));
                     }
@@ -231,7 +231,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     exe_type.push("VECTOR F");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 1) {
+                    if (a->type[s2_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s2_val);
                         exe_vectors_f.push(a->op(t,n1_f,ss,0));
                     }
@@ -246,7 +246,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1 = exe_nums.top();
                     exe_nums.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 1) {
+                    if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(t,(float_type)n1,ss,1));
@@ -265,7 +265,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
 
 
-                    if (a->type[(a->columnNames)[s2_val]] == 1) {
+                    if (a->type[s2_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s2_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(t,(float_type)n1,ss,0));
@@ -282,9 +282,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t1 = a->get_int_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t = a->get_int_by_name(s2_val);
                             exe_type.push("VECTOR");
                             exe_vectors.push(a->op(t,t1,ss,0));
@@ -297,7 +297,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_int_by_name(s2_val);
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(t1,t,ss,0));
@@ -314,7 +314,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
 
                         if (s1.compare("VECTOR") == 0 ) {
@@ -357,7 +357,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s1_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
 
                         if (s2.compare("VECTOR") == 0 ) {
@@ -573,11 +573,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    unsigned int colIndex1 = (a->columnNames).find(s2_val)->second;
                     void* d_v;
                     cudaMalloc((void **) &d_v, 8);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-                    dd_v[0] = a->char_size[a->type_index[colIndex1]];
+                    dd_v[0] = a->char_size[s2_val];
                     dd_v[1] = (unsigned int)s1_val.length();
                     void* d_res;
                     cudaMalloc((void **) &d_res, a->mRecCount);
@@ -586,18 +585,18 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     thrust::counting_iterator<unsigned int> begin(0);
                     if(!like_start) {
-                        cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
-                        cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);
+                        cudaMalloc((void **) &d_str, a->char_size[s2_val]);
+                        cudaMemset(d_str,0,a->char_size[s2_val]);
                         cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
 
-                        cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        cmp_functor_str ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     }
                     else {
                         cudaMalloc((void **) &d_str, s1_val.length());
                         cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
 
-                        cmp_functor_str_like_right ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        cmp_functor_str_like_right ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     };
 
@@ -620,27 +619,26 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         s1_val.erase(0,1);
                     };
 
-                    unsigned int colIndex1 = (a->columnNames).find(s1_val)->second;
                     void* d_v;
                     cudaMalloc((void **) &d_v, 4);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-                    dd_v[0] = a->char_size[a->type_index[colIndex1]];
+                    dd_v[0] = a->char_size[s1_val];
 
                     void* d_res;
                     cudaMalloc((void **) &d_res, a->mRecCount);
 
                     void* d_str;
-                    cudaMalloc((void **) &d_str, a->char_size[a->type_index[colIndex1]]);
-                    cudaMemset(d_str,0,a->char_size[a->type_index[colIndex1]]);
+                    cudaMalloc((void **) &d_str, a->char_size[s1_val]);
+                    cudaMemset(d_str,0,a->char_size[s1_val]);
                     cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
 
                     thrust::counting_iterator<unsigned int> begin(0);
                     if(!like_start) {
-                        cmp_functor_str ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        cmp_functor_str ff(a->d_columns_char[s1_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     }
                     else {
-                        cmp_functor_str_like_right ff(a->d_columns_char[a->type_index[colIndex1]], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        cmp_functor_str_like_right ff(a->d_columns_char[s1_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     };
 
@@ -657,7 +655,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s1_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(a->compare(t,n1,cmp_type));
@@ -675,7 +673,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(a->compare(t,n1,cmp_type));
@@ -693,7 +691,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s1_val = exe_value.top();
                     exe_value.pop();					
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
@@ -711,7 +709,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     s2_val = exe_value.top();
                     exe_value.pop();
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
@@ -813,7 +811,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         bool_vectors.push(a->compare(s3,t,cmp_type));
                     }
@@ -832,7 +830,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         bool_vectors.push(a->compare(t,s3,cmp_type));
                     }
@@ -851,7 +849,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         bool_vectors.push(a->compare(s3,t,cmp_type));
                     }
@@ -870,7 +868,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s2_val]] == 0) {
+                    if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         bool_vectors.push(a->compare(t,s3,cmp_type));
                     }
@@ -934,9 +932,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[(a->columnNames)[s1_val]] == 0) {
+                    if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_int_by_name(s2_val);
                             bool_vectors.push(a->compare(t1,t,cmp_type));
                         }
@@ -948,7 +946,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     else {
                         cmp_type = reverse_op(cmp_type);
                         float_type* t = a->get_float_type_by_name(s1_val);
-                        if (a->type[(a->columnNames)[s2_val]] == 0) {
+                        if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_int_by_name(s2_val);
                             bool_vectors.push(a->compare(t,t1,cmp_type));
                         }
