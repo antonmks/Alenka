@@ -1598,15 +1598,15 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					fread((char *)&ref_segCount, 4, 1, ff);
 					fread((char *)&ref_maxRecs, 4, 1, ff);
 					fclose(ff);				
-					//cout << "CALC " << i << " " << ref_sets[i] << " " << ref_cols[i] << " " << ref_segCount << endl;
+					//cout << "CALC " << i << " " << columnNames[i] << " " << ref_sets[columnNames[i]] << " " << ref_cols[columnNames[i]] << " " << ref_segCount << " " << ref_maxRecs << endl;
 				
 					CudaSet* a = new CudaSet(maxRecs, 1);
-					a->h_columns_int[columnNames[i]] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-					a->d_columns_int[columnNames[i]] = thrust::device_vector<int_type>(ref_maxRecs);
-					a->type[columnNames[i]] = 0;
+					a->h_columns_int[ref_cols[columnNames[i]]] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+					a->d_columns_int[ref_cols[columnNames[i]]] = thrust::device_vector<int_type>(ref_maxRecs);
+					a->type[ref_cols[columnNames[i]]] = 0;
 					a->not_compressed = 0;
 					a->load_file_name = ref_sets[columnNames[i]];
-					a->cols[0] = 1;
+					a->cols[ref_cols[columnNames[i]]] = 1;
 					a->columnNames.push_back(ref_cols[columnNames[i]]);
 					MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
 					size_t res_count;
@@ -1622,12 +1622,12 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					for(unsigned int z = 0; z < ref_segCount; z++) {
 
 						a->CopyColumnToGpu(ref_cols[columnNames[i]], z, 0);
-						thrust::sort(a->d_columns_int[0].begin(), a->d_columns_int[0].begin() + a->mRecCount);
+						thrust::sort(a->d_columns_int[ref_cols[columnNames[i]]].begin(), a->d_columns_int[ref_cols[columnNames[i]]].begin() + a->mRecCount);
 						// check if there is a join result
 						//cout << "join " << mRecCount << " " << a->mRecCount << endl;					
 				
 						res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()), mRecCount,
-									thrust::raw_pointer_cast(a->d_columns_int[0].data()), a->mRecCount,
+									thrust::raw_pointer_cast(a->d_columns_int[ref_cols[columnNames[i]]].data()), a->mRecCount,
 									&aIndicesDevice, &bIndicesDevice,
 									mgpu::less<int_type>(), *context);
 					//cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
@@ -1635,7 +1635,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 						f_file.write((char *)&res_count, 8);
 					};
 					f_file.close();
-					a->deAllocColumnOnDevice(0);
+					a->deAllocColumnOnDevice(ref_cols[columnNames[i]]);
 					a->free();				
 				};
 			};	
@@ -3034,7 +3034,7 @@ void filter_op(char *s, char *f, unsigned int segment)
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
     }
-	cout << endl << "filter res " << b->mRecCount << endl;		
+	//cout << endl << "filter res " << b->mRecCount << endl;		
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 }
 
