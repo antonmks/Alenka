@@ -2753,16 +2753,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     thrust::sequence(permutation, permutation+sz,0,1);
 
     unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
-    void* temp;
-    // find the largest mRecSize of all data sources exe_type.top()
-    size_t maxSize = 0;
-    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
-        CudaSet *t = varNames[setMap[*it]];
-        if(t->mRecCount > maxSize)
-            maxSize = t->mRecCount;
-    };
-	
-    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char(a, field_names)));
+    void* temp;	
+    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a, field_names)));
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
         if (a->type[exe_type.top()] == 0)
@@ -3747,7 +3739,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 							// copy field's segment to device, gather it and copy to the host
 							
 							if(left->filtered)
-								cmp_type = varNames[setMap[op_sel1.front()]]->compTypes[op_sel1.front()];
+								cmp_type = varNames[left->source_name]->compTypes[op_sel1.front()];
 							else
 								cmp_type = left->compTypes[op_sel1.front()];
 							
@@ -3772,7 +3764,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									copied = 1;
 								};								
 								
-								CudaSet *t = varNames[setMap[op_sel1.front()]];
+								
+								CudaSet *t;
+								if(left->filtered)
+									t = varNames[left->source_name];
+								else
+									t = left;
+									
 								t->readSegmentsFromFile(i, op_sel1.front(), 0);
 								
 								if(t->type[op_sel1.front()] == 0) {
@@ -4116,16 +4114,23 @@ void emit_order(char *s, char *f, int e, int ll)
 
         unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
 
-        size_t maxSize =  a->mRecCount;
         void* temp;        
-        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, maxSize*max_char(a)));
+        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a)));
         
-        varNames[setMap[exe_type.top()]]->hostRecCount = varNames[setMap[exe_type.top()]]->mRecCount;
+		if(a->filtered)
+			varNames[a->source_name]->hostRecCount = varNames[a->source_name]->mRecCount;
+		else
+			a->hostRecCount = a->mRecCount;; 
 
         size_t rcount;
         a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount, 0, a->segCount);
 
         varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->hostRecCount;
+		if(a->filtered)
+			varNames[a->source_name]->mRecCount = varNames[a->source_name]->hostRecCount;
+		else
+			a->mRecCount = a->hostRecCount;; 
+
 		
         for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
             if (a->type[exe_type.top()] == 0)
@@ -4308,7 +4313,7 @@ void emit_select(char *s, char *f, int ll)
 	
     unsigned int cycle_count;
     if(a->filtered)
-        cycle_count = varNames[setMap[op_value.front()]]->segCount;
+        cycle_count = varNames[a->source_name]->segCount;
     else
         cycle_count = a->segCount;
 
@@ -4380,7 +4385,7 @@ void emit_select(char *s, char *f, int ll)
                 b_set = 1;
                 unsigned int old_cnt = b->mRecCount;
                 b->mRecCount = 0;
-                b->resize(varNames[setMap[op_vx.front()]]->maxRecs);
+                b->resize(a->maxRecs);
                 b->mRecCount = old_cnt;
             };		
 			
@@ -4443,7 +4448,7 @@ void emit_select(char *s, char *f, int ll)
     c->maxRecs = c->mRecCount;
     c->name = s;
     c->keep = 1;
-	cout << "select res " << c->mRecCount << endl;
+	//cout << "select res " << c->mRecCount << endl;
 
     for(unsigned int i = 0; i < c->columnNames.size(); i++) {
         setMap[c->columnNames[i]] = s;
@@ -4628,6 +4633,8 @@ void emit_filter(char *s, char *f)
         b->fil_nums = op_nums;
         b->fil_nums_f = op_nums_f;
         b->filtered = 1;
+		b->source_name = f;
+		b->maxRecs = a->maxRecs;
         b->prm_d.resize(a->maxRecs);
     };
     clean_queues();
@@ -4868,25 +4875,24 @@ void load_vars()
 		while(!typevars.empty()) typevars.pop();
 		while(!sizevars.empty()) sizevars.pop();
 		while(!cols.empty()) cols.pop();
-		//cout << "used vars " << (*it).first << endl;
-		map<string, bool> c = (*it).second;
-		for ( map<string, bool>::iterator sit=c.begin() ; sit != c.end(); ++sit ) {
-			//cout << "name " << (*sit).first << endl;
-			namevars.push((*sit).first);
-			if(data_dict[(*it).first][(*sit).first].col_type == 0)
-				typevars.push("int");
-			else if(data_dict[(*it).first][(*sit).first].col_type == 1)
-				typevars.push("float");
-			else if(data_dict[(*it).first][(*sit).first].col_type == 3)
-				typevars.push("decimal");	
-			else typevars.push("char");	
-			sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
-			cols.push(0);				
-		};
-		emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
-		
+		if(stat.count((*it).first) != 0) {
+			map<string, bool> c = (*it).second;
+			for ( map<string, bool>::iterator sit=c.begin() ; sit != c.end(); ++sit ) {
+				//cout << "name " << (*sit).first << endl;
+				namevars.push((*sit).first);
+				if(data_dict[(*it).first][(*sit).first].col_type == 0)
+					typevars.push("int");
+				else if(data_dict[(*it).first][(*sit).first].col_type == 1)
+					typevars.push("float");
+				else if(data_dict[(*it).first][(*sit).first].col_type == 3)
+					typevars.push("decimal");	
+				else typevars.push("char");	
+				sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
+				cols.push(0);				
+			};			
+			emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
+		};		
 	};	
-
 }
 
 
