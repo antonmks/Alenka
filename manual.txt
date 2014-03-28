@@ -4,9 +4,9 @@ The difference between floats and decimals is that the latter are compressed whe
 
 Requirements : you need to have a model 400 or better of NVidia GPU.
 Limitations ( hopefully temporary) : 
-1. all column names in a script must be unique.
-2. if you use AVG function the Group By statement must include COUNT(FIELD) expression .
-3. In LOAD statement the columns should be listed in the order they have in a source file.
+
+1. if you use AVG function the Group By statement must include COUNT(FIELD) expression .
+2. In LOAD statement the columns should be listed in the order they have in a source file.
 
 Loading data for processing : 
 Alenka can read text files with fields separated by separators. But much faster way to read the data would be to load it into binary files as demonstrated by the following script :

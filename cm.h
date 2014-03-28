@@ -347,7 +347,7 @@ public:
     queue<string> columnGroups;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;
-    string name, load_file_name, separator;
+    string name, load_file_name, separator, source_name;
     bool source, text_source, tmp_table, keep, filtered;
     queue<string> sorted_fields; //segment is sorted by fields
     queue<string> presorted_fields; //globally sorted by fields
@@ -368,7 +368,7 @@ public:
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
-    CudaSet(queue<string> op_sel, queue<string> op_sel_as);
+    CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list);
     ~CudaSet();
     void allocColumnOnDevice(string colname, size_t RecordCount);
     void decompress_char_hash(string colname, unsigned int segment);
@@ -428,7 +428,7 @@ protected:
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     void initialize(size_t RecordCount, unsigned int ColumnCount);
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
-    void initialize(queue<string> op_sel, queue<string> op_sel_as);
+    void initialize(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list);
 };
 
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
@@ -465,6 +465,7 @@ void delete_records(char* f);
 void insert_records(char* f, char* s);
 void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
+bool var_exists(CudaSet* a, string name);
 
 #endif
 

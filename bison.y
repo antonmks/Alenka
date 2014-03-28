@@ -654,8 +654,11 @@ void star_join(char *s, string j1)
     queue<string> op_sel_s(op_sel);
     queue<string> op_sel_s_as(op_sel_as);
     queue<string> op_g(op_value);
+	
+	queue<string> t_list(op_join);
+	op_join.push(j1);
 
-    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as);
+    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as, t_list);
 
 
     CUDPPHandle* hash_table_handle = new CUDPPHandle[join_tab_cnt];
@@ -1036,9 +1039,6 @@ void star_join(char *s, string j1)
 	
 	if(verbose)
 		cout << endl << "join count " << tot_count << endl;
-    for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
-        setMap[c->columnNames[i]] = s;
-    };
 };
 
 
@@ -1067,6 +1067,7 @@ void emit_join(char *s, char *j1, int grp)
 
 
     queue<string> op_m(op_value);
+	queue<string> op_m1(op_value);
 
     if(check_star_join(j1) && verbose) {
         cout << "executing star join !! " << endl;
@@ -1108,6 +1109,55 @@ void emit_join(char *s, char *j1, int grp)
             emit_multijoin(s, j1, j2, 1, s);
         };
     };
+	
+    queue<string> op_sel;
+    queue<string> op_sel_as;
+    for(int i=0; i < sel_count; i++) {
+        op_sel.push(op_m.front());
+        op_m.pop();
+        op_sel_as.push(op_m.front());
+        op_m.pop();
+    };
+	while(!op_sel_as.empty()) {
+		//cout << "alias " << op_sel.front() << " : " << op_sel_as.front() << endl;
+		if(op_sel.front() != op_sel_as.front()) {
+			if(varNames[s]->type[op_sel.front()] == 0) {
+				varNames[s]->h_columns_int[op_sel_as.front()] = varNames[s]->h_columns_int[op_sel.front()];
+				varNames[s]->h_columns_int.erase(op_sel.front());	
+				varNames[s]->d_columns_int[op_sel_as.front()] = varNames[s]->d_columns_int[op_sel.front()];
+				varNames[s]->d_columns_int.erase(op_sel.front());	
+				varNames[s]->type[op_sel_as.front()] = 0;	
+				varNames[s]->type.erase(op_sel.front());
+			}
+			else if(varNames[s]->type[op_sel.front()] == 1) {
+				varNames[s]->h_columns_float[op_sel_as.front()] = varNames[s]->h_columns_float[op_sel.front()];
+				varNames[s]->h_columns_float.erase(op_sel.front());	
+				varNames[s]->d_columns_float[op_sel_as.front()] = varNames[s]->d_columns_float[op_sel.front()];
+				varNames[s]->d_columns_float.erase(op_sel.front());					
+				varNames[s]->type[op_sel_as.front()] = 1;	
+				varNames[s]->type.erase(op_sel.front());					
+				varNames[s]->decimal.erase(op_sel.front());
+			}
+			else {
+				varNames[s]->h_columns_char[op_sel_as.front()] = varNames[s]->h_columns_char[op_sel.front()];
+				varNames[s]->h_columns_char.erase(op_sel.front());	
+				varNames[s]->d_columns_char[op_sel_as.front()] = varNames[s]->d_columns_char[op_sel.front()];
+				varNames[s]->d_columns_char.erase(op_sel.front());					
+				varNames[s]->type[op_sel_as.front()] = 2;	
+				varNames[s]->type.erase(op_sel.front());	
+				varNames[s]->char_size[op_sel_as.front()] = varNames[s]->char_size[op_sel.front()];
+				varNames[s]->char_size.erase(op_sel.front());								
+			};
+			varNames[s]->decimal[op_sel_as.front()] = varNames[s]->decimal[op_sel.front()];
+			std::vector<string>::iterator it;
+			it = std::find(varNames[s]->columnNames.begin(), varNames[s]->columnNames.end(), op_sel.front());
+			*it = op_sel_as.front();
+		};	
+		op_sel_as.pop();
+		op_sel.pop();
+	};
+	
+	
 
     clean_queues();
 
@@ -1115,12 +1165,6 @@ void emit_join(char *s, char *j1, int grp)
         varNames[s]->free();
         varNames.erase(s);
     };
-
-    /*if(stat[j1] == statement_count) {
-        varNames[j1]->free();
-        varNames.erase(j1);
-    };
-    */
 
     if(op_join.size()) {
         if(stat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
@@ -1707,7 +1751,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 										   (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[op_sel1.front()]);									   
 								cudaMemcpy( (void*)&c->h_columns_char[op_sel1.front()][offset*c->char_size[op_sel1.front()]], (void*) thrust::raw_pointer_cast(d_tmp),
 											c->char_size[op_sel1.front()] * res_count, cudaMemcpyDeviceToHost);
-							};					
+							};	
 						}
 						else {
 						};
@@ -1742,7 +1786,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	
 	unsigned int tot_size = 0;	    
     for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
-        setMap[c->columnNames[i]] = s;
 		if(c->type[c->columnNames[i]] <= 1) 
 			tot_size = tot_size + tot_count*8;
 		else	
@@ -1940,8 +1983,7 @@ void emit_order(char *s, char *f, int e, int ll)
 
         size_t rcount;
         a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount, 0, a->segCount);
-
-        varNames[setMap[exe_type.top()]]->mRecCount = varNames[setMap[exe_type.top()]]->hostRecCount;
+		
 		if(a->filtered)
 			varNames[a->source_name]->mRecCount = varNames[a->source_name]->hostRecCount;
 		else
@@ -2179,7 +2221,7 @@ void emit_select(char *s, char *f, int ll)
 
 			if (a->type[op_s.top()] == 2) {
                 a->d_columns_int[op_s.top()].resize(0);
-				a->d_columns_int[op_s.top()].shrink_to_fit();
+				//a->d_columns_int[op_s.top()].shrink_to_fit();
                 a->add_hashed_strings(op_s.top(), i);	
             };
             op_s.pop();
@@ -2190,14 +2232,12 @@ void emit_select(char *s, char *f, int ll)
                 order_inplace(a, op_v2, field_names, 1);
                 a->GroupBy(op_v2);
             };
-			
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+			
 			if(i == 0)
 				std::reverse(b->columnNames.begin(), b->columnNames.end());
 			
             if(!b_set) {
-                for (unsigned int i = 0; i < b->columnNames.size();i++)
-                    setMap[b->columnNames[i]] = s;
                 b_set = 1;
                 unsigned int old_cnt = b->mRecCount;
                 b->mRecCount = 0;
@@ -2266,9 +2306,6 @@ void emit_select(char *s, char *f, int ll)
     c->keep = 1;
 	//cout << "select res " << c->mRecCount << endl;
 
-    for(unsigned int i = 0; i < c->columnNames.size(); i++) {
-        setMap[c->columnNames[i]] = s;
-    };
 
     clean_queues();
 	
@@ -2426,12 +2463,7 @@ void emit_filter(char *s, char *f)
     a = varNames.find(f)->second;
     a->name = f;
 	
-    for (unsigned int i = 0;i < a->columnNames.size(); i++) {
-		setMap[a->columnNames[i]] = f;
-    };
-
-
-    if(a->mRecCount == 0) {
+    if(a->mRecCount == 0 && !a->filtered) {
         b = new CudaSet(0,1);
     }
     else {
@@ -2445,13 +2477,43 @@ void emit_filter(char *s, char *f)
         b->fil_s = s;
         b->fil_f = f;
         b->fil_type = op_type;
+		
         b->fil_value = op_value;
         b->fil_nums = op_nums;
         b->fil_nums_f = op_nums_f;
         b->filtered = 1;
-		b->source_name = f;
+		if(a->filtered) {
+		
+			b->source_name = a->source_name;
+			b->fil_f = a->fil_f;
+			while(!a->fil_value.empty()) {
+				b->fil_value.push(a->fil_value.front());
+				a->fil_value.pop();
+			};
+			
+			while(!a->fil_type.empty()) {
+				b->fil_type.push(a->fil_type.front());
+				a->fil_type.pop();
+			};
+			b->fil_type.push("AND");			
+			
+			while(!a->fil_nums.empty()) {
+				b->fil_nums.push(a->fil_nums.front());
+				a->fil_nums.pop();
+			};
+
+			while(!a->fil_nums_f.empty()) {
+				b->fil_nums_f.push(a->fil_nums_f.front());
+				a->fil_nums_f.pop();
+			};
+			a->filtered = 0;
+			//a->free();	
+			varNames.erase(f);
+		}	
+		else	
+			b->source_name = f;
 		b->maxRecs = a->maxRecs;
-        b->prm_d.resize(a->maxRecs);
+        b->prm_d.resize(a->maxRecs);		
     };
     clean_queues();
 	
@@ -2592,11 +2654,6 @@ void emit_load_binary(const char *s, const char *f, int d)
 
 	if(verbose)
 		cout << "Reading " << totRecs << " records" << endl;
-    queue<string> names(namevars);
-    while(!names.empty()) {
-        setMap[names.front()] = s;
-        names.pop();
-    };
 
 	a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
     a->segCount = segCount;    
@@ -2764,7 +2821,7 @@ bool interactive = 0;
 
         if(!yyparse()) {
             if(verbose)
-            cout << "SQL scan parse worked" << endl;
+            cout << "SQL scan parse worked " << endl;
         }
         else
             cout << "SQL scan parse failed" << endl;
@@ -2815,7 +2872,7 @@ bool interactive = 0;
         
             if(!yyparse()) {
                 if(verbose)
-                    cout << "SQL scan parse worked" << endl;
+                    cout << "SQL scan parse worked " <<  endl;
             };
             for (map<string,CudaSet*>::iterator it=varNames.begin() ; it != varNames.end(); ++it ) {
                 (*it).second->free();

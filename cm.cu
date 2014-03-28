@@ -59,8 +59,7 @@ void* alloced_tmp;
 bool alloced_switch = 0;
 
 map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
-map<string,string> setMap; //map to keep track of column names and set names
-
+//map<string,string> setMap; //map to keep track of column names and set names
 
 struct is_match
 {
@@ -251,9 +250,9 @@ CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
 	fil_s = NULL;
 };
 
-CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as)
+CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list)
 {
-    initialize(op_sel, op_sel_as);
+    initialize(op_sel, op_sel_as, t_list);
     keep = false;
     source = 0;
     text_source = 0;
@@ -396,7 +395,11 @@ void CudaSet::decompress_char_hash(string colname, unsigned int segment)
 // takes a char column , hashes strings, copies them to a gpu
 void CudaSet::add_hashed_strings(string field, unsigned int segment)
 {
-    CudaSet *t = varNames[setMap[field]];
+	CudaSet *t;
+	if(filtered)
+		t = varNames[source_name];
+	else
+		t = this;
 
     if(not_compressed) { // decompressed strings on a host
 
@@ -562,12 +565,9 @@ void CudaSet::deAllocOnDevice()
     };	
 
     if(filtered) { // free the sources
-        if(setMap[columnNames[0]].compare(name)) {
-			if(varNames.find(setMap[columnNames[0]]) != varNames.end()) {
-				CudaSet* t = varNames[setMap[columnNames[0]]];
-				t->deAllocOnDevice();
-			};	
-        };
+		if(varNames.find(source_name) != varNames.end()) {
+				varNames[source_name]->deAllocOnDevice();
+		};	
     };
 };
 
@@ -1829,7 +1829,6 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 void CudaSet::free()  {
 	
     for(unsigned int i = 0; i < columnNames.size(); i++ ) {
-		//cout << "freeing " << columnNames[i] << endl;
 		if(type[columnNames[i]] == 2 && h_columns_char[columnNames[i]]) {
             delete [] h_columns_char[columnNames[i]];
             h_columns_char[columnNames[i]] = NULL;
@@ -1849,7 +1848,7 @@ void CudaSet::free()  {
 	prm_d.resize(0);
 	prm_d.shrink_to_fit();
 	deAllocOnDevice();
-	
+
 	if(fil_s)
 		delete fil_s;
 	if(fil_f)	
@@ -2472,7 +2471,7 @@ void CudaSet::initialize(size_t RecordCount, unsigned int ColumnCount)
 };
 
 
-void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as)
+void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list)
 {
     mRecCount = 0;
     mColumnCount = (unsigned int)op_sel.size();
@@ -2483,18 +2482,25 @@ void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as)
     prealloc_char_size = 0;
 
     unsigned int i = 0;
-	maxRecs = varNames[setMap[op_sel.front()]]->maxRecs;
+	maxRecs = varNames[t_list.front()]->maxRecs;
 	
 	
     while(!op_sel.empty()) {
 
-        if(!setMap.count(op_sel.front())) {
-            cout << "coudn't find column " << op_sel.front() << endl;
-            exit(0);
-        };
-
-        CudaSet* a = varNames[setMap[op_sel.front()]];
-		    
+		CudaSet* a;
+		queue<string> tabs(t_list);
+		bool found = 0;
+		
+		while(!found) {
+			if(var_exists(varNames[tabs.front()], tabs.front())) {
+				found = 1;
+				a = varNames[tabs.front()];
+			}
+			else	
+				tabs.pop();
+		};
+        //CudaSet* a = varNames[t_list.front()];
+				    
         cols[op_sel.front()] = i;
         decimal[op_sel.front()] = a->decimal[op_sel.front()];
         columnNames.push_back(op_sel.front());
@@ -2624,8 +2630,13 @@ size_t getFreeMem()
 void allocColumns(CudaSet* a, queue<string> fields)
 {
     if(a->filtered) {
-        size_t max_sz = max_tmp(a) ;
-        CudaSet* t = varNames[setMap[fields.front()]];
+        size_t max_sz = max_tmp(a);
+		CudaSet* t;
+		if(a->filtered)
+			t = varNames[a->source_name];
+		else
+			t = a;
+			
         if(max_sz*t->maxRecs > alloced_sz) {
             if(alloced_sz) {
                 cudaFree(alloced_tmp);
@@ -2637,7 +2648,7 @@ void allocColumns(CudaSet* a, queue<string> fields)
     else {
 
         while(!fields.empty()) {
-            if(setMap.count(fields.front()) > 0) {
+			if(var_exists(a, fields.front())) {
 
                 bool onDevice = 0;
 
@@ -2710,12 +2721,12 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
 
 
 	while(!fields.empty()) {
-        if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
-            if(a->filtered) {
+        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{
+		    if(a->filtered) {
                 if(a->mRecCount) {
-                    CudaSet *t = varNames[setMap[fields.front()]];
+					CudaSet *t = varNames[a->source_name];
                     alloced_switch = 1;
-                    t->CopyColumnToGpu(fields.front(), segment);
+                    t->CopyColumnToGpu(fields.front(), segment);					
                     gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
 					a->orig_segs[t->load_file_name].insert(segment);
@@ -2998,7 +3009,7 @@ void filter_op(char *s, char *f, unsigned int segment)
     a->name = f;
 	//std::clock_t start1 = std::clock();	
 	
-    if(a->mRecCount == 0) {
+    if(a->mRecCount == 0 && !a->filtered) {
         b = new CudaSet(0,1);
     }
     else {
@@ -3014,7 +3025,7 @@ void filter_op(char *s, char *f, unsigned int segment)
         if (b->prm_d.size() == 0)
             b->prm_d.resize(a->maxRecs);
 
-		//cout << "MAP CHECK start " << segment <<  endl;	
+		//cout << endl << "MAP CHECK start " << segment <<  endl;	
 		char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
 		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
@@ -3474,6 +3485,15 @@ void load_col_data(map<string, map<string, col_data> >& data_dict, string file_n
 	else {
 		cout << "Coudn't open data dictionary" << endl;
 	};	
-	
-	
 }
+
+bool var_exists(CudaSet* a, string name) {
+	
+	if(std::find(a->columnNames.begin(), a->columnNames.end(), name) !=  a->columnNames.end())
+		return 1;
+	else
+		return 0;
+}
+
+
+

@@ -619,10 +619,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 	
 
     while(!fields.empty()) {
-        if (uniques.count(fields.front()) == 0 && setMap.count(fields.front()) > 0)	{
-            //t = varNames[setMap[fields.front()]];
-			t = a;
+        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{	
 
+			if(a->filtered)
+				t = varNames[a->source_name];
+			else
+				t = a;
+			
             // copy t min and max values to a only if int, decimal or float
             if(t->type[fields.front()] <= 1) {
 
