@@ -2492,8 +2492,6 @@ yyreturn:
 #include "merge.h"
 #include "zone_map.h"
 #include "atof.h"
-#include "cudpp-2.1/include/cudpp_hash.h"
-//#include "moderngpu-master/include/moderngpu.cuh"
 #include "sstream"
 #include "sorts.cu"
 #include "row.h"
@@ -2525,7 +2523,6 @@ unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 map<unsigned int, unsigned int> join_and_cnt;
 bool scan_state = 0;
-CUDPPHandle theCudpp;
 ContextPtr context;
 map<string, map<string, bool> > used_vars;
 
@@ -2818,412 +2815,6 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
     return os;
 }
 
-void star_join(char *s, string j1)
-{
-    //need to copy to gpu all dimension keys, sort the dimension tables and
-    //build an array of hash tables for the dimension tables
-    CUDPPResult result;
-    map<string,bool> already_copied;
-
-    CudaSet* left = varNames.find(j1)->second;
-
-    queue<string> op_sel;
-    queue<string> op_sel_as;
-    for(int i=0; i < sel_count; i++) {
-        op_sel.push(op_value.front());
-        op_value.pop();
-        op_sel_as.push(op_value.front());
-        op_value.pop();
-    };
-    queue<string> op_sel_s(op_sel);
-    queue<string> op_sel_s_as(op_sel_as);
-    queue<string> op_g(op_value);
-	
-	queue<string> t_list(op_join);
-	op_join.push(j1);
-
-    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as, t_list);
-
-
-    CUDPPHandle* hash_table_handle = new CUDPPHandle[join_tab_cnt];
-    CUDPPHashTableConfig config;
-    config.type = CUDPP_MULTIVALUE_HASH_TABLE;
-    config.space_usage = 1.1f;
-    bool str_join = 0;
-    string f1, f2;
-    unsigned int tt = 0;
-    bool v64bit = 0;
-    map<string, unsigned int> tab_map;
-    map<string, string> var_map;
-
-    for(unsigned int i = 0; i < join_tab_cnt; i++) {
-
-        f1 = op_g.front();
-        op_g.pop();
-        f2 = op_g.front();
-        op_g.pop();
-
-        queue<string> op_jj(op_join);
-        for(unsigned int z = 0; z < (join_tab_cnt-1) - i; z++)
-            op_jj.pop();
-
-        size_t rcount;
-        queue<string> op_vd(op_g);
-        queue<string> op_alt(op_sel);
-        unsigned int jc = join_col_cnt;
-        while(jc) {
-            jc--;
-            op_vd.pop();
-            op_alt.push(op_vd.front());
-            op_vd.pop();
-        };
-
-        tab_map[op_jj.front()] = i;
-        var_map[op_jj.front()] = f1;
-
-        CudaSet* right = varNames.find(op_jj.front())->second;
-
-        queue<string> first;
-        first.push(f2);
-        size_t cnt_r = load_queue(first, right, str_join, "", rcount, 0, right->segCount); // put all used columns into GPU
-
-        queue<string> second;
-        while(!op_alt.empty()) {
-            if(f2.compare(op_alt.front()) != 0 && (std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) !=  right->columnNames.end())) {
-                second.push(op_alt.front());
-            };
-            op_alt.pop();
-        };
-        if(!second.empty())
-            load_queue(second, right, str_join, "", rcount, 0, right->segCount, 0,0); // put all used columns into GPU
-
-        bool sorted = thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].begin() + cnt_r);
-
-
-        if(!sorted) {
-
-            queue<string> ss(op_sel);
-            thrust::device_vector<unsigned int> v(cnt_r);
-            thrust::sequence(v.begin(),v.end(),0,1);
-
-            size_t max_c = max_char(right);
-            size_t mm;
-            if(max_c > 8)
-                mm = (max_c/8) + 1;
-            else
-                mm = 1;
-
-            thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(cnt_r*mm);
-            thrust::sort_by_key(right->d_columns_int[f2].begin(), right->d_columns_int[f2].begin() + cnt_r, v.begin());
-
-            while(!ss.empty()) {
-                if (std::find(right->columnNames.begin(), right->columnNames.end(), ss.front()) != right->columnNames.end()) {
-
-                    if(ss.front() != f2) {
-                        if(right->type[ss.front()] == 0) {
-                            thrust::gather(v.begin(), v.end(), right->d_columns_int[ss.front()].begin(), d_tmp);
-                            thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_int[ss.front()].begin());
-                        }
-                        else if(right->type[ss.front()] == 1) {
-                            thrust::gather(v.begin(), v.end(), right->d_columns_float[ss.front()].begin(), d_tmp);
-                            thrust::copy(d_tmp, d_tmp + cnt_r, right->d_columns_float[ss.front()].begin());
-                        }
-                        else {
-                            str_gather(thrust::raw_pointer_cast(v.data()), cnt_r, (void*)right->d_columns_char[ss.front()], (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[ss.front()]);
-                            cudaMemcpy( (void*)right->d_columns_char[ss.front()], (void*) thrust::raw_pointer_cast(d_tmp), cnt_r*right->char_size[ss.front()], cudaMemcpyDeviceToDevice);
-                        };
-                    };
-                };
-                ss.pop();
-            };
-            thrust::device_free(d_tmp);
-        };
-
-        if(right->d_columns_int[f2][cnt_r-1] > std::numeric_limits<unsigned int>::max())
-            v64bit = 1;
-
-        if (left->type[f1]  == 2) {
-            cout << "Joins are not yet supported in star joins" << endl;
-            exit(0);
-        }
-        else {
-            queue<string> cc;
-            cc.push(f1);
-            allocColumns(left, cc);
-        };
-
-        config.kInputSize = cnt_r;
-        result = cudppHashTable(theCudpp, &hash_table_handle[i], &config);
-
-        if (result == CUDPP_SUCCESS && verbose)
-            cout << "hash tables created " << getFreeMem() << endl;
-
-
-        if(left->maxRecs > rcount)
-            tt = left->maxRecs;
-        else {
-            if (rcount > tt)
-                tt = rcount;
-        };
-        thrust::device_vector<unsigned int> d_rr(tt);
-        thrust::device_vector<unsigned int> v(cnt_r);
-        thrust::sequence(v.begin(),v.end(),0,1);
-
-        thrust::copy(right->d_columns_int[f2].begin(), right->d_columns_int[f2].begin() + cnt_r,
-                     d_rr.begin());
-        result = cudppHashInsert(hash_table_handle[i], thrust::raw_pointer_cast(d_rr.data()),
-                                 thrust::raw_pointer_cast(v.data()), cnt_r);
-
-        if (result == CUDPP_SUCCESS && verbose)
-            cout << "hash table inserted " << getFreeMem() << endl;
-
-    };
-
-    thrust::device_ptr<unsigned int> d_r = thrust::device_malloc<unsigned int>(tt);
-    thrust::device_vector<unsigned int> d_s(tt);
-
-    thrust::device_ptr<uint2> res = thrust::device_malloc<uint2>(left->maxRecs);
-
-    thrust::device_vector<unsigned int> d_res1;
-    thrust::device_vector<unsigned int> d_res2;
-
-    thrust::device_vector<bool> d_star(left->maxRecs);
-
-    unsigned int res_count, tot_count = 0, offset = 0;
-    size_t cnt_l, k = 0;
-    queue<string> lc;
-
-
-    for (unsigned int i = 0; i < left->segCount; i++) {
-
-		if(verbose)
-			cout << "segment " << i << " " << getFreeMem() <<  '\xd';
-        thrust::sequence(d_star.begin(), d_star.end(),1,0);
-
-        //for every hash table
-        queue<string> op_g1(op_value);
-        for(unsigned int z = 0; z < join_tab_cnt; z++) {
-
-            cnt_l = 0;
-            f1 = op_g1.front();
-            op_g1.pop();
-            f2 = op_g1.front();
-            op_g1.pop();
-
-            while(lc.size())
-                lc.pop();
-            lc.push(f1);
-            copyColumns(left, lc, i, cnt_l);
-            already_copied[f1] = 1;
-
-            cnt_l = left->mRecCount;
-
-            queue<string> op_jj(op_join);
-            for(unsigned int j = 0; j < (join_tab_cnt-1) - z; j++) {
-                op_jj.pop();
-            };
-
-
-            if (cnt_l) {
-
-                CudaSet* right = varNames.find(op_jj.front())->second;
-                thrust::copy(left->d_columns_int[lc.front()].begin(), left->d_columns_int[lc.front()].begin() + cnt_l, d_r);
-
-                result = cudppHashRetrieve(hash_table_handle[z], thrust::raw_pointer_cast(d_r),
-                                           thrust::raw_pointer_cast(res), cnt_l);
-                if (result != CUDPP_SUCCESS && verbose)
-                    cout << "Failed retrieve " << endl;
-
-                uint2 rr = thrust::reduce(res, res+cnt_l, make_uint2(0,0), Uint2Sum());
-
-
-                res_count = rr.y;
-                d_res1.resize(res_count);
-                d_res2.resize(res_count);
-                //cout << "res cnt of " << f2 << " = " << res_count << endl;
-
-                if(res_count) {
-                    thrust::counting_iterator<unsigned int> begin(0);
-                    uint2_split ff(thrust::raw_pointer_cast(res),thrust::raw_pointer_cast(d_r));
-                    thrust::for_each(begin, begin + cnt_l, ff);
-
-                    if(!v64bit) {
-                        thrust::transform(d_star.begin(), d_star.begin() + cnt_l, d_r, d_star.begin(), thrust::logical_and<bool>());
-                    };
-
-                    thrust::exclusive_scan(d_r, d_r+cnt_l, d_r );  // addresses
-                    join_functor1 ff1(thrust::raw_pointer_cast(res),
-                                      thrust::raw_pointer_cast(d_r),
-                                      thrust::raw_pointer_cast(d_res1.data()),
-                                      thrust::raw_pointer_cast(d_res2.data()));
-                    thrust::for_each(begin, begin + cnt_l, ff1);
-
-                    if(v64bit) {// need to check the upper 32 bits
-                        thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(d_res1.size());
-                        thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_left(left->d_columns_int[lc.front()].begin(), d_res1.begin());
-                        thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter_right(right->d_columns_int[f2].begin(), d_res2.begin());
-                        thrust::transform(iter_left, iter_left+d_res2.size(), iter_right, d_add, int_upper_equal_to());
-                        unsigned int new_cnt = thrust::count(d_add, d_add+d_res1.size(), 1);
-                        if(new_cnt == 0)
-                            break;
-                        thrust::stable_partition(d_res1.begin(), d_res1.begin() + d_res2.size(), d_add, thrust::identity<unsigned int>());
-                        thrust::stable_partition(d_res2.begin(), d_res2.end(), d_add, thrust::identity<unsigned int>());
-
-                        thrust::transform(d_star.begin(), d_star.end(), d_add, d_star.begin(), thrust::logical_and<bool>());
-                        thrust::device_free(d_add);
-                        d_res2.resize(new_cnt);
-                        d_res1.resize(new_cnt);
-
-                    };
-                }
-                else {
-                    thrust::sequence(d_star.begin(), d_star.end(),0,0);
-                    break;
-                };
-            };
-        };
-        // if our bool vector is not all zeroes then load all left columns and also get indexes and gather values
-        // from right hash tables
-        unsigned int n_cnt = thrust::count(d_star.begin(), d_star.begin() + cnt_l, 1);
-        //cout << "Star join result count " << n_cnt << endl;
-        tot_count = tot_count + n_cnt;
-        queue<string> cc;
-        if(n_cnt) { //gather
-
-            offset = c->mRecCount;
-            if(i == 0 && left->segCount != 1) {
-                c->reserve(n_cnt*(left->segCount+1));
-            };
-            c->resize_join(n_cnt);
-            queue<string> op_sel1(op_sel_s);
-
-            while(!op_sel1.empty()) {
-
-
-                while(!cc.empty())
-                    cc.pop();
-
-                cc.push(op_sel1.front());
-
-                if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
-                    // copy field's segment to device, gather it and copy to the host
-
-                    if(already_copied.count(op_sel1.front()) == 0) {
-                        allocColumns(left, cc);
-                        copyColumns(left, cc, i, k);
-                    };
-
-                    //gather
-                    if(left->type[op_sel1.front()] == 0) {
-                        thrust::device_ptr<int_type> d_tmp = thrust::device_malloc<int_type>(n_cnt);
-                        thrust::copy_if(left->d_columns_int[op_sel1.front()].begin(), left->d_columns_int[op_sel1.front()].begin() + cnt_l,
-                                        d_star.begin(), d_tmp, thrust::identity<bool>());
-                        thrust::copy(d_tmp, d_tmp + n_cnt, c->h_columns_int[op_sel1.front()].begin() + offset);
-                        thrust::device_free(d_tmp);
-                    }
-                    else if(left->type[op_sel1.front()] == 1) {
-                        thrust::device_ptr<float_type> d_tmp = thrust::device_malloc<float_type>(n_cnt);
-                        thrust::copy_if(left->d_columns_float[op_sel1.front()].begin(), left->d_columns_float[op_sel1.front()].begin() + cnt_l,
-                                        d_star.begin(), d_tmp, thrust::identity<bool>());
-                        thrust::copy(d_tmp, d_tmp + n_cnt, c->h_columns_float[op_sel1.front()].begin() + offset);
-                        thrust::device_free(d_tmp);
-                    }
-                    else { //strings
-                        thrust::device_ptr<char> d_tmp = thrust::device_malloc<char>(n_cnt*left->char_size[op_sel1.front()]);
-
-                        thrust::device_ptr<bool> d_g(thrust::raw_pointer_cast(d_star.data()));
-
-                        str_copy_if(left->d_columns_char[op_sel1.front()], cnt_l, thrust::raw_pointer_cast(d_tmp),
-                                    d_g, c->char_size[op_sel1.front()]);
-                        cudaMemcpy( (void*)&c->h_columns_char[op_sel1.front()][offset*c->char_size[op_sel1.front()]], (void*) thrust::raw_pointer_cast(d_tmp),
-                                    c->char_size[op_sel1.front()] * n_cnt, cudaMemcpyDeviceToHost);
-                        thrust::device_free(d_tmp);
-                    }
-                    //left->deAllocColumnOnDevice(colInd);
-
-                }
-                else {
-                    string right_tab_name;
-                    queue<string> op_j(op_join);
-                    while(!op_j.empty()) {
-						if(std::find(varNames[op_j.front()]->columnNames.begin(), varNames[op_j.front()]->columnNames.end(), op_sel1.front()) != varNames[op_j.front()]->columnNames.end()) {
-                            right_tab_name = op_j.front();
-                            break;
-                        };
-                        op_j.pop();
-                    };
-
-                    CudaSet* right = varNames[right_tab_name];
-
-                    while(!cc.empty())
-                        cc.pop();
-                    cc.push(var_map[right_tab_name]);
-
-                    if(already_copied.count(var_map[right_tab_name]) == 0) {
-                        allocColumns(left, cc);
-                        copyColumns(left, cc, i, k);
-                    };
-
-                    thrust::device_ptr<int_type> d_t = thrust::device_malloc<int_type>(n_cnt);
-                    thrust::copy_if(left->d_columns_int[var_map[right_tab_name]].begin(), left->d_columns_int[var_map[right_tab_name]].begin() + cnt_l,
-                                    d_star.begin(), d_t, thrust::identity<bool>());
-
-                    // get the values from hash table
-                    unsigned int hash_ind = tab_map[right_tab_name];
-
-                    thrust::copy(d_t, d_t + n_cnt, d_r);
-                    thrust::device_free(d_t);
-                    result = cudppHashRetrieve(hash_table_handle[hash_ind], thrust::raw_pointer_cast(d_r),
-                                               thrust::raw_pointer_cast(res), n_cnt);
-                    if (result != CUDPP_SUCCESS && verbose)
-                        cout << "Failed retrieve " << endl;
-
-                    thrust::counting_iterator<unsigned int> begin(0);
-                    uint2_split_left ff(thrust::raw_pointer_cast(res),thrust::raw_pointer_cast(d_s.data()));
-                    thrust::for_each(begin, begin + n_cnt, ff);
-
-                    //gather
-                    if(right->type[op_sel1.front()] == 0) {
-                        thrust::permutation_iterator<ElementIterator_int,IndexIterator> iter(right->d_columns_int[op_sel1.front()].begin(), d_s.begin());
-                        thrust::copy(iter, iter + n_cnt, c->h_columns_int[op_sel1.front()].begin() + offset);
-                    }
-                    else if(right->type[op_sel1.front()] == 1) {
-                        thrust::permutation_iterator<ElementIterator_float,IndexIterator> iter(right->d_columns_float[op_sel1.front()].begin(), d_s.begin());
-                        thrust::copy(iter, iter + n_cnt, c->h_columns_float[op_sel1.front()].begin() + offset);
-                    }
-                    else { //strings
-                        thrust::device_ptr<char> d_tmp1 = thrust::device_malloc<char>(n_cnt*right->char_size[op_sel1.front()]);
-                        str_gather(thrust::raw_pointer_cast(d_s.data()), n_cnt, (void*)right->d_columns_char[op_sel1.front()],
-                                   (void*) thrust::raw_pointer_cast(d_tmp1), right->char_size[op_sel1.front()]);
-                        cudaMemcpy( (void*)(c->h_columns_char[op_sel1.front()] + offset*c->char_size[op_sel1.front()]), (void*) thrust::raw_pointer_cast(d_tmp1),
-                                    c->char_size[op_sel1.front()] * n_cnt, cudaMemcpyDeviceToHost);
-                        thrust::device_free(d_tmp1);
-                    }
-                }
-                op_sel1.pop();
-            };
-        };
-
-    };
-
-    while(!op_join.empty()) {
-        varNames[op_join.front()]->deAllocOnDevice();
-        op_join.pop();
-    };
-    left->deAllocOnDevice();
-
-    for(unsigned int i = 0; i < join_tab_cnt; i++) {
-        cudppDestroyHashTable(theCudpp, hash_table_handle[i]);
-    };
-    delete [] hash_table_handle;
-
-    varNames[s] = c;
-    c->mRecCount = tot_count;	
-    c->maxRecs = tot_count;
-	
-	if(verbose)
-		cout << endl << "join count " << tot_count << endl;
-};
 
 
 void emit_join(char *s, char *j1, int grp)
@@ -3253,46 +2844,41 @@ void emit_join(char *s, char *j1, int grp)
     queue<string> op_m(op_value);
 	queue<string> op_m1(op_value);
 
-    if(check_star_join(j1) && verbose) {
-        cout << "executing star join !! " << endl;
-        star_join(s, j1);
-    }
-    else {
-        if(join_tab_cnt > 1) {
-            string tab_name;
-            for(unsigned int i = 1; i <= join_tab_cnt; i++) {
+	if(join_tab_cnt > 1) {
+		string tab_name;
+		for(unsigned int i = 1; i <= join_tab_cnt; i++) {
 
-                if(i == join_tab_cnt)
-                    tab_name = s;
-                else
-                    tab_name = s + int_to_string(i);
+			if(i == join_tab_cnt)
+				tab_name = s;
+			else
+				tab_name = s + int_to_string(i);
 
-                string j, j2;
-                if(i == 1) {
-                    j2 = op_join.front();
-                    op_join.pop();
-                    j = op_join.front();
-                    op_join.pop();
-                }
-                else {
-                    if(!op_join.empty()) {
-                        j = op_join.front();
-                        op_join.pop();
-                    }
-                    else
-                        j = j1;
-                    j2 = s + int_to_string(i-1);
-                };
-                emit_multijoin(tab_name, j, j2, i, s);
-                op_value = op_m;
-            };
-        }
-        else {
-            string j2 = op_join.front();
-            op_join.pop();
-            emit_multijoin(s, j1, j2, 1, s);
-        };
-    };
+			string j, j2;
+			if(i == 1) {
+				j2 = op_join.front();
+				op_join.pop();
+				j = op_join.front();
+				op_join.pop();
+			}
+			else {
+				if(!op_join.empty()) {
+					j = op_join.front();
+					op_join.pop();
+				}
+				else
+					j = j1;
+				j2 = s + int_to_string(i-1);
+			};
+			emit_multijoin(tab_name, j, j2, i, s);
+			op_value = op_m;
+		};
+	}
+	else {
+		string j2 = op_join.front();
+		op_join.pop();
+		emit_multijoin(s, j1, j2, 1, s);
+	};
+
 	
     queue<string> op_sel;
     queue<string> op_sel_as;
@@ -5000,7 +4586,6 @@ bool interactive = 0;
 
         extern FILE *yyin;
         context = CreateCudaDevice(0, av, verbose);
-        cudppCreate(&theCudpp);
         hash_seed = 100;
 
         if(!yyparse()) {
@@ -5019,7 +4604,6 @@ bool interactive = 0;
             cudaFree(alloced_tmp);
         };
 
-        cudppDestroy(theCudpp);
         if(verbose) {
             //cout<< endl << "tot disk time " << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
             cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
@@ -5028,7 +4612,6 @@ bool interactive = 0;
     else {
         string script;
         context = CreateCudaDevice(0, av, verbose);
-        cudppCreate(&theCudpp);
         hash_seed = 100;
         getline(cin, script);
 
@@ -5068,7 +4651,6 @@ bool interactive = 0;
             };
             getline(cin, script);
         };
-        cudppDestroy(theCudpp);
         if(alloced_sz) {
             cudaFree(alloced_tmp);
             alloced_sz = 0;
@@ -5131,7 +4713,6 @@ void alenkaInit(char ** av)
         statement_count = 0;
         clean_queues();
         context = CreateCudaDevice(0, av, true);
-        cudppCreate(&theCudpp);
         printf("Alenka initialised\n");
 }
 
@@ -5143,8 +4724,6 @@ void alenkaClose()
 
         if(alloced_sz)
                 cudaFree(alloced_tmp);
-
-        cudppDestroy(theCudpp);
 }
 
 

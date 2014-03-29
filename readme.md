@@ -4,11 +4,10 @@
 
 Download [Alenka](https://github.com/antonmks/Alenka/archive/master.zip)
 
-Download [CUDPP](http://cudpp.github.io/) library 
 
 Download [ModernGpu](https://github.com/NVlabs/moderngpu) library
 
-Install CUDPP and ModernGPU into Alenka directory
+Unzip ModernGPU into Alenka directory
 
 Run Makefile or Makefile.win
 

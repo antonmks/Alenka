@@ -2,8 +2,8 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj \
-		 atof.obj bison.obj select.obj mgpucontext.obj row.obj main.obj
-	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda -lcudpp64 -lcudpp_hash64 mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
+		 select.obj atof.obj bison.obj mgpucontext.obj row.obj main.obj
+	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj \

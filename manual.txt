@@ -35,8 +35,7 @@ J_N := SELECT n_nationkey AS n_nationkey, n_name AS n_name
 STORE J_N INTO 'mytest.txt' USING ('|') LIMIT 100;
 
 To compile alenka you need to have NVidia's CUDA installed. You also need to download and use the latest(1.7) version of Thrust.
-You also need to download and compile CUDPP library(http://cudpp.github.io), after compilation put library files into Alenka's directory.
-Sorted Merge Joins uses Sean Baxter's excellent moderngpu library(https://github.com/NVlabs/moderngpu) so you need to download and unzip it into the source directory as well.
+oins use Sean Baxter's excellent moderngpu library(https://github.com/NVlabs/moderngpu) so you need to download and unzip it into the source directory as well.
 
 To compile alenka run make on Linux or nmake on Windows.
 

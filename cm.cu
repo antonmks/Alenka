@@ -2492,12 +2492,16 @@ void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as, queue<st
 		bool found = 0;
 		
 		while(!found) {
-			if(var_exists(varNames[tabs.front()], tabs.front())) {
+			cout << "checking " << op_sel.front() << endl;
+			if(var_exists(varNames[tabs.front()], op_sel.front())) {
 				found = 1;
 				a = varNames[tabs.front()];
+				cout << "found in " << tabs.front() << endl;
 			}
-			else	
+			else {	
+				cout << "not found in " << tabs.front() << endl;
 				tabs.pop();
+			};	
 		};
         //CudaSet* a = varNames[t_list.front()];
 				    
