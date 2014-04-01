@@ -88,6 +88,7 @@ extern map<string,string> setMap; //map to keep track of column names and set na
 extern std::clock_t tot;
 extern std::clock_t tot_fil;
 extern bool verbose;
+extern bool save_dict;
 extern ContextPtr context;
 
 

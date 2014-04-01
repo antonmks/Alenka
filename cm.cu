@@ -1561,6 +1561,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 			else	
 				data_dict[file_name][columnNames[j]].col_length = char_size[columnNames[j]];
 		};		
+		save_dict = 1;
 
 	
 		if(text_source) {  //writing a binary file using a text file as a source

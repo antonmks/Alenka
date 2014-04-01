@@ -69,6 +69,9 @@
     void emit_presort(char* s);
 	void emit_display(char *s, char* sep);
 	void emit_case();
+	void emit_show_tables();
+	void emit_describe_table(char* table_name);
+	void emit_drop_table(char* table_name);
 
 %}
 
@@ -150,7 +153,11 @@
 %token ELSE
 %token END
 %token REFERENCES
-
+%token SHOW
+%token TABLES
+%token TABLE
+%token DESCRIBE
+%token DROP
 
 %type <intval> load_list  opt_where opt_limit sort_def del_where
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -191,7 +198,14 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_insert($3, $7);}
 | DISPLAY NAME USING '(' FILENAME ')' opt_limit
 {  emit_display($2, $5);}
+| SHOW TABLES 
+{  emit_show_tables();}
+| DESCRIBE NAME 
+{  emit_describe_table($2);}
+| DROP TABLE NAME 
+{  emit_drop_table($3);}
 ;
+
 
 expr:
 NAME { emit_name($1); }
@@ -341,6 +355,7 @@ map<unsigned int, unsigned int> join_and_cnt;
 bool scan_state = 0;
 ContextPtr context;
 map<string, map<string, bool> > used_vars;
+bool save_dict = 0;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
@@ -2013,7 +2028,7 @@ void emit_display(char *f, char* sep)
         limit = op_nums.front();
         op_nums.pop();
     };
-
+	
     //a->Store("",sep, limit, 0, 1);
     a->Display(limit, 0, 1);
 	if(verbose)
@@ -2286,6 +2301,56 @@ void emit_load(char *s, char *f, int d, char* sep)
     };
 }
 
+void emit_show_tables()
+{
+	if (scan_state == 1) {
+		for ( map<string, map<string, col_data> >::iterator it=data_dict.begin() ; it != data_dict.end(); ++it ) {		
+			cout << (*it).first << endl;
+		};
+	};
+		
+    return;
+}
+
+void emit_drop_table(char* table_name)
+{
+	if (scan_state == 1) {
+		if(data_dict.find(table_name) != data_dict.end()) {	
+			data_dict.erase(table_name);
+		};
+		save_dict = 1;
+	};
+		
+    return;
+}
+
+
+void emit_describe_table(char* table_name)
+{
+	if (scan_state == 1) {
+		map<string, map<string, col_data> >::iterator iter;
+		if((iter = data_dict.find(table_name)) != data_dict.end()) {	
+			map<string, col_data> s = (*iter).second;
+			for ( map<string, col_data>::iterator it=s.begin() ; it != s.end(); ++it ) {	
+				if ((*it).second.col_type == 0) {
+					cout << (*it).first << " integer" << endl;
+				}	
+				else if ((*it).second.col_type == 1) {
+					cout << (*it).first << " float" << endl;
+				}
+				else if ((*it).second.col_type == 3) {
+					cout << (*it).first << " decimal" << endl;
+				}				
+				else {
+					cout << (*it).first << " char(" << (*it).second.col_length << ")" << endl;
+				};	
+			};
+		};
+	};
+		
+    return;
+}
+
 
 
 void yyerror(char *s, ...)
@@ -2421,7 +2486,7 @@ bool interactive = 0;
         };
 
         if(verbose) {
-            //cout<< endl << "tot disk time " << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+            cout<< endl << "tot disk time " << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
             cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
     }
@@ -2474,7 +2539,8 @@ bool interactive = 0;
 
 
     };
-	save_col_data(data_dict,"data.dictionary");
+	if(save_dict)
+		save_col_data(data_dict,"data.dictionary");
     return 0;
 }
 

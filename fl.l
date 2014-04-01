@@ -74,6 +74,11 @@ THEN {return THEN; }
 ELSE {return ELSE; }
 END {return END; }
 REFERENCES {return REFERENCES; }
+SHOW {return SHOW; }
+TABLES {return TABLES; }
+TABLE {return TABLE; }
+DESCRIBE {return DESCRIBE; }
+DROP {return DROP; }
 
 
 [0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }

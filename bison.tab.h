@@ -102,7 +102,12 @@
      THEN = 318,
      ELSE = 319,
      END = 320,
-     REFERENCES = 321
+     REFERENCES = 321,
+     SHOW = 322,
+     TABLES = 323,
+     TABLE = 324,
+     DESCRIBE = 325,
+     DROP = 326
    };
 #endif
 
@@ -113,7 +118,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 75 "bison.y"
+#line 78 "bison.y"
 
     int intval;
     double floatval;
@@ -123,7 +128,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 127 "bison.tab.h"
+#line 132 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
