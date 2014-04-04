@@ -672,10 +672,20 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 exe_nums.push(op_nums.front());
                 op_nums.pop();
             }
-            else if (ss.compare("NAME") == 0 || ss.compare("STRING") == 0) {
+            else if (ss.compare("NAME") == 0)  {
+				if(var_exists(a, op_value.front())) {
+					exe_value.push(op_value.front());
+					op_value.pop();
+				}
+				else {
+					cout << "Couldn't find column " << op_value.front() << endl;
+					exit(0);
+				};
+            }
+            else if (ss.compare("STRING") == 0) {
                 exe_value.push(op_value.front());
                 op_value.pop();
-            }
+            }			
             if (ss.compare("FLOAT") == 0) {
                 exe_nums_f.push(op_nums_f.front());
                 op_nums_f.pop();
