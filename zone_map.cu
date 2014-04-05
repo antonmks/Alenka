@@ -1438,7 +1438,11 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.push(host_logical_or(s2,s3));
             }
             else {
-                cout << "found nothing " << endl;
+				if(ss.compare("JOIN") == 0)
+					cout << "operation = is not valid" << endl;
+				else 	
+					cout << "operation " << ss << " is not valid" << endl;
+				exit(0);
             }
         };
     };
