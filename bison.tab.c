@@ -2562,6 +2562,7 @@ map<unsigned int, unsigned int> join_and_cnt;
 bool scan_state = 0;
 ContextPtr context;
 map<string, map<string, bool> > used_vars;
+bool save_dict = 0;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
@@ -4524,6 +4525,7 @@ void emit_drop_table(char* table_name)
 		if(data_dict.find(table_name) != data_dict.end()) {	
 			data_dict.erase(table_name);
 		};
+		save_dict = 1;
 	};
 		
     return;
@@ -4744,7 +4746,8 @@ bool interactive = 0;
 
 
     };
-	save_col_data(data_dict,"data.dictionary");
+	if(save_dict)
+		save_col_data(data_dict,"data.dictionary");
     return 0;
 }
 

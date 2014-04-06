@@ -3868,17 +3868,17 @@ void emit_select(char *s, char *f, int ll)
         stat[s] = statement_count;
         stat[f] = statement_count;
 		check_used_vars();
+	    clean_queues();
         return;
     };
 
 
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
-        cout << "Couldn't find " << f << endl;
+        cout << "Couldn't find1 " << f << endl;
         return;
     };
-
-
+	
 
     queue<string> op_v1(op_value);
     while(op_v1.size() > ll)
@@ -4040,7 +4040,9 @@ void emit_select(char *s, char *f, int ll)
                 order_inplace(a, op_v2, field_names, 1);
                 a->GroupBy(op_v2);
             };
+			std::clock_t start2 = std::clock();	
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+			std::cout<< "selectR time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 			
 			if(i == 0)
 				std::reverse(b->columnNames.begin(), b->columnNames.end());
@@ -4219,7 +4221,7 @@ void emit_display(char *f, char* sep)
             exit(1);
         };
         stat[f] = statement_count;
-		check_used_vars();
+		//check_used_vars();
         clean_queues();
         return;
     };
@@ -4345,7 +4347,8 @@ void emit_store(char *s, char *f, char* sep)
             exit(1);
         };
         stat[s] = statement_count;
-		check_used_vars();
+		//check_used_vars();
+		clean_queues();
         return;
     };
 
@@ -4380,7 +4383,8 @@ void emit_store_binary(char *s, char *f)
             exit(1);
         };
         stat[s] = statement_count;
-		check_used_vars();
+		//check_used_vars();
+		clean_queues();
         return;
     };
 
@@ -4600,29 +4604,35 @@ void clean_queues()
 
 void load_vars()
 {
-	for ( map<string, map<string, bool> >::iterator it=used_vars.begin() ; it != used_vars.end(); ++it ) {
-		
-		while(!namevars.empty()) namevars.pop();
-		while(!typevars.empty()) typevars.pop();
-		while(!sizevars.empty()) sizevars.pop();
-		while(!cols.empty()) cols.pop();
-		if(stat.count((*it).first) != 0) {
-			map<string, bool> c = (*it).second;
-			for ( map<string, bool>::iterator sit=c.begin() ; sit != c.end(); ++sit ) {
-				//cout << "name " << (*sit).first << endl;
-				namevars.push((*sit).first);
-				if(data_dict[(*it).first][(*sit).first].col_type == 0)
-					typevars.push("int");
-				else if(data_dict[(*it).first][(*sit).first].col_type == 1)
-					typevars.push("float");
-				else if(data_dict[(*it).first][(*sit).first].col_type == 3)
-					typevars.push("decimal");	
-				else typevars.push("char");	
-				sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
-				cols.push(0);				
-			};			
-			emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
-		};		
+	if(used_vars.size() == 0) {
+		cout << "Error, no valid column names have been found " << endl;
+		exit(0);
+	}
+	else {
+		for ( map<string, map<string, bool> >::iterator it=used_vars.begin() ; it != used_vars.end(); ++it ) {
+			
+			while(!namevars.empty()) namevars.pop();
+			while(!typevars.empty()) typevars.pop();
+			while(!sizevars.empty()) sizevars.pop();
+			while(!cols.empty()) cols.pop();
+			if(stat.count((*it).first) != 0) {
+				map<string, bool> c = (*it).second;
+				for ( map<string, bool>::iterator sit=c.begin() ; sit != c.end(); ++sit ) {
+					//cout << "name " << (*sit).first << endl;
+					namevars.push((*sit).first);
+					if(data_dict[(*it).first][(*sit).first].col_type == 0)
+						typevars.push("int");
+					else if(data_dict[(*it).first][(*sit).first].col_type == 1)
+						typevars.push("float");
+					else if(data_dict[(*it).first][(*sit).first].col_type == 3)
+						typevars.push("decimal");	
+					else typevars.push("char");	
+					sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
+					cols.push(0);				
+				};			
+				emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
+			};		
+		};
 	};	
 }
 
