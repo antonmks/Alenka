@@ -4028,8 +4028,7 @@ void emit_select(char *s, char *f, int ll)
         while(!op_s.empty() && a->mRecCount != 0) {
 
 			if (a->type[op_s.top()] == 2) {
-                a->d_columns_int[op_s.top()].resize(0);
-				//a->d_columns_int[op_s.top()].shrink_to_fit();
+                a->d_columns_int[op_s.top()].resize(0);			
                 a->add_hashed_strings(op_s.top(), i);	
             };
             op_s.pop();
@@ -4037,13 +4036,14 @@ void emit_select(char *s, char *f, int ll)
 
         if(a->mRecCount) {
             if (ll != 0) {
+				std::clock_t start2 = std::clock();	
                 order_inplace(a, op_v2, field_names, 1);
+				std::cout<< "order time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
                 a->GroupBy(op_v2);
             };
-			std::clock_t start2 = std::clock();	
-            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
-			std::cout<< "selectR time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 			
+            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+					
 			if(i == 0)
 				std::reverse(b->columnNames.begin(), b->columnNames.end());
 			
@@ -4084,7 +4084,7 @@ void emit_select(char *s, char *f, int ll)
                     };
                 };				
             };
-        };
+        };			
     };
 	
     a->mRecCount = ol_count;
@@ -4640,6 +4640,8 @@ void load_vars()
 int execute_file(int ac, char **av)
 {
 bool interactive = 0;
+bool just_once  = 0;
+string script;
 
     process_count = 6200000;
     verbose = 0;
@@ -4652,7 +4654,14 @@ bool interactive = 0;
         }
         else if(strcmp(av[i],"-i") == 0) {
             interactive = 1;
-        };
+			break;
+        }
+        else if(strcmp(av[i],"-s") == 0) {
+            just_once = 1;
+			interactive = 1;
+			script = av[i+1];
+			cout << "Shkript : " << script << endl;
+        };		
     };
 
 	load_col_data(data_dict, "data.dictionary");
@@ -4707,11 +4716,11 @@ bool interactive = 0;
             cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
     }
-    else {
-        string script;
+    else {        
         context = CreateCudaDevice(0, av, verbose);
         hash_seed = 100;
-        getline(cin, script);
+		if(!just_once)
+			getline(cin, script);		
 
         while (script != "exit" && script != "EXIT") {
 
@@ -4747,7 +4756,10 @@ bool interactive = 0;
             if(verbose) {
                 cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
             };
-            getline(cin, script);
+			if(!just_once)
+				getline(cin, script);
+			else
+				script = "exit";
         };
         if(alloced_sz) {
             cudaFree(alloced_tmp);
