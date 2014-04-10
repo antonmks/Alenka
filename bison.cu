@@ -4660,7 +4660,6 @@ string script;
             just_once = 1;
 			interactive = 1;
 			script = av[i+1];
-			cout << "Shkript : " << script << endl;
         };		
     };
 
