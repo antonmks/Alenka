@@ -2398,8 +2398,8 @@ void clean_queues()
 void load_vars()
 {
 	if(used_vars.size() == 0) {
-		cout << "Error, no valid column names have been found " << endl;
-		exit(0);
+		//cout << "Error, no valid column names have been found " << endl;
+		//exit(0);
 	}
 	else {
 		for ( map<string, map<string, bool> >::iterator it=used_vars.begin() ; it != used_vars.end(); ++it ) {
