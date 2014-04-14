@@ -1,7 +1,7 @@
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o atof.o cm.o mgpucontext.o 
+		 select.o zone_map.o atof.o cm.o mgpucontext.o row.o main.o
 	nvcc -O3 -arch=sm_20 -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
 		 MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
