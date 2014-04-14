@@ -37,12 +37,13 @@ using namespace thrust::placeholders;
 
 
 size_t total_count = 0, total_max;
-std::clock_t tot;
+clock_t tot;
 unsigned int total_segments = 0;
 unsigned int process_count;
 size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
 bool verbose;
+bool interactive;
 void* d_v = NULL;
 void* s_v = NULL;
 queue<string> op_sort;
@@ -665,6 +666,11 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
     string f1(load_file_name);
     f1 += "." + colname + "." + int_to_string(segNum);
     unsigned int cnt;
+	
+	if(interactive) { //check if data are in buffers
+		cout << "interactive " << endl;
+	
+	};
 
     FILE* f;
     f = fopen(f1.c_str(), "rb" );
@@ -3030,9 +3036,9 @@ void filter_op(char *s, char *f, unsigned int segment)
         if (b->prm_d.size() == 0)
             b->prm_d.resize(a->maxRecs);
 
-		//cout << endl << "MAP CHECK start " << segment <<  endl;	
+		cout << endl << "MAP CHECK start " << segment <<  endl;	
 		char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);	
@@ -3050,7 +3056,8 @@ void filter_op(char *s, char *f, unsigned int segment)
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
     }
-	//cout << endl << "filter res " << b->mRecCount << endl;		
+	if(verbose)
+		cout << endl << "filter res " << b->mRecCount << endl;		
     //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 }
 
@@ -3497,6 +3504,7 @@ bool var_exists(CudaSet* a, string name) {
 	if(std::find(a->columnNames.begin(), a->columnNames.end(), name) !=  a->columnNames.end())
 		return 1;
 	else
+		
 		return 0;
 }
 

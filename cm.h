@@ -14,8 +14,6 @@
 
 #define EPSILON    (1.0E-8)
 
-using namespace std;
-
 #ifndef ADD_H_GUARD
 #define ADD_H_GUARD
 
@@ -32,12 +30,10 @@ using namespace std;
 #include <thrust/partition.h>
 #include <thrust/fill.h>
 #include <thrust/scan.h>
-#include <thrust/device_ptr.h>
 #include <thrust/unique.h>
 #include <thrust/gather.h>
 #include <thrust/sort.h>
 #include <thrust/merge.h>
-#include <thrust/reduce.h>
 #include <thrust/functional.h>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include <queue>
@@ -65,7 +61,9 @@ typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
 typedef thrust::device_vector<int>::iterator   IndexIterator2;
 typedef thrust::device_ptr<int> IndexIterator1;
 
+using namespace std;
 using namespace mgpu;
+using namespace thrust::system::cuda::experimental;
 
 extern size_t int_size;
 extern size_t float_size;
@@ -90,6 +88,11 @@ extern std::clock_t tot_fil;
 extern bool verbose;
 extern bool save_dict;
 extern ContextPtr context;
+extern bool interactive;
+
+extern map<string, char*> buffers;
+extern map<string, size_t> buffer_sizes;
+extern size_t total_buffer_size;
 
 
 template<typename T>
@@ -177,7 +180,6 @@ struct float_equal_to
             r = (long long int)((rhs+EPSILON)*100.0);
         else r = (long long int)(rhs*100.0);
 
-
         return (l == r);
     }
 };
@@ -202,54 +204,6 @@ struct float_upper_equal_to
 };
 
 
-
-struct Uint2Sum
-{
-    __host__ __device__  uint2 operator()(uint2& a, uint2& b)
-    {
-        //a.x += b.x;
-        a.y += b.y;
-        return a;
-    }
-};
-
-
-struct uint2_split
-{
-
-    const uint2* d_res;
-    unsigned int * output;
-
-    uint2_split(const uint2* _d_res, unsigned int * _output):
-        d_res(_d_res), output(_output) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        output[i] = d_res[i].y;
-
-    }
-};
-
-struct uint2_split_left
-{
-
-    const uint2* d_res;
-    unsigned int * output;
-
-    uint2_split_left(const uint2* _d_res, unsigned int * _output):
-        d_res(_d_res), output(_output) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        output[i] = d_res[i].x;
-
-    }
-};
-
 struct long_to_float
 {
     __host__ __device__
@@ -260,31 +214,6 @@ struct long_to_float
 };
 
 
-
-struct join_functor1
-{
-
-    const uint2* d_res;
-    const unsigned int* d_addr;
-    unsigned int * output;
-    unsigned int * output1;
-
-    join_functor1(const uint2* _d_res, const unsigned int * _d_addr, unsigned int * _output, unsigned int * _output1):
-        d_res(_d_res), d_addr(_d_addr), output(_output), output1(_output1) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        if (d_res[i].x || d_res[i].y) {
-            for(unsigned int z = 0; z < d_res[i].y; z++) {
-                output[d_addr[i] + z] = i;
-                output1[d_addr[i] + z] = d_res[i].x + z;
-            };
-        };
-    }
-};
-
 template<typename T>
   struct not_identity : public unary_function<T,T>
 {
@@ -294,13 +223,10 @@ template<typename T>
 }; 
 
 
-
-
 #ifdef _WIN64
 typedef unsigned __int64 uint64_t;
 #endif
 
-using namespace thrust::system::cuda::experimental;
 
 struct col_data {
 	unsigned int col_type;
