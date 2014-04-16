@@ -2861,14 +2861,12 @@ void emit_join(char *s, char *j1, int grp)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
-            cout << "Join (Alenka): couldn't find variable " + string(j1) << endl;
-            throw "Join (Alenka): couldn't find variable " + string(j1);
-            //exit(1);
+            cout << "Join : couldn't find variable " << j1 << endl;
+            exit(1);
         };
         if (stat.find(op_join.front()) == stat.end() && data_dict.count(op_join.front()) == 0) {
-            cout << "Join (Alenka) : couldn't find variable " + op_join.front() << endl;
-            throw "Join (Alenka) : couldn't find variable " + op_join.front();
-            //exit(1);
+            cout << "Join : couldn't find variable " << op_join.front() << endl;
+            exit(1);
         };
         stat[s] = statement_count;
         stat[j1] = statement_count;
@@ -3058,9 +3056,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			colname2 = f2;
         }
         else {
-            cout << "(Alenka) Couldn't find column " + f2 << endl;
-            throw "(Alenka) Couldn't find column " + f2;
-            //exit(0);
+            cout << "Couldn't find column " << f2 << endl;
+            exit(0);
         };
     }
     else if (std::find(right->columnNames.begin(), right->columnNames.end(), f1) != right->columnNames.end()) {
@@ -3072,23 +3069,20 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             f2 = tmpstr;
         }
         else {
-            cout << "(Alenka) Couldn't find column " + f2 << endl;
-            throw "(Alenka) Couldn't find column " + f2;
-            //exit(0);
+            cout << "Couldn't find column " << f2 << endl;
+            exit(0);
         };
     }
     else {
-        cout << "(Alenka) Couldn't find column " + f1 << endl;
-        throw "(Alenka) Couldn't find column " + f1;
-        //exit(0);
+        cout << "Couldn't find column " << f1 << endl;
+        exit(0);
     };
 
 
     if (!((left->type[colname1] == 0 && right->type[colname2]  == 0) || (left->type[colname1] == 2 && right->type[colname2]  == 2)
             || (left->type[colname1] == 1 && right->type[colname2]  == 1 && left->decimal[colname1] && right->decimal[colname2]))) {
-        cout << "(Alenka) Joins on floats are not supported" << endl;
-        throw "(Alenka) Joins on floats are not supported" ;
-        //exit(0);
+        cout << "Joins on floats are not supported " << endl;
+        exit(0);
     };
 
 
@@ -3700,9 +3694,8 @@ void emit_order(char *s, char *f, int e, int ll)
 
     if (scan_state == 0 && ll == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            cout << "Order (Alenka) : couldn't find variable " + string(f) << endl;
-            throw "Order (Alenka) : couldn't find variable " + string(f);
-            //exit(1);
+            cout << "Order : couldn't find variable " << f << endl;
+            exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;
@@ -3745,6 +3738,11 @@ void emit_order(char *s, char *f, int e, int ll)
             exe_type.push(op_type.front());
             exe_value.push(op_value.front());
         };
+		if(std::find(a->columnNames.begin(), a->columnNames.end(), exe_type.top()) == a->columnNames.end()) {		
+			cout << "Couldn't find name " << exe_type.top() << endl;
+			exit(0);
+		};
+
     };
 
     stack<string> tp(exe_type);
@@ -3868,8 +3866,7 @@ void emit_select(char *s, char *f, int ll)
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             cout << "Select : couldn't find variable " << f << endl;
-            throw "Select (Alenka): couldn't find variable " + string(f);
-            //exit(1);
+            exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;
@@ -3881,7 +3878,7 @@ void emit_select(char *s, char *f, int ll)
 
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
-        cout << "(Alenka) Couldn't find1 " << f << endl;	// exception ??
+        cout << "Couldn't find1 " << f << endl;
         return;
     };
 	
@@ -3904,9 +3901,8 @@ void emit_select(char *s, char *f, int ll)
     if(varNames.find(f) != varNames.end())
         a = varNames.find(f)->second;
     else {
-        cout << "(Alenka) Couldn't find " + string(f) << endl;
-        throw "(Alenka) Couldn't find " + string(f);
-        //exit(0);
+        cout << "Couldn't find " << f  << endl;
+        exit(0);
     };
 
     if(a->mRecCount == 0 && !a->filtered) {
@@ -4153,14 +4149,12 @@ void emit_insert(char *f, char* s) {
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            cout << "Delete (Alenka): couldn't find variable " + string(f) << endl;
-            throw "Delete (Alenka): couldn't find variable " + string(f);
-            //exit(1);
+            cout << "Delete : couldn't find variable " << f << endl;
+            exit(1);
         };
         if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
-            cout << "Delete (Alenka): couldn't find variable " + string(s) << endl;
-            throw "Delete (Alenka): couldn't find variable " + string(s);
-            //exit(1);
+            cout << "Delete : couldn't find variable " << s << endl;
+            exit(1);
         };		
 		check_used_vars();	
         stat[f] = statement_count;
@@ -4187,9 +4181,8 @@ void emit_delete(char *f)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end()  && data_dict.count(f) == 0) {
-            cout << "Delete (Alenka): couldn't find variable " + string(f) << endl;
-            throw "Delete (Alenka): couldn't find variable " + string(f);
-            //exit(1);
+            cout << "Delete : couldn't find variable " << f << endl;
+            exit(1);
         };
         stat[f] = statement_count;
 		check_used_vars();
@@ -4228,9 +4221,8 @@ void emit_display(char *f, char* sep)
    statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            cout << "Delete (Alenka): couldn't find variable " +string(f) << endl;
-            throw "Delete (Alenka): couldn't find variable " +string(f);
-            //exit(1);
+            cout << "Delete : couldn't find variable " << f << endl;
+            exit(1);
         };
         stat[f] = statement_count;
 		//check_used_vars();
@@ -4269,9 +4261,8 @@ void emit_filter(char *s, char *f)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            cout << "Filter (Alenka): couldn't find variable " + string(f) << endl;
-            throw "Filter (Alenka): couldn't find variable " + string(f);
-            //exit(1);
+            cout << "Filter : couldn't find variable " << f << endl;
+            exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;		
@@ -4356,9 +4347,8 @@ void emit_store(char *s, char *f, char* sep)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
-            cout << "Store (Alenka): couldn't find variable " + string(s) << endl;
-            throw "Store (Alenka): couldn't find variable " + string(s);
-            //exit(1);
+            cout << "Store : couldn't find variable " << s << endl;
+            exit(1);
         };
         stat[s] = statement_count;
 		//check_used_vars();
@@ -4393,9 +4383,8 @@ void emit_store_binary(char *s, char *f)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
-            cout << "Store (Alenka): couldn't find variable " + string(s) << endl;
-            throw "Store (Alenka): couldn't find variable " + string(s);
-            //exit(1);
+            cout << "Store : couldn't find variable " << s << endl;
+            exit(1);
         };
         stat[s] = statement_count;
 		//check_used_vars();
@@ -4578,6 +4567,18 @@ void emit_describe_table(char* table_name)
 }
 
 
+
+void yyerror(char *s, ...)
+{
+    extern int yylineno;
+    va_list ap;
+    va_start(ap, s);
+
+    fprintf(stderr, "%d: error: ", yylineno);
+    vfprintf(stderr, s, ap);
+    fprintf(stderr, "\n");
+}
+
 void clean_queues()
 {
     while(!op_type.empty()) op_type.pop();
@@ -4676,9 +4677,8 @@ string script;
         };
 
         if(yyparse()) {
-            cout <<  "SQL scan parse failed\n" << endl;
-            throw "SQL scan parse failed\n";
-            //exit(1);
+            printf("SQL scan parse failed\n");
+            exit(1);
         };
 		
 		//exit(0);
@@ -4787,35 +4787,18 @@ string script;
 //external c global to report errors
 char alenka_err[4048];
 
-
-void yyerror(char *s, ...)
-{
-    extern int yylineno;
-    va_list ap;
-    va_start(ap, s);
-
-    printf("YYERROR: [%s]\n", s);
-    sprintf(alenka_err, " %", s);
-    fprintf(stderr, "%d: error: ", yylineno);
-    vfprintf(stderr, s, ap);
-    fprintf(stderr, "\n");
-}
-
-
-
 int alenkaExecute(char *s)
 {
 YY_BUFFER_STATE bp;
 
-	load_col_data(data_dict, "data.dictionary");
-        scan_state = 0;
-        statement_count = 0;
+     std::clock_t start;
+
+        if(verbose)
+            start = std::clock();
         bp = yy_scan_string(s);
         yy_switch_to_buffer(bp);
-        printf("yyscan: returned \n");
-        clean_queues();
         int ret = yyparse();
-        printf("yyparse returned [%d]\n", ret);
+        //printf("execute: returned [%d]\n", ret);
         if(!ret) {
                 alenka_err[0] = '\0';
                 if(verbose)
@@ -4823,36 +4806,20 @@ YY_BUFFER_STATE bp;
         }
         else
         {
-                printf("SQL scan parse failed alenka_err=[%s]\n",  alenka_err );
+                printf("SQL scan parse failed alenka_err=[i%s]\n",  alenka_err );
                 printf("Bad command was: [%s]\n", s);
-        	yy_delete_buffer(bp);
-        	varNames.clear();
-		return 0;
         }
-        //yy_delete_buffer(bp);
-
-        scan_state = 1;
-        load_vars();
-        statement_count = 0;
-        clean_queues();
-        printf("cleaned queues\n");
-        //yy_switch_to_buffer(bp);
-        yy_scan_string(s);
-        printf("yyscan complete\n");
-
-        if(!yyparse()) {
-           if(verbose)
-               cout << "SQL scan parse #2 worked" << endl;
-        };
-
         yy_delete_buffer(bp);
 
-        // Clear Vars
-        //for (map<string,CudaSet*>::iterator it=varNames.begin() ; it != varNames.end(); ++it ) {
-            //(*it).second->free();
-        //};
+	// Clear Vars
+        for (map<string,CudaSet*>::iterator it=varNames.begin() ; it != varNames.end(); ++it ) {
+            (*it).second->free();
+        };
         varNames.clear();
-        return 1;
+
+        if(verbose)
+                cout<< "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC ) << endl;
+        return ret;
 }
 
 
@@ -4862,9 +4829,9 @@ void alenkaInit(char ** av)
 {
         process_count = 6200000;
         verbose = 0;
-        //scan_state = 1;
-        //statement_count = 0;
-        //clean_queues();
+        scan_state = 1;
+        statement_count = 0;
+        clean_queues();
         context = CreateCudaDevice(0, av, true);
         printf("Alenka initialised\n");
 }

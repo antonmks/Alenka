@@ -633,7 +633,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 f = fopen (f1.c_str() , "rb" );
 				if(f == NULL) {
 					cout << "Error opening " << f1 << " file " << endl;
-					exit(0);		// exit on system failure
+					exit(0);
 				};
 
                 fread((char *)&cnt, 4, 1, f);
@@ -678,9 +678,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 					op_value.pop();
 				}
 				else {
-					cout << "Couldn't find column " + op_value.front() << endl;
-					throw "Couldn't find column " + op_value.front() ;
-					//exit(0);
+					cout << "Couldn't find column " << op_value.front() << endl;
+					exit(0);
 				};
             }
             else if (ss.compare("STRING") == 0) {
@@ -1439,15 +1438,11 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.push(host_logical_or(s2,s3));
             }
             else {
-				if(ss.compare("JOIN") == 0) {
+				if(ss.compare("JOIN") == 0)
 					cout << "operation = is not valid" << endl;
-					throw "operation = is not valid";
-				}
-				else {
-					cout << "operation " + ss +" is not valid" << endl;
-					throw "operation " + ss +" is not valid";
-				}
-				//exit(0);
+				else 	
+					cout << "operation " << ss << " is not valid" << endl;
+				exit(0);
             }
         };
     };
