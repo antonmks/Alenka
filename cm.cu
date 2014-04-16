@@ -294,6 +294,7 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
         if(cudaStatus != cudaSuccess) {
 	    char buf[1024];
             sprintf( buf, "(Alenka) Could not allocate %d bytes of GPU memory for %d records ", sz, RecordCount);
+	    cout << string(buf) << endl;
             throw string(buf);
             //exit(0);
         };
@@ -509,6 +510,7 @@ void CudaSet::reserve(size_t Recs)
             if(h_columns_char[columnNames[i]] == NULL) {
 		char buf[1024];
                 sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %d", Recs, char_size[columnNames[i]]);
+	    	cout << string(buf) << endl;
                 throw string(buf);
                 //exit(0);
             };
@@ -1600,6 +1602,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					f1 = ref_sets[columnNames[i]] + "." + ref_cols[columnNames[i]] + ".header";
 					FILE* ff = fopen(f1.c_str(), "rb");
 					if(ff == NULL) {
+						cout << "Couldn't open file " + f1 << endl;
 						throw "Couldn't open file " + f1;
 						//exit(0);
 					};
@@ -3183,6 +3186,7 @@ void insert_records(char* f, char* s) {
 	string str_s, str_d;	
 
 	if(varNames.find(s) == varNames.end()) {
+		cout << "couldn't find " + string(s) << endl;
 		throw "couldn't find " + string(s);
 		//exit(0);
 	};	
@@ -3191,6 +3195,7 @@ void insert_records(char* f, char* s) {
     a->name = s;	
 	
 	if(varNames.find(f) == varNames.end()) {
+		cout << "couldn't find " + string(f) << endl;
 		throw "couldn't find " + string(f);
 		//exit(0);
 	};	
@@ -3282,6 +3287,7 @@ void delete_records(char* f) {
 	size_t maxRecs = 0;
 
     if(!a->keep) { // temporary variable
+		cout << "Delete operator is only applicable to disk based sets for deleting records from derived sets please use filter operator " << endl;
 		throw "Delete operator is only applicable to disk based sets for deleting records from derived sets please use filter operator ";
 		//exit(0);
     }

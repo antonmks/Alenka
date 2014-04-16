@@ -102,10 +102,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     }
                     else if(a->type[s1_val] == 2) {
                         //will add a DISTINCT on strings if anyone needs it
+                        cout << "DISTINCT on strings is not supported yet" << endl;
                         throw "DISTINCT on strings is not supported yet" ;
                         //exit(0);
                     }
                     else {
+                        cout << "DISTINCT on float is not supported" << endl;
                         throw "DISTINCT on float is not supported";
                         //exit(0);
                     };
