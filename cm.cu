@@ -29,6 +29,9 @@
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
+#include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 
@@ -55,6 +58,11 @@ queue<int_type> op_nums;
 queue<float_type> op_nums_f;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
+
+map<string, char*> buffers;
+map<string, size_t> buffer_sizes;
+size_t total_buffer_size;
+queue<string> buffer_names;
 
 void* alloced_tmp;
 bool alloced_switch = 0;
@@ -213,7 +221,7 @@ size_t max_tmp(CudaSet* a);
 size_t getFreeMem();
 char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment);
 void filter_op(char *s, char *f, unsigned int segment);
-
+size_t getTotalSystemMemory();
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names)
     : mColumnCount(0), mRecCount(0)
@@ -662,14 +670,57 @@ CudaSet* CudaSet::copyDeviceStruct()
 
 void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t offset)
 {
-	std::clock_t start1 = std::clock();	
     string f1(load_file_name);
     f1 += "." + colname + "." + int_to_string(segNum);
     unsigned int cnt;
+    size_t rr;	
 	
 	if(interactive) { //check if data are in buffers
-		cout << "interactive " << endl;
-	
+		if(buffers.find(f1) == buffers.end()) { // add data to buffers		
+		    FILE* f;
+			f = fopen(f1.c_str(), "rb" );
+			if(f == NULL) {
+				cout << "Error opening " << f1 << " file " << endl;
+				exit(0);
+			};		
+			fseek(f, 0, SEEK_END);
+			long fileSize = ftell(f);
+			while(total_buffer_size + fileSize > getTotalSystemMemory() && !buffer_names.empty()) { //free some buffers
+				delete [] buffers[buffer_names.front()];
+				total_buffer_size = total_buffer_size - buffer_sizes[buffer_names.front()];
+				buffer_sizes.erase(buffer_names.front());
+				buffers.erase(buffer_names.front());
+				buffer_names.pop();
+			};
+			fseek(f, 0, SEEK_SET);			
+			char* buff = new char[fileSize];
+			fread(buff, fileSize, 1, f);
+			fclose(f);
+			buffers[f1] = buff;
+			buffer_sizes[f1] = fileSize;
+			buffer_names.push(f1);
+			total_buffer_size = total_buffer_size + fileSize;
+			buffer_names.push(f1);
+			cout << "added buffer " << f1 << " " << fileSize << endl;
+		};
+		  // get data from buffers
+		if(type[colname] == 0) {	    
+			cnt = ((unsigned int*)buffers[f1])[0];
+			if(cnt > h_columns_int[colname].size()/8 + 10)
+				h_columns_int[colname].resize(cnt/8 + 10);			
+			memcpy(h_columns_int[colname].data(), buffers[f1], cnt+56);				
+		}		
+		else if(type[colname] == 1) {	    
+			cnt = ((unsigned int*)buffers[f1])[0];			
+			if(cnt > h_columns_float[colname].size()/8 + 10)
+				h_columns_float[colname].resize(cnt/8 + 10);			
+			memcpy(h_columns_float[colname].data(), buffers[f1], cnt+56);				
+		}	
+		else {
+			decompress_char(NULL, colname, segNum, offset, buffers[f1]);
+		};	
+
+		return;
 	};
 
     FILE* f;
@@ -678,7 +729,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         cout << "Error opening " << f1 << " file " << endl;
         exit(0);
     };
-    size_t rr;	
+
 
     if(type[colname] == 0) {	    
 		if(1 > h_columns_int[colname].size())
@@ -707,47 +758,61 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         };		
     }
     else {
-        decompress_char(f, colname, segNum, offset);
+        decompress_char(f, colname, segNum, offset, NULL);
+		cout << "decomp char " << f1 << endl;
     };
     fclose(f);
-	tot = tot + (std::clock() - start1);
-	//if(verbose)
-	//	std::cout<< "read from file time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 };
 
 
 
-void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset)
+void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem)
 {
     unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
     const unsigned int len = char_size[colname];
-	std::clock_t start1 = std::clock();	
 	
-    fread(&sz, 4, 1, f);
+	if(mem == NULL)
+		fread(&sz, 4, 1, f);
+	else
+		sz = ((unsigned int*)mem)[0];			
+	
     char* d_array = new char[sz*len];
-    fread((void*)d_array, sz*len, 1, f);
-	tot = tot + (std::clock() - start1);
+	if(mem == NULL)
+		fread((void*)d_array, sz*len, 1, f);
+	else
+		memcpy(d_array, ((unsigned int*)mem + 1), sz*len);				
+		
+		
     void* d;
     cudaMalloc((void **) &d, sz*len);
     cudaMemcpy( d, (void *) d_array, sz*len, cudaMemcpyHostToDevice);
     delete[] d_array;
 
-	start1 = std::clock();	
-    fread(&fit_count, 4, 1, f);
-    fread(&bits_encoded, 4, 1, f);
-    fread(&vals_count, 4, 1, f);
-    fread(&real_count, 4, 1, f);
-	tot = tot + (std::clock() - start1);
+	if(mem == NULL) {
+		fread(&fit_count, 4, 1, f);
+		fread(&bits_encoded, 4, 1, f);
+		fread(&vals_count, 4, 1, f);
+		fread(&real_count, 4, 1, f);
+	}
+	else {
+		fit_count = ((unsigned int*)(&mem[4+sz*len]))[0];
+		bits_encoded = ((unsigned int*)(&mem[4+sz*len]))[1];
+		vals_count = ((unsigned int*)(&mem[4+sz*len]))[2];
+		real_count = ((unsigned int*)(&mem[4+sz*len]))[3];
+	};	
 
     thrust::device_ptr<unsigned int> param = thrust::device_malloc<unsigned int>(2);
     param[1] = fit_count;
     param[0] = bits_encoded;
 
     unsigned long long int* int_array = new unsigned long long int[vals_count];
-    fread((void*)int_array, 1, vals_count*8, f);
+	if(mem == NULL) {
+		fread((void*)int_array, 1, vals_count*8, f);
+	}
+	else {
+		memcpy(int_array, &mem[4+sz*len+16], vals_count*8);				
+	};	
 	
-    //fclose(f);
-
     void* d_val;
     cudaMalloc((void **) &d_val, vals_count*8);
     cudaMemcpy(d_val, (void *) int_array, vals_count*8, cudaMemcpyHostToDevice);
@@ -3509,4 +3574,19 @@ bool var_exists(CudaSet* a, string name) {
 }
 
 
-
+#ifdef _WIN64
+size_t getTotalSystemMemory()
+{
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(status);
+    GlobalMemoryStatusEx(&status);
+    return status.ullTotalPhys;
+}
+#else
+size_t getTotalSystemMemory()
+{
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    return pages * page_size;
+}
+#endif

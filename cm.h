@@ -92,6 +92,7 @@ extern bool interactive;
 
 extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
+extern queue<string> buffer_names;
 extern size_t total_buffer_size;
 
 
@@ -311,7 +312,7 @@ public:
     bool onDevice(string colname);
     CudaSet* copyDeviceStruct();
     void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
-    void decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset);
+    void decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
     void CopyColumnToGpu(string colname);
     void CopyColumnToHost(string colname, size_t offset, size_t RecCount);

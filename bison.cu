@@ -3163,10 +3163,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			if(verbose)
 				cout << "segment " << i <<  '\xd';	
 			j_data.clear();		
-			
 			std::clock_t start2 = std::clock();		
-			cout<< endl << "tot disk time start" << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
-				
+			
 			/*for (set<unsigned int>::iterator it = left->ref_joins[colInd1][i].begin(); it != left->ref_joins[colInd1][i].end(); it++) {
 				cout << "seg match " << *it << endl;
 			};
@@ -3184,9 +3182,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					continue;
 				//cout << "no need of a join " << endl;
 			};	
-
-		
-			//std::clock_t start2 = std::clock();		
+			
 					
 			cnt_l = 0;
 			if (left->type[colname1]  != 2) {
@@ -3569,8 +3565,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					cudaFree(temp);
 				};
 			};
-			std::cout<< endl << "cycle time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-			cout<< endl << "tot disk time " << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
+			std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 		};
 	};	
 		
@@ -4023,8 +4018,6 @@ void emit_select(char *s, char *f, int ll)
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
 		if(verbose)
 			cout << "segment " << i << " select mem " << getFreeMem() << endl;
-		std::clock_t start3 = std::clock();	
-		cout<< endl << "tot disk time start" << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
 				
         cnt = 0;		
         copyColumns(a, op_vx, i, cnt);
@@ -4090,8 +4083,7 @@ void emit_select(char *s, char *f, int ll)
                 };				
             };
         };		
-		cout<< endl << "tot disk time end" << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;		
-		std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
+		//std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
     };
 	
     a->mRecCount = ol_count;
@@ -4651,6 +4643,8 @@ string script;
 
     process_count = 6200000;
     verbose = 0;
+	total_buffer_size = 0;
+	
     for (int i = 1; i < ac; i++) {
         if(strcmp(av[i],"-l") == 0) {
             process_count = atoff(av[i+1]);
@@ -4717,7 +4711,6 @@ string script;
         };
 
         if(verbose) {
-            cout<< endl << "tot disk time " << (( tot ) / (double)CLOCKS_PER_SEC ) << endl;
             cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
     }
@@ -4770,8 +4763,14 @@ string script;
             cudaFree(alloced_tmp);
             alloced_sz = 0;
         };
-
-
+		
+		while(!buffer_names.empty()) { 
+			delete [] buffers[buffer_names.front()];
+			buffer_sizes.erase(buffer_names.front());
+			buffers.erase(buffer_names.front());
+			buffer_names.pop();
+		};
+	
     };
 	if(save_dict)
 		save_col_data(data_dict,"data.dictionary");
