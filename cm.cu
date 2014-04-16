@@ -300,8 +300,11 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
         size_t sz = RecordCount*char_size[colname];
         cudaError_t cudaStatus = cudaMalloc(&d, sz);
         if(cudaStatus != cudaSuccess) {
-            cout << "Could not allocate " << sz << " bytes of GPU memory for " << RecordCount << " records " << endl;
-            exit(0);
+	    char buf[1024];
+            sprintf( buf, "(Alenka) Could not allocate %d bytes of GPU memory for %d records ", sz, RecordCount);
+	    cout << string(buf) << endl;
+            throw string(buf);
+            //exit(0);
         };
         d_columns_char[colname] = (char*)d;
     };
@@ -513,8 +516,11 @@ void CudaSet::reserve(size_t Recs)
         else {
             h_columns_char[columnNames[i]] = new char[Recs*char_size[columnNames[i]]];
             if(h_columns_char[columnNames[i]] == NULL) {
-                cout << "Could not allocate on a host " << Recs << " records of size " << char_size[columnNames[i]] << endl;
-                exit(0);
+		char buf[1024];
+                sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %d", Recs, char_size[columnNames[i]]);
+	    	cout << string(buf) << endl;
+                throw string(buf);
+                //exit(0);
             };
             prealloc_char_size = Recs;
         };
@@ -727,7 +733,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
     f = fopen(f1.c_str(), "rb" );
     if(f == NULL) {
         cout << "Error opening " << f1 << " file " << endl;
-        exit(0);
+        exit(0);			// exit - system failure
     };
 
 
@@ -741,7 +747,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
             cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
-            exit(0);
+            exit(0);			// exit - system failure
         };
     }
     else if(type[colname] == 1) {		
@@ -754,7 +760,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
             cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
-            exit(0);
+            exit(0);			// exit - system failure
         };		
     }
     else {
@@ -1661,8 +1667,9 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					f1 = ref_sets[columnNames[i]] + "." + ref_cols[columnNames[i]] + ".header";
 					FILE* ff = fopen(f1.c_str(), "rb");
 					if(ff == NULL) {
-						cout << "Couldn't open file " << f1 << endl;
-						exit(0);
+						cout << "Couldn't open file " + f1 << endl;
+						throw "Couldn't open file " + f1;
+						//exit(0);
 					};
 					unsigned int ref_segCount, ref_maxRecs;
 					fread((char *)&ref_segCount, 4, 1, ff);
@@ -3244,16 +3251,18 @@ void insert_records(char* f, char* s) {
 	string str_s, str_d;	
 
 	if(varNames.find(s) == varNames.end()) {
-		cout << "couldn't find " << s << endl;
-		exit(0);
+		cout << "couldn't find " + string(s) << endl;
+		throw "couldn't find " + string(s);
+		//exit(0);
 	};	
 	CudaSet *a;
     a = varNames.find(s)->second;
     a->name = s;	
 	
 	if(varNames.find(f) == varNames.end()) {
-		cout << "couldn't find " << f << endl;
-		exit(0);
+		cout << "couldn't find " + string(f) << endl;
+		throw "couldn't find " + string(f);
+		//exit(0);
 	};	
 	
 	CudaSet *b;
@@ -3343,9 +3352,9 @@ void delete_records(char* f) {
 	size_t maxRecs = 0;
 
     if(!a->keep) { // temporary variable
-		cout << "Delete operator is only applicable to disk based sets" << endl;
-		cout << "for deleting records from derived sets please use filter operator " << endl;
-		exit(0);
+		cout << "Delete operator is only applicable to disk based sets for deleting records from derived sets please use filter operator " << endl;
+		throw "Delete operator is only applicable to disk based sets for deleting records from derived sets please use filter operator ";
+		//exit(0);
     }
     else {  // read matching segments, delete, compress and write on a disk replacing the original segments
 
