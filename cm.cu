@@ -463,7 +463,7 @@ void CudaSet::resize_join(size_t addRecs)
             h_columns_float[columnNames[i]].resize(mRecCount);
         }
         else {
-            if (h_columns_char[columnNames[i]]) {
+            if (h_columns_char.find(columnNames[i]) != h_columns_char.end()) {
                 if (mRecCount > prealloc_char_size) {
                     h_columns_char[columnNames[i]] = (char*)realloc(h_columns_char[columnNames[i]], mRecCount*char_size[columnNames[i]]);
                     prealloc = 1;
@@ -759,11 +759,9 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
     }
     else {
         decompress_char(f, colname, segNum, offset, NULL);
-		cout << "decomp char " << f1 << endl;
     };
     fclose(f);
 };
-
 
 
 void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem)
@@ -776,18 +774,20 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
 	else
 		sz = ((unsigned int*)mem)[0];			
 	
-    char* d_array = new char[sz*len];
+	size_t a_sz = (size_t)sz*(size_t)len;
+    char* d_array = new char[a_sz];
 	if(mem == NULL)
-		fread((void*)d_array, sz*len, 1, f);
+		fread((void*)d_array, a_sz, 1, f);
 	else
-		memcpy(d_array, ((unsigned int*)mem + 1), sz*len);				
-		
-		
-    void* d;
-    cudaMalloc((void **) &d, sz*len);
-    cudaMemcpy( d, (void *) d_array, sz*len, cudaMemcpyHostToDevice);
-    delete[] d_array;
+		memcpy(d_array, ((unsigned int*)mem + 1), a_sz);				
 
+
+    void* d;
+    cudaMalloc((void **) &d, a_sz);
+	
+    cudaMemcpy( d, (void *) d_array, a_sz, cudaMemcpyHostToDevice);
+    delete[] d_array;
+	
 	if(mem == NULL) {
 		fread(&fit_count, 4, 1, f);
 		fread(&bits_encoded, 4, 1, f);
@@ -795,12 +795,12 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
 		fread(&real_count, 4, 1, f);
 	}
 	else {
-		fit_count = ((unsigned int*)(&mem[4+sz*len]))[0];
-		bits_encoded = ((unsigned int*)(&mem[4+sz*len]))[1];
-		vals_count = ((unsigned int*)(&mem[4+sz*len]))[2];
-		real_count = ((unsigned int*)(&mem[4+sz*len]))[3];
+		fit_count = ((unsigned int*)(&mem[4+a_sz]))[0];
+		bits_encoded = ((unsigned int*)(&mem[4+a_sz]))[1];
+		vals_count = ((unsigned int*)(&mem[4+a_sz]))[2];
+		real_count = ((unsigned int*)(&mem[4+a_sz]))[3];
 	};	
-
+	
     thrust::device_ptr<unsigned int> param = thrust::device_malloc<unsigned int>(2);
     param[1] = fit_count;
     param[0] = bits_encoded;
@@ -812,23 +812,24 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
 	else {
 		memcpy(int_array, &mem[4+sz*len+16], vals_count*8);				
 	};	
-	
+
     void* d_val;
     cudaMalloc((void **) &d_val, vals_count*8);
     cudaMemcpy(d_val, (void *) int_array, vals_count*8, cudaMemcpyHostToDevice);
     delete[] int_array;
-
+	
     void* d_int;
     cudaMalloc((void **) &d_int, real_count*4);
 
     thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
     thrust::for_each(begin, begin + real_count, ff);
-
+	
     if(!alloced_switch)
 		str_gather(d_int, real_count, d, d_columns_char[colname] + offset*len, len);
     else
         str_gather(d_int, real_count, d, alloced_tmp, len);
+	
     mRecCount = real_count;
 
     cudaFree(d);
@@ -1525,7 +1526,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                     }
                     else {
                         ss.assign(h_columns_char[columnNames[j]] + (i*char_size[columnNames[j]]), char_size[columnNames[j]]);
-                        trim(ss);
+                        //trim(ss);
                         fputs(ss.c_str(), file_pr);
                         fputs(sep, file_pr);
                     };
@@ -1796,14 +1797,15 @@ void CudaSet::compress_char(string file_name, string colname, size_t mCount, siz
     bits_encoded = (unsigned int)ceil(log2(double(dict.size()+1)));
 
     char *cc = new char[len+1];
+	cc[len] = 0;
     unsigned int sz = (unsigned int)dict_ordered.size();
     // write to a file
     fstream binary_file(file_name.c_str(),ios::out|ios::binary);
     binary_file.write((char *)&sz, 4);
-    for(unsigned int i = 0; i < dict_ordered.size(); i++) {
+    for(unsigned int i = 0; i < sz; i++) {
         memset(&cc[0], 0, len);
         strcpy(cc,dict_ordered[i].c_str());
-        binary_file.write(cc, len);
+        binary_file.write(cc, len);		
     };
 
     delete [] cc;
@@ -3101,9 +3103,9 @@ void filter_op(char *s, char *f, unsigned int segment)
         if (b->prm_d.size() == 0)
             b->prm_d.resize(a->maxRecs);
 
-		cout << endl << "MAP CHECK start " << segment <<  endl;	
+		//cout << endl << "MAP CHECK start " << segment <<  endl;	
 		char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-		cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);	
@@ -3123,7 +3125,7 @@ void filter_op(char *s, char *f, unsigned int segment)
     }
 	if(verbose)
 		cout << endl << "filter res " << b->mRecCount << endl;		
-    //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
+    //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';		
 }
 
 
@@ -3590,3 +3592,4 @@ size_t getTotalSystemMemory()
     return pages * page_size;
 }
 #endif
+

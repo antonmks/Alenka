@@ -15,140 +15,58 @@
 #include "merge.h"
 #include "zone_map.h"
 
+#if defined(_MSC_VER)
+#define BIG_CONSTANT(x) (x)
+// Other compilers
+#else   // defined(_MSC_VER)
+#define BIG_CONSTANT(x) (x##LLU)
+#endif // !defined(_MSC_VER)
 
-struct MurmurHash64D
+
+
+uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
 {
+  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
+  const int r = 47;
 
-    const void* key;
-    unsigned long long* output;
-    const int* len;
-    const unsigned int* seed;
-    const unsigned int* off;
-    const unsigned int* off_count;
+  uint64_t h = seed ^ (len * m);
 
+  const uint64_t * data = (const uint64_t *)key;
+  const uint64_t * end = data + (len/8);
 
-    MurmurHash64D(const void* _key, unsigned long long* _output, const int* _len, const unsigned int* _seed,
-                  const unsigned int* _off, const unsigned int* _off_count):
-        key(_key), output(_output), len(_len), seed(_seed), off(_off), off_count(_off_count) {}
+  while(data != end)
+  {
+    uint64_t k = *data++;
 
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
+    k *= m;
+    k ^= k >> r;
+    k *= m;
+   
+    h ^= k;
+    h *= m;
+  }
 
+  const unsigned char * data2 = (const unsigned char*)data;
 
-        const uint64_t m = 0xc6a4a7935bd1e995;
-        const int r = 47;
-        uint64_t h = *seed ^ (*len * m);
+  switch(len & 7)
+  {
+  case 7: h ^= uint64_t(data2[6]) << 48;
+  case 6: h ^= uint64_t(data2[5]) << 40;
+  case 5: h ^= uint64_t(data2[4]) << 32;
+  case 4: h ^= uint64_t(data2[3]) << 24;
+  case 3: h ^= uint64_t(data2[2]) << 16;
+  case 2: h ^= uint64_t(data2[1]) << 8;
+  case 1: h ^= uint64_t(data2[0]);
+          h *= m;
+  };
+ 
+  h ^= h >> r;
+  h *= m;
+  h ^= h >> r;
 
-        const uint64_t* data = (const uint64_t *)((char*)key + i*(*len));
-        const uint64_t* end = data + (*len/8);
+  return h;
+} 
 
-        while(data != end)
-        {
-            uint64_t k = *data++;
-
-            k *= m;
-            k ^= k >> r;
-            k *= m;
-
-            h ^= k;
-            h *= m;
-        }
-
-        const unsigned char * data2 = (const unsigned char*)data;
-
-        switch(*len & 7)
-        {
-        case 7:
-            h ^= uint64_t(data2[6]) << 48;
-        case 6:
-            h ^= uint64_t(data2[5]) << 40;
-        case 5:
-            h ^= uint64_t(data2[4]) << 32;
-        case 4:
-            h ^= uint64_t(data2[3]) << 24;
-        case 3:
-            h ^= uint64_t(data2[2]) << 16;
-        case 2:
-            h ^= uint64_t(data2[1]) << 8;
-        case 1:
-            h ^= uint64_t(data2[0]);
-            h *= m;
-        };
-
-        h ^= h >> r;
-        h *= m;
-        h ^= h >> r;
-
-        //printf("WRITE TO OFFSET %d %d %lld \n", i ,  i*(*off) + (*off_count), h);
-        output[i*(*off) + (*off_count)] = h;
-    }
-};
-
-struct MurmurHash64D_F
-{
-
-    const void* key;
-    unsigned long long* output;
-    const int* len;
-    const unsigned int* seed;
-
-
-    MurmurHash64D_F(const void* _key, unsigned long long* _output, const int* _len, const unsigned int* _seed):
-        key(_key), output(_output), len(_len), seed(_seed) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-
-        const uint64_t m = 0xc6a4a7935bd1e995;
-        const int r = 47;
-        uint64_t h = *seed ^ (*len * m);
-
-        const uint64_t* data = (const uint64_t *)((char*)key + i*(*len));
-        const uint64_t* end = data + (*len/8);
-
-        while(data != end)
-        {
-            uint64_t k = *data++;
-
-            k *= m;
-            k ^= k >> r;
-            k *= m;
-
-            h ^= k;
-            h *= m;
-        }
-
-        const unsigned char * data2 = (const unsigned char*)data;
-
-        switch(*len & 7)
-        {
-        case 7:
-            h ^= uint64_t(data2[6]) << 48;
-        case 6:
-            h ^= uint64_t(data2[5]) << 40;
-        case 5:
-            h ^= uint64_t(data2[4]) << 32;
-        case 4:
-            h ^= uint64_t(data2[3]) << 24;
-        case 3:
-            h ^= uint64_t(data2[2]) << 16;
-        case 2:
-            h ^= uint64_t(data2[1]) << 8;
-        case 1:
-            h ^= uint64_t(data2[0]);
-            h *= m;
-        };
-
-        h ^= h >> r;
-        h *= m;
-        h ^= h >> r;
-
-        output[i] = h;
-    }
-};
 
 struct float_avg
 {
@@ -175,9 +93,9 @@ struct float_avg1
 
 
 
-typedef thrust::device_vector<int_type>::iterator    IntIterator;
-typedef thrust::tuple<IntIterator,IntIterator> IteratorTuple;
-typedef thrust::zip_iterator<IteratorTuple> ZipIterator;
+//typedef thrust::device_vector<int_type>::iterator    IntIterator;
+//typedef thrust::tuple<IntIterator,IntIterator> IteratorTuple;
+//typedef thrust::zip_iterator<IteratorTuple> ZipIterator;
 unsigned int hash_seed = 100;
 thrust::host_vector<unsigned long long int> h_merge;
 
@@ -236,37 +154,24 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     };
 
     // create hashes of groupby columns
-    thrust::device_vector<unsigned long long int> hashes(b->mRecCount);
+    unsigned long long int* hashes = new unsigned long long int[b->mRecCount];
+    unsigned long long int* sum = new unsigned long long int[cycle_sz*b->mRecCount];
+        
 
-    thrust::device_vector<unsigned long long int> sum(cycle_sz*b->mRecCount);
-    thrust::device_vector<unsigned int> seed(1);
-    seed[0] = hash_seed;
-    thrust::device_vector<int> len(1);
-    thrust::device_vector<unsigned int> off(1);
-    thrust::device_vector<unsigned int> off_count(1);
-
-    thrust::counting_iterator<unsigned int> begin(0);
+	b->CopyToHost(0, b->mRecCount);					
+	
     for(unsigned int z = 0; z < cycle_sz; z++) {
         
         if(b->type[opv[z]] == 0) {  //int
-            len[0] = 8;
-            off[0] = cycle_sz;
-            off_count[0] = z;
-            MurmurHash64D ff((void*)(thrust::raw_pointer_cast(b->d_columns_int[opv[z]].data())),
-                             thrust::raw_pointer_cast(sum.data()),
-                             thrust::raw_pointer_cast(len.data()), thrust::raw_pointer_cast(seed.data()),
-                             thrust::raw_pointer_cast(off.data()), thrust::raw_pointer_cast(off_count.data()));
-            thrust::for_each(begin, begin + b->mRecCount, ff);
+			for(int i = 0; i < b->mRecCount; i++) {
+				sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_int[opv[z]][i], 8, hash_seed);				
+			};
         }
-        else if(b->type[opv[z]] == 2) {  //string
-            len[0] = b->char_size[opv[z]];
-            off[0] = cycle_sz;
-            off_count[0] = z;
-            MurmurHash64D ff((void*)b->d_columns_char[opv[z]],
-                             thrust::raw_pointer_cast(sum.data()),
-                             thrust::raw_pointer_cast(len.data()), thrust::raw_pointer_cast(seed.data()),
-                             thrust::raw_pointer_cast(off.data()), thrust::raw_pointer_cast(off_count.data()));
-            thrust::for_each(begin, begin + b->mRecCount, ff);
+        else if(b->type[opv[z]] == 2) {  //string			
+			for(int i = 0; i < b->mRecCount; i++) {
+				sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_char[opv[z]][i*b->char_size[opv[z]]], b->char_size[opv[z]], hash_seed);				
+			};			
+			
         }
         else {  //float
             cout << "No group by on float/decimal columns " << endl;
@@ -274,58 +179,48 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
         };
     };
 	
+	for(int i = 0; i < b->mRecCount; i++) {
+		hashes[i] = MurmurHash64A(&sum[i*cycle_sz], 8*cycle_sz, hash_seed);				
+	};			
 
-    //for(int i = 0; i < cycle_sz*b->mRecCount;i++)
-    //cout << "SUM " << sum[0] << endl;
-	
 
-    len[0] = 8*cycle_sz;
-    MurmurHash64D_F ff(thrust::raw_pointer_cast(sum.data()),
-                       thrust::raw_pointer_cast(hashes.data()),
-                       thrust::raw_pointer_cast(len.data()), thrust::raw_pointer_cast(seed.data()));
-    thrust::for_each(begin, begin + b->mRecCount, ff);
-
-    //for(int i = 0; i < b->mRecCount;i++)
-    //cout << "DEV HASH " << hashes[0] << endl;
-
-    // sort the results by hash
-    thrust::device_ptr<unsigned int> v = thrust::device_malloc<unsigned int>(b->mRecCount);
+	// sort the results by hash
+    unsigned int* v = new unsigned int[b->mRecCount];
     thrust::sequence(v, v + b->mRecCount, 0, 1);
-
-    void* d;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d, b->mRecCount*max_char(b)));
-    thrust::sort_by_key(hashes.begin(), hashes.end(), v);
-	
+    thrust::sort_by_key(hashes, hashes + b->mRecCount, v);	
 
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
         if(b->type[b->columnNames[i]] == 0) {
-            thrust::device_ptr<int_type> d_tmp((int_type*)d);
-            thrust::gather(v, v+b->mRecCount, b->d_columns_int[b->columnNames[i]].begin(), d_tmp);
-            thrust::copy(d_tmp, d_tmp + b->mRecCount, b->d_columns_int[b->columnNames[i]].begin());
+            int_type* d_tmp = new int_type[b->mRecCount];
+            thrust::gather(v, v+b->mRecCount, b->h_columns_int[b->columnNames[i]].begin(), d_tmp);
+            thrust::copy(d_tmp, d_tmp + b->mRecCount, b->h_columns_int[b->columnNames[i]].begin());
+			delete [] d_tmp;
         }
         else if(b->type[b->columnNames[i]] == 1) {
-            thrust::device_ptr<float_type> d_tmp((float_type*)d);
-            thrust::gather(v, v+b->mRecCount, b->d_columns_float[b->columnNames[i]].begin(), d_tmp);
-            thrust::copy(d_tmp, d_tmp + b->mRecCount, b->d_columns_float[b->columnNames[i]].begin());
+            float_type* d_tmp = new float_type[b->mRecCount];
+            thrust::gather(v, v+b->mRecCount, b->h_columns_float[b->columnNames[i]].begin(), d_tmp);
+            thrust::copy(d_tmp, d_tmp + b->mRecCount, b->h_columns_float[b->columnNames[i]].begin());
+			delete [] d_tmp;
         }
         else {
-            thrust::device_ptr<char> d_tmp((char*)d);
-            str_gather(thrust::raw_pointer_cast(v), b->mRecCount, (void*)b->d_columns_char[b->columnNames[i]], (void*) thrust::raw_pointer_cast(d_tmp), b->char_size[b->columnNames[i]]);
-            cudaMemcpy( (void*)b->d_columns_char[b->columnNames[i]], (void*) thrust::raw_pointer_cast(d_tmp), b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToDevice);
+            char* d_tmp = new char[b->mRecCount*b->char_size[b->columnNames[i]]];
+            str_gather_host(v, b->mRecCount, b->h_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
+//            cudaMemcpy( (void*)b->d_columns_char[b->columnNames[i]], (void*) thrust::raw_pointer_cast(d_tmp), b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToDevice);
+			memcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]]);	
+			delete [] d_tmp;
         };
     };
-    cudaFree(d);
-    thrust::device_free(v);	
 
-    b->CopyToHost(0, b->mRecCount);					
-							
-    thrust::host_vector<unsigned long long int> hh = hashes;
+    delete [] v;	
+	
+    thrust::host_vector<unsigned long long int> hh(b->mRecCount);
+	thrust::copy(hashes, hashes+b->mRecCount, hh.begin());
+	;
     char* tmp = new char[max_char(b)*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
 	
     //lets merge every column
-	
 	
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 	
@@ -359,6 +254,8 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     h_merge.resize(h_merge.size() + b->mRecCount);
     thrust::copy((unsigned long long int*)tmp, (unsigned long long int*)tmp + cpy_sz, h_merge.begin());
     delete [] tmp;
+	
+	
 	
     //cout << endl << "end b and c " << b->mRecCount << " " << c->mRecCount << endl;
     //for(int i = 0; i < h_merge.size();i++)
