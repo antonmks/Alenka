@@ -122,10 +122,11 @@ struct uninitialized_allocator
     }
 };
 
+template<typename T>
 struct is_positive
 {
     __host__ __device__
-    bool operator()(const int x)
+    bool operator()(const T x)
     {
         return (x >= 0);
     }
