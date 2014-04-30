@@ -45,7 +45,7 @@ struct T_str_gather {
 	inline void operator()(thrust::device_ptr<unsigned int> &res, const size_t real_count, void* d, void* d_char) {
 		thrust::device_ptr<Str<len> > dev_ptr_char((Str<len>*)d_char);
 		thrust::device_ptr<Str<len> > dev_ptr((Str<len>*)d);
-		thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, is_positive());
+		thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, is_positive<unsigned int>());
 	}
 };
 
