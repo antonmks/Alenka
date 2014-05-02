@@ -2,19 +2,19 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj \
-		 select.obj atof.obj bison.obj mgpucontext.obj row.obj main.obj
+		 select.obj atof.obj bison.obj mgpucontext.obj callbacks.obj main.obj
 	nvcc --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj \
-		 atof.obj cm.obj bison.obj row.obj main.obj 
+		 atof.obj cm.obj bison.obj callbacks.obj main.obj 
 
 
 nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
 
 
-row.obj : row.c row.h
-	$(nvcc) row.c
+callbacks.obj : callbacks.c callbacks.h
+	$(nvcc) callbacks.c
 main.obj : main.cu
 	$(nvcc) main.cu
 cm.obj : cm.cu cm.h	
