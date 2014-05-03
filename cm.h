@@ -87,9 +87,7 @@ extern std::clock_t tot;
 extern std::clock_t tot_fil;
 extern bool verbose;
 extern bool save_dict;
-extern ContextPtr context;
 extern bool interactive;
-
 extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;

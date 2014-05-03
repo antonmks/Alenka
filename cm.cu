@@ -38,7 +38,6 @@
 using namespace std;
 using namespace thrust::placeholders;
 
-
 size_t total_count = 0, total_max;
 clock_t tot;
 unsigned int total_segments = 0;
@@ -304,8 +303,6 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
             char buf[1024];
             sprintf( buf, "Could not allocate %d bytes of GPU memory for %d records ", sz, RecordCount);
             process_error(3, string(buf));
-            //cout << "Could not allocate " << sz << " bytes of GPU memory for " << RecordCount << " records " << endl;
-            //exit(0);
         };
         d_columns_char[colname] = (char*)d;
     };
@@ -450,7 +447,7 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment)
         delete [] hashes;
     }
     else { // hash the dictionary
-        decompress_char_hash(field, segment);
+        //decompress_char_hash(field, segment);
     };
 };
 
@@ -517,11 +514,9 @@ void CudaSet::reserve(size_t Recs)
         else {
             h_columns_char[columnNames[i]] = new char[Recs*char_size[columnNames[i]]];
             if(h_columns_char[columnNames[i]] == NULL) {
-		char buf[1024];
+                char buf[1024];
                 sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %d", Recs, char_size[columnNames[i]]);
                 process_error(3, string(buf));
-                //cout << "Could not allocate on a host " << Recs << " records of size " << char_size[columnNames[i]] << endl;
-                //exit(0);
             };
             prealloc_char_size = Recs;
         };
@@ -677,19 +672,13 @@ CudaSet* CudaSet::copyDeviceStruct()
 
 void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t offset)
 {
-    string f1(load_file_name);
-    f1 += "." + colname + "." + int_to_string(segNum);
-    unsigned int cnt;
-    size_t rr;	
+    string f1 = load_file_name + "." + colname + "." + int_to_string(segNum);;
 	
 	if(interactive) { //check if data are in buffers
 		if(buffers.find(f1) == buffers.end()) { // add data to buffers		
-		    FILE* f;
-			f = fopen(f1.c_str(), "rb" );
+			FILE* f = fopen(f1.c_str(), "rb" );
 			if(f == NULL) {
 				process_error(3, "Error opening " + string(f1) +" file " );
-				//cout << "Error opening " << f1 << " file " << endl;
-				//exit(0);
 			};		
 			fseek(f, 0, SEEK_END);
 			long fileSize = ftell(f);
@@ -713,13 +702,13 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 		};
 		  // get data from buffers
 		if(type[colname] == 0) {	    
-			cnt = ((unsigned int*)buffers[f1])[0];
+			unsigned int cnt = ((unsigned int*)buffers[f1])[0];
 			if(cnt > h_columns_int[colname].size()/8 + 10)
 				h_columns_int[colname].resize(cnt/8 + 10);			
 			memcpy(h_columns_int[colname].data(), buffers[f1], cnt+56);				
 		}		
 		else if(type[colname] == 1) {	    
-			cnt = ((unsigned int*)buffers[f1])[0];			
+			unsigned int cnt = ((unsigned int*)buffers[f1])[0];			
 			if(cnt > h_columns_float[colname].size()/8 + 10)
 				h_columns_float[colname].resize(cnt/8 + 10);			
 			memcpy(h_columns_float[colname].data(), buffers[f1], cnt+56);				
@@ -727,55 +716,48 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 		else {
 			decompress_char(NULL, colname, segNum, offset, buffers[f1]);
 		};	
+	}
+	else {
 
-		return;
+		FILE* f = fopen(f1.c_str(), "rb" );
+		if(f == NULL) {
+			cout << "Error opening " << f1 << " file " << endl;
+			exit(0);
+		};
+
+		if(type[colname] == 0) {	    
+			if(1 > h_columns_int[colname].size())
+				h_columns_int[colname].resize(1);		
+			fread(h_columns_int[colname].data(), 4, 1, f);
+			unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];		
+			if(cnt > h_columns_int[colname].size()/8 + 10)
+				h_columns_int[colname].resize(cnt/8 + 10);			
+			size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
+			if(rr != cnt+52) {
+				char buf[1024];
+                sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
+				process_error(3, string(buf));
+			};
+		}
+		else if(type[colname] == 1) {		
+			if(1 > h_columns_float[colname].size())
+				h_columns_float[colname].resize(1);		
+			fread(h_columns_float[colname].data(), 4, 1, f);
+			unsigned int cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
+			if(cnt > h_columns_float[colname].size()/8 + 10)
+				h_columns_float[colname].resize(cnt/8 + 10);				
+			size_t rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
+			if(rr != cnt+52) {
+				char buf[1024];
+				sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
+				process_error(3, string(buf));
+			};		
+		}
+		else {
+			decompress_char(f, colname, segNum, offset, NULL);
+		};
+		fclose(f);
 	};
-
-    FILE* f;
-    f = fopen(f1.c_str(), "rb" );
-    if(f == NULL) {
-        process_error(3, "Error opening " + string(f1) +" file" );
-        //cout << "Error opening " << f1 << " file " << endl;
-        //exit(0);
-    };
-
-
-    if(type[colname] == 0) {	    
-		if(1 > h_columns_int[colname].size())
-			h_columns_int[colname].resize(1);		
-        fread(h_columns_int[colname].data(), 4, 1, f);
-        cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];		
-		if(cnt > h_columns_int[colname].size()/8 + 10)
-			h_columns_int[colname].resize(cnt/8 + 10);			
-        rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
-        if(rr != cnt+52) {
-            char buf[1024];
-            sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
-            process_error(3, string(buf));
-            //cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
-            //exit(0);
-        };
-    }
-    else if(type[colname] == 1) {		
-		if(1 > h_columns_float[colname].size())
-			h_columns_float[colname].resize(1);		
-        fread(h_columns_float[colname].data(), 4, 1, f);
-        cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
-		if(cnt > h_columns_float[colname].size()/8 + 10)
-			h_columns_float[colname].resize(cnt/8 + 10);				
-        rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
-        if(rr != cnt+52) {
-            char buf[1024];
-            sprintf(buf, "Couldn't read %d bytes from %s", cnt+52, f1.c_str());
-            process_error(3, string(buf));
-            //cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
-            //exit(0);
-        };		
-    }
-    else {
-        decompress_char(f, colname, segNum, offset, NULL);
-    };
-    fclose(f);
 };
 
 
@@ -839,6 +821,10 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
     thrust::counting_iterator<unsigned int> begin(0);
     decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
     thrust::for_each(begin, begin + real_count, ff);
+	
+	thrust::device_ptr<unsigned int> d_int2((unsigned int*)d_int);
+	d_columns_int[colname].resize(real_count);
+	thrust::copy(d_int2, d_int2+real_count, d_columns_int[colname].begin());
 	
     if(!alloced_switch)
 		str_gather(d_int, real_count, d, d_columns_char[colname] + offset*len, len);
@@ -1655,6 +1641,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 
 			// time to perform join checks on REFERENCES dataset segments	
 			//for(unsigned int i = 0; i< mColumnCount; i++) {
+			
 			for(unsigned int i=0; i < columnNames.size(); i++) {
 
 				if(ref_sets.find(columnNames[i]) != ref_sets.end()) {
@@ -1677,9 +1664,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					f1 = ref_sets[columnNames[i]] + "." + ref_cols[columnNames[i]] + ".header";
 					FILE* ff = fopen(f1.c_str(), "rb");
 					if(ff == NULL) {
-        					process_error(3, "Couldn't open file " + string(f1));
-						//cout << "Couldn't open file " << f1 << endl;
-						//exit(0);
+						process_error(3, "Couldn't open file " + string(f1));
 					};
 					unsigned int ref_segCount, ref_maxRecs;
 					fread((char *)&ref_segCount, 4, 1, ff);
@@ -1713,13 +1698,20 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 						a->CopyColumnToGpu(ref_cols[columnNames[i]], z, 0);
 						thrust::sort(a->d_columns_int[ref_cols[columnNames[i]]].begin(), a->d_columns_int[ref_cols[columnNames[i]]].begin() + a->mRecCount);
 						// check if there is a join result
-						//cout << "join " << mRecCount << " " << a->mRecCount << endl;					
-				
-						res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()), mRecCount,
-									thrust::raw_pointer_cast(a->d_columns_int[ref_cols[columnNames[i]]].data()), a->mRecCount,
-									&aIndicesDevice, &bIndicesDevice,
-									mgpu::less<int_type>(), *context);
-					//cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
+						cout << "join " << mRecCount << " " << a->mRecCount << " " << getFreeMem() << endl;		
+						cout << d_columns_int[columnNames[i]][0] << " " <<  d_columns_int[columnNames[i]][mRecCount-1] << " " << a->d_columns_int[ref_cols[columnNames[i]]][a->mRecCount-1]	<< " " <<  a->d_columns_int[ref_cols[columnNames[i]]][0] << endl;
+						if(d_columns_int[columnNames[i]][0] > a->d_columns_int[ref_cols[columnNames[i]]][a->mRecCount-1]	||
+						   d_columns_int[columnNames[i]][mRecCount-1] < a->d_columns_int[ref_cols[columnNames[i]]][0]) {
+						   res_count = 0;
+						 }
+						else {			
+						    ContextPtr context1 = CreateCudaDevice(0, NULL, 0);						
+							res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()), mRecCount,
+										thrust::raw_pointer_cast(a->d_columns_int[ref_cols[columnNames[i]]].data()), a->mRecCount,
+										&aIndicesDevice, &bIndicesDevice,
+										mgpu::less<int_type>(), *context1);
+						};				
+						cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
 						f_file.write((char *)&z, 4);
 						f_file.write((char *)&res_count, 8);
 					};
@@ -1872,6 +1864,7 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     for(unsigned int i = 0; i < mColumnCount; i++) {
         col_map[cols[columnNames[i]]] = columnNames[i];
     };	
+	
 
     while (count < process_count && fgets(line, 1000, file_p) != NULL) {
         strtok(line, "\n");
@@ -2820,7 +2813,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 if(a->mRecCount) {
 					CudaSet *t = varNames[a->source_name];
                     alloced_switch = 1;
-                    t->CopyColumnToGpu(fields.front(), segment);					
+                    t->CopyColumnToGpu(fields.front(), segment);	
                     gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
 					a->orig_segs[t->load_file_name].insert(segment);
@@ -2880,11 +2873,17 @@ void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_si
         if(!alloced_switch) {
             str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size,
                        (void*)t->d_columns_char[colname], (void*)(a->d_columns_char[colname] + offset*a->char_size[colname]), (unsigned int)a->char_size[colname] );
+            thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size,
+                           t->d_columns_int[colname].begin(), a->d_columns_int[colname].begin() + offset);
+					   
         }
         else {
             str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size,
-                       alloced_tmp, (void*)(a->d_columns_char[colname] + offset*a->char_size[colname]), (unsigned int)a->char_size[colname] );
+                       alloced_tmp, (void*)(a->d_columns_char[colname] + offset*a->char_size[colname]), (unsigned int)a->char_size[colname] );					   
         };
+		if(a->d_columns_int.find(colname) != a->d_columns_int.end())
+			thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size,
+						t->d_columns_int[colname].begin(), a->d_columns_int[colname].begin() + offset);
     }
 };
 
@@ -2915,11 +2914,17 @@ void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size
         if(!alloced_switch) {
             cudaMemcpy((void**)(a->d_columns_char[colname] + offset*a->char_size[colname]), (void**)t->d_columns_char[colname],
                        g_size*t->char_size[colname], cudaMemcpyDeviceToDevice);
+            thrust::copy(t->d_columns_int[colname].begin(), t->d_columns_int[colname].begin() + g_size,
+                         a->d_columns_int[colname].begin() + offset);					   
         }
         else {
             cudaMemcpy((void**)(a->d_columns_char[colname] + offset*a->char_size[colname]), alloced_tmp,
                        g_size*t->char_size[colname], cudaMemcpyDeviceToDevice);
         };
+		if(a->d_columns_int.find(colname) != a->d_columns_int.end())
+			thrust::copy(t->d_columns_int[colname].begin(), t->d_columns_int[colname].begin() + g_size,
+						a->d_columns_int[colname].begin() + offset);
+
     };
 };
 
@@ -2982,8 +2987,7 @@ size_t max_char(CudaSet* a)
 			if (a->char_size[a->columnNames[i]] > max_char1)
 				max_char1 = a->char_size[a->columnNames[i]];
 		};		
-	};		
-
+	};
     return max_char1;
 };
 
@@ -3263,8 +3267,6 @@ void insert_records(char* f, char* s) {
 
 	if(varNames.find(s) == varNames.end()) {
 		process_error(3, "couldn't find " + string(s) );
-		//cout << "couldn't find " << s << endl;
-		//exit(0);
 	};	
 	CudaSet *a;
     a = varNames.find(s)->second;
@@ -3272,8 +3274,6 @@ void insert_records(char* f, char* s) {
 	
 	if(varNames.find(f) == varNames.end()) {
 		process_error(3, "couldn't find " + string(f) );
-		//cout << "couldn't find " << f << endl;
-		//exit(0);
 	};	
 	
 	CudaSet *b;
@@ -3363,11 +3363,7 @@ void delete_records(char* f) {
 	size_t maxRecs = 0;
 
     if(!a->keep) { // temporary variable
-		process_error(2, "Delete operator is only applicable to disk based sets\nfor deleting records from derived sets please use filter operator ");
-		//cout << "Delete operator is only applicable to disk based sets" << endl;
-		//cout << "for deleting records from derived sets please use filter operator " << endl;
-		//exit(0);
-    }
+		process_error(2, "Delete operator is only applicable to disk based sets\nfor deleting records from derived sets please use filter operator ");    }
     else {  // read matching segments, delete, compress and write on a disk replacing the original segments
 
 		string str, str_old;

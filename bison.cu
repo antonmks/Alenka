@@ -89,7 +89,7 @@
     void emit_or();
     void emit_cmp(int val);
     void emit_var(char *s, int c, char *f, char* ref, char* ref_name);
-    void emit_var_asc(char *s);
+	void emit_var_asc(char *s);
     void emit_var_desc(char *s);
     void emit_name(char *name);
     void emit_count();
@@ -111,8 +111,8 @@
     void emit_store_binary(char *s, char *f, char* sep);
     void emit_store_binary(char *s, char *f);
     void emit_filter(char *s, char *f);
-    void emit_delete(char *f);
-    void emit_insert(char *f, char* s);
+	void emit_delete(char *f);
+	void emit_insert(char *f, char* s);
     void emit_order(char *s, char *f, int e, int ll = 0);
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
@@ -122,12 +122,12 @@
     void emit_join();
     void emit_sort(char* s, int p);
     void emit_presort(char* s);
-    void emit_display(char *s, char* sep);
-    void emit_case();
-    void emit_show_tables();
-    void emit_describe_table(char* table_name);
-    void emit_drop_table(char* table_name);
-    void process_error(int severity, string err);
+	void emit_display(char *s, char* sep);
+	void emit_case();
+	void emit_show_tables();
+	void emit_describe_table(char* table_name);
+	void emit_drop_table(char* table_name);
+	void process_error(int severity, string err);
 
 
 
@@ -2561,9 +2561,9 @@ unsigned int statement_count = 0;
 map<string,unsigned int> stat;
 map<unsigned int, unsigned int> join_and_cnt;
 bool scan_state = 0;
-ContextPtr context;
 map<string, map<string, bool> > used_vars;
 bool save_dict = 0;
+ContextPtr context;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
 void filter_op(char *s, char *f, unsigned int segment);
@@ -2792,6 +2792,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     void* temp;	
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a, field_names)));
 	stack<string> exe_type1(exe_type);
+	
 
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
         if (a->type[exe_type.top()] == 0)
@@ -2852,7 +2853,6 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
     os << x.x << ", " << x.y;
     return os;
 }
-
 
 
 void emit_join(char *s, char *j1, int grp)
@@ -3053,8 +3053,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         if (std::find(right->columnNames.begin(), right->columnNames.end(), f2) != right->columnNames.end()) {
 			colname2 = f2;
         }
-        else 
+        else {
             process_error(2, "Couldn't find column " + f2 );
+        };
     }
     else if (std::find(right->columnNames.begin(), right->columnNames.end(), f1) != right->columnNames.end()) {
 		colname2 = f1;
@@ -3064,15 +3065,20 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			colname1 = f2;
             f2 = tmpstr;
         }
-        else 
-	    process_error(2, "Couldn't find column " +f2 );
+        else {
+            process_error(2, "Couldn't find column " +f2 );
+        };
     }
-    else
-	process_error(2, "Couldn't find column " + f1);
+    else {
+        process_error(2, "Couldn't find column " + f1);
+    };
+
 
     if (!((left->type[colname1] == 0 && right->type[colname2]  == 0) || (left->type[colname1] == 2 && right->type[colname2]  == 2)
-            || (left->type[colname1] == 1 && right->type[colname2]  == 1 && left->decimal[colname1] && right->decimal[colname2]))) 
-	process_error(2, "Joins on floats are not supported ");
+            || (left->type[colname1] == 1 && right->type[colname2]  == 1 && left->decimal[colname1] && right->decimal[colname2]))) {
+        process_error(2, "Joins on floats are not supported ");
+    };
+
 
     bool decimal_join = 0;
     if (left->type[colname1] == 1 && right->type[colname2]  == 1)
@@ -3673,8 +3679,9 @@ void emit_order(char *s, char *f, int e, int ll)
         statement_count++;
 
     if (scan_state == 0 && ll == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) 
-	    process_error(2, "Order : couldn't find variable " + string(f));
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+            process_error(2, "Order : couldn't find variable " + string(f));
+        };
         stat[s] = statement_count;
         stat[f] = statement_count;
         return;
@@ -3716,8 +3723,10 @@ void emit_order(char *s, char *f, int e, int ll)
             exe_type.push(op_type.front());
             exe_value.push(op_value.front());
         };
-		if(std::find(a->columnNames.begin(), a->columnNames.end(), exe_type.top()) == a->columnNames.end()) 
-	    		process_error(2, "Couldn't find name " + exe_type.top());
+		if(std::find(a->columnNames.begin(), a->columnNames.end(), exe_type.top()) == a->columnNames.end()) {		
+			process_error(2, "Couldn't find name " + exe_type.top());
+		};
+
     };
 
     stack<string> tp(exe_type);
@@ -3840,8 +3849,9 @@ void emit_select(char *s, char *f, int ll)
 
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) 
-	    process_error(2, "Select : couldn't find variable " + string(f) );
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+            process_error(2, "Select : couldn't find variable " + string(f) );
+        };
         stat[s] = statement_count;
         stat[f] = statement_count;
 		check_used_vars();
@@ -3873,8 +3883,9 @@ void emit_select(char *s, char *f, int ll)
     CudaSet *a;
     if(varNames.find(f) != varNames.end())
         a = varNames.find(f)->second;
-    else 
+    else {
         process_error(2, "Couldn't find " + string(f) );
+    };
 
     if(a->mRecCount == 0 && !a->filtered) {
         CudaSet *c;
@@ -3981,7 +3992,7 @@ void emit_select(char *s, char *f, int ll)
 
     while(!op_s.empty()) {
         if (a->type[op_s.top()] == 2) {
-            a->d_columns_int[op_s.top()] = thrust::device_vector<int_type>();
+            a->d_columns_int[op_s.top()] = thrust::device_vector<int_type>(a->maxRecs);
         };
         op_s.pop();
     };
@@ -3999,24 +4010,25 @@ void emit_select(char *s, char *f, int ll)
 		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';			
         op_s = op_v2;
 
-        while(!op_s.empty() && a->mRecCount != 0) {
+        while(!op_s.empty() && a->mRecCount != 0 && a->not_compressed) {
 
 			if (a->type[op_s.top()] == 2) {
                 a->d_columns_int[op_s.top()].resize(0);			
                 a->add_hashed_strings(op_s.top(), i);	
             };
             op_s.pop();
-        };		
+        };
+		
 
         if(a->mRecCount) {
             if (ll != 0) {
-				//start3 = std::clock();		
+				start3 = std::clock();		
                 order_inplace(a, op_v2, field_names, 1);
 				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
 				//start3 = std::clock();		
                 a->GroupBy(op_v2);				
 				//std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
-				start3 = std::clock();		
+				//start3 = std::clock();		
             };
 			
 			
@@ -4125,13 +4137,15 @@ void emit_select(char *s, char *f, int ll)
 void emit_insert(char *f, char* s) {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) 
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             process_error(2, "Delete : couldn't find variable " + string(f));
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) 
+        };
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             process_error(2, "Delete : couldn't find variable " + string(s) );
-        check_used_vars();	
+        };		
+		check_used_vars();	
         stat[f] = statement_count;
-        stat[s] = statement_count;
+		stat[s] = statement_count;
         clean_queues();
         return;
     };
@@ -4153,10 +4167,11 @@ void emit_delete(char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()  && data_dict.count(f) == 0) 
+        if (stat.find(f) == stat.end()  && data_dict.count(f) == 0) {
             process_error(2, "Delete : couldn't find variable " + string(f));
+        };
         stat[f] = statement_count;
-        check_used_vars();
+		check_used_vars();
         clean_queues();
         return;
     };
@@ -4191,10 +4206,11 @@ void emit_display(char *f, char* sep)
 {
    statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) 
-            process_error(2, "Delete : couldn't find variable " + string(f) );
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+            process_error(2, "Filter : couldn't find variable " + string(f) );
+        };
         stat[f] = statement_count;
-        //check_used_vars();
+		//check_used_vars();
         clean_queues();
         return;
     };
@@ -4229,11 +4245,13 @@ void emit_filter(char *s, char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) 
-            process_error(2, "Filter : couldn't find variable " + string(f) );
+        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+            cout << "Filter : couldn't find variable " << f << endl;
+            exit(1);
+        };
         stat[s] = statement_count;
         stat[f] = statement_count;		
-        check_used_vars();
+		check_used_vars();
         clean_queues();
         return;
     };
@@ -4313,11 +4331,12 @@ void emit_store(char *s, char *f, char* sep)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) 
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             process_error(2, "Store : couldn't find variable " + string(s) );
+        };
         stat[s] = statement_count;
-        //check_used_vars();
-        clean_queues();
+		//check_used_vars();
+		clean_queues();
         return;
     };
 
@@ -4347,11 +4366,12 @@ void emit_store_binary(char *s, char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) 
+        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             process_error(2, "Store : couldn't find variable " + string(s));
+        };
         stat[s] = statement_count;
-        //check_used_vars();
-        clean_queues();
+		//check_used_vars();
+		clean_queues();
         return;
     };
 
@@ -4377,22 +4397,23 @@ void emit_store_binary(char *s, char *f)
         a->Store(f,"", limit, 1);
     }
     else {
-             FILE* file_p;
-            if(a->text_source) {
-                file_p = fopen(a->load_file_name.c_str(), "r");
-                if (file_p  == NULL) 
-                    process_error(2, "Could not open file " + a->load_file_name );
-            };
+		FILE* file_p;
+		if(a->text_source) {
+			file_p = fopen(a->load_file_name.c_str(), "r");
+		    if (file_p  == NULL) {
+				process_error(2, "Could not open file " + a->load_file_name );
+			};
+		};
 
-            while(!fact_file_loaded) {
-                if(verbose)
-                    cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
-                if(a->text_source)
-                    fact_file_loaded = a->LoadBigFile(file_p);
-                a->Store(f,"", limit, 1);
-            };
+        while(!fact_file_loaded) {
+			if(verbose)
+				cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
+            if(a->text_source)
+                fact_file_loaded = a->LoadBigFile(file_p);
+            a->Store(f,"", limit, 1);
+        };
     };
-    a->writeSortHeader(f);
+	a->writeSortHeader(f);
 
     if(stat[f] == statement_count && !a->keep) {
         a->free();
@@ -4410,8 +4431,8 @@ void emit_load_binary(const char *s, const char *f, int d)
         return;
     };
 
-    if(verbose)
-        printf("BINARY LOAD: %s \n", s, f);
+	if(verbose)
+		printf("BINARY LOAD: %s \n", s, f);
 
     CudaSet *a;
     unsigned int segCount, maxRecs;
@@ -4419,24 +4440,25 @@ void emit_load_binary(const char *s, const char *f, int d)
     f1 += "." + namevars.front() + ".header";
 
     FILE* ff = fopen(f1.c_str(), "rb");
-    if(ff == NULL) 
-        process_error(2, "Couldn't open file " + f1);
-    size_t totRecs;
+    if(ff == NULL) {
+         process_error(2, "Couldn't open file " + f1);
+    };
+	size_t totRecs;
     fread((char *)&totRecs, 8, 1, ff);
     fread((char *)&segCount, 4, 1, ff);
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
-    if(verbose)
-        cout << "Reading " << totRecs << " records" << endl;
+	if(verbose)
+		cout << "Reading " << totRecs << " records" << endl;
 
-    a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
+	a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
     a->segCount = segCount;    
     a->keep = 1;
-    a->name = s;
+	a->name = s;
     varNames[s] = a;
-    for(unsigned int i = 0; i < segCount; i++)
-        a->orig_segs[f].insert(i); 
+	for(unsigned int i = 0; i < segCount; i++)
+		a->orig_segs[f].insert(i); 
 
     if(stat[s] == statement_count )  {
         a->free();
@@ -4536,7 +4558,6 @@ void yyerror(char *s, ...)
     fprintf(stderr, "%d: error: ", yylineno);
     vfprintf(stderr, s, ap);
     fprintf(stderr, "\n");
-    error_cb(1,s);				// send syntax problems back thru the callback mechanism
 }
 
 void clean_queues()
@@ -4608,7 +4629,7 @@ string script;
 
     process_count = 6200000;
     verbose = 0;
-    total_buffer_size = 0;
+	total_buffer_size = 0;
 	
     for (int i = 1; i < ac; i++) {
         if(strcmp(av[i],"-l") == 0) {
@@ -4628,7 +4649,7 @@ string script;
         };		
     };
 
-    load_col_data(data_dict, "data.dictionary");
+	load_col_data(data_dict, "data.dictionary");
 		
     if (!interactive) {
         if((yyin = fopen(av[ac-1], "r")) == NULL) {
@@ -4641,10 +4662,12 @@ string script;
             exit(1);
         };
 		
+		//exit(0);
+
         scan_state = 1;
         std::clock_t start1 = std::clock();
 		
-        load_vars();
+		load_vars();
 		
         statement_count = 0;
         clean_queues();
@@ -4680,12 +4703,12 @@ string script;
     else {        
         context = CreateCudaDevice(0, av, verbose);
         hash_seed = 100;
-        if(!just_once)
-            getline(cin, script);		
+		if(!just_once)
+			getline(cin, script);		
 
         while (script != "exit" && script != "EXIT") {
 
-            used_vars.clear();
+			used_vars.clear();
             yy_scan_string(script.c_str());
             scan_state = 0;
             statement_count = 0;
@@ -4698,7 +4721,7 @@ string script;
 
             scan_state = 1;
 			
-            load_vars();
+			load_vars();
 			
             statement_count = 0;
             clean_queues();
@@ -4741,6 +4764,10 @@ string script;
 }
 
 
+
+//external c global to report errors
+char alenka_err[4048];
+
 int alenkaExecute(char *s)
 {
 YY_BUFFER_STATE bp;
@@ -4757,10 +4784,11 @@ YY_BUFFER_STATE bp;
                 if(verbose)
                         cout << "SQL scan parse worked" << endl;
         }
-        //else
-        //{
-		// its already done error_cb...
-        //}
+        else
+        {
+                //printf("SQL scan parse failed alenka_err=[i%s]\n",  alenka_err );
+                //printf("Bad command was: [%s]\n", s);
+        }
         yy_delete_buffer(bp);
 
 	// Clear Vars
@@ -4775,6 +4803,18 @@ YY_BUFFER_STATE bp;
 }
 
 
+void process_error(int severity, string err) {
+    switch (severity) {
+        case 1: err = "(Warning) " + err;
+           break;
+        case 2: err = "(Fatal) " + err;
+           break;
+        default:
+             err = "(Aborting) " + err;
+           break;
+    }
+    error_cb(severity, err.c_str());            // send the error to the c based callback
+}
 
 
 void alenkaInit(char ** av)
@@ -4798,23 +4838,8 @@ void alenkaClose()
                 cudaFree(alloced_tmp);
 }
 
-void
-process_error(int severity, string err) {
-// Anton:
-// These expanded severity messages are just a suggestion and could be changed or removed entirely
-// The main function here is only to translate to a c string for the c based callback
-// Currently 1 is a non fatal warning, 2 is a fatal error and >2 is a system failure...
-    switch (severity) {
-        case 1: err = "(Warning) " + err;
-           break;
-        case 2: err = "(Fatal) " + err;
-           break;
-        default:
-             err = "(Aborting) " + err;
-           break;
-    }
-    error_cb(severity, err.c_str());            // send the error to the c based callback
-}
+
+
 
 
 

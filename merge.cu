@@ -23,7 +23,6 @@
 #endif // !defined(_MSC_VER)
 
 
-
 uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
 {
   const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
