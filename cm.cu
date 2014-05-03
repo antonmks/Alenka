@@ -24,7 +24,7 @@
 #include "compress.cu"
 #include "sorts.cu"
 #include "filter.h"
-#include "row.h"
+#include "callbacks.h"
 
 
 #ifdef _WIN64
@@ -222,6 +222,7 @@ size_t getFreeMem();
 char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment);
 void filter_op(char *s, char *f, unsigned int segment);
 size_t getTotalSystemMemory();
+void process_error(int severity, string err);
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names)
     : mColumnCount(0), mRecCount(0)
@@ -300,8 +301,11 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
         size_t sz = RecordCount*char_size[colname];
         cudaError_t cudaStatus = cudaMalloc(&d, sz);
         if(cudaStatus != cudaSuccess) {
-            cout << "Could not allocate " << sz << " bytes of GPU memory for " << RecordCount << " records " << endl;
-            exit(0);
+            char buf[1024];
+            sprintf( buf, "Could not allocate %d bytes of GPU memory for %d records ", sz, RecordCount);
+            process_error(3, string(buf));
+            //cout << "Could not allocate " << sz << " bytes of GPU memory for " << RecordCount << " records " << endl;
+            //exit(0);
         };
         d_columns_char[colname] = (char*)d;
     };
@@ -513,8 +517,11 @@ void CudaSet::reserve(size_t Recs)
         else {
             h_columns_char[columnNames[i]] = new char[Recs*char_size[columnNames[i]]];
             if(h_columns_char[columnNames[i]] == NULL) {
-                cout << "Could not allocate on a host " << Recs << " records of size " << char_size[columnNames[i]] << endl;
-                exit(0);
+		char buf[1024];
+                sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %d", Recs, char_size[columnNames[i]]);
+                process_error(3, string(buf));
+                //cout << "Could not allocate on a host " << Recs << " records of size " << char_size[columnNames[i]] << endl;
+                //exit(0);
             };
             prealloc_char_size = Recs;
         };
@@ -680,8 +687,9 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 		    FILE* f;
 			f = fopen(f1.c_str(), "rb" );
 			if(f == NULL) {
-				cout << "Error opening " << f1 << " file " << endl;
-				exit(0);
+				process_error(3, "Error opening " + string(f1) +" file " );
+				//cout << "Error opening " << f1 << " file " << endl;
+				//exit(0);
 			};		
 			fseek(f, 0, SEEK_END);
 			long fileSize = ftell(f);
@@ -726,8 +734,9 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
     FILE* f;
     f = fopen(f1.c_str(), "rb" );
     if(f == NULL) {
-        cout << "Error opening " << f1 << " file " << endl;
-        exit(0);
+        process_error(3, "Error opening " + string(f1) +" file" );
+        //cout << "Error opening " << f1 << " file " << endl;
+        //exit(0);
     };
 
 
@@ -740,8 +749,11 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 			h_columns_int[colname].resize(cnt/8 + 10);			
         rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
-            cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
-            exit(0);
+            char buf[1024];
+            sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
+            process_error(3, string(buf));
+            //cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << " ,read only " << rr << endl;
+            //exit(0);
         };
     }
     else if(type[colname] == 1) {		
@@ -753,8 +765,11 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 			h_columns_float[colname].resize(cnt/8 + 10);				
         rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
         if(rr != cnt+52) {
-            cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
-            exit(0);
+            char buf[1024];
+            sprintf(buf, "Couldn't read %d bytes from %s", cnt+52, f1.c_str());
+            process_error(3, string(buf));
+            //cout << "Couldn't read  " << cnt+52 << " bytes from " << f1  << endl;
+            //exit(0);
         };		
     }
     else {
@@ -1422,7 +1437,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                         //fields[j] = (char *) ss.c_str();
                     };
                   };
-                  row_cb(NULL, mColumnCount, (char **)fields, (char **)dcolumns);
+                  row_cb(mColumnCount, (char **)fields, (char **)dcolumns);
                   rows++;
             };
         }
@@ -1467,7 +1482,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                                                         fields[j] = (char *) ss.c_str();
                                                 };
                                         };
-                                        row_cb(NULL, mColumnCount, (char **)fields, (char**)dcolumns);
+                                        row_cb(mColumnCount, (char **)fields, (char**)dcolumns);
                                         rows++;
                                 };
                                 curr_seg++;
@@ -1662,8 +1677,9 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 					f1 = ref_sets[columnNames[i]] + "." + ref_cols[columnNames[i]] + ".header";
 					FILE* ff = fopen(f1.c_str(), "rb");
 					if(ff == NULL) {
-						cout << "Couldn't open file " << f1 << endl;
-						exit(0);
+        					process_error(3, "Couldn't open file " + string(f1));
+						//cout << "Couldn't open file " << f1 << endl;
+						//exit(0);
 					};
 					unsigned int ref_segCount, ref_maxRecs;
 					fread((char *)&ref_segCount, 4, 1, ff);
@@ -3246,16 +3262,18 @@ void insert_records(char* f, char* s) {
 	string str_s, str_d;	
 
 	if(varNames.find(s) == varNames.end()) {
-		cout << "couldn't find " << s << endl;
-		exit(0);
+		process_error(3, "couldn't find " + string(s) );
+		//cout << "couldn't find " << s << endl;
+		//exit(0);
 	};	
 	CudaSet *a;
     a = varNames.find(s)->second;
     a->name = s;	
 	
 	if(varNames.find(f) == varNames.end()) {
-		cout << "couldn't find " << f << endl;
-		exit(0);
+		process_error(3, "couldn't find " + string(f) );
+		//cout << "couldn't find " << f << endl;
+		//exit(0);
 	};	
 	
 	CudaSet *b;
@@ -3345,9 +3363,10 @@ void delete_records(char* f) {
 	size_t maxRecs = 0;
 
     if(!a->keep) { // temporary variable
-		cout << "Delete operator is only applicable to disk based sets" << endl;
-		cout << "for deleting records from derived sets please use filter operator " << endl;
-		exit(0);
+		process_error(2, "Delete operator is only applicable to disk based sets\nfor deleting records from derived sets please use filter operator ");
+		//cout << "Delete operator is only applicable to disk based sets" << endl;
+		//cout << "for deleting records from derived sets please use filter operator " << endl;
+		//exit(0);
     }
     else {  // read matching segments, delete, compress and write on a disk replacing the original segments
 
