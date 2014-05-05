@@ -1,4 +1,4 @@
-# Simple SQL statement on monster computers #
+# A Simple SQL statement on monster computers #
 
 Lets see how the fastest and the most expensive machines can run a simple SQL.
 Our database consists of one table lineitem with approximately 6 billion records (800 GB).
@@ -57,11 +57,12 @@ So as you can see it is possible to compete with the big guys not just on price 
 And these days you have to be a pretty big company to afford a license for MS SQL Server 2014 ( it costs $400,000 to run it on a box with just 4 Intel E7-4890 v2 cpus).
 
 References :
- TPC-H benchmarks : [http://www.tpc.org/tpch/results/tpch_perf_results.asp?resulttype=noncluster](http://www.tpc.org/tpch/results/tpch_perf_results.asp?resulttype=noncluster)
+
+TPC-H benchmarks : [http://www.tpc.org/tpch/results/tpch_perf_results.asp?resulttype=noncluster](http://www.tpc.org/tpch/results/tpch_perf_results.asp?resulttype=noncluster)
 
 alenka database : [https://github.com/antonmks/Alenka](https://github.com/antonmks/Alenka)
 
-
+![](http://sm1ttysm1t.com/wp-content/uploads/2014/04/COL_LOGO-100x100.jpg)
 
 
 
