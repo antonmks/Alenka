@@ -1,4 +1,4 @@
-# A Simple SQL statement on monster computers #
+# A simple SQL statement running on monster computers #
 
 Lets see how the fastest and the most expensive machines can run a simple SQL.
 Our database consists of one table lineitem with approximately 6 billion records (800 GB).
