@@ -48,7 +48,7 @@ so the time is dominated by CPU calculations. The results don't come cheap thoug
 
 The modern gpus (graphical processing units) have a massive memory bandwidth and a few teraflops of computing power. Lets see how they fare against the above servers.
 
-Our setup : home assembled PC with Pentium G620 CPU, 16GB of memory, 1 Vertex3 SSD and a single Nvidia GTX Titan. For the software we use open source gpu database alenka.
+Our setup : a PC with **Pentium G620 CPU, 16GB of memory, 1 Vertex3 SSD and a single Nvidia GTX Titan**. For the software we use open source gpu database alenka.
 The SQL runs in just 77 seconds (disk time excluded. Why is it excluded? Because even with a cheap disk subsystem it becomes insignificant. Raid setup of 10 SSD (USD 1000) would read the compressed data in under 10 seconds).
 
 Total price - $**1700** (the software is free and open source). 
