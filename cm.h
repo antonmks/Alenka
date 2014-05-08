@@ -92,6 +92,10 @@ extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
 extern size_t total_buffer_size;
+extern unsigned long long int* raw_decomp;
+extern unsigned int raw_decomp_length;
+extern size_t alloced_sz;
+extern void* alloced_tmp;
 
 
 template<typename T>
