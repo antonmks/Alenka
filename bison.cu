@@ -2780,6 +2780,147 @@ void emit_join_tab(char *s, char tp)
     join_type.push(tp);
 };
 
+void order_inplace_host(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
+{
+    unsigned int* permutation = new unsigned int[a->mRecCount];
+    thrust::sequence(permutation, permutation + a->mRecCount);
+
+    size_t maxSize =  a->mRecCount;
+    char* temp;
+    temp = new char[maxSize*max_char(a)];
+	stack<string> exe_type1(exe_type);
+	stack<string> exe_value;
+	
+    while(!exe_type1.empty()) {
+        exe_value.push("ASC");
+		exe_type1.pop();		
+	};	
+
+
+    // sort on host
+
+    for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
+
+        if (a->type[exe_type.top()] == 0)
+            update_permutation_host(a->h_columns_int[exe_type.top()].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
+        else if (a->type[exe_type.top()] == 1)
+            update_permutation_host(a->h_columns_float[exe_type.top()].data(), permutation, a->mRecCount,exe_value.top(), (float_type*)temp);
+        else {
+            update_permutation_char_host(a->h_columns_char[exe_type.top()], permutation, a->mRecCount, exe_value.top(), temp, a->char_size[exe_type.top()]);
+        };
+    };
+
+    for (unsigned int i = 0; i < a->mColumnCount; i++) {
+        if (a->type[a->columnNames[i]] == 0) {
+			thrust::gather(permutation, permutation + a->mRecCount, a->h_columns_int[a->columnNames[i]].data(), (int_type*)temp);
+			thrust::copy((int_type*)temp, (int_type*)temp + a->mRecCount, a->h_columns_int[a->columnNames[i]].data());
+        }
+        else if (a->type[a->columnNames[i]] == 1) {
+			thrust::gather(permutation, permutation + a->mRecCount, a->h_columns_float[a->columnNames[i]].data(), (float_type*)temp);
+			thrust::copy((float_type*)temp, (float_type*)temp + a->mRecCount, a->h_columns_float[a->columnNames[i]].data());
+		}	
+        else {
+            apply_permutation_char_host(a->h_columns_char[a->columnNames[i]], permutation, a->mRecCount, temp, a->char_size[a->columnNames[i]]);
+			thrust::copy(temp, temp + a->mRecCount*a->char_size[a->columnNames[i]], a->h_columns_float[a->columnNames[i]].data());
+        };
+    };
+
+    delete [] temp;
+    delete [] permutation;
+}
+
+
+void order_inplace1(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
+{
+    unsigned int sz = a->mRecCount;
+    thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
+    thrust::sequence(permutation, permutation+sz,0,1);
+
+    unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
+    void* temp;	
+    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a, field_names)));
+	stack<string> exe_type1(exe_type);
+	
+    for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {		
+        if (a->type[exe_type.top()] == 0 ) {
+			a->d_columns_int[exe_type.top()].resize(sz);
+			thrust::copy(a->h_columns_int[exe_type.top()].begin(), a->h_columns_int[exe_type.top()].begin() + sz, a->d_columns_int[exe_type.top()].begin());
+            update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, sz, "ASC", (int_type*)temp);			
+			a->d_columns_int[exe_type.top()].resize(0);
+			a->d_columns_int[exe_type.top()].shrink_to_fit();
+		}	
+        else if (a->type[exe_type.top()] == 1) {
+			a->d_columns_float[exe_type.top()].resize(sz);
+			thrust::copy(a->h_columns_float[exe_type.top()].begin(), a->h_columns_float[exe_type.top()].begin() + sz, a->d_columns_float[exe_type.top()].begin());
+            update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, sz,"ASC", (float_type*)temp);
+			a->d_columns_float[exe_type.top()].resize(0);
+			a->d_columns_float[exe_type.top()].shrink_to_fit();			
+		}	
+        else {
+            // use int col int_col_count
+			a->d_columns_int[exe_type.top()].resize(sz);
+			thrust::copy(a->h_columns_int[exe_type.top()].begin(), a->h_columns_int[exe_type.top()].begin() + sz, a->d_columns_int[exe_type.top()].begin());			
+            update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, sz, "ASC", (int_type*)temp);
+			a->d_columns_int[exe_type.top()].resize(0);
+			a->d_columns_int[exe_type.top()].shrink_to_fit();			
+        };		
+    };	
+	
+	
+    for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
+        if (a->type[*it] == 0) {				
+			a->d_columns_int[*it].resize(sz);
+			thrust::copy(a->h_columns_int[*it].begin(), a->h_columns_int[*it].begin() + sz, a->d_columns_int[*it].begin());
+            apply_permutation(a->d_columns_int[*it], raw_ptr, sz, (int_type*)temp);						
+			thrust::copy(a->d_columns_int[*it].begin(), a->d_columns_int[*it].begin() + sz, a->h_columns_int[*it].begin());
+			a->d_columns_int[*it].resize(0);
+			a->d_columns_int[*it].shrink_to_fit();			
+        }
+        else if (a->type[*it] == 1) {
+			a->d_columns_float[*it].resize(sz);
+			thrust::copy(a->h_columns_float[*it].begin(), a->h_columns_float[*it].begin() + sz, a->d_columns_float[*it].begin());		
+            apply_permutation(a->d_columns_float[*it], raw_ptr, sz, (float_type*)temp);
+			thrust::copy(a->d_columns_float[*it].begin(), a->d_columns_float[*it].begin() + sz, a->h_columns_float[*it].begin());
+			a->d_columns_float[*it].resize(0);
+			a->d_columns_float[*it].shrink_to_fit();						
+		}	
+        else {		
+			a->allocColumnOnDevice(*it, sz);
+			cudaMemcpy( a->d_columns_char[*it], (void *)a->h_columns_char[*it], sz*a->char_size[*it], cudaMemcpyHostToDevice);
+            apply_permutation_char(a->d_columns_char[*it], raw_ptr, sz, (char*)temp, a->char_size[*it]);
+			cudaMemcpy( a->h_columns_char[*it], a->d_columns_char[*it], sz*a->char_size[*it], cudaMemcpyDeviceToHost);
+			a->deAllocColumnOnDevice(*it);
+			if(update_str) {
+				a->d_columns_int[*it].resize(sz);
+				cudaMemcpy( a->d_columns_char[*it], (void *)a->h_columns_char[*it], sz*a->char_size[*it], cudaMemcpyHostToDevice);
+				apply_permutation(a->d_columns_int[*it], raw_ptr, sz, (int_type*)temp);
+			}	
+			
+        };
+    };
+    cudaFree(temp);
+    thrust::device_free(permutation);		
+	
+	for (set<string>::iterator it=field_names.begin(); it!=field_names.end(); ++it) {
+        if (a->type[*it] == 0) {			
+			a->d_columns_int[*it].resize(sz);		
+			thrust::copy(a->h_columns_int[*it].begin(), a->h_columns_int[*it].begin() + sz, a->d_columns_int[*it].begin());
+        }
+        else if (a->type[*it] == 1) {
+			a->d_columns_float[*it].resize(sz);
+			thrust::copy(a->h_columns_float[*it].begin(), a->h_columns_float[*it].begin() + sz, a->d_columns_float[*it].begin());		
+		}	
+        else {		
+			a->allocColumnOnDevice(*it, sz);
+			cudaMemcpy( a->d_columns_char[*it], (void *)a->h_columns_char[*it], sz*a->char_size[*it], cudaMemcpyHostToDevice);
+		};
+	
+	};
+	
+}
+
+
+
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
 {
@@ -2792,9 +2933,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     void* temp;	
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a, field_names)));
 	stack<string> exe_type1(exe_type);
-	
 
-    for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {
+    for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {		
         if (a->type[exe_type.top()] == 0)
             update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, sz, "ASC", (int_type*)temp);
         else if (a->type[exe_type.top()] == 1)
@@ -3118,17 +3258,26 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
 	std::vector<int> j_data;
 	
+	stack<string> exe_type;
+	set<string> field_names;
+	exe_type.push(f2);
+	for (unsigned int i = 0; i < right->columnNames.size() ; i++ ) {
+		if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2) {
+			field_names.insert(right->columnNames[i]);
+		};	
+	};	
+	
+	
 	while(start_part < right->segCount) {
 
 	    bool rsz = 1;
 		right->deAllocOnDevice();		
-		stack<string> exe_type;
-		set<string> field_names;
-		exe_type.push(f2);
-		for (unsigned int i = 0; i < right->columnNames.size() ; i++ ) {
-			field_names.insert(right->columnNames[i]);
-		};			
-	
+
+		//cout << "ordering " << endl;
+		//if(right->not_compressed)
+			//order_inplace_host(right, exe_type, field_names, 0);						
+		//cout << "ordered " << endl;
+		
 		if(start_part + r_parts >= right->segCount) {
 			cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			start_part = right->segCount;
@@ -3137,7 +3286,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, start_part+r_parts, rsz);
 			start_part = start_part+r_parts;			
 		};			
-		order_inplace(right, exe_type, field_names, 0);					
+		
+		if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {
+			right->CopyToHost(0, right->mRecCount);
+			right->deAllocOnDevice();
+			order_inplace1(right, exe_type, field_names, 0);					
+		}
+		else {
+			order_inplace(right, exe_type, field_names, 0);					
+		};
+		
 
 		for (unsigned int i = 0; i < left->segCount; i++) {
 			
@@ -4692,10 +4850,6 @@ string script;
             (*it).second->free();
         };
 
-        if(alloced_sz) {
-            cudaFree(alloced_tmp);
-        };
-
         if(verbose) {
             cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
@@ -4745,10 +4899,6 @@ string script;
 			else
 				script = "exit";
         };
-        if(alloced_sz) {
-            cudaFree(alloced_tmp);
-            alloced_sz = 0;
-        };
 		
 		while(!buffer_names.empty()) { 
 			delete [] buffers[buffer_names.front()];
@@ -4760,6 +4910,16 @@ string script;
     };
 	if(save_dict)
 		save_col_data(data_dict,"data.dictionary");
+		
+    if(alloced_sz) {
+        cudaFree(alloced_tmp);
+        alloced_sz = 0;
+    };
+    if(raw_decomp_length) {
+        cudaFree(raw_decomp);
+        raw_decomp_length = 0;
+    };	
+		
     return 0;
 }
 
