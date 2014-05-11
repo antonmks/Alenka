@@ -3332,6 +3332,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				left->add_hashed_strings(f1, i);
 			};
 			
+			std::cout<< endl << "cp time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+			
 			//cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << " " << left->mRecCount << endl;
 			
 			if(!left->filtered) {
@@ -3599,38 +3601,38 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			
 								if(bits == 8) {
 									if(left->type[op_sel1.front()] == 0) {	
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}	
 									else {	
 										int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (char*)((unsigned int*)h + 6), ptr + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), ptr + offset);
 									};										
 								}
 								else if(bits == 16) {
 									if(left->type[op_sel1.front()] == 0) {	
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}	
 									else {	
 										int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned short int*)((unsigned int*)h + 6), ptr + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), ptr + offset);
 									};
 								}
 								else if(bits == 32) {
 									if(left->type[op_sel1.front()] == 0) {	
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}	
 									else {	
 										int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (unsigned int*)((unsigned int*)h + 6), ptr + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), ptr + offset);
 									};	
 								}
 								else if(bits == 64) {
 									if(left->type[op_sel1.front()] == 0) {	
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}	
 									else {	
 										int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-										thrust::gather_if(prm_vh.begin(), prm_vh.end(), prm_vh.begin(), (int_type*)((unsigned int*)h + 6), ptr + offset, is_positive<unsigned int>());
+										thrust::gather(prm_vh.begin(), prm_vh.end(), (int_type*)((unsigned int*)h + 6), ptr + offset);
 									};
 								};
 								
@@ -3712,7 +3714,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					cudaFree(temp);
 				};
 			};
-			//std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+			std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 		};
 	};
 	
