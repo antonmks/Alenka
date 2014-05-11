@@ -1153,11 +1153,19 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 						do_sort = 0;
 					};
 				}
+				else if(!left->presorted_fields.empty()) {
+						if(left->presorted_fields.front() == f1) {
+							do_sort = 0;
+						};
+				};
+				
 				if(do_sort)
 					thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
+				else
+					if(verbose)
+						cout << "No need of sorting " << endl;
 					
 				//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-				//cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 				//cout << "SZ " << left->d_columns_int[colname1].size() << endl;
 					
 				
@@ -1201,7 +1209,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									mgpu::less<int_type>(), *context);
 				};
 				
-				//cout << "RES " << res_count << " seg " << i << endl;
+				cout << "RES " << res_count << " seg " << i << endl;
 				
 				int* r1 = aIndicesDevice->get();
 				thrust::device_ptr<int> d_res1((int*)r1);

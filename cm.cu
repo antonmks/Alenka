@@ -1698,8 +1698,8 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 						a->CopyColumnToGpu(ref_cols[columnNames[i]], z, 0);
 						thrust::sort(a->d_columns_int[ref_cols[columnNames[i]]].begin(), a->d_columns_int[ref_cols[columnNames[i]]].begin() + a->mRecCount);
 						// check if there is a join result
-						cout << "join " << mRecCount << " " << a->mRecCount << " " << getFreeMem() << endl;		
-						cout << d_columns_int[columnNames[i]][0] << " " <<  d_columns_int[columnNames[i]][mRecCount-1] << " " << a->d_columns_int[ref_cols[columnNames[i]]][a->mRecCount-1]	<< " " <<  a->d_columns_int[ref_cols[columnNames[i]]][0] << endl;
+						//cout << "join " << mRecCount << " " << a->mRecCount << " " << getFreeMem() << endl;		
+						//cout << d_columns_int[columnNames[i]][0] << " " <<  d_columns_int[columnNames[i]][mRecCount-1] << " " << a->d_columns_int[ref_cols[columnNames[i]]][a->mRecCount-1]	<< " " <<  a->d_columns_int[ref_cols[columnNames[i]]][0] << endl;
 						if(d_columns_int[columnNames[i]][0] > a->d_columns_int[ref_cols[columnNames[i]]][a->mRecCount-1]	||
 						   d_columns_int[columnNames[i]][mRecCount-1] < a->d_columns_int[ref_cols[columnNames[i]]][0]) {
 						   res_count = 0;
@@ -1711,7 +1711,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 										&aIndicesDevice, &bIndicesDevice,
 										mgpu::less<int_type>(), *context1);
 						};				
-						cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
+						//cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
 						f_file.write((char *)&z, 4);
 						f_file.write((char *)&res_count, 8);
 					};
@@ -2387,7 +2387,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 			str.assign(buffer, idx);			
             presorted_fields.push(str);
 			if(verbose)
-				cout << "presorted on " << idx << endl;
+				cout << "presorted on " << str << endl;
         };
         fclose(f);
     };
