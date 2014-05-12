@@ -3373,7 +3373,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 						cout << "No need of sorting " << endl;
 					
 				//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-				cout << "MIN MAX " << left->d_columns_int[idx][0] << " - " << left->d_columns_int[idx][cnt_l-1] << " : " << right->d_columns_int[right->type_index[colInd2]][0] << "-" << right->d_columns_int[right->type_index[colInd2]][cnt_r-1] << endl;
 				//cout << "SZ " << left->d_columns_int[colname1].size() << endl;
 					
 				
@@ -4680,6 +4679,26 @@ void emit_show_tables()
 void emit_drop_table(char* table_name)
 {
 	if (scan_state == 1) {
+	
+		map<string, map<string, col_data> >::iterator iter;
+		if((iter = data_dict.find(table_name)) != data_dict.end()) {	
+			map<string, col_data> s = (*iter).second;			
+			for ( map<string, col_data>::iterator it=s.begin() ; it != s.end(); ++it ) {	
+				int seg = 0;
+				string f_name = (*iter).first + "." + (*it).first + "." + int_to_string(seg);				
+				while(!remove(f_name.c_str())) {
+					seg++;					
+					f_name = (*iter).first + "." + (*it).first + "." + int_to_string(seg);														
+				};	
+				f_name = (*iter).first + "." + (*it).first + ".header";	
+				remove(f_name.c_str());				
+			};						
+		};	
+		string s_name = (*iter).first + ".presort";				
+		remove(s_name.c_str());
+		s_name = (*iter).first + ".sort";				
+		remove(s_name.c_str());
+	
 		if(data_dict.find(table_name) != data_dict.end()) {	
 			data_dict.erase(table_name);
 		};
