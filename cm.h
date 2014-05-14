@@ -294,7 +294,6 @@ public:
 	map<string, map<unsigned int, set<unsigned int> > > ref_joins; // columns referencing dataset segments 
 	map<string, set<unsigned int> > orig_segs;
 
-
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);

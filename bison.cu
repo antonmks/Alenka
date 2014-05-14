@@ -4300,8 +4300,6 @@ void emit_select(char *s, char *f, int ll)
 }
 
 
-//Both the source and destination of the insert operator can be either derived or permanent dataset
-//But for now lets see if I can code only permanent to permanent code path and get away with it
 void emit_insert(char *f, char* s) {
     statement_count++;
     if (scan_state == 0) {
@@ -4311,13 +4309,14 @@ void emit_insert(char *f, char* s) {
         if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
             process_error(2, "Delete : couldn't find variable " + string(s) );
         };		
-		check_used_vars();	
+		check_used_vars();			
         stat[f] = statement_count;
 		stat[s] = statement_count;
         clean_queues();
         return;
     };
 
+	
     if(varNames.find(f) == varNames.end() || varNames.find(s) == varNames.end()) {
         clean_queues();
         return;

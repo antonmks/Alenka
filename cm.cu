@@ -3281,11 +3281,13 @@ void insert_records(char* f, char* s) {
     b->name = f;	
 	
 	// if both source and destination are on disk
+	cout << "SOURCES " << a->source << ":" << b->source << endl;
 	if(a->source && b->source) {
-		for(unsigned int i = 0; i < a->segCount; i++) {          	
-			for(unsigned int i = 0; i < a->columnNames.size(); i++) {
-				str_s = a->load_file_name + "." + a->columnNames[i] + "." + int_to_string(i);		
-				str_d = b->load_file_name + "." + a->columnNames[i] + "." + int_to_string(b->segCount + i);
+		for(unsigned int i = 0; i < a->segCount; i++) {        
+			for(unsigned int z = 0; z < a->columnNames.size(); z++) {
+				str_s = a->load_file_name + "." + a->columnNames[z] + "." + int_to_string(i);		
+				str_d = b->load_file_name + "." + a->columnNames[z] + "." + int_to_string(b->segCount + i);
+				cout << str_s << " " << str_d << endl;
 				FILE* source = fopen(str_s.c_str(), "rb");
 				FILE* dest = fopen(str_d.c_str(), "wb");
 				while (size = fread(buf, 1, BUFSIZ, source)) {
