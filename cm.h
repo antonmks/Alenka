@@ -297,8 +297,7 @@ public:
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
-    CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
-    CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list);
+    CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);    
     ~CudaSet();
     void allocColumnOnDevice(string colname, size_t RecordCount);
     void decompress_char_hash(string colname, unsigned int segment);

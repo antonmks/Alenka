@@ -259,16 +259,6 @@ CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
 	fil_s = NULL;
 };
 
-CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list)
-{
-    initialize(op_sel, op_sel_as, t_list);
-    keep = false;
-    source = 0;
-    text_source = 0;
-    grp = NULL;
-	fil_f = NULL;
-	fil_s = NULL;
-};
 
 CudaSet::CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as)
 {
@@ -497,7 +487,8 @@ void CudaSet::resize(size_t addRecs)
             }
             else {
                 h_columns_char[columnNames[i]] = new char[mRecCount*char_size[columnNames[i]]];
-            };
+				memset(h_columns_char[columnNames[i]], 0, mRecCount*char_size[columnNames[i]]);
+            };			
         };
 
     };
@@ -2554,65 +2545,6 @@ void CudaSet::initialize(size_t RecordCount, unsigned int ColumnCount)
 };
 
 
-void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list)
-{
-    mRecCount = 0;
-    mColumnCount = (unsigned int)op_sel.size();
-    segCount = 1;
-    not_compressed = 1;
-    filtered = 0;
-    col_aliases = op_sel_as;
-    prealloc_char_size = 0;
-
-    unsigned int i = 0;
-	maxRecs = varNames[t_list.front()]->maxRecs;
-	
-	
-    while(!op_sel.empty()) {
-
-		CudaSet* a;
-		queue<string> tabs(t_list);
-		bool found = 0;
-		
-		while(!found) {
-			cout << "checking " << op_sel.front() << endl;
-			if(var_exists(varNames[tabs.front()], op_sel.front())) {
-				found = 1;
-				a = varNames[tabs.front()];
-				cout << "found in " << tabs.front() << endl;
-			}
-			else {	
-				cout << "not found in " << tabs.front() << endl;
-				tabs.pop();
-			};	
-		};
-        //CudaSet* a = varNames[t_list.front()];
-				    
-        cols[op_sel.front()] = i;
-        decimal[op_sel.front()] = a->decimal[op_sel.front()];
-        columnNames.push_back(op_sel.front());
-
-        if (a->type[op_sel.front()] == 0)  {
-            h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
-            type[op_sel.front()] = 0;
-        }
-        else if (a->type[op_sel.front()] == 1) {
-            h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
-            type[op_sel.front()] = 1;
-        }
-        else {
-            h_columns_char[op_sel.front()] = NULL;
-            d_columns_char[op_sel.front()] = NULL;
-            char_size[op_sel.front()] = a->char_size[op_sel.front()];
-            type[op_sel.front()] = 2;
-        };
-        i++;
-        op_sel.pop();
-    };
-
-}
 
 
 void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as)
