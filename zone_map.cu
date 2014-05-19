@@ -14,6 +14,8 @@
 
 #include "zone_map.h"
 
+void process_error(int severity, string err);   // this should probably live in a utils header file
+
 
 bool fh_equal_to(const float_type x, const float_type y)
 {
@@ -678,8 +680,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 					op_value.pop();
 				}
 				else {
-					cout << "Couldn't find column " << op_value.front() << endl;
-					exit(0);
+					process_error(1, "Couldn't find column " + op_value.front());
+					//cout << "Couldn't find column " << op_value.front() << endl;
+					//exit(0);
 				};
             }
             else if (ss.compare("STRING") == 0) {
@@ -1439,10 +1442,12 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             }
             else {
 				if(ss.compare("JOIN") == 0)
-					cout << "operation = is not valid" << endl;
+					process_error(2, "operation = is not valid");
+					//cout << "operation = is not valid" << endl;
 				else 	
-					cout << "operation " << ss << " is not valid" << endl;
-				exit(0);
+					 process_error(2, "operation " + string(ss)+ " is not valid");
+					//cout << "operation " << ss << " is not valid" << endl;
+				exit(0);	// never gets here
             }
         };
     };

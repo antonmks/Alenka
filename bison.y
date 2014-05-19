@@ -2206,8 +2206,9 @@ void emit_filter(char *s, char *f)
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            cout << "Filter : couldn't find variable " << f << endl;
-            exit(1);
+            process_error(1, "Filter : couldn't find variable " + string(f));
+            //cout << "Filter : couldn't find variable " << f << endl;
+            //exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;		
@@ -2748,13 +2749,17 @@ string script;
 
 
 //external c global to report errors
-char alenka_err[4048];
+//char alenka_err[4048];
+
 
 int alenkaExecute(char *s)
 {
 YY_BUFFER_STATE bp;
 
-     std::clock_t start;
+    total_buffer_size = 0;
+    scan_state = 0;
+    load_col_data(data_dict, "data.dictionary");
+    std::clock_t start;
 
         if(verbose)
             start = std::clock();
@@ -2766,11 +2771,20 @@ YY_BUFFER_STATE bp;
                 if(verbose)
                         cout << "SQL scan parse worked" << endl;
         }
-        else
-        {
-                //printf("SQL scan parse failed alenka_err=[i%s]\n",  alenka_err );
-                //printf("Bad command was: [%s]\n", s);
+
+        scan_state = 1;
+        load_vars();
+        statement_count = 0;
+        clean_queues();
+        bp = yy_scan_string(s);
+        yy_switch_to_buffer(bp);
+        if(!yyparse()) {
+            if(verbose)
+            cout << "SQL scan parse worked " << endl;
         }
+        else
+            cout << "SQL scan parse failed" << endl;
+
         yy_delete_buffer(bp);
 
 	// Clear Vars
@@ -2781,8 +2795,12 @@ YY_BUFFER_STATE bp;
 
         if(verbose)
                 cout<< "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC ) << endl;
+	if(save_dict)
+		save_col_data(data_dict,"data.dictionary");
         return ret;
 }
+
+
 
 
 void process_error(int severity, string err) {

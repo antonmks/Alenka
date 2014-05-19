@@ -15,6 +15,9 @@
 #include "merge.h"
 #include "zone_map.h"
 
+void process_error(int severity, string err);	// this should probably live in a utils header file
+
+
 #if defined(_MSC_VER)
 #define BIG_CONSTANT(x) (x)
 // Other compilers
@@ -173,8 +176,9 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 			
         }
         else {  //float
-            cout << "No group by on float/decimal columns " << endl;
-            exit(0);
+            process_error(2, "No group by on float/decimal columns ");
+            //cout << "No group by on float/decimal columns " << endl;
+            //exit(0);
         };
     };
 	
