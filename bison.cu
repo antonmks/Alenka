@@ -2722,6 +2722,7 @@ void emit_sort(char *s, int p)
 {
     op_sort.push(s);
     partition_count = p;
+	cout << "emit sort " << s << endl;
 }
 
 void emit_presort(char *s)

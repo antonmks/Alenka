@@ -1272,8 +1272,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 					total_segments++;	
 				};	
 			}
-			else
+			else {
 				compress_char(str, colname, mCount, offset);
+			};	
 		};
 		
 		
@@ -1777,6 +1778,7 @@ void CudaSet::compress_char(string file_name, string colname, size_t mCount, siz
     map<string,unsigned int>::iterator iter;
     unsigned int bits_encoded, ss;    
     unsigned int len = char_size[colname];
+	
 
     for (unsigned int i = 0 ; i < mCount; i++) {
 
@@ -1792,7 +1794,7 @@ void CudaSet::compress_char(string file_name, string colname, size_t mCount, siz
             dict_ordered.push_back(f);
         };
     };
-
+	
     bits_encoded = (unsigned int)ceil(log2(double(dict.size()+1)));
 
     char *cc = new char[len+1];
@@ -1806,6 +1808,7 @@ void CudaSet::compress_char(string file_name, string colname, size_t mCount, siz
         strcpy(cc,dict_ordered[i].c_str());
         binary_file.write(cc, len);		
     };
+	
 
     delete [] cc;
     unsigned int fit_count = 64/bits_encoded;
@@ -1819,6 +1822,7 @@ void CudaSet::compress_char(string file_name, string colname, size_t mCount, siz
     binary_file.write((char *)&vals_count, 4);
     unsigned int real_count = (unsigned int)dict_val.size();
     binary_file.write((char *)&real_count, 4);
+	
 
     for(unsigned int i = 0; i < dict_val.size(); i++) {
 
@@ -3194,7 +3198,7 @@ string int_to_string(int number){
 
 void insert_records(char* f, char* s) {
 	char buf[4096];
-    size_t size, maxRecs;
+    size_t size, maxRecs, cnt = 0;
 	string str_s, str_d;	
 
 	if(varNames.find(s) == varNames.end()) {
@@ -3256,32 +3260,31 @@ void insert_records(char* f, char* s) {
 	}
 	else if(!a->source && b->source) {
 		
-		total_segments = b->segCount;
-		total_count = a->mRecCount;
-		total_max = process_count;
-		unsigned int segCount = (a->mRecCount/process_count + 1);
-        size_t offset = 0, mCount;
 
-        for(unsigned int z = 0; z < segCount; z++) {
-            if(z < segCount-1) {
-                if(a->mRecCount < process_count) {
-                    mCount = a->mRecCount;
-                }
-                else {
-                    mCount = process_count;
-                }
-            }
-			else {
-				mCount = a->mRecCount - (segCount-1)*process_count;			
-			};				
-			a->compress(b->load_file_name, offset, 0, z - (segCount-1), mCount);
-            offset = offset + mCount;
-        };
-		//update headers
-		total_count = a->mRecCount + b->mRecCount;
-		//cout << "and now lets write " << a->mRecCount << " " <<  b->mRecCount << endl;
-		for(unsigned int i = 0; i < b->columnNames.size(); i++) {
-			b->writeHeader(b->load_file_name, b->columnNames[i], total_segments);
+			total_segments = b->segCount;
+			total_count = b->mRecCount;
+			total_max = b->maxRecs;;
+		
+			queue<string> op_vx;
+			for(unsigned int i=0; i < a->columnNames.size(); i++) 
+				op_vx.push(a->columnNames[i]);
+			
+			allocColumns(a, op_vx);
+			a->resize(a->maxRecs);
+			for(unsigned int i = 0; i < a->segCount; i++) {
+			
+				if (a->filtered) {
+					copyColumns(a, op_vx, i, cnt);
+					a->CopyToHost(0, a->mRecCount);				
+				};	
+		
+				a->compress(b->load_file_name, 0, 1, i - (a->segCount-1), a->mRecCount);
+			};
+			//update headers
+			//total_count = a->mRecCount + b->mRecCount;
+			//cout << "and now lets write " << total_segments << " " <<  total_count << " " << total_max << endl;
+			for(unsigned int i = 0; i < b->columnNames.size(); i++) {
+				b->writeHeader(b->load_file_name, b->columnNames[i], total_segments);
 		};	
 	};	
 };
