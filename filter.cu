@@ -562,7 +562,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
 
                     s1_val = exe_value.top();
-                    unsigned int like_start = 0;
+                    bool like_start = 0;
 
                     if(s1_val[0] == '%') {
                         like_start = 1;

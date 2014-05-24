@@ -724,9 +724,8 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 
     unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation);
     void* temp;	
-    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a, field_names)));
-	stack<string> exe_type1(exe_type);
-
+    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, sz*max_char(a, field_names)));
+	
     for(int i=0; !exe_type.empty(); ++i, exe_type.pop()) {		
         if (a->type[exe_type.top()] == 0)
             update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, sz, "ASC", (int_type*)temp);
@@ -747,8 +746,11 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
             apply_permutation(a->d_columns_float[*it], raw_ptr, sz, (float_type*)temp);
         else {		
             apply_permutation_char(a->d_columns_char[*it], raw_ptr, sz, (char*)temp, a->char_size[*it]);
-			if(update_str)
-				apply_permutation(a->d_columns_int[*it], raw_ptr, sz, (int_type*)temp);
+			if(update_str) {
+				if(a->d_columns_int[*it].size() > 0) {
+					apply_permutation(a->d_columns_int[*it], raw_ptr, sz, (int_type*)temp);
+				};	
+			};	
         };
     };
     cudaFree(temp);
@@ -1083,10 +1085,19 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {
 			right->CopyToHost(0, right->mRecCount);
 			right->deAllocOnDevice();
-			order_inplace1(right, exe_type, field_names, 0);					
+			if (left->type[colname1]  != 2)
+				order_inplace1(right, exe_type, field_names, 0);					
+			else	
+				order_inplace1(right, exe_type, field_names, 1);					
 		}
 		else {
-			order_inplace(right, exe_type, field_names, 0);					
+			if (left->type[colname1]  != 2)
+				order_inplace(right, exe_type, field_names, 0);					
+			else {	
+				cout << "start sort right " << endl;
+				order_inplace(right, exe_type, field_names, 1);					
+				cout << "end sort right " << endl;
+			};	
 		};
 		
 
@@ -1125,10 +1136,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				left->add_hashed_strings(f1, i);
 			};
 			
-			std::cout<< endl << "cp time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-			
-			//cout << "join1 " << cnt_l << ":" << cnt_r << " " << join_type.front() << " " << left->mRecCount << endl;
-			
+	
 			if(!left->filtered) {
 				if (left->type[colname1]  != 2)
 					cnt_l = left->mRecCount;
@@ -1138,7 +1146,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			else {
 				cnt_l = left->mRecCount;
 			};
-
+			
 						
 			if (cnt_l) {
 
@@ -1178,7 +1186,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				char join_kind = join_type.front();
 				
 				if (left->type[colname1] == 2) {
-					thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));
+					thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));					
+					
 					res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
 								thrust::raw_pointer_cast(d_col_r), cnt_r,
 								&aIndicesDevice, &bIndicesDevice,
@@ -1209,7 +1218,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									mgpu::less<int_type>(), *context);
 				};
 				
-				cout << "RES " << res_count << " seg " << i << endl;
+				//cout << "RES " << res_count << " seg " << i << endl;
 				
 				int* r1 = aIndicesDevice->get();
 				thrust::device_ptr<int> d_res1((int*)r1);
@@ -1515,7 +1524,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					cudaFree(temp);
 				};
 			};
-			std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+			//std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 		};
 	};
 	

@@ -341,7 +341,6 @@ void CudaSet::decompress_char_hash(string colname, unsigned int segment)
     cudaMalloc((void **) &d_val, vals_count*8);
     cudaMemcpy(d_val, (void *) int_array, vals_count*8, cudaMemcpyHostToDevice);
 
-    thrust::device_ptr<unsigned long long int> mval((unsigned long long int*)d_val);
     delete[] int_array;
     void* d_int;
     cudaMalloc((void **) &d_int, real_count*4);
@@ -437,7 +436,7 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment)
         delete [] hashes;
     }
     else { // hash the dictionary
-        //decompress_char_hash(field, segment);
+        decompress_char_hash(field, segment);
     };
 };
 
@@ -2872,13 +2871,13 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
     queue<string> cc;
     while(!c1.empty()) {
         if(std::find(right->columnNames.begin(), right->columnNames.end(), c1.front()) !=  right->columnNames.end()) {
-            if(f2 != c1.front() || str_join) {
+            if(f2 != c1.front() ) {
                 cc.push(c1.front());
             };
         };
         c1.pop();
     };
-    if(!str_join && std::find(right->columnNames.begin(), right->columnNames.end(), f2) !=  right->columnNames.end()) {
+    if(std::find(right->columnNames.begin(), right->columnNames.end(), f2) !=  right->columnNames.end()) {
         cc.push(f2);
     };
 
@@ -3024,7 +3023,7 @@ void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCoun
     // copy keys to temporary vector
     cudaMemcpy( (void*)tmp, (void*) key, RecCount*len, cudaMemcpyDeviceToDevice);
     // permute the keys
-    str_gather((void*)permutation, RecCount, (void*)tmp, (void*)key, len);
+    str_gather((void*)permutation, RecCount, (void*)tmp, (void*)key, len);	
 }
 
 
@@ -3061,7 +3060,7 @@ void filter_op(char *s, char *f, unsigned int segment)
 
 		//cout << endl << "MAP CHECK start " << segment <<  endl;	
 		char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-		//cout << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+		//cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 		
         if(map_check == 'R') {
             copyColumns(a, b->fil_value, segment, cnt);	
@@ -3095,15 +3094,6 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
     right->hostRecCount = right->mRecCount;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
 
-    if (right->type[colname]  == 2) {
-        str_join = 1;
-        right->d_columns_int[f2] = thrust::device_vector<int_type>();
-        for(unsigned int i = start_seg; i < end_seg; i++) {
-            right->add_hashed_strings(f2, i);
-        };
-        cnt_r = right->d_columns_int[f2].size();
-    };
-
     // need to allocate all right columns    
     if(right->not_compressed) {
         queue<string> op_alt1;
@@ -3113,7 +3103,16 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
     else {
         cnt_r = load_queue(op_alt, right, str_join, f2, rcount, start_seg, end_seg, rsz, 1);
     };
-
+	
+    if (right->type[colname]  == 2) {
+        str_join = 1;
+        right->d_columns_int[f2] = thrust::device_vector<int_type>();
+        for(unsigned int i = start_seg; i < end_seg; i++) {
+            right->add_hashed_strings(f2, i);
+        };
+        cnt_r = right->d_columns_int[f2].size();		
+    };
+	
 
     if(right->not_compressed) {
         queue<string> op_alt1;
@@ -3128,7 +3127,7 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
 		if(!op_alt1.empty())
 			cnt_r = load_queue(op_alt1, right, str_join, "", rcount, start_seg, end_seg, 0, 0);
     };
-
+	
     return cnt_r;
 };
 
