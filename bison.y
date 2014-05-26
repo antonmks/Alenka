@@ -1094,9 +1094,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			if (left->type[colname1]  != 2)
 				order_inplace(right, exe_type, field_names, 0);					
 			else {	
-				cout << "start sort right " << endl;
 				order_inplace(right, exe_type, field_names, 1);					
-				cout << "end sort right " << endl;
 			};	
 		};
 		
@@ -1186,7 +1184,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				char join_kind = join_type.front();
 				
 				if (left->type[colname1] == 2) {
-					thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));					
+					thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));		
+
+					//for(int z = 0; z < cnt_r ; z++)
+					//	cout << " R " << right->d_columns_int[colname2][z] << endl;
+						
+					//for(int z = 0; z < cnt_l ; z++)
+					//	cout << " L " << left->d_columns_int[colname1][z] << endl;
+	
 					
 					res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
 								thrust::raw_pointer_cast(d_col_r), cnt_r,

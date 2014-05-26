@@ -316,7 +316,7 @@ void CudaSet::decompress_char_hash(string colname, unsigned int segment)
     unsigned long long int* hashes  = new unsigned long long int[sz];
 
     for(unsigned int i = 0; i < sz ; i++) {
-        hashes[i] = MurmurHash64A(&d_array[i*len], len, hash_seed); // divide by 2 so it will fit into a signed long long
+        hashes[i] = MurmurHash64A(&d_array[i*len], len, hash_seed)/2; 
     };
 
     void* d;
@@ -379,8 +379,9 @@ void CudaSet::decompress_char_hash(string colname, unsigned int segment)
     else {
         old_count = d_columns_int[colname].size();
         d_columns_int[colname].resize(old_count + real_count);
-        thrust::gather(dd_val, dd_val + real_count, dd_int, d_columns_int[colname].begin() + old_count);
+        thrust::gather(dd_val, dd_val + real_count, dd_int, d_columns_int[colname].begin() + old_count);		
     };
+
 
     cudaFree(d);
     cudaFree(d_val);
@@ -406,7 +407,7 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment)
         unsigned long long int* hashes  = new unsigned long long int[t->mRecCount];
 
         for(unsigned int i = 0; i < t->mRecCount ; i++) {
-            hashes[i] = MurmurHash64A(t->h_columns_char[field] + i*t->char_size[field] + segment*t->maxRecs*t->char_size[field], t->char_size[field], hash_seed);
+            hashes[i] = MurmurHash64A(t->h_columns_char[field] + i*t->char_size[field] + segment*t->maxRecs*t->char_size[field], t->char_size[field], hash_seed)/2;
         };
 
         if(filtered) {
@@ -428,10 +429,9 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment)
             }
         }
         else {
-
             old_count = d_columns_int[field].size();
             d_columns_int[field].resize(old_count + mRecCount);
-            thrust::copy(hashes, hashes + mRecCount, d_columns_int[field].begin() + old_count);
+            thrust::copy(hashes, hashes + mRecCount, d_columns_int[field].begin() + old_count);			
         }
         delete [] hashes;
     }
