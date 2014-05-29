@@ -400,8 +400,7 @@ void emit_string(char *str)
 void emit_number(int_type val)
 {
     op_type.push("NUMBER");
-    op_nums.push(val);
-	cout << "num " << endl;
+    op_nums.push(val);	
 }
 
 void emit_float(float_type val)
