@@ -1500,25 +1500,21 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 		else
 			file_pr = stdout;
 			
-		char buffer [100];			
 		string ss;
 		
 		if(not_compressed && prm_d.size() == 0) {
             for(unsigned int i=0; i < mCount; i++) {
                 for(unsigned int j=0; j < columnNames.size(); j++) {
                     if (type[columnNames[j]] == 0) {
-                        sprintf(buffer, "%lld", (h_columns_int[columnNames[j]])[i] );
-                        fputs(buffer,file_pr);
+						fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
                         fputs(sep, file_pr);
                     }
                     else if (type[columnNames[j]] == 1) {
-                        sprintf(buffer, "%.2f", (h_columns_float[columnNames[j]])[i] );
-                        fputs(buffer,file_pr);
+						fprintf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
                         fputs(sep, file_pr);
                     }
                     else {
                         ss.assign(h_columns_char[columnNames[j]] + (i*char_size[columnNames[j]]), char_size[columnNames[j]]);
-                        //trim(ss);
                         fputs(ss.c_str(), file_pr);
                         fputs(sep, file_pr);
                     };
@@ -1583,13 +1579,11 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 				for(unsigned int i=0; i < curr_count; i++) {				
 					for(unsigned int j=0; j < columnNames.size(); j++) {
 						if (type[columnNames[j]] == 0) {
-							sprintf(buffer, "%lld", (h_columns_int[columnNames[j]])[i] );
-							fputs(buffer,file_pr);
+							fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
 							fputs(sep, file_pr);
 						}
 						else if (type[columnNames[j]] == 1) {
-							sprintf(buffer, "%.2f", (h_columns_float[columnNames[j]])[i] );
-							fputs(buffer,file_pr);
+							fprintf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
 							fputs(sep, file_pr);
 						}
 						else {
