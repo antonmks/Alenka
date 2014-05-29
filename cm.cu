@@ -575,15 +575,15 @@ void CudaSet::deAllocOnDevice()
 void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
 {
     if (type[colname] == 0) {
-        d_columns_int[colname].resize(mRecCount+RecCount);
+        d_columns_int[colname].resize(RecCount);
     }
     else if (type[colname] == 1)
-        d_columns_float[colname].resize(mRecCount+RecCount);
+        d_columns_float[colname].resize(RecCount);
     else {
         if (d_columns_char[colname] != NULL)
             cudaFree(d_columns_char[colname]);
         void *d;
-        cudaMalloc((void **) &d, (mRecCount+RecCount)*char_size[colname]);
+        cudaMalloc((void **) &d, RecCount*char_size[colname]);
         d_columns_char[colname] = (char*)d;
     };
 };
@@ -2736,7 +2736,8 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
             filter_op(a->fil_s, a->fil_f, segment);
         };
         if(rsz) {		    
-            a->resizeDevice(count);
+            a->resizeDevice(count+a->prm_d.size());
+			cout << "resizing to " << count << endl;
             a->devRecCount = count+a->mRecCount;
         };
     };

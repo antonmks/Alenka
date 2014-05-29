@@ -18,6 +18,13 @@
 #include <stdarg.h>
 #include <string.h>
 
+#ifdef _WIN64
+#define atoll(S) _atoi64(S)
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 void yyerror(char *s, ...);
 int oldstate;
 #define YY_NEVER_INTERACTIVE 1
@@ -81,7 +88,7 @@ DESCRIBE {return DESCRIBE; }
 DROP {return DROP; }
 
 
-[0-9]+ { yylval.intval = atoi(yytext);  return INTNUM; }
+[0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
 -?[0-9]+"."[0-9]* |
 -?"."[0-9]+ |
 -?[0-9]+E[-+]?[0-9]+ |

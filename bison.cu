@@ -240,7 +240,7 @@ typedef union YYSTYPE
 /* Line 214 of yacc.c  */
 #line 79 "bison.y"
 
-    int intval;
+    long long int intval;
     double floatval;
     char *strval;
     int subtok;
@@ -2608,6 +2608,7 @@ void emit_number(int_type val)
 {
     op_type.push("NUMBER");
     op_nums.push(val);
+	cout << "num " << endl;
 }
 
 void emit_float(float_type val)

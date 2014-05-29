@@ -319,7 +319,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
         thrust::device_ptr<int_type> s((int_type*)source);
         thrust::device_ptr<int_type> d_ss((int_type*)ss);
         thrust::adjacent_difference(s, s+recCount, d_ss);
-
+		
         start_val = d_ss[0];
         if(recCount > 1)
             d_ss[0] = d_ss[1];
@@ -339,7 +339,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     else {
         thrust::device_ptr<long long int> s((long long int*)source);
         thrust::device_ptr<long long int> d_ss((long long int*)ss);
-        thrust::adjacent_difference(s, s+recCount, d_ss);
+        thrust::adjacent_difference(s, s+recCount, d_ss);		
         start_val = d_ss[0];
         if(recCount > 1)
             d_ss[0] = d_ss[1];
@@ -457,12 +457,12 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     if (tp == 0) {
         recCount = source_len/int_size;
         thrust::device_ptr<int_type> s((int_type*)source);
-        sorted = thrust::is_sorted(s, s+recCount-1);
+        sorted = thrust::is_sorted(s, s+recCount);
     }
     else {
         recCount = source_len/float_size;
         thrust::device_ptr<long long int> s((long long int*)source);
-        sorted = thrust::is_sorted(s, s+recCount);
+        sorted = thrust::is_sorted(s, s+recCount);		
     };
     //cout << "file " << file_name << " is sorted " << sorted << endl;
 
@@ -478,6 +478,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
+		//cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;		
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }

@@ -643,7 +643,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_int[fields.front()].resize(2);
                     fread((char *)&a->h_columns_int[fields.front()][0], 8, 1, f);
                     fread((char *)&a->h_columns_int[fields.front()][1], 8, 1, f);
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[a->type_index[colIndex]][0] << ":" << a->h_columns_int[a->type_index[colIndex]][1] << endl;
+                    cout << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1] << endl;
                 }
                 else  {
                     long long int t;

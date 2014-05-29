@@ -820,7 +820,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else {  // already exists, my need to resize it
                     if(b->mRecCount < res_size)
-                        b->resizeDeviceColumn(res_size-b->mRecCount, col_val.top());
+                        b->resizeDeviceColumn(res_size, col_val.top());
                 };
 
                 if (!a->columnGroups.empty()) {

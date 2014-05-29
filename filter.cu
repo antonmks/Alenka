@@ -210,6 +210,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
+					printf("CMPF1 %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 
@@ -228,6 +229,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
+					printf("CMPF %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 
@@ -245,6 +247,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					
+					printf("CMP1 %lld \n" , n1);
 
                     if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
@@ -263,6 +267,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
+					printf("CMP %lld \n" , n1);
 
 
                     if (a->type[s2_val] == 1) {
@@ -523,9 +528,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 exe_type.pop();
                 s2 = exe_type.top();
                 exe_type.pop();
-
-
-
+				
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
                     exe_nums.pop();

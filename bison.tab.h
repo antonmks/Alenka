@@ -118,9 +118,9 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 78 "bison.y"
+#line 79 "bison.y"
 
-    int intval;
+    long long int intval;
     double floatval;
     char *strval;
     int subtok;
