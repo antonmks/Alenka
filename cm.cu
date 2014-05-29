@@ -1500,7 +1500,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 		else
 			file_pr = stdout;
 			
-		char buffer [33];			
+		char buffer [100];			
 		string ss;
 		
 		if(not_compressed && prm_d.size() == 0) {
