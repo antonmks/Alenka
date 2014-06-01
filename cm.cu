@@ -2730,9 +2730,9 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
             filter_op(a->fil_s, a->fil_f, segment);
         };
         if(rsz) {		    
-            a->resizeDevice(count+a->prm_d.size());
-			cout << "resizing to " << count << endl;
-            a->devRecCount = count+a->mRecCount;
+            a->resizeDevice(a->devRecCount + a->mRecCount);
+			cout << "resizing to " << a->devRecCount + a->mRecCount << " " << a->mRecCount << endl;
+            a->devRecCount = a->devRecCount + a->mRecCount;
         };
     };
 
@@ -2897,6 +2897,7 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
 
 
     size_t cnt_r = 0;
+	right->devRecCount = 0;
     for(unsigned int i = start_segment; i < end_segment; i++) {
         if(!right->filtered)
             copyColumns(right, cc, i, cnt_r, rsz, 0);

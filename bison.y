@@ -19,6 +19,7 @@
 
 #include "lex.yy.c"
 #include "cm.h"
+#include <iomanip>
 
     void clean_queues();
     void order_inplace(CudaSet* a, stack<string> exe_type, bool update_int);
@@ -181,8 +182,6 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 { emit_select($1, $6, $7); } ;
 | NAME ASSIGN LOAD FILENAME USING '(' FILENAME ')' AS '(' load_list ')'
 {  emit_load($1, $4, $11, $7); } ;
-| NAME ASSIGN LOAD FILENAME BINARY AS '(' load_list ')'
-{  emit_load_binary($1, $4, $8); } ;
 | NAME ASSIGN FILTER NAME opt_where
 {  emit_filter($1, $4);}
 | NAME ASSIGN ORDER NAME BY opt_val_list
@@ -329,6 +328,7 @@ sort_def: { /* nil */
 
 using namespace mgpu;
 using namespace thrust::placeholders;
+using namespace std;
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
@@ -2010,6 +2010,8 @@ void emit_select(char *s, char *f, int ll)
 			//cout << "select time " << endl;
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 			//std::cout<< "sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
+			
+			
 					
 			if(i == 0)
 				std::reverse(b->columnNames.begin(), b->columnNames.end());
@@ -2031,7 +2033,7 @@ void emit_select(char *s, char *f, int ll)
             };
 			
             if (ll != 0 && cycle_count > 1  && b->mRecCount > 0) {
-                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);					
+                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);						
             }
             else {
                 //copy b to c
@@ -2067,9 +2069,8 @@ void emit_select(char *s, char *f, int ll)
 		c->name = s;
         clean_queues();
         return;
-    };
+    };	
 	
-
     if (ll != 0) {
         count_avg(c, distinct_hash);
     }

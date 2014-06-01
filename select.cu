@@ -59,6 +59,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     one_line = 0;
 
     thrust::device_ptr<bool> d_di(a->grp);	
+	
 	std::auto_ptr<ReduceByKeyPreprocessData> ppData;
 	
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
@@ -67,6 +68,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
+		
 
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
@@ -78,8 +80,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 									  (bool*)0, head_flag_predicate<bool>(), (int*)0, (int*)0,
 									  &ppData, *context2);
 				prep = 1;
-			};			
-	
+			};		
+
 	
                 if(a->columnGroups.empty())
                     one_line = 1;
@@ -126,7 +128,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 								thrust::device_ptr<int_type> const_seq = thrust::device_malloc<int_type>(a->mRecCount);
 								thrust::fill(const_seq, const_seq+a->mRecCount, (int_type)1);
 								ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(const_seq), (int_type)0,
-											 mgpu::plus<int_type>(), thrust::raw_pointer_cast(count_diff), *context2);
+											 mgpu::plus<int_type>(), thrust::raw_pointer_cast(count_diff), *context2);											 
+							
 							thrust::device_free(const_seq);			
 							//thrust::reduce_by_key(d_di, d_di+(a->mRecCount), thrust::constant_iterator<int_type>(1),
                             //                      thrust::make_discard_iterator(), count_diff,

@@ -15,6 +15,8 @@
 #include "merge.h"
 #include "zone_map.h"
 
+using namespace std;
+
 void process_error(int severity, string err);	// this should probably live in a utils header file
 
 
@@ -209,7 +211,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
         else {
             char* d_tmp = new char[b->mRecCount*b->char_size[b->columnNames[i]]];
             str_gather_host(v, b->mRecCount, b->h_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
-//            cudaMemcpy( (void*)b->d_columns_char[b->columnNames[i]], (void*) thrust::raw_pointer_cast(d_tmp), b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToDevice);
 			memcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]]);	
 			delete [] d_tmp;
         };
