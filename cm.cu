@@ -592,8 +592,9 @@ void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
 
 void CudaSet::resizeDevice(size_t RecCount)
 {
-    for(unsigned int i=0; i < columnNames.size(); i++)
+    for(unsigned int i=0; i < columnNames.size(); i++) {
         resizeDeviceColumn(RecCount, columnNames[i]);
+	};	
 };
 
 bool CudaSet::onDevice(string colname)
@@ -1051,7 +1052,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
         thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<bool>());
 
     };
-
+	
     thrust::device_free(d_group);
     grp_count = thrust::count(d_grp, d_grp+mRecCount,1);
 };
@@ -2724,18 +2725,20 @@ size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt)
 {
     set<string> uniques;
-	
+
     if(a->filtered) { //filter the segment
         if(flt) {
             filter_op(a->fil_s, a->fil_f, segment);
         };
         if(rsz) {		    
-            a->resizeDevice(a->devRecCount + a->mRecCount);
-			cout << "resizing to " << a->devRecCount + a->mRecCount << " " << a->mRecCount << endl;
+			queue<string> fields1(fields);
+			while(!fields1.empty()) {
+				a->resizeDeviceColumn(a->devRecCount + a->mRecCount, fields1.front());
+				fields1.pop();
+			};	
             a->devRecCount = a->devRecCount + a->mRecCount;
         };
     };
-
 
 	while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{
@@ -2744,7 +2747,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
 					CudaSet *t = varNames[a->source_name];
                     alloced_switch = 1;
                     t->CopyColumnToGpu(fields.front(), segment);	
-                    gatherColumns(a, t, fields.front(), segment, count);
+					gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
 					a->orig_segs[t->load_file_name].insert(segment);
                 };
@@ -3128,7 +3131,7 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
 };
 
 unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> op_sel) {
-	unsigned int tot_size = left->maxRecs*8;
+	size_t tot_size = left->maxRecs*8;
 	
 	while(!op_sel.empty()) {
 		if (std::find(right->columnNames.begin(), right->columnNames.end(), op_sel.front()) != right->columnNames.end()) {
@@ -3145,12 +3148,16 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
 		op_sel.pop();			
 	};		
 	
+	cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
+	
 	if(tot_size + 300000000 < getFreeMem())
 		return right->segCount;
 	else {	
 		if(right->segCount == 1) { //need to partition it. Not compressed.
-			right->segCount = ((tot_size + 300000000)/getFreeMem())+1;
+			right->segCount = ((tot_size*1.5 )/getFreeMem())+1;
+			cout << "seg count " << right->segCount << endl;
 			right->maxRecs = (right->mRecCount/right->segCount)+1;
+			cout << "max recs " << right->maxRecs << endl;
 			return 1;
 		}
 		else { //compressed

@@ -76,6 +76,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
 			if(!prep && !a->columnGroups.empty()) {
+				
 				mgpu::ReduceByKeyPreprocess<float_type>((int)a->mRecCount, thrust::raw_pointer_cast(d_di),
 									  (bool*)0, head_flag_predicate<bool>(), (int*)0, (int*)0,
 									  &ppData, *context2);
@@ -291,11 +292,17 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_type.push("VECTOR");
 
                     }
-                    else if(a->type[s1_val] == 1) {
+                    else if(a->type[s1_val] == 1) {					
 
-                        thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
-						ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(a->d_columns_float[s1_val].data()), (float_type)0,
-												mgpu::minimum<float_type>(), thrust::raw_pointer_cast(count_diff), *context2);
+                        thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);						
+						//ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(a->d_columns_float[s1_val].data()), (float_type)0,
+						//						mgpu::minimum<float_type>(), thrust::raw_pointer_cast(count_diff), *context2);
+						
+						
+						thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[s1_val].begin(),
+                                              thrust::make_discard_iterator(), count_diff,
+                                              head_flag_predicate<bool>(), thrust::minimum<float_type>());											
+												
                         exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
                         exe_type.push("VECTOR F");
                     }
