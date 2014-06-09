@@ -62,16 +62,16 @@
      COMPARISON = 278,
      SHIFT = 279,
      MOD = 280,
-     UMINUS = 281,
-     LOAD = 282,
-     STREAM = 283,
-     FILTER = 284,
-     BY = 285,
-     JOIN = 286,
-     STORE = 287,
-     INTO = 288,
-     GROUP = 289,
-     FROM = 290,
+     FROM = 281,
+     MULITE = 282,
+     DELETE = 283,
+     LOAD = 284,
+     FILTER = 285,
+     BY = 286,
+     JOIN = 287,
+     STORE = 288,
+     INTO = 289,
+     GROUP = 290,
      SELECT = 291,
      AS = 292,
      ORDER = 293,
@@ -93,21 +93,20 @@
      SEGMENTS = 309,
      PRESORTED = 310,
      PARTITION = 311,
-     DELETE = 312,
-     INSERT = 313,
-     WHERE = 314,
-     DISPLAY = 315,
-     CASE = 316,
-     WHEN = 317,
-     THEN = 318,
-     ELSE = 319,
-     END = 320,
-     REFERENCES = 321,
-     SHOW = 322,
-     TABLES = 323,
-     TABLE = 324,
-     DESCRIBE = 325,
-     DROP = 326
+     INSERT = 312,
+     WHERE = 313,
+     DISPLAY = 314,
+     CASE = 315,
+     WHEN = 316,
+     THEN = 317,
+     ELSE = 318,
+     END = 319,
+     REFERENCES = 320,
+     SHOW = 321,
+     TABLES = 322,
+     TABLE = 323,
+     DESCRIBE = 324,
+     DROP = 325
    };
 #endif
 
@@ -128,7 +127,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 132 "bison.tab.h"
+#line 131 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

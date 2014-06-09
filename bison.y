@@ -109,18 +109,18 @@
 %left '+' '-'
 %left '*' '/' '%' MOD
 %left '^'
-%nonassoc UMINUS
 
+%token FROM
+%token MULITE
+%token DELETE
 %token OR
 %token LOAD
-%token STREAM
 %token FILTER
 %token BY
 %token JOIN
 %token STORE
 %token INTO
 %token GROUP
-%token FROM
 %token SELECT
 %token AS
 %token ORDER
@@ -144,7 +144,6 @@
 %token SEGMENTS
 %token PRESORTED
 %token PARTITION
-%token DELETE
 %token INSERT
 %token WHERE
 %token DISPLAY
@@ -160,7 +159,7 @@
 %token DESCRIBE
 %token DROP
 
-%type <intval> load_list  opt_where opt_limit sort_def del_where
+%type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
 %start stmt_list
 %%
@@ -177,10 +176,10 @@ stmt:
 select_stmt { emit("STMT"); }
 ;
 select_stmt:
-NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
-{ emit_select($1, $6, $7); } ;
+  NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
+{ emit_select($1, $6, $7); }
 | NAME ASSIGN LOAD FILENAME USING '(' FILENAME ')' AS '(' load_list ')'
-{  emit_load($1, $4, $11, $7); } ;
+{  emit_load($1, $4, $11, $7); }
 | NAME ASSIGN FILTER NAME opt_where
 {  emit_filter($1, $4);}
 | NAME ASSIGN ORDER NAME BY opt_val_list
@@ -191,19 +190,18 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_store($2,$4,$7); }
 | STORE NAME INTO FILENAME opt_limit BINARY sort_def
 {  emit_store_binary($2,$4); }
-| DELETE FROM NAME del_where
-{  emit_delete($3);}
+| DESCRIBE NAME 
+{  emit_describe_table($2);}
 | INSERT INTO NAME SELECT expr_list FROM NAME
 {  emit_insert($3, $7);}
+| DELETE FROM NAME WHERE expr
+{  emit_delete($3);}
 | DISPLAY NAME USING '(' FILENAME ')' opt_limit
 {  emit_display($2, $5);}
 | SHOW TABLES 
 {  emit_show_tables();}
-| DESCRIBE NAME 
-{  emit_describe_table($2);}
 | DROP TABLE NAME 
-{  emit_drop_table($3);}
-;
+{  emit_drop_table($3);};
 
 
 expr:
@@ -285,9 +283,6 @@ opt_val_list: { /* nil */
 
 opt_where:
 BY expr { emit("FILTER BY"); };
-
-del_where:
-WHERE expr { emit("DELETE"); };
 
 
 join_list:
@@ -482,7 +477,6 @@ void emit_cmp(int val)
 
 void emit(char *s, ...)
 {	
-
 }
 
 void emit_var(char *s, int c, char *f, char* ref, char* ref_name)
@@ -2114,10 +2108,10 @@ void emit_insert(char *f, char* s) {
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
-            process_error(2, "Delete : couldn't find variable " + string(f));
+            process_error(2, "Insert : couldn't find variable " + string(f));
         };
         if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
-            process_error(2, "Delete : couldn't find variable " + string(s) );
+            process_error(2, "Insert : couldn't find variable " + string(s) );
         };		
 		check_used_vars();			
         stat[f] = statement_count;
@@ -2139,6 +2133,12 @@ void emit_insert(char *f, char* s) {
 
 
 };
+
+void emit_mulite(char *f)
+{
+
+};
+
 
 void emit_delete(char *f)
 {
@@ -2550,12 +2550,16 @@ void emit_describe_table(char* table_name)
 void yyerror(char *s, ...)
 {
     extern int yylineno;
-    va_list ap;
-    va_start(ap, s);
+	extern char *yytext;
+    //va_list ap;
+    //va_start(ap, s);	
 
     fprintf(stderr, "%d: error: ", yylineno);
-    vfprintf(stderr, s, ap);
-    fprintf(stderr, "\n");
+	cout << yytext << endl;
+    //vfprintf(stderr, s, ap);
+    //fprintf(stderr, "\n");
+	
+	
 }
 
 void clean_queues()
