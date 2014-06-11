@@ -291,7 +291,7 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
         cudaError_t cudaStatus = cudaMalloc(&d, sz);
         if(cudaStatus != cudaSuccess) {
             char buf[1024];
-            sprintf( buf, "Could not allocate %d bytes of GPU memory for %d records ", sz, RecordCount);
+            sprintf( buf, "Could not allocate %llu bytes of GPU memory for %d records ", sz, RecordCount);
             process_error(3, string(buf));
         };
         d_columns_char[colname] = (char*)d;
@@ -505,7 +505,7 @@ void CudaSet::reserve(size_t Recs)
             h_columns_char[columnNames[i]] = new char[Recs*char_size[columnNames[i]]];
             if(h_columns_char[columnNames[i]] == NULL) {
                 char buf[1024];
-                sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %d", Recs, char_size[columnNames[i]]);
+                sprintf(buf, "(Alenka) Could not allocate on a host %d records of size %llu", Recs, char_size[columnNames[i]]);
                 process_error(3, string(buf));
             };
             prealloc_char_size = Recs;
@@ -2879,12 +2879,10 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
 
     if(right->filtered) {
         allocColumns(right, cc);
-        rcount = right->maxRecs;
-    }
-    else
-        rcount = right->mRecCount;
+    };
 
-    queue<string> ct(cc);
+	rcount = right->maxRecs;
+    queue<string> ct(cc);	
 
     while(!ct.empty()) {
         if(right->filtered && rsz) {
@@ -3087,8 +3085,7 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
                         queue<string> op_alt, bool decimal_join, bool& str_join,
                         size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz) {
 
-    size_t cnt_r = 0;
-    right->hostRecCount = right->mRecCount;
+    size_t cnt_r = 0;    
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
 
     // need to allocate all right columns    
@@ -3100,6 +3097,8 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
     else {
         cnt_r = load_queue(op_alt, right, str_join, f2, rcount, start_seg, end_seg, rsz, 1);
     };
+	
+	cout << "loaded queue1 " << getFreeMem() << endl;
 	
     if (right->type[colname]  == 2) {
         str_join = 1;
@@ -3124,6 +3123,8 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
 		if(!op_alt1.empty())
 			cnt_r = load_queue(op_alt1, right, str_join, "", rcount, start_seg, end_seg, 0, 0);
     };
+	
+	cout << "loaded queue2 " << endl;
 	
     return cnt_r;
 };
@@ -3152,7 +3153,7 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
 		return right->segCount;
 	else {	
 		if(right->segCount == 1) { //need to partition it. Not compressed.
-			right->segCount = ((tot_size*1.5 )/getFreeMem())+1;
+			right->segCount = ((tot_size*2 )/getFreeMem())+1;
 			cout << "seg count " << right->segCount << endl;
 			right->maxRecs = (right->mRecCount/right->segCount)+1;
 			cout << "max recs " << right->maxRecs << endl;

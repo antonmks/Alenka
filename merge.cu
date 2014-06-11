@@ -152,14 +152,21 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     vector<string> opv;
     queue<string> ss;
     for(unsigned int z = 0; z < cycle_sz; z++) {
+        if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { //sanity check
+			cout << "Syntax error: alias " << op_v3.front() << endl;
+			exit(0);
+		};
         opv.push_back(aliases[op_v3.front()]);
         ss.push(aliases[op_v3.front()]);
         op_v3.pop();
     };
+	
 
     // create hashes of groupby columns
     unsigned long long int* hashes = new unsigned long long int[b->mRecCount];
     unsigned long long int* sum = new unsigned long long int[cycle_sz*b->mRecCount];
+	
+	
         
 
 	b->CopyToHost(0, b->mRecCount);					

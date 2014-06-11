@@ -1023,7 +1023,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     bool str_join = 0;    
     size_t rcount = 0, cnt_r;
 	unsigned int r_parts = calc_right_partition(left, right, op_sel);
-	//cout << "partitioned to " << r_parts << endl;
+	cout << "partitioned to " << r_parts << endl;
 	unsigned int start_part = 0;
     queue<string> cc;
 	
@@ -1059,11 +1059,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	    bool rsz = 1;
 		right->deAllocOnDevice();		
 
-		//cout << "loading " << start_part << " " << r_parts << endl;
+		cout << "loading " << start_part << " " << r_parts << endl;
 		//if(right->not_compressed)
 			//order_inplace_host(right, exe_type, field_names, 0);						
 		//cout << "ordered " << endl;
 		
+		right->hostRecCount = right->mRecCount;
 		if(start_part + r_parts >= right->segCount) {
 			cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			start_part = right->segCount;
@@ -1073,9 +1074,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			start_part = start_part+r_parts;			
 		};			
 		
-		//cout << "loaded " << endl;
+		cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
+		right->mRecCount = cnt_r;
 		
 		if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {
+			cout << "path 1 " << endl;
 			right->CopyToHost(0, right->mRecCount);
 			right->deAllocOnDevice();
 			if (left->type[colname1]  != 2)
@@ -1084,19 +1087,21 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				order_inplace1(right, exe_type, field_names, 1);					
 		}
 		else {
+			cout << "path 2 " << endl;
 			if (left->type[colname1]  != 2)
 				order_inplace(right, exe_type, field_names, 0);					
 			else {	
 				order_inplace(right, exe_type, field_names, 1);					
 			};	
 		};
-		//cout << "ordered " << endl;
+		cout << "ordered " << endl;
 		
 
 		for (unsigned int i = 0; i < left->segCount; i++) {
 			
 			if(verbose)
-				cout << "segment " << i <<  '\xd';	
+				//cout << "segment " << i <<  '\xd';	
+				cout << "segment " << i <<  endl;	
 			j_data.clear();		
 			std::clock_t start2 = std::clock();		
 			
@@ -1114,6 +1119,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 								 right->orig_segs[left->ref_sets[colname1]].begin(), right->orig_segs[left->ref_sets[colname1]].end(),
 								 std::back_inserter(j_data));
 				if(j_data.empty()) {
+					cout << "skipping a segment " << endl;
 					continue;
 				};	
 				
@@ -1173,6 +1179,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					left->d_columns_int[colname1][cnt_l-1] < right->d_columns_int[colname2][0]) {
 					continue;
 				};	
+				
+				cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 				
 								
 				char join_kind = join_type.front();
@@ -1884,28 +1892,25 @@ void emit_select(char *s, char *f, int ll)
     while(!op_v.empty()) {
         if(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) != a->columnNames.end()) {
             tt = op_v.front();
+            op_v.pop();
             if(!op_v.empty()) {
-                op_v.pop();
-                if(!op_v.empty()) {
-                    if(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) == a->columnNames.end()) {
-                        if(aliases.count(tt) == 0) {
-                            aliases[tt] = op_v.front();
-                        };
-                    }
-                    else {
-                        if (!op_v.empty()) {
-                            while(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) == a->columnNames.end())
-                                op_v.pop();
-                        };
+                if(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) == a->columnNames.end()) {
+                    if(aliases.count(tt) == 0) {
+                        aliases[tt] = op_v.front();
                     };
+                }
+                else {
+                    while(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) == a->columnNames.end() && !op_v.empty()) {
+                        op_v.pop();
+					};	
                 };
             };
         };
         if(!op_v.empty())
             op_v.pop();
     };
-
-    op_v = op_value;
+	
+	op_v = op_value;
     while(!op_v.empty()) {
         if(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) != a->columnNames.end()) {
             field_names.insert(op_v.front());
@@ -1988,27 +1993,17 @@ void emit_select(char *s, char *f, int ll)
                 a->add_hashed_strings(op_s.top(), i);	
             };
             op_s.pop();
-        };
-		
+        };		
 
         if(a->mRecCount) {
             if (ll != 0) {
 				start3 = std::clock();		
                 order_inplace(a, op_v2, field_names, 1);
-				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
-				//start3 = std::clock();		
                 a->GroupBy(op_v2);				
-				//std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
-				//start3 = std::clock();		
             };
 			
-			
-			//cout << "select time " << endl;
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
-			//std::cout<< "sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';	
-			
-			
-					
+				
 			if(i == 0)
 				std::reverse(b->columnNames.begin(), b->columnNames.end());
 			
