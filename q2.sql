@@ -1,6 +1,6 @@
 RF := FILTER region BY r_name == "EUROPE";
 
-PF := FILTER part BY p_type == "%BRASS" AND p_size == 15;
+PF := FILTER part BY p_type LIKE "%BRASS" AND p_size == 15;
 
 T := SELECT ps_partkey AS ps_partkey, ps_suppkey AS ps_suppkey, ps_supplycost AS ps_supplycost
      FROM partsupp JOIN PF ON ps_partkey = p_partkey; 

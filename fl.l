@@ -82,6 +82,7 @@ DESCRIBE {return DESCRIBE; }
 DROP {return DROP; }
 DELETE {return DELETE; }
 FROM {return FROM; }
+LIKE {return LIKE; }
 
 
 [0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }

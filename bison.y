@@ -244,6 +244,7 @@ expr '+' expr { emit_add(); }
 | NOT expr { emit("NOT"); }
 | '!' expr { emit("NOT"); }
 | expr COMPARISON expr { emit_cmp($2); }
+| expr LIKE expr { emit_cmp(7); }
 /* recursive selects and comparisons thereto */
 | expr COMPARISON '(' select_stmt ')' { emit("CMPSELECT %d", $2); }
 | '(' expr ')' {emit("EXPR");}
