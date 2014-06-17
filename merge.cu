@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+#include <thrust/execution_policy.h>
 #include "merge.h"
 #include "zone_map.h"
 
@@ -376,6 +377,9 @@ void count_simple(CudaSet* c)
 void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_hash)
 {
     string countstr;
+	thrust::equal_to<unsigned long long int> binary_pred;
+	thrust::maximum<unsigned long long int> binary_op_max;
+	thrust::minimum<unsigned long long int> binary_op_min;
 	
     for(unsigned int i = 0; i < c->columnNames.size(); i++) {
         if(c->grp_type[c->columnNames[i]] == 0) { // COUNT
@@ -401,9 +405,11 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
         if (h_merge.size()) {
             for(unsigned int k = 0; k < c->columnNames.size(); k++)	{
 
+				cout << "GRP " << c->columnNames[k] << " " << c->grp_type[c->columnNames[k]] << endl;
                 if(c->grp_type[c->columnNames[k]] <= 2) { //sum || avg || count
                     if (c->type[c->columnNames[k]] == 0 ) { // int
-
+					
+					    
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
                                               thrust::make_discard_iterator(), tmp);
@@ -424,7 +430,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     if (c->type[c->columnNames[k]] == 0 ) { // int
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_min);
                         c->h_columns_int[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_int[c->columnNames[k]].begin());
                         delete [] tmp;
@@ -432,7 +438,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     else if (c->type[c->columnNames[k]] == 1 ) { // float
                         float_type* tmp =  new float_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_float[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_min);
                         c->h_columns_float[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_float[c->columnNames[k]].begin());
                         delete [] tmp;
@@ -442,7 +448,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     if (c->type[c->columnNames[k]] == 0 ) { // int
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
                         c->h_columns_int[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_int[c->columnNames[k]].begin());
                         delete [] tmp;
@@ -450,25 +456,25 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     else if (c->type[c->columnNames[k]] == 1 ) { // float
                         float_type* tmp =  new float_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_float[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
                         c->h_columns_float[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_float[c->columnNames[k]].begin());
                         delete [] tmp;
                     };
                 }
                 else if(c->grp_type[c->columnNames[k]] == 3) { //no group function
-                    if (c->type[c->columnNames[k]] == 0 ) { // int
+                    if (c->type[c->columnNames[k]] == 0 ) { // int					
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
                         c->h_columns_int[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_int[c->columnNames[k]].begin());
-                        delete [] tmp;
+                        delete [] tmp;						
                     }
                     else if (c->type[c->columnNames[k]] == 1 ) { // float
                         float_type* tmp =  new float_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_float[c->columnNames[k]].begin(),
-                                              thrust::make_discard_iterator(), tmp);
+                                              thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
                         c->h_columns_float[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_float[c->columnNames[k]].begin());
                         delete [] tmp;

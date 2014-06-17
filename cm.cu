@@ -441,6 +441,8 @@ void CudaSet::add_hashed_strings(string field, unsigned int segment)
 };
 
 
+
+
 void CudaSet::resize_join(size_t addRecs)
 {
     mRecCount = mRecCount + addRecs;
@@ -1056,6 +1058,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
     thrust::device_free(d_group);
     grp_count = thrust::count(d_grp, d_grp+mRecCount,1);
 };
+
 
 
 void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
@@ -3098,7 +3101,6 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
         cnt_r = load_queue(op_alt, right, str_join, f2, rcount, start_seg, end_seg, rsz, 1);
     };
 	
-	cout << "loaded queue1 " << getFreeMem() << endl;
 	
     if (right->type[colname]  == 2) {
         str_join = 1;
@@ -3122,10 +3124,7 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
         };
 		if(!op_alt1.empty())
 			cnt_r = load_queue(op_alt1, right, str_join, "", rcount, start_seg, end_seg, 0, 0);
-    };
-	
-	cout << "loaded queue2 " << endl;
-	
+    };	
     return cnt_r;
 };
 
@@ -3147,13 +3146,14 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
 		op_sel.pop();			
 	};		
 	
-	cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
+	//cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
 	
-	if(tot_size + 300000000 < getFreeMem())
+	if(tot_size + 300000000 < getFreeMem()) //00
 		return right->segCount;
 	else {	
 		if(right->segCount == 1) { //need to partition it. Not compressed.
-			right->segCount = ((tot_size*2 )/getFreeMem())+1;
+			right->segCount = ((tot_size*3 )/getFreeMem())+1;
+			//right->segCount = 8;
 			cout << "seg count " << right->segCount << endl;
 			right->maxRecs = (right->mRecCount/right->segCount)+1;
 			cout << "max recs " << right->maxRecs << endl;

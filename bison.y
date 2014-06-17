@@ -1024,7 +1024,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     bool str_join = 0;    
     size_t rcount = 0, cnt_r;
 	unsigned int r_parts = calc_right_partition(left, right, op_sel);
-	cout << "partitioned to " << r_parts << endl;
+	//cout << "partitioned to " << r_parts << endl;
 	unsigned int start_part = 0;
     queue<string> cc;
 	
@@ -1055,18 +1055,19 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	};	
 	
 	
+	right->hostRecCount = right->mRecCount;	
 	while(start_part < right->segCount) {
 
 	    bool rsz = 1;
 		right->deAllocOnDevice();		
 
-		cout << "loading " << start_part << " " << r_parts << endl;
+		//cout << "loading " << start_part << " " << r_parts << " " << getFreeMem() << endl;
+		//cout << "Tot segs " << right->segCount << endl;
 		//if(right->not_compressed)
 			//order_inplace_host(right, exe_type, field_names, 0);						
-		//cout << "ordered " << endl;
+		//cout << "ordered " << endl;		
 		
-		right->hostRecCount = right->mRecCount;
-		if(start_part + r_parts >= right->segCount) {
+		if(start_part + r_parts >= right->segCount ) {
 			cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, right->segCount, rsz);
 			start_part = right->segCount;
 		}
@@ -1075,11 +1076,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			start_part = start_part+r_parts;			
 		};			
 		
-		cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
+		//cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
 		right->mRecCount = cnt_r;
 		
-		if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {
-			cout << "path 1 " << endl;
+		if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {			
 			right->CopyToHost(0, right->mRecCount);
 			right->deAllocOnDevice();
 			if (left->type[colname1]  != 2)
@@ -1088,21 +1088,18 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 				order_inplace1(right, exe_type, field_names, 1);					
 		}
 		else {
-			cout << "path 2 " << endl;
 			if (left->type[colname1]  != 2)
 				order_inplace(right, exe_type, field_names, 0);					
 			else {	
 				order_inplace(right, exe_type, field_names, 1);					
 			};	
 		};
-		cout << "ordered " << endl;
 		
 
 		for (unsigned int i = 0; i < left->segCount; i++) {
 			
 			if(verbose)
-				//cout << "segment " << i <<  '\xd';	
-				cout << "segment " << i <<  endl;	
+				cout << "segment " << i <<  '\xd';					
 			j_data.clear();		
 			std::clock_t start2 = std::clock();		
 			
@@ -1172,7 +1169,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					if(verbose)
 						cout << "No need of sorting " << endl;
 					
-				cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+				//cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
 				//cout << "SZ " << left->d_columns_int[colname1].size() << endl;
 					
 				
@@ -1181,7 +1178,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 					continue;
 				};	
 				
-				cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
+				//cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 				
 								
 				char join_kind = join_type.front();
@@ -1226,7 +1223,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									mgpu::less<int_type>(), *context);
 				};
 				
-				cout << "RES " << res_count << " seg " << i << endl;
+				//cout << "RES " << res_count << " seg " << i << endl;
 				
 				int* r1 = aIndicesDevice->get();
 				thrust::device_ptr<int> d_res1((int*)r1);
@@ -1338,7 +1335,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
 					offset = c->mRecCount;				
 					if(i == 0 && left->segCount != 1) {
-						c->reserve(res_count*(left->segCount+1));
+						//c->reserve(res_count*(left->segCount+1));
 					};
 					
 					
@@ -1381,13 +1378,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 								
 								void* h;	
 								unsigned int cnt, bits;
-								int_type lower_val;								
-								
-								//if(verbose)
-								//	cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
+								int_type lower_val;		
+
+							
+								if(verbose)
+									cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
 								
 								if(!copied) {								
-									if(left->filtered) {
+									if(left->filtered && left->prm_index == 'R') {
 										thrust::device_vector<unsigned int> prm_v(res_count);
 										thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->prm_d.begin(), prm_v.begin());
 										prm_vh = prm_v;									
@@ -1447,7 +1445,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									};	
 								}
 								else if(bits == 64) {
-									if(left->type[op_sel1.front()] == 0) {	
+									if(left->type[op_sel1.front()] == 0) {										
 										thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}	
 									else {	
@@ -1456,9 +1454,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 									};
 								};
 								
-								if(left->type[op_sel1.front()] == 0) {	
+								if(left->type[op_sel1.front()] == 0) {									
 									thrust::transform(c->h_columns_int[op_sel1.front()].begin() + offset, c->h_columns_int[op_sel1.front()].begin() + offset + res_count, 
-													  thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>()); 																	
+													  thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>()); 																  
 								}
 								else {
 									int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
@@ -1510,6 +1508,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 								thrust::sequence(d_tmp, d_tmp+res_count,0,0);
 								thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[op_sel1.front()].begin(), d_tmp, is_positive<int>());							
 								thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);
+
 							}
 							else if(right->type[op_sel1.front()] == 1) {
 								thrust::device_ptr<float_type> d_tmp((float_type*)temp);
@@ -1559,9 +1558,18 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 			tot_size = tot_size + tot_count*8;
 		else	
 			tot_size = tot_size + tot_count*c->char_size[c->columnNames[i]];
-    };
+    };	
+	
+		
 	if ((getFreeMem() - 300000000) > tot_size) {
 		c->maxRecs = tot_count;
+/*	  if(f1 == "orderkey") {
+		cout << "setting " << endl;
+		c->segCount = 2;
+		c->maxRecs = 5;
+		};
+	*/	
+
 	}
 	else {	 
 		c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);		
@@ -2025,7 +2033,7 @@ void emit_select(char *s, char *f, int ll)
             };
 			
             if (ll != 0 && cycle_count > 1  && b->mRecCount > 0) {
-                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);						
+                add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);		
             }
             else {
                 //copy b to c

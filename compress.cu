@@ -535,6 +535,8 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
 		cudaMemcpy( host.data(), (void*)source, recCount*8, cudaMemcpyDeviceToHost);
 		cnt = recCount*8;
 	};
+	
+	fit_count = 64/bits;
 
     /*thrust::counting_iterator<unsigned int> begin(0);
 
@@ -610,9 +612,5 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     binary_file.close();
     if(cnt_counts[curr_file] < cnt)
         cnt_counts[curr_file] = cnt;
-    /*thrust::device_free(add_seq);
-    cudaFree(d);
-    cudaFree(d_v1);
-    cudaFree(s_v1);
-	*/
+   
 }
