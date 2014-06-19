@@ -1700,7 +1700,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
 										&aIndicesDevice, &bIndicesDevice,
 										mgpu::less<int_type>(), *context1);
 						};				
-						//cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
+						cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;			
 						f_file.write((char *)&z, 4);
 						f_file.write((char *)&res_count, 8);
 					};
@@ -1850,44 +1850,61 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     char *p,*t;
 	const char* sep = separator.c_str();
 
-    map<unsigned int,string> col_map;
+	
+	unsigned int maxx = 0;
     for(unsigned int i = 0; i < mColumnCount; i++) {
-        col_map[cols[columnNames[i]]] = columnNames[i];
+		if(cols[columnNames[i]] > maxx)
+			maxx = cols[columnNames[i]];
+	};
+	
+	bool *check_col = new bool[maxx+1];
+	vector<string> names(maxx+1);
+	
+	for(unsigned int i = 0; i <= maxx; i++) {
+		check_col[i] = 0;
+	};
+	
+    for(unsigned int i = 0; i < mColumnCount; i++) {
+		names[cols[columnNames[i]]] = columnNames[i];
+		check_col[cols[columnNames[i]]] = 1;		
     };	
 	
 
-    while (count < process_count && fgets(line, 1000, file_p) != NULL) {
+    //while (count < process_count && fgets(line, 1000, file_p) != NULL) {
+	while (count < process_count && fgets(line, 1000, file_p) != NULL) {
         strtok(line, "\n");
         current_column = 0;
 
-        for(t=mystrtok(&p,line,*sep); t; t=mystrtok(&p,0,*sep)) {
+        for(t=mystrtok(&p,line,*sep); t && current_column < maxx; t=mystrtok(&p,0,*sep)) {
             current_column++;
-            if(col_map.find(current_column) == col_map.end()) {
+            if(!check_col[current_column]) {
+				//cout << "Didn't find " << current_column << endl;				
                 continue;
             };
-
-            colname = col_map[current_column];
-            if (type[colname] == 0) {
+			//cout << "curr " << current_column << " " << names[current_column] << endl;
+			
+            if (type[names[current_column]] == 0) {
                 if (strchr(t,'-') == NULL) {
-                    (h_columns_int[colname])[count] = atoll(t);
+                    (h_columns_int[names[current_column]])[count] = atoll(t);
                 }
                 else {   // handling possible dates
                     strncpy(t+4,t+5,2);
                     strncpy(t+6,t+8,2);
                     t[8] = '\0';
-                    (h_columns_int[colname])[count] = atoll(t);
+                    (h_columns_int[names[current_column]])[count] = atoll(t);
                 };
             }
-            else if (type[colname] == 1) {
-                (h_columns_float[colname])[count] = atoff(t);
+            else if (type[names[current_column]] == 1) {
+                (h_columns_float[names[current_column]])[count] = atoff(t);
             }
             else  {//char
-                strcpy(h_columns_char[colname] + count*char_size[colname], t);
-            }
+                strcpy(h_columns_char[names[current_column]] + count*char_size[names[current_column]], t);
+            }			
         };
         count++;
     };
 
+	delete [] check_col;
     mRecCount = count;
 
     if(count < process_count)  {

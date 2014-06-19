@@ -1099,7 +1099,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		for (unsigned int i = 0; i < left->segCount; i++) {
 			
 			if(verbose)
-				cout << "segment " << i <<  '\xd';					
+				//cout << "segment " << i <<  '\xd';					
+				cout << "segment " << i <<  endl;					
 			j_data.clear();		
 			std::clock_t start2 = std::clock();		
 			
@@ -1550,7 +1551,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	c->name = s;
 	
 	if(verbose)
-		cout << endl << "tot res " << tot_count << endl;
+		cout << endl << "tot res " << tot_count << " " << getFreeMem() << endl;
 	
 	unsigned int tot_size = 0;	    
     for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
@@ -1563,12 +1564,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		
 	if ((getFreeMem() - 300000000) > tot_size) {
 		c->maxRecs = tot_count;
-/*	  if(f1 == "orderkey") {
+	  /*if(f1 == "orderkey") {
 		cout << "setting " << endl;
 		c->segCount = 2;
-		c->maxRecs = 5;
+		c->maxRecs = tot_count/2;
 		};
-	*/	
+		*/
+		
 
 	}
 	else {	 
@@ -2005,8 +2007,7 @@ void emit_select(char *s, char *f, int ll)
         };		
 
         if(a->mRecCount) {
-            if (ll != 0) {
-				start3 = std::clock();		
+            if (ll != 0) {				
                 order_inplace(a, op_v2, field_names, 1);
                 a->GroupBy(op_v2);				
             };
@@ -2033,7 +2034,9 @@ void emit_select(char *s, char *f, int ll)
             };
 			
             if (ll != 0 && cycle_count > 1  && b->mRecCount > 0) {
+				start3 = std::clock();		
                 add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);		
+				std::cout<< "add op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
             }
             else {
                 //copy b to c
