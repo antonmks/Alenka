@@ -618,25 +618,25 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     FILE* f;
     unsigned int cnt;
     string f1;
-	
+
 
     while(!fields.empty()) {
-        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{	
+        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{
 
-			if(a->filtered)
-				t = varNames[a->source_name];
-			else
-				t = a;
-			
+            if(a->filtered)
+                t = varNames[a->source_name];
+            else
+                t = a;
+
             // copy t min and max values to a only if int, decimal or float
             if(t->type[fields.front()] <= 1) {
 
                 f1 = t->load_file_name + "." + fields.front() + "." + int_to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
-				if(f == NULL) {
-					cout << "Error opening " << f1 << " file " << endl;
-					exit(0);
-				};
+                if(f == NULL) {
+                    cout << "Error opening " << f1 << " file " << endl;
+                    exit(0);
+                };
 
                 fread((char *)&cnt, 4, 1, f);
                 if (t->type[fields.front()] == 0) {
@@ -655,12 +655,12 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
                 };
                 fclose(f);
-            };			
+            };
         };
         uniques.insert(fields.front());
         fields.pop();
     };
-	
+
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
@@ -675,20 +675,20 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 op_nums.pop();
             }
             else if (ss.compare("NAME") == 0)  {
-				if(var_exists(a, op_value.front())) {
-					exe_value.push(op_value.front());
-					op_value.pop();
-				}
-				else {
-					process_error(1, "Couldn't find column " + op_value.front());
-					//cout << "Couldn't find column " << op_value.front() << endl;
-					//exit(0);
-				};
+                if(var_exists(a, op_value.front())) {
+                    exe_value.push(op_value.front());
+                    op_value.pop();
+                }
+                else {
+                    process_error(1, "Couldn't find column " + op_value.front());
+                    //cout << "Couldn't find column " << op_value.front() << endl;
+                    //exit(0);
+                };
             }
             else if (ss.compare("STRING") == 0) {
                 exe_value.push(op_value.front());
                 op_value.pop();
-            }			
+            }
             if (ss.compare("FLOAT") == 0) {
                 exe_nums_f.push(op_nums_f.front());
                 op_nums_f.pop();
@@ -1159,7 +1159,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         bool_vectors.push(host_compare(t,n1_f,cmp_type));
                     }
                     else {
-						
+
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_type.push("VECTOR");
                         bool_vectors.push(host_compare(t,n1_f,cmp_type));
@@ -1441,13 +1441,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.push(host_logical_or(s2,s3));
             }
             else {
-				if(ss.compare("JOIN") == 0)
-					process_error(2, "operation = is not valid");
-					//cout << "operation = is not valid" << endl;
-				else 	
-					 process_error(2, "operation " + string(ss)+ " is not valid");
-					//cout << "operation " << ss << " is not valid" << endl;
-				exit(0);	// never gets here
+                if(ss.compare("JOIN") == 0)
+                    process_error(2, "operation = is not valid");
+                //cout << "operation = is not valid" << endl;
+                else
+                    process_error(2, "operation " + string(ss)+ " is not valid");
+                //cout << "operation " << ss << " is not valid" << endl;
+                exit(0);	// never gets here
             }
         };
     };

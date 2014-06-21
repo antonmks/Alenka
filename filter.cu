@@ -55,47 +55,57 @@ struct gpu_regex
     const unsigned int *len;
 
     gpu_regex(char * _source,char * _pattern, bool * _dest,
-                               const unsigned int * _len):
+              const unsigned int * _len):
         source(_source), pattern(_pattern), dest(_dest), len(_len) {}
 
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
 
-		bool star = 0;
-		int j = 0;
-		char* s;
-		char* p;
-		char* str = source + len[0]*i;
-		char* pat = pattern;
+        bool star = 0;
+        int j = 0;
+        char* s;
+        char* p;
+        char* str = source + len[0]*i;
+        char* pat = pattern;
 
-	   loopStart:
-	   for (s = str, p = pat; j < len[0] && *s; ++s, ++p, ++j) {
-		  switch (*p) {
-			 case '?':
-				if (*s == '.') goto starCheck;
-				break;
-			 case '%':
-				star = 1;
-				str = s, pat = p;
-				do { ++pat; } while (*pat == '%');
-				if (!*pat) {dest[i] = 1;return;}
-				goto loopStart;
-			 default:
-				if (*s != *p)
-				   goto starCheck;
-				break;
-		  } /* endswitch */
-	   } /* endfor */
-	   while (*p == '%') ++p;
-	   dest[i] = !*p; 
-	   return;
+loopStart:
+        for (s = str, p = pat; j < len[0] && *s; ++s, ++p, ++j) {
+            switch (*p) {
+            case '?':
+                if (*s == '.') goto starCheck;
+                break;
+            case '%':
+                star = 1;
+                str = s, pat = p;
+                do {
+                    ++pat;
+                }
+                while (*pat == '%');
+                if (!*pat) {
+                    dest[i] = 1;
+                    return;
+                }
+                goto loopStart;
+            default:
+                if (*s != *p)
+                    goto starCheck;
+                break;
+            } /* endswitch */
+        } /* endfor */
+        while (*p == '%') ++p;
+        dest[i] = !*p;
+        return;
 
-	   starCheck:
-	   if (!star) {dest[i] = 0;return;};
-	   str++; j++;
-	   goto loopStart;
-	}   
+starCheck:
+        if (!star) {
+            dest[i] = 0;
+            return;
+        };
+        str++;
+        j++;
+        goto loopStart;
+    }
 };
 
 
@@ -121,7 +131,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
 
-	
+
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -201,7 +211,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
-					printf("CMPF1 %lld \n" , n1);
+                    printf("CMPF1 %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 
@@ -220,7 +230,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					printf("CMPF %lld \n" , n1);
+                    printf("CMPF %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 
@@ -238,8 +248,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
-					
-					printf("CMP1 %lld \n" , n1);
+
+                    printf("CMP1 %lld \n" , n1);
 
                     if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
@@ -258,7 +268,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					printf("CMP %lld \n" , n1);
+                    printf("CMP %lld \n" , n1);
 
 
                     if (a->type[s2_val] == 1) {
@@ -519,7 +529,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 exe_type.pop();
                 s2 = exe_type.top();
                 exe_type.pop();
-				
+
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
                     exe_nums.pop();
@@ -564,8 +574,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     cudaMalloc((void **) &d_v, 8);
                     thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
                     dd_v[0] = a->char_size[s2_val];
-                    dd_v[1] = (unsigned int)s1_val.length() + 1;                    
-                    cudaMalloc((void **) &d_res, a->mRecCount);                    
+                    dd_v[1] = (unsigned int)s1_val.length() + 1;
+                    cudaMalloc((void **) &d_res, a->mRecCount);
 
                     thrust::counting_iterator<unsigned int> begin(0);
                     if(cmp_type != 7) {
@@ -577,9 +587,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     }
                     else {
                         cudaMalloc((void **) &d_str, s1_val.length()+1);
-						cudaMemset(d_str,0, s1_val.length()+1);
+                        cudaMemset(d_str,0, s1_val.length()+1);
                         cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-						gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+                        gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     };
 
@@ -604,17 +614,17 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     thrust::counting_iterator<unsigned int> begin(0);
                     if(cmp_type != 7) {
-						cudaMalloc((void **) &d_str, a->char_size[s1_val]);
-						cudaMemset(d_str,0,a->char_size[s1_val]);
-						cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);					
+                        cudaMalloc((void **) &d_str, a->char_size[s1_val]);
+                        cudaMemset(d_str,0,a->char_size[s1_val]);
+                        cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
                         cmp_functor_str ff(a->d_columns_char[s1_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     }
                     else {
                         cudaMalloc((void **) &d_str, s1_val.length()+1);
-						cudaMemset(d_str,0, s1_val.length()+1);
+                        cudaMemset(d_str,0, s1_val.length()+1);
                         cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-						gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);						
+                        gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                     };
 
@@ -665,7 +675,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     s1_val = exe_value.top();
-                    exe_value.pop();					
+                    exe_value.pop();
 
                     if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
@@ -955,6 +965,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
             }
         };
     };
-	
-	return bool_vectors.top();
+
+    return bool_vectors.top();
 }

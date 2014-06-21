@@ -39,8 +39,9 @@ oins use Sean Baxter's excellent moderngpu library(https://github.com/NVlabs/mod
 
 To compile alenka run make on Linux or nmake on Windows.
 
-Alenka have been tested on a 64bit Windows7. 
+Alenka have been tested on a 64bit Windows7 and 64bit Linux. 
 When you compiled alenka you can run it from a command line using a SQL script file as a parameter : alenka.exe q1.sql 
+Or you can use Alenka's JDBC driver.
 
 
 Alenka is distributed under Apache 2 license.

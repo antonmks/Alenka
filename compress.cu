@@ -30,7 +30,7 @@ string curr_file;
 
 struct int64_to_char
 {
-   __host__ __device__
+    __host__ __device__
     char operator()(const int_type x)
     {
         return (char)x;
@@ -39,7 +39,7 @@ struct int64_to_char
 
 struct char_to_int64
 {
-   __host__ __device__
+    __host__ __device__
     int_type operator()(const char x)
     {
         return (int_type)x;
@@ -49,7 +49,7 @@ struct char_to_int64
 
 struct int64_to_int16
 {
-   __host__ __device__
+    __host__ __device__
     unsigned short int operator()(const int_type x)
     {
         return (unsigned short int)x;
@@ -58,7 +58,7 @@ struct int64_to_int16
 
 struct int16_to_int64
 {
-   __host__ __device__
+    __host__ __device__
     int_type operator()(const unsigned short int x)
     {
         return (int_type)x;
@@ -68,7 +68,7 @@ struct int16_to_int64
 
 struct int64_to_int32
 {
-   __host__ __device__
+    __host__ __device__
     unsigned int operator()(const int_type x)
     {
         return (unsigned int)x;
@@ -77,7 +77,7 @@ struct int64_to_int32
 
 struct int32_to_int64
 {
-   __host__ __device__
+    __host__ __device__
     int_type operator()(const unsigned int x)
     {
         return (int_type)x;
@@ -241,7 +241,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
     fit_count = ((unsigned int*)((char*)host + cnt))[11];
     start_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 12))[0];
     comp_type = ((unsigned int*)((char*)host + cnt))[14];
-	comp_type = ((unsigned int*)host)[5];
+    comp_type = ((unsigned int*)host)[5];
 
     //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
@@ -254,45 +254,45 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
     };
 
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
-	thrust::device_ptr<int_type> d_int((int_type*)destination);
-  
-	if(comp_type == 1) {
-		thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-		thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
+    thrust::device_ptr<int_type> d_int((int_type*)destination);
 
-		dd_sv[0] = orig_lower_val;
-		dd_v[0] = bits;
-		dd_v[1] = fit_count;
-		dd_v[2] = bit_count;
+    if(comp_type == 1) {
+        thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+        thrust::device_ptr<long long int> dd_sv((long long int*)s_v);
 
-		thrust::counting_iterator<unsigned int> begin(0);
-		decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
-		thrust::for_each(begin, begin + orig_recCount, ff1);
-		
-		d_int[0] = start_val;
+        dd_sv[0] = orig_lower_val;
+        dd_v[0] = bits;
+        dd_v[1] = fit_count;
+        dd_v[2] = bit_count;
+
+        thrust::counting_iterator<unsigned int> begin(0);
+        decompress_functor_int ff1(raw_decomp,(int_type*)destination, (long long int*)s_v, (unsigned int*)d_v);
+        thrust::for_each(begin, begin + orig_recCount, ff1);
+
+        d_int[0] = start_val;
         thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
-	}
-	else {
-		if(bits == 8) {
-			thrust::device_ptr<char> src((char*)raw_decomp);
-			thrust::transform(src, src+orig_recCount, d_int, char_to_int64());
-		}	
-		else if(bits == 16) {
-			thrust::device_ptr<unsigned short int> src((unsigned short int*)raw_decomp);
-			thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
-		}
-		else if(bits == 32) {
-			thrust::device_ptr<unsigned int> src((unsigned int*)raw_decomp);
-			thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
-		}
-		else {
-			thrust::device_ptr<int_type> src((int_type*)raw_decomp);
-			thrust::copy(src, src+orig_recCount, d_int);
-		};
-		thrust::constant_iterator<int_type> iter(orig_lower_val);
-		thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
-		
-	};	
+    }
+    else {
+        if(bits == 8) {
+            thrust::device_ptr<char> src((char*)raw_decomp);
+            thrust::transform(src, src+orig_recCount, d_int, char_to_int64());
+        }
+        else if(bits == 16) {
+            thrust::device_ptr<unsigned short int> src((unsigned short int*)raw_decomp);
+            thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
+        }
+        else if(bits == 32) {
+            thrust::device_ptr<unsigned int> src((unsigned int*)raw_decomp);
+            thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
+        }
+        else {
+            thrust::device_ptr<int_type> src((int_type*)raw_decomp);
+            thrust::copy(src, src+orig_recCount, d_int);
+        };
+        thrust::constant_iterator<int_type> iter(orig_lower_val);
+        thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
+
+    };
 
     return orig_recCount;
 }
@@ -319,7 +319,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
         thrust::device_ptr<int_type> s((int_type*)source);
         thrust::device_ptr<int_type> d_ss((int_type*)ss);
         thrust::adjacent_difference(s, s+recCount, d_ss);
-		
+
         start_val = d_ss[0];
         if(recCount > 1)
             d_ss[0] = d_ss[1];
@@ -339,7 +339,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     else {
         thrust::device_ptr<long long int> s((long long int*)source);
         thrust::device_ptr<long long int> d_ss((long long int*)ss);
-        thrust::adjacent_difference(s, s+recCount, d_ss);		
+        thrust::adjacent_difference(s, s+recCount, d_ss);
         start_val = d_ss[0];
         if(recCount > 1)
             d_ss[0] = d_ss[1];
@@ -411,17 +411,17 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
-	
-	//cout << file_name << " CNT  " << cnt << " " << recCount << endl;
-	cnt = cnt*8;
+
+    //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
+    cnt = cnt*8;
 
     cudaMemcpy( host.data(), (void *)raw_src, cnt, cudaMemcpyDeviceToHost);
     fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&real_lower, 8);
     binary_file.write((char *)&real_upper, 8);
-	binary_file.write((char *)&comp_type, 4);
-    binary_file.write((char *)host.data(),cnt);    
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)host.data(),cnt);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&recCount, 4);
     binary_file.write((char *)&bits, 4);
@@ -430,8 +430,8 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     binary_file.write((char *)&start_val, 8);
     binary_file.close();
     if(cnt_counts[curr_file] < cnt)
-        cnt_counts[curr_file] = cnt;	
-	
+        cnt_counts[curr_file] = cnt;
+
     thrust::device_free(fin_seq);
     cudaFree(ss);
     cudaFree(d_v1);
@@ -462,15 +462,15 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     else {
         recCount = source_len/float_size;
         thrust::device_ptr<long long int> s((long long int*)source);
-        sorted = thrust::is_sorted(s, s+recCount);		
+        sorted = thrust::is_sorted(s, s+recCount);
     };
     //cout << "file " << file_name << " is sorted " << sorted << endl;
 
     if(sorted) {
         pfor_delta_compress(source, source_len, file_name, host, tp);
-		return;
-	};
-	
+        return;
+    };
+
 
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
@@ -478,8 +478,8 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
-		//cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;		
+        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
+        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
@@ -492,51 +492,51 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
-	
-	if (bits != 8 && bits != 16 && bits != 32 && bits != 64) {
-		if(bits < 8)
-			bits = 8;
-		else if(bits < 16)
-			bits = 16;
-		else if(bits < 32)
-			bits = 32;
-		else if(bits < 64)
-			bits = 64;	
-	};	
-	//cout << "We will really need " << bits << endl;
-	
-	unsigned int cnt;
-	thrust::device_ptr<int_type> s((int_type*)source);
-	thrust::constant_iterator<int_type> iter(orig_lower_val);
-	thrust::transform(s, s+recCount, iter, s, thrust::minus<int_type>());	
-		
-	thrust::device_vector<int8_type> d_columns_int8;	
-	thrust::device_vector<int16_type> d_columns_int16;	
-	thrust::device_vector<int32_type> d_columns_int32;	
-	if(bits == 8) {
-		d_columns_int8.resize(recCount);
-		thrust::transform(s, s+recCount, d_columns_int8.begin(), int64_to_char());	
-		cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int8.data()), recCount, cudaMemcpyDeviceToHost);
-		cnt = recCount;
-	}
-	else if(bits == 16) {
-		d_columns_int16.resize(recCount);
-		thrust::transform(s, s+recCount, d_columns_int16.begin(), int64_to_int16());	
-		cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int16.data()), recCount*2, cudaMemcpyDeviceToHost);
-		cnt = recCount*2;
-	}
-	else if(bits == 32) {
-		d_columns_int32.resize(recCount);
-		thrust::transform(s, s+recCount, d_columns_int32.begin(), int64_to_int32());	
-		cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int32.data()), recCount*4, cudaMemcpyDeviceToHost);
-		cnt = recCount*4;
-	}
-	else {
-		cudaMemcpy( host.data(), (void*)source, recCount*8, cudaMemcpyDeviceToHost);
-		cnt = recCount*8;
-	};
-	
-	fit_count = 64/bits;
+
+    if (bits != 8 && bits != 16 && bits != 32 && bits != 64) {
+        if(bits < 8)
+            bits = 8;
+        else if(bits < 16)
+            bits = 16;
+        else if(bits < 32)
+            bits = 32;
+        else if(bits < 64)
+            bits = 64;
+    };
+    //cout << "We will really need " << bits << endl;
+
+    unsigned int cnt;
+    thrust::device_ptr<int_type> s((int_type*)source);
+    thrust::constant_iterator<int_type> iter(orig_lower_val);
+    thrust::transform(s, s+recCount, iter, s, thrust::minus<int_type>());
+
+    thrust::device_vector<int8_type> d_columns_int8;
+    thrust::device_vector<int16_type> d_columns_int16;
+    thrust::device_vector<int32_type> d_columns_int32;
+    if(bits == 8) {
+        d_columns_int8.resize(recCount);
+        thrust::transform(s, s+recCount, d_columns_int8.begin(), int64_to_char());
+        cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int8.data()), recCount, cudaMemcpyDeviceToHost);
+        cnt = recCount;
+    }
+    else if(bits == 16) {
+        d_columns_int16.resize(recCount);
+        thrust::transform(s, s+recCount, d_columns_int16.begin(), int64_to_int16());
+        cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int16.data()), recCount*2, cudaMemcpyDeviceToHost);
+        cnt = recCount*2;
+    }
+    else if(bits == 32) {
+        d_columns_int32.resize(recCount);
+        thrust::transform(s, s+recCount, d_columns_int32.begin(), int64_to_int32());
+        cudaMemcpy( host.data(), thrust::raw_pointer_cast(d_columns_int32.data()), recCount*4, cudaMemcpyDeviceToHost);
+        cnt = recCount*4;
+    }
+    else {
+        cudaMemcpy( host.data(), (void*)source, recCount*8, cudaMemcpyDeviceToHost);
+        cnt = recCount*8;
+    };
+
+    fit_count = 64/bits;
 
     /*thrust::counting_iterator<unsigned int> begin(0);
 
@@ -594,15 +594,15 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
     //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
-*/
- 
-	//cout << "comp Header " <<  recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl; 
+    */
+
+    //cout << "comp Header " <<  recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
     fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&orig_lower_val, 8);
     binary_file.write((char *)&orig_upper_val, 8);
-	binary_file.write((char *)&comp_type, 4);
-    binary_file.write((char *)host.data(),cnt);    
+    binary_file.write((char *)&comp_type, 4);
+    binary_file.write((char *)host.data(),cnt);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&recCount, 4);
     binary_file.write((char *)&bits, 4);
@@ -612,5 +612,5 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     binary_file.close();
     if(cnt_counts[curr_file] < cnt)
         cnt_counts[curr_file] = cnt;
-   
+
 }

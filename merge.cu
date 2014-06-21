@@ -12,9 +12,11 @@
  *  limitations under the License.
  */
 
-#include <thrust/execution_policy.h>
 #include "merge.h"
 #include "zone_map.h"
+
+//using namespace mgpu;
+//ContextPtr context3 = CreateCudaDevice(0, NULL, 0);
 
 using namespace std;
 
@@ -31,46 +33,53 @@ void process_error(int severity, string err);	// this should probably live in a 
 
 uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
 {
-  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
-  const int r = 47;
+    const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
+    const int r = 47;
 
-  uint64_t h = seed ^ (len * m);
+    uint64_t h = seed ^ (len * m);
 
-  const uint64_t * data = (const uint64_t *)key;
-  const uint64_t * end = data + (len/8);
+    const uint64_t * data = (const uint64_t *)key;
+    const uint64_t * end = data + (len/8);
 
-  while(data != end)
-  {
-    uint64_t k = *data++;
+    while(data != end)
+    {
+        uint64_t k = *data++;
 
-    k *= m;
-    k ^= k >> r;
-    k *= m;
-   
-    h ^= k;
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h ^= k;
+        h *= m;
+    }
+
+    const unsigned char * data2 = (const unsigned char*)data;
+
+    switch(len & 7)
+    {
+    case 7:
+        h ^= uint64_t(data2[6]) << 48;
+    case 6:
+        h ^= uint64_t(data2[5]) << 40;
+    case 5:
+        h ^= uint64_t(data2[4]) << 32;
+    case 4:
+        h ^= uint64_t(data2[3]) << 24;
+    case 3:
+        h ^= uint64_t(data2[2]) << 16;
+    case 2:
+        h ^= uint64_t(data2[1]) << 8;
+    case 1:
+        h ^= uint64_t(data2[0]);
+        h *= m;
+    };
+
+    h ^= h >> r;
     h *= m;
-  }
+    h ^= h >> r;
 
-  const unsigned char * data2 = (const unsigned char*)data;
-
-  switch(len & 7)
-  {
-  case 7: h ^= uint64_t(data2[6]) << 48;
-  case 6: h ^= uint64_t(data2[5]) << 40;
-  case 5: h ^= uint64_t(data2[4]) << 32;
-  case 4: h ^= uint64_t(data2[3]) << 24;
-  case 3: h ^= uint64_t(data2[2]) << 16;
-  case 2: h ^= uint64_t(data2[1]) << 8;
-  case 1: h ^= uint64_t(data2[0]);
-          h *= m;
-  };
- 
-  h ^= h >> r;
-  h *= m;
-  h ^= h >> r;
-
-  return h;
-} 
+    return h;
+}
 
 
 struct float_avg
@@ -114,77 +123,76 @@ void create_c(CudaSet* c, CudaSet* b)
     c->not_compressed = 1;
     c->segCount = 1;
 
-	c->columnNames = b->columnNames;    
-	h_merge.clear();
-	c->cols = b->cols;
-	c->type = b->type;
-	c->decimal = b->decimal;
+    c->columnNames = b->columnNames;
+    h_merge.clear();
+    c->cols = b->cols;
+    c->type = b->type;
+    c->decimal = b->decimal;
     c->grp_type = b->grp_type;
 
     for(unsigned int i=0; i < b->columnNames.size(); i++) {
-	
+
         if (b->type[b->columnNames[i]] == 0) {
             c->h_columns_int[b->columnNames[i]] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >();
             c->d_columns_int[b->columnNames[i]] = thrust::device_vector<int_type>();
         }
         else if (b->type[b->columnNames[i]] == 1) {
             c->h_columns_float[b->columnNames[i]] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >();
-            c->d_columns_float[b->columnNames[i]] = thrust::device_vector<float_type>();			
+            c->d_columns_float[b->columnNames[i]] = thrust::device_vector<float_type>();
         }
         else {
             c->h_columns_char[b->columnNames[i]] = NULL;
             c->d_columns_char[b->columnNames[i]] = NULL;
             c->char_size[b->columnNames[i]] = b->char_size[b->columnNames[i]];
         };
-    };	
+    };
 }
 
 void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases,
          vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
          vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
-{		
+{
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
         create_c(c,b);
     }
 
-    size_t cycle_sz = op_v3.size();	
-	
+    size_t cycle_sz = op_v3.size();
+
     vector<string> opv;
     queue<string> ss;
     for(unsigned int z = 0; z < cycle_sz; z++) {
         if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { //sanity check
-			cout << "Syntax error: alias " << op_v3.front() << endl;
-			exit(0);
-		};
+            cout << "Syntax error: alias " << op_v3.front() << endl;
+            exit(0);
+        };
         opv.push_back(aliases[op_v3.front()]);
         ss.push(aliases[op_v3.front()]);
         op_v3.pop();
     };
-	
-	std::clock_t start3 = std::clock();	
-	
+
 
     // create hashes of groupby columns
     unsigned long long int* hashes = new unsigned long long int[b->mRecCount];
-    unsigned long long int* sum = new unsigned long long int[cycle_sz*b->mRecCount];        
+    unsigned long long int* sum = new unsigned long long int[cycle_sz*b->mRecCount];
 
-	b->CopyToHost(0, b->mRecCount);					
-	
-	std::cout<< "merge 0.5 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
-	
+    b->CopyToHost(0, b->mRecCount);
+
+    std::clock_t start3 = std::clock();
+
     for(unsigned int z = 0; z < cycle_sz; z++) {
-        
+
         if(b->type[opv[z]] == 0) {  //int
-			for(int i = 0; i < b->mRecCount; i++) {
-				sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_int[opv[z]][i], 8, hash_seed);				
-			};
+            //for(int i = 0; i < b->mRecCount; i++) {
+            //sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_int[opv[z]][i], 8, hash_seed);
+            memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_int[opv[z]].data()), b->mRecCount*8);
+            //};
         }
-        else if(b->type[opv[z]] == 2) {  //string			
-			for(int i = 0; i < b->mRecCount; i++) {
-				sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_char[opv[z]][i*b->char_size[opv[z]]], b->char_size[opv[z]], hash_seed);				
-			};			
-			
+        else if(b->type[opv[z]] == 2) {  //string
+            for(int i = 0; i < b->mRecCount; i++) {
+                sum[z*b->mRecCount + i] = MurmurHash64A(&b->h_columns_char[opv[z]][i*b->char_size[opv[z]]], b->char_size[opv[z]], hash_seed);
+            };
+
         }
         else {  //float
             process_error(2, "No group by on float/decimal columns ");
@@ -192,93 +200,98 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             //exit(0);
         };
     };
-	
-	std::cout<< "merge1 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
-	
-	for(int i = 0; i < b->mRecCount; i++) {
-		hashes[i] = MurmurHash64A(&sum[i*cycle_sz], 8*cycle_sz, hash_seed);				
-	};	
 
-	delete [] sum;	
-	thrust::device_vector<unsigned long long int> d_hashes(b->mRecCount);
-	thrust::device_vector<unsigned int> v(b->mRecCount);
-	thrust::sequence(v.begin(), v.end(), 0, 1);
-	thrust::copy(hashes, hashes+b->mRecCount, d_hashes.begin());
-	
-	std::cout<< "merge2 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
+    for(int i = 0; i < b->mRecCount; i++) {
+        hashes[i] = MurmurHash64S(&sum[i], 8, hash_seed, cycle_sz, b->mRecCount);
+    };
+    std::cout<< "merge1 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 
-	// sort the results by hash
-    thrust::sort_by_key(d_hashes.begin(), d_hashes.end(), v.begin());	
-	
-	std::cout<< "merge2.5  op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
+    delete [] sum;
+    thrust::device_vector<unsigned long long int> d_hashes(b->mRecCount);
+    thrust::device_vector<unsigned int> v(b->mRecCount);
+    thrust::sequence(v.begin(), v.end(), 0, 1);
+    thrust::copy(hashes, hashes+b->mRecCount, d_hashes.begin());
 
-	void* d_tmp;
-	CUDA_SAFE_CALL(cudaMalloc((void **) &d_tmp, b->mRecCount*max_char(b)));
-	
+    // sort the results by hash
+    thrust::sort_by_key(d_hashes.begin(), d_hashes.end(), v.begin());
+
+    void* d_tmp;
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d_tmp, b->mRecCount*max_char(b)));
+
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
         if(b->type[b->columnNames[i]] == 0) {
             //int_type* d_tmp = new int_type[b->mRecCount];
-			thrust::device_ptr<int_type> d_tmp_int((int_type*)d_tmp);
+            thrust::device_ptr<int_type> d_tmp_int((int_type*)d_tmp);
             thrust::gather(v.begin(), v.end(), b->d_columns_int[b->columnNames[i]].begin(), d_tmp_int);
             thrust::copy(d_tmp_int, d_tmp_int + b->mRecCount, b->h_columns_int[b->columnNames[i]].begin());
-			//delete [] d_tmp;
+            //delete [] d_tmp;
         }
         else if(b->type[b->columnNames[i]] == 1) {
             //float_type* d_tmp = new float_type[b->mRecCount];
-			thrust::device_ptr<float_type> d_tmp_float((float_type*)d_tmp);
+            thrust::device_ptr<float_type> d_tmp_float((float_type*)d_tmp);
             thrust::gather(v.begin(), v.end(), b->d_columns_float[b->columnNames[i]].begin(), d_tmp_float);
             thrust::copy(d_tmp_float, d_tmp_float + b->mRecCount, b->h_columns_float[b->columnNames[i]].begin());
-			//delete [] d_tmp;
+            //delete [] d_tmp;
         }
         else {
             //char* d_tmp = new char[b->mRecCount*b->char_size[b->columnNames[i]]];
-			//thrust::device_ptr<char> d_tmp_char((char*)d_tmp);
+            //thrust::device_ptr<char> d_tmp_char((char*)d_tmp);
             str_gather((void*)thrust::raw_pointer_cast(v.data()), b->mRecCount, b->d_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
-			//memcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]]);	
-			cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
-			//delete [] d_tmp;
+            //memcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]]);
+            cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
+            //delete [] d_tmp;
         };
     };
-	cudaFree(d_tmp);
-	
-	std::cout<< "merge3 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
+    cudaFree(d_tmp);
 
-	
+
     thrust::host_vector<unsigned long long int> hh(b->mRecCount);
-	thrust::copy(d_hashes.begin(), d_hashes.end(), hh.begin());
-	;
+    thrust::copy(d_hashes.begin(), d_hashes.end(), hh.begin());
+    ;
     char* tmp = new char[max_char(b)*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
-	
+
+    std::cout<< "merge1.5 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+
     //lets merge every column
-	
+
+    //MGPU_MEM(unsigned long long int) cKeys = context3->Malloc<unsigned long long int>(c->mRecCount + b->mRecCount);
+
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
-	
+
         if(b->type[b->columnNames[i]] == 0) {
-		
+
+            //MergePairs(thrust::raw_pointer_cast(h_merge.data()), thrust::raw_pointer_cast(c->h_columns_int[c->columnNames[i]].data()), h_merge.size(),
+            //		   thrust::raw_pointer_cast(hh.data()), thrust::raw_pointer_cast(b->h_columns_int[b->columnNames[i]].data()), b->mRecCount,
+            //		   cKeys->get(), (int_type*)tmp, mgpu::less<int_type>(), *context3);
+
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_int[c->columnNames[i]].begin(), b->h_columns_int[b->columnNames[i]].begin(),
                                  thrust::make_discard_iterator(), (int_type*)tmp);
-            thrust::copy((int_type*)tmp, (int_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_int[c->columnNames[i]].begin());
+            std::cout<< "merge1.6 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+            //thrust::copy((int_type*)tmp, (int_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_int[c->columnNames[i]].begin());
+            memcpy(thrust::raw_pointer_cast(c->h_columns_int[c->columnNames[i]].data()), (int_type*)tmp, (h_merge.size() + b->mRecCount)*int_size);
+            std::cout<< "merge1.7 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
         }
         else if(b->type[b->columnNames[i]] == 1) {
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_float[c->columnNames[i]].begin(), b->h_columns_float[b->columnNames[i]].begin(),
-                                 thrust::make_discard_iterator(), (float_type*)tmp);										 
-            thrust::copy((float_type*)tmp, (float_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_float[c->columnNames[i]].begin());			
-			
+                                 thrust::make_discard_iterator(), (float_type*)tmp);
+            //thrust::copy((float_type*)tmp, (float_type*)tmp + h_merge.size() + b->mRecCount, c->h_columns_float[c->columnNames[i]].begin());
+            memcpy(thrust::raw_pointer_cast(c->h_columns_float[c->columnNames[i]].data()), (float_type*)tmp, (h_merge.size() + b->mRecCount)*float_size);
+
         }
-        else {						
+        else {
             str_merge_by_key(h_merge, hh, c->h_columns_char[c->columnNames[i]], b->h_columns_char[b->columnNames[i]], b->char_size[b->columnNames[i]], tmp);
-            thrust::copy(tmp, tmp + (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]], c->h_columns_char[c->columnNames[i]]);							
+            //thrust::copy(tmp, tmp + (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]], c->h_columns_char[c->columnNames[i]]);
+            memcpy(c->h_columns_char[c->columnNames[i]], tmp, (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]]);
         };
     };
-	
-	std::cout<< "merge4 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
-	
+
+
     //merge the keys
     thrust::merge(h_merge.begin(), h_merge.end(),
                   hh.begin(), hh.end(), (unsigned long long int*)tmp);
@@ -287,12 +300,10 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     h_merge.resize(h_merge.size() + b->mRecCount);
     thrust::copy((unsigned long long int*)tmp, (unsigned long long int*)tmp + cpy_sz, h_merge.begin());
     delete [] tmp;
-	delete [] hashes;
-	
-	std::cout<< "merge5 op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';	
-	
-	
-	
+    delete [] hashes;
+    std::cout<< "merge2 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+
+
     //cout << endl << "end b and c " << b->mRecCount << " " << c->mRecCount << endl;
     //for(int i = 0; i < h_merge.size();i++)
     //cout << "H " << h_merge[i] << endl;
@@ -401,17 +412,17 @@ void count_simple(CudaSet* c)
 void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_hash)
 {
     string countstr;
-	thrust::equal_to<unsigned long long int> binary_pred;
-	thrust::maximum<unsigned long long int> binary_op_max;
-	thrust::minimum<unsigned long long int> binary_op_min;
-	
+    thrust::equal_to<unsigned long long int> binary_pred;
+    thrust::maximum<unsigned long long int> binary_op_max;
+    thrust::minimum<unsigned long long int> binary_op_min;
+
     for(unsigned int i = 0; i < c->columnNames.size(); i++) {
         if(c->grp_type[c->columnNames[i]] == 0) { // COUNT
             countstr = c->columnNames[i];
             break;
         };
     };
-	
+
 
     thrust::host_vector<bool> grp;
     size_t res_count;
@@ -421,7 +432,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
         thrust::adjacent_difference(h_merge.begin(), h_merge.end(), grp.begin());
         res_count = h_merge.size() - thrust::count(grp.begin(), grp.end(), 0);
     };
-	
+
 
     if (c->mRecCount != 0) {
 
@@ -431,8 +442,8 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
 
                 if(c->grp_type[c->columnNames[k]] <= 2) { //sum || avg || count
                     if (c->type[c->columnNames[k]] == 0 ) { // int
-					
-					    
+
+
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
                                               thrust::make_discard_iterator(), tmp);
@@ -486,13 +497,13 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     };
                 }
                 else if(c->grp_type[c->columnNames[k]] == 3) { //no group function
-                    if (c->type[c->columnNames[k]] == 0 ) { // int					
+                    if (c->type[c->columnNames[k]] == 0 ) { // int
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
                                               thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
                         c->h_columns_int[c->columnNames[k]].resize(res_count);
                         thrust::copy(tmp, tmp + res_count, c->h_columns_int[c->columnNames[k]].begin());
-                        delete [] tmp;						
+                        delete [] tmp;
                     }
                     else if (c->type[c->columnNames[k]] == 1 ) { // float
                         float_type* tmp =  new float_type[res_count];
@@ -510,7 +521,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     };
                 };
             };
-		
+
             c->mRecCount = res_count;
         };
 
@@ -520,7 +531,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                 if (c->type[c->columnNames[k]] == 0 ) { // int
                     //create a float column k
                     c->h_columns_float[c->columnNames[k]] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(c->mRecCount);
-					c->d_columns_float[c->columnNames[k]] = thrust::device_vector<float_type>();
+                    c->d_columns_float[c->columnNames[k]] = thrust::device_vector<float_type>();
 
                     thrust::transform(c->h_columns_int[c->columnNames[k]].begin(), c->h_columns_int[c->columnNames[k]].begin() + c->mRecCount,
                                       c->h_columns_int[countstr].begin(), c->h_columns_float[c->columnNames[k]].begin(), float_avg1());
