@@ -37,6 +37,8 @@ Create your data files :
 
 Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create your database files.
 
+Run your queries from a command prompt or use Alenka [JDBC driver](https://github.com/Technica-Corporation/Alenka-JDBC) from Technica-Corporation
+
 
 ##### Step 1 - Load the data files 
 
