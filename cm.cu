@@ -1694,13 +1694,12 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                             res_count = 0;
                         }
                         else {
-                            ContextPtr context1 = CreateCudaDevice(0, NULL, 0);
                             res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()), mRecCount,
                                         thrust::raw_pointer_cast(a->d_columns_int[ref_cols[columnNames[i]]].data()), a->mRecCount,
                                         &aIndicesDevice, &bIndicesDevice,
-                                        mgpu::less<int_type>(), *context1);
+                                        mgpu::less<int_type>(), *context);
                         };
-                        cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;
+                        //cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;
                         f_file.write((char *)&z, 4);
                         f_file.write((char *)&res_count, 8);
                     };
@@ -2398,7 +2397,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         };
         fclose(f);
     };
-
+	
     tmp_table = 0;
     filtered = 0;
 
@@ -2415,6 +2414,10 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if (((typeRef.front()).compare("decimal") == 0) || ((typeRef.front()).compare("int") == 0)) {
             f1 = file_name + "." + nameRef.front() + ".0";
             f = fopen (f1.c_str() , "rb" );
+			if(f == NULL) {
+				cout << "Couldn't find field " << nameRef.front() << endl;
+				exit(0);
+			};
             for(unsigned int j = 0; j < 6; j++)
                 fread((char *)&cnt, 4, 1, f);
             fclose(f);
@@ -2458,9 +2461,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             };
             fclose(f);
         };
-
-
-
+		
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 0;
@@ -2486,12 +2487,13 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             d_columns_char[nameRef.front()] = NULL;
             char_size[nameRef.front()] = sizeRef.front();
         };
-
+		
         nameRef.pop();
         typeRef.pop();
         sizeRef.pop();
         colsRef.pop();
     };
+	
 };
 
 

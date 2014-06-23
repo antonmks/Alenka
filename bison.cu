@@ -2992,7 +2992,6 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
 
 void emit_join(char *s, char *j1, int grp)
 {
-
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
@@ -3011,10 +3010,8 @@ void emit_join(char *s, char *j1, int grp)
         return;
     };
 
-
     queue<string> op_m(op_value);
     queue<string> op_m1(op_value);
-
 
     if(join_tab_cnt > 1) {
         string tab_name;
@@ -3386,9 +3383,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         left->d_columns_int[colname1][cnt_l-1] < right->d_columns_int[colname2][0]) {
                     cout << endl << "skipping after copying " << endl;
                     continue;
-                }
-                else
-                    cout << "JOINING " << left->d_columns_int[colname1][0] << ":" << left->d_columns_int[colname1][cnt_l-1] << " AND " << right->d_columns_int[colname2][0] << ":" << right->d_columns_int[colname2][cnt_r-1] << endl;
+                };
+                //else
+                //    cout << "JOINING " << left->d_columns_int[colname1][0] << ":" << left->d_columns_int[colname1][cnt_l-1] << " AND " << right->d_columns_int[colname2][0] << ":" << right->d_columns_int[colname2][cnt_r-1] << endl;
 
                 //cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 
@@ -3435,7 +3432,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     mgpu::less<int_type>(), *context);
                 };
 
-                cout << "RES " << res_count << " seg " << i << endl;
+                //cout << "RES " << res_count << " seg " << i << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -3593,8 +3590,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 int_type lower_val;
 
 
-                                if(verbose)
-                                    cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
+                               // if(verbose)
+                               //     cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
 
                                 if(!copied) {
                                     if(left->filtered && left->prm_index == 'R') {
@@ -4469,6 +4466,7 @@ void emit_filter(char *s, char *f)
         b->fil_nums = op_nums;
         b->fil_nums_f = op_nums_f;
         b->filtered = 1;
+		b->tmp_table = a->tmp_table;
         if(a->filtered) {
 
             b->source_name = a->source_name;
@@ -4788,6 +4786,7 @@ void clean_queues()
     while(!references.empty()) references.pop();
     while(!references_names.empty()) references_names.pop();
     while(!op_presort.empty()) op_presort.pop();
+	
 
     op_case = 0;
     sel_count = 0;
@@ -4874,8 +4873,6 @@ int execute_file(int ac, char **av)
             exit(1);
         };
 
-        //exit(0);
-
         scan_state = 1;
         std::clock_t start1 = std::clock();
 
@@ -4889,7 +4886,7 @@ int execute_file(int ac, char **av)
         statement_count = 0;
 
         extern FILE *yyin;
-        context = CreateCudaDevice(0, av, verbose);
+        context = CreateCudaDevice(0, NULL, verbose);
         hash_seed = 100;
 
         if(!yyparse()) {
@@ -4909,7 +4906,7 @@ int execute_file(int ac, char **av)
         };
     }
     else {
-        context = CreateCudaDevice(0, av, verbose);
+        context = CreateCudaDevice(0, NULL, verbose);
         hash_seed = 100;
         if(!just_once)
             getline(cin, script);
@@ -5057,7 +5054,7 @@ void alenkaInit(char ** av)
     scan_state = 1;
     statement_count = 0;
     clean_queues();
-    context = CreateCudaDevice(0, av, true);
+    //context = CreateCudaDevice(0, NULL, true);
     printf("Alenka initialised\n");
 }
 

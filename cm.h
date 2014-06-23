@@ -96,6 +96,7 @@ extern unsigned long long int* raw_decomp;
 extern unsigned int raw_decomp_length;
 extern size_t alloced_sz;
 extern void* alloced_tmp;
+extern ContextPtr context;
 
 
 template<typename T>
@@ -386,7 +387,7 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
 unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> op_sel);
 			
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
-uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
+uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 string int_to_string(int number);
