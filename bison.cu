@@ -3254,12 +3254,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     stack<string> exe_type;
     set<string> field_names;
     exe_type.push(f2);
-    for (unsigned int i = 0; i < right->columnNames.size() ; i++ ) {
-        if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2) {
-            field_names.insert(right->columnNames[i]);
+	for(auto it=right->columnNames.begin(); it!=right->columnNames.end();it++) {
+        if (std::find(c->columnNames.begin(), c->columnNames.end(), *it) != c->columnNames.end() || *it == f2) {
+            field_names.insert(*it);
         };
     };
-
 
     right->hostRecCount = right->mRecCount;
     while(start_part < right->segCount) {
@@ -3543,11 +3542,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     };
 
                     offset = c->mRecCount;
-                    if(i == 0 && left->segCount != 1) {
-                        //c->reserve(res_count*(left->segCount+1));
-                    };
-
-
                     queue<string> op_sel1(op_sel_s);
                     c->resize_join(res_count);
                     void* temp;
@@ -3590,8 +3584,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 int_type lower_val;
 
 
-                               // if(verbose)
-                               //     cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
+                                //if(verbose)
+                                //    cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
 
                                 if(!copied) {
                                     if(left->filtered && left->prm_index == 'R') {
@@ -3604,7 +3598,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     };
                                     copied = 1;
                                 };
-
 
                                 CudaSet *t;
                                 if(left->filtered)
@@ -3696,8 +3689,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 else { //strings
                                     thrust::device_ptr<char> d_tmp((char*)temp);
                                     thrust::fill(d_tmp, d_tmp+res_count*left->char_size[op_sel1.front()],0);
-
-
                                     str_gather(thrust::raw_pointer_cast(p_tmp.data()), res_count, (void*)left->d_columns_char[op_sel1.front()],
                                                (void*) thrust::raw_pointer_cast(d_tmp), left->char_size[op_sel1.front()]);
                                     cudaMemcpy( (void*)&c->h_columns_char[op_sel1.front()][offset*c->char_size[op_sel1.front()]], (void*) thrust::raw_pointer_cast(d_tmp),
@@ -3726,13 +3717,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
                             }
                             else { //strings
-
+							
                                 thrust::device_ptr<char> d_tmp((char*)temp);
-                                thrust::sequence(d_tmp, d_tmp+res_count*right->char_size[op_sel1.front()],0,0);
+                                thrust::fill(d_tmp, d_tmp+res_count*right->char_size[op_sel1.front()],0);
                                 str_gather(thrust::raw_pointer_cast(d_res2), res_count, (void*)right->d_columns_char[op_sel1.front()],
                                            (void*) thrust::raw_pointer_cast(d_tmp), right->char_size[op_sel1.front()]);
                                 cudaMemcpy( (void*)&c->h_columns_char[op_sel1.front()][offset*c->char_size[op_sel1.front()]], (void*) thrust::raw_pointer_cast(d_tmp),
                                             c->char_size[op_sel1.front()] * res_count, cudaMemcpyDeviceToHost);
+											
                             };
                         }
                         else {
@@ -3746,12 +3738,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         };
     };
 
-
-
     left->deAllocOnDevice();
     right->deAllocOnDevice();
     c->deAllocOnDevice();
-
 
     varNames[s] = c;
     c->mRecCount = tot_count;
@@ -3761,14 +3750,13 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     if(verbose)
         cout << endl << "tot res " << tot_count << " " << getFreeMem() << endl;
 
-    unsigned int tot_size = 0;
+    size_t tot_size = 0;
     for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
         if(c->type[c->columnNames[i]] <= 1)
             tot_size = tot_size + tot_count*8;
         else
             tot_size = tot_size + tot_count*c->char_size[c->columnNames[i]];
     };
-
 
     if ((getFreeMem() - 300000000) > tot_size) {
         c->maxRecs = tot_count;
@@ -4234,9 +4222,7 @@ void emit_select(char *s, char *f, int ll)
             };
 
             if (ll != 0 && cycle_count > 1  && b->mRecCount > 0) {
-                start3 = std::clock();
                 add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);
-                std::cout<< "add op " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';
             }
             else {
                 //copy b to c
