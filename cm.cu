@@ -1867,9 +1867,11 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     };
 	
 	//clear the varchars
-	for(auto it=columnNames.begin(); it!=columnNames.end();it++) {
-		if(type[*it] == 2) {			
-			memset(h_columns_char[*it], 0, maxRecs*char_size[*it]);
+	
+	//for(auto it=columnNames.begin(); it!=columnNames.end();it++) {
+	for(unsigned int i = 0; i < mColumnCount; i++) {
+		if(type[columnNames[i]] == 2) {			
+			memset(h_columns_char[columnNames[i]], 0, maxRecs*char_size[columnNames[i]]);
 		};
 	};
 
