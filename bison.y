@@ -2831,7 +2831,7 @@ void alenkaInit(char ** av)
     scan_state = 1;
     statement_count = 0;
     clean_queues();
-    //context = CreateCudaDevice(0, NULL, true);
+    context = CreateCudaDevice(0, NULL, true);
     printf("Alenka initialised\n");
 }
 
