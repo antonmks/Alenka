@@ -3284,7 +3284,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         //cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
         right->mRecCount = cnt_r;
 
-        if(right->not_compressed && getFreeMem() < right->mRecCount*max_char(right)*2) {
+        if(right->not_compressed && getFreeMem() < right->mRecCount*maxsz(right)*2) {
             right->CopyToHost(0, right->mRecCount);
             right->deAllocOnDevice();
             if (left->type[colname1]  != 2)

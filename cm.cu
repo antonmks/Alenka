@@ -2998,6 +2998,23 @@ size_t max_tmp(CudaSet* a)
 
 };
 
+size_t maxsz(CudaSet* a)
+{
+    size_t tot_sz = 0;
+    for(unsigned int i = 0; i < a->columnNames.size(); i++) {
+        if(a->type[a->columnNames[i]] == 0) {
+			tot_sz = tot_sz + int_size;
+		}
+        else if(a->type[a->columnNames[i]] == 1) {
+			tot_sz = tot_sz + float_size;
+		}
+		else
+			tot_sz = tot_sz + a->char_size[a->columnNames[i]];
+    };
+	return tot_sz;
+};	
+
+
 
 void setSegments(CudaSet* a, queue<string> cols)
 {
