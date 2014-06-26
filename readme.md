@@ -40,15 +40,7 @@ Run scripts load_orders.sql, load_lineitem.sql and load_customer.sql to create y
 Run your queries from a command prompt or use Alenka [JDBC driver](https://github.com/Technica-Corporation/Alenka-JDBC) from Technica Corporation
 
 
-##### Step 1 - Load the data files 
-
-`O := LOAD 'orders' BINARY AS (o_orderkey{1}:int, o_custkey{2}:int, o_orderdate{5}:int, o_shippriority{8}:int);`
-
-` C := LOAD 'customer' BINARY AS (c_custkey{1}:int, c_mktsegment{7}:varchar(10));`
-
-` L := LOAD 'lineitem' BINARY AS (orderkey{1}:int,  price{6}:decimal, discount{7}:decimal, shipdate{11}:int);`
-
-##### Step 2 - Filter data
+##### Step 1 - Filter data
 
 ` OFI := FILTER orders BY o_orderdate < 19950315;`
 
@@ -56,15 +48,14 @@ Run your queries from a command prompt or use Alenka [JDBC driver](https://githu
 
 ` LF := FILTER lineitem BY shipdate > 19950315;`
 
-##### Step 3 - Join data
+##### Step 2 - Join data
 
 ` OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate,`
 ` o_shippriority AS o_shippriority, price AS price, discount AS discount`
 ` FROM LF JOIN OFI ON orderkey = o_orderkey `
 ` JOIN CF ON o_custkey = c_custkey;`
 
-##### Step 4 - Group data
-
+##### Step 3 - Group data
 
 ` F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, `
 `o_shippriority AS priority,  SUM(price*(1-discount)) AS sum_revenue,
@@ -72,13 +63,13 @@ Run your queries from a command prompt or use Alenka [JDBC driver](https://githu
 `FROM OLC GROUP BY o_orderkey, o_orderdate, o_shippriority;`	
 
 
-##### Step 5 - Order data
+##### Step 4 - Order data
 
 
 `RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;`
 
 
-##### Step 6 - Save the results 
+##### Step 5 - Save the results 
 
 
 `STORE RES INTO 'results.txt' USING ('|') LIMIT 10;`
