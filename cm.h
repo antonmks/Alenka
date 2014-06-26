@@ -377,6 +377,7 @@ size_t max_tmp(CudaSet* a);
 void setSegments(CudaSet* a, queue<string> cols);
 size_t max_char(CudaSet* a, set<string> field_names);
 size_t max_char(CudaSet* a, queue<string> field_names);
+size_t maxsz(CudaSet* a);
 void update_permutation_char(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
