@@ -1,17 +1,20 @@
 /*
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+*
+*    This file is part of Alenka.
+*
+*    Alenka is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    Alenka is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with Alenka.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 
 
@@ -693,17 +696,18 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             cout << "added buffer " << f1 << " " << fileSize << endl;
         };
         // get data from buffers
+		std::clock_t start2 = std::clock();
         if(type[colname] == 0) {
             unsigned int cnt = ((unsigned int*)buffers[f1])[0];
             if(cnt > h_columns_int[colname].size()/8 + 10)
-                h_columns_int[colname].resize(cnt/8 + 10);
-            memcpy(h_columns_int[colname].data(), buffers[f1], cnt+56);
+                h_columns_int[colname].resize(cnt/8 + 10);			
+            //memcpy(h_columns_int[colname].data(), buffers[f1], cnt+56);
         }
         else if(type[colname] == 1) {
             unsigned int cnt = ((unsigned int*)buffers[f1])[0];
             if(cnt > h_columns_float[colname].size()/8 + 10)
                 h_columns_float[colname].resize(cnt/8 + 10);
-            memcpy(h_columns_float[colname].data(), buffers[f1], cnt+56);
+            //memcpy(h_columns_float[colname].data(), buffers[f1], cnt+56);
         }
         else {
             decompress_char(NULL, colname, segNum, offset, buffers[f1]);
@@ -716,7 +720,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             cout << "Error opening " << f1 << " file " << endl;
             exit(0);
         };
-
+	
         if(type[colname] == 0) {
             if(1 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(1);
@@ -884,24 +888,44 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
                 CUDA_SAFE_CALL(cudaMalloc((void **) &s_v, 8));
         };
 
-
-        if(type[colname] == 0) {
-            if(!alloced_switch) {
-                mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[colname].data() + offset), h_columns_int[colname].data(), d_v, s_v);
+		string f1 = load_file_name + "." + colname + "." + int_to_string(segment);
+        if(type[colname] == 0) {						
+            if(!alloced_switch) {			
+				if(buffers.find(f1) == buffers.end()) {
+					mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[colname].data() + offset), h_columns_int[colname].data(), d_v, s_v);
+				}
+				else {
+					mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[colname].data() + offset), buffers[f1], d_v, s_v);
+				};
             }
             else {
-                mRecCount = pfor_decompress(alloced_tmp, h_columns_int[colname].data(), d_v, s_v);
+				if(buffers.find(f1) == buffers.end()) {
+					mRecCount = pfor_decompress(alloced_tmp, h_columns_int[colname].data(), d_v, s_v);
+				}
+				else {
+					mRecCount = pfor_decompress(alloced_tmp, buffers[f1], d_v, s_v);
+				};	
             };
         }
         else if(type[colname] == 1) {
             if(decimal[colname]) {
                 if(!alloced_switch) {
-                    mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[colname].data() + offset) , h_columns_float[colname].data(), d_v, s_v);
+					if(buffers.find(f1) == buffers.end()) {
+						mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[colname].data() + offset) , h_columns_float[colname].data(), d_v, s_v);
+					}
+					else {
+						mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[colname].data() + offset) , buffers[f1], d_v, s_v);
+					};	
                     thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[colname].data() + offset));
                     thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[colname].begin(), long_to_float());
                 }
                 else {
-                    mRecCount = pfor_decompress(alloced_tmp, h_columns_float[colname].data(), d_v, s_v);
+					if(buffers.find(f1) == buffers.end()) {
+						mRecCount = pfor_decompress(alloced_tmp, h_columns_float[colname].data(), d_v, s_v);
+					}
+					else {
+						mRecCount = pfor_decompress(alloced_tmp, buffers[f1], d_v, s_v);
+					};	
                     thrust::device_ptr<long long int> d_col_int((long long int*)alloced_tmp);
                     thrust::device_ptr<float_type> d_col_float((float_type*)alloced_tmp);
                     thrust::transform(d_col_int,d_col_int+mRecCount, d_col_float, long_to_float());
@@ -1257,6 +1281,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
                 thrust::copy(permutation.begin(), permutation.end(), h_permutation);
                 char* t = new char[char_size[colname]*mRecCount];
                 apply_permutation_char_host(h_columns_char[colname], h_permutation, mRecCount, t, char_size[colname]);
+				
                 delete [] h_permutation;
                 thrust::copy(t, t+ char_size[colname]*mRecCount, h_columns_char[colname]);
                 delete [] t;
@@ -1277,6 +1302,8 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
                 compress_char(str, colname, mCount, offset);
             };
         };
+		
+		deAllocColumnOnDevice(colname);
 
 
         if((check_type == 1 && fact_file_loaded) || (check_type == 1 && check_val == 0)) {
@@ -2365,7 +2392,6 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     unsigned int cnt;
     char buffer[4000];
     string str;
-
     prealloc_char_size = 0;
     not_compressed = 0;
     mRecCount = Recs;
@@ -2430,7 +2456,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             fclose(f);
             compTypes[nameRef.front()] = cnt;
         };
-
+		
         //check the references
         f1 = file_name + "." + nameRef.front() + ".refs";
         f = fopen (f1.c_str() , "rb" );
@@ -2780,7 +2806,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 };
             }
             else {
-                if(a->mRecCount) {
+                if(a->mRecCount) {				
                     a->CopyColumnToGpu(fields.front(), segment, count);
                 };
             };

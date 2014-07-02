@@ -1,18 +1,20 @@
 /*
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
+*
+*    This file is part of Alenka.
+*
+*    Alenka is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    Alenka is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with Alenka.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 %{
 
@@ -616,6 +618,7 @@ void order_inplace_host(CudaSet* a, stack<string> exe_type, set<string> field_na
 
 void order_inplace1(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
 {
+
     unsigned int sz = a->mRecCount;
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
     thrust::sequence(permutation, permutation+sz,0,1);
@@ -703,11 +706,8 @@ void order_inplace1(CudaSet* a, stack<string> exe_type, set<string> field_names,
 }
 
 
-
-
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
 {
-
     unsigned int sz = a->mRecCount;
     thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(sz);
     thrust::sequence(permutation, permutation+sz,0,1);
@@ -1050,7 +1050,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             field_names.insert(right->columnNames[i]);
         };
     };
-
+	
     right->hostRecCount = right->mRecCount;
     while(start_part < right->segCount) {
 
@@ -1091,7 +1091,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
         };
 
-
         for (unsigned int i = 0; i < left->segCount; i++) {
 
             if(verbose)
@@ -1128,7 +1127,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             else {
                 left->add_hashed_strings(f1, i);
             };
-
+			
 
             if(!left->filtered) {
                 if (left->type[colname1]  != 2)
@@ -1309,11 +1308,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     cudaFree(temp1);
                 };
 
-                //string sss = s;
-                //cout << " " << tot_count << " " << res_count << endl;
-                //if(sss != "OLC") {
-                //	cout << "RUN " << tot_count << " " << res_count << endl;
-
                 tot_count = tot_count + res_count;
 
                 if(res_count) {
@@ -1331,6 +1325,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                             c->orig_segs[itr->first].insert(*it);
                         };
                     };
+					
+					//if(i == 0 && left->segCount != 1) {
+					//	c->reserve(res_count*(left->segCount+1));
+					//};
 
                     offset = c->mRecCount;
                     queue<string> op_sel1(op_sel_s);
@@ -1338,11 +1336,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     void* temp;
                     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*max_char(c)));
 
-                    bool copied = 0;
                     thrust::host_vector<unsigned int> prm_vh;
                     std::map<string,bool> processed;
-                    bool cmp_type;
-
+					//bool cmp_type, copied = 0;
 
                     //std::clock_t start1 = std::clock();
                     while(!op_sel1.empty()) {
@@ -1359,10 +1355,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
                         cc.push(op_sel1.front());
 
-                        if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
+						if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
                             // copy field's segment to device, gather it and copy to the host
 
-                            if(left->filtered)
+                   /*         if(left->filtered)
                                 cmp_type = varNames[left->source_name]->compTypes[op_sel1.front()];
                             else
                                 cmp_type = left->compTypes[op_sel1.front()];
@@ -1375,9 +1371,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 int_type lower_val;
 
 
-                                //if(verbose)
-                                //    cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
-
+                                if(verbose)
+                                    cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
+								std::clock_t start2 = std::clock();
                                 if(!copied) {
                                     if(left->filtered && left->prm_index == 'R') {
                                         thrust::device_vector<unsigned int> prm_v(res_count);
@@ -1457,10 +1453,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                                       thrust::make_constant_iterator(lower_val), ptr + offset, thrust::plus<int_type>());
                                     thrust::transform(ptr + offset, ptr + offset + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());
                                 };
+								
+								std::cout<< "cpu time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 
                             }
                             else {
-
+*/
                                 allocColumns(left, cc);
                                 copyColumns(left, cc, i, k, 0, 0);
 
@@ -1490,10 +1488,11 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 if(op_sel1.front() != colname1)
                                     left->deAllocColumnOnDevice(op_sel1.front());
                             }
-                        }
-                        else if(std::find(right->columnNames.begin(), right->columnNames.end(), op_sel1.front()) !=  right->columnNames.end()) {
+                        //}  
+						else if(std::find(right->columnNames.begin(), right->columnNames.end(), op_sel1.front()) !=  right->columnNames.end()) {
 
                             //gather
+							std::clock_t start2 = std::clock();
                             if(right->type[op_sel1.front()] == 0) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)temp);
                                 thrust::sequence(d_tmp, d_tmp+res_count,0,0);
@@ -2412,10 +2411,12 @@ void emit_load_binary(const char *s, const char *f, int d)
     fread((char *)&maxRecs, 4, 1, ff);
     fclose(ff);
 
+	
     if(verbose)
         cout << "Reading " << totRecs << " records" << endl;
-
+	
     a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
+	
     a->segCount = segCount;
     a->keep = 1;
     a->name = s;
@@ -2654,7 +2655,7 @@ int execute_file(int ac, char **av)
         std::clock_t start1 = std::clock();
 
         load_vars();
-
+		
         statement_count = 0;
         clean_queues();
 
