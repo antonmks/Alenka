@@ -66,6 +66,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
+		//cout << ss << endl;
 
 
         if(ss.compare("emit sel_name") != 0) {
@@ -319,11 +320,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                         ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(a->d_columns_int[s1_val].data()), (int_type)0,
                                          mgpu::maximum<int_type>(), thrust::raw_pointer_cast(count_diff), *context);
-						cout << "reducing " << endl;
-						//thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_int[s1_val].begin(),
-                        //                      thrust::make_discard_iterator(), count_diff,
-                        //                      head_flag_predicate<bool>(), thrust::maximum<int_type>());
-						cout << "reducing1 " << endl;
                         exe_vectors.push(thrust::raw_pointer_cast(count_diff));
                         exe_type.push("VECTOR");
 
@@ -372,13 +368,17 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 };
             };
 
-            if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("VECTOR F") == 0) {
+            if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("FLOAT") == 0 || ss.compare("VECTOR") == 0 || ss.compare("VECTOR F") == 0) {
 
                 exe_type.push(ss);
                 if (ss.compare("NUMBER") == 0) {
                     exe_nums.push(op_nums.front());
                     op_nums.pop();
                 }
+                if (ss.compare("FLOAT") == 0) {
+                    exe_nums_f.push(op_nums_f.front());
+                    op_nums_f.pop();
+                }				
                 else if (ss.compare("NAME") == 0) {
                     exe_value.push(op_value.front());
                     op_value.pop();
@@ -391,7 +391,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     exe_type.pop();
                     s2 = exe_type.top();
                     exe_type.pop();
-
 
                     if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                         n1 = exe_nums.top();
@@ -647,7 +646,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     else if (s1.compare("NUMBER") == 0 && (s2.compare("VECTOR") || s2.compare("VECTOR F") == 0)) {
                         n1 = exe_nums.top();
                         exe_nums.pop();
-
+						
                         if (s2.compare("VECTOR") == 0 ) {
                             int_type* s3 = exe_vectors.top();
                             exe_vectors.pop();
