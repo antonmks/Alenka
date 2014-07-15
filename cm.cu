@@ -2598,6 +2598,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 {
     mRecCount = 0;
     mColumnCount = 0;
+	flt = 0;
     queue<string> q_cnt(op_sel);
     unsigned int i = 0;
     set<string> field_names;
@@ -2620,50 +2621,52 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
     prealloc_char_size = 0;
 
     i = 0;
-    while(!op_sel.empty() && (std::find(columnNames.begin(), columnNames.end(), op_sel.front()) ==  columnNames.end())) {
+    while(!op_sel.empty()) {
+	
+		if(std::find(columnNames.begin(), columnNames.end(), op_sel.front()) ==  columnNames.end()) {
+			if(std::find(a->columnNames.begin(), a->columnNames.end(), op_sel.front()) !=  a->columnNames.end()) {
+				cols[op_sel.front()] = i;
+				decimal[op_sel.front()] = a->decimal[op_sel.front()];
+				columnNames.push_back(op_sel.front());
+				type[op_sel.front()] = a->type[op_sel.front()];
 
-        if(std::find(a->columnNames.begin(), a->columnNames.end(), op_sel.front()) !=  a->columnNames.end()) {
-            cols[op_sel.front()] = i;
-            decimal[op_sel.front()] = a->decimal[op_sel.front()];
-            columnNames.push_back(op_sel.front());
-            type[op_sel.front()] = a->type[op_sel.front()];
+				if (a->type[op_sel.front()] == 0)  {
+					d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
+					h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+				}
+				else if (a->type[op_sel.front()] == 1) {
+					d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
+					h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+				}
+				else {
+					h_columns_char[op_sel.front()] = NULL;
+					d_columns_char[op_sel.front()] = NULL;
+					char_size[op_sel.front()] = a->char_size[op_sel.front()];
+				};
+				i++;
+			}
+			else if(std::find(b->columnNames.begin(), b->columnNames.end(), op_sel.front()) !=  b->columnNames.end()) {
+				columnNames.push_back(op_sel.front());
+				cols[op_sel.front()] = i;
+				decimal[op_sel.front()] = b->decimal[op_sel.front()];
+				type[op_sel.front()] = b->type[op_sel.front()];
 
-            if (a->type[op_sel.front()] == 0)  {
-                d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
-                h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            }
-            else if (a->type[op_sel.front()] == 1) {
-                d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
-                h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            }
-            else {
-                h_columns_char[op_sel.front()] = NULL;
-                d_columns_char[op_sel.front()] = NULL;
-                char_size[op_sel.front()] = a->char_size[op_sel.front()];
-            };
-            i++;
-        }
-        else if(std::find(b->columnNames.begin(), b->columnNames.end(), op_sel.front()) !=  b->columnNames.end()) {
-            columnNames.push_back(op_sel.front());
-            cols[op_sel.front()] = i;
-            decimal[op_sel.front()] = b->decimal[op_sel.front()];
-            type[op_sel.front()] = b->type[op_sel.front()];
-
-            if (b->type[op_sel.front()] == 0) {
-                d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
-                h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            }
-            else if (b->type[op_sel.front()] == 1) {
-                d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
-                h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            }
-            else {
-                h_columns_char[op_sel.front()] = NULL;
-                d_columns_char[op_sel.front()] = NULL;
-                char_size[op_sel.front()] = b->char_size[op_sel.front()];
-            };
-            i++;
-        }
+				if (b->type[op_sel.front()] == 0) {
+					d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
+					h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+				}
+				else if (b->type[op_sel.front()] == 1) {
+					d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
+					h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+				}
+				else {
+					h_columns_char[op_sel.front()] = NULL;
+					d_columns_char[op_sel.front()] = NULL;
+					char_size[op_sel.front()] = b->char_size[op_sel.front()];
+				};
+				i++;
+			}
+		};	
         op_sel.pop();
     };
 };
