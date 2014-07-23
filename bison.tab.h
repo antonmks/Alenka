@@ -106,7 +106,10 @@
      TABLES = 322,
      TABLE = 323,
      DESCRIBE = 324,
-     DROP = 325
+     DROP = 325,
+     CREATE = 326,
+     BITMAP = 327,
+     INDEX = 328
    };
 #endif
 
@@ -117,7 +120,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 79 "bison.y"
+#line 78 "bison.y"
 
     long long int intval;
     double floatval;
@@ -127,7 +130,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 131 "bison.tab.h"
+#line 134 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

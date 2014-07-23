@@ -18,7 +18,6 @@
 #ifndef STRINGS_H
 #define STRINGS_H
 //---------------------------------------------------------------------------
-#include <thrust/device_ptr.h>
 #include "cm.h"
 //---------------------------------------------------------------------------
 /**
@@ -30,6 +29,7 @@
 * @param len - the input length of string.
 */
 void str_gather_host(unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
+void str_scatter_host(unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
 
 /**
 * JOIN on device static strings

@@ -211,7 +211,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
-                    printf("CMPF1 %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 
@@ -230,7 +229,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-                    printf("CMPF %lld \n" , n1);
 
                     exe_type.push("VECTOR F");
 

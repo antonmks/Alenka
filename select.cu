@@ -517,7 +517,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             if (a->type[s2_val] == 0) {
                                 int_type* t = a->get_int_by_name(s2_val);
                                 exe_type.push("VECTOR");
-                                exe_vectors.push(a->op(t1,t,ss,0));
+                                exe_vectors.push(a->op(t,t1,ss,0));
                             }
                             else {
                                 float_type* t = a->get_float_type_by_name(s2_val);
@@ -584,7 +584,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         };
                     }
                     else if ((s2.compare("VECTOR") == 0 || s2.compare("VECTOR F") == 0 ) && s1.compare("NAME") == 0) {
-
+					
                         s1_val = exe_value.top();
                         exe_value.pop();
 
@@ -607,6 +607,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             }
                         }
                         else {
+						
                             float_type* t = a->get_float_type_by_name(s1_val);
                             if (s2.compare("VECTOR") == 0 ) {
                                 int_type* s3 = exe_vectors.top();

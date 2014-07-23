@@ -262,6 +262,9 @@ public:
     map<string, size_t> char_size;
     thrust::device_vector<unsigned int> prm_d;
     char prm_index; // A - all segments values match, N - none match, R - some may match
+	map<string, map<string, unsigned int> > idx_dictionary_str; //stored in host memory
+	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
+	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
     // to do filters in-place (during joins, groupby etc ops) we need to save a state of several queues's and a few misc. variables:
     char* fil_s;
@@ -298,6 +301,7 @@ public:
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(size_t RecordCount, unsigned int ColumnCount);
+	CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> op_join);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);    
     ~CudaSet();
     void allocColumnOnDevice(string colname, size_t RecordCount);
@@ -334,6 +338,7 @@ public:
     void Display(unsigned int limit, bool binary, bool term);
     void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
     void compress_char(string file_name, string colname, size_t mCount, size_t offset);
+	void compress_int(string file_name, string colname, size_t mCount);
     bool LoadBigFile(FILE* file_p);
     void free();
     bool* logical_and(bool* column1, bool* column2);
@@ -351,6 +356,7 @@ public:
     int_type* op(int_type* column1, int_type d, string op_type, int reverse);
     float_type* op(int_type* column1, float_type d, string op_type, int reverse);
     float_type* op(float_type* column1, float_type d, string op_type,int reverse);
+	void loadIndex(const string index_name, const unsigned int segment, const size_t char_size);
 
 protected:
 
@@ -397,6 +403,8 @@ void insert_records(char* f, char* s);
 void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 bool var_exists(CudaSet* a, string name);
+int file_exist (const char *filename);
+bool check_bitmaps_exist(CudaSet* left, CudaSet* right); 
 
 #endif
 

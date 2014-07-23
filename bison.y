@@ -59,10 +59,9 @@
     void emit_order(char *s, char *f, int e, int ll = 0);
     void emit_group(char *s, char *f, int e);
     void emit_select(char *s, char *f, int ll);
-    void emit_join(char *s, char *j1, int grp);
+    void emit_join(char *s, char *j1, int grp, int start_seg, int end_seg);
     void emit_join_tab(char *s, char tp);
     void emit_distinct();
-    void emit_join();
     void emit_sort(char* s, int p);
     void emit_presort(char* s);
     void emit_display(char *s, char* sep);
@@ -71,6 +70,7 @@
     void emit_describe_table(char* table_name);
     void emit_drop_table(char* table_name);
     void process_error(int severity, string err);
+	void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char *rcolumn, char *lid, char *rid);
 
 %}
 
@@ -156,6 +156,9 @@
 %token TABLE
 %token DESCRIBE
 %token DROP
+%token CREATE
+%token BITMAP
+%token INDEX
 
 %type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -183,7 +186,7 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | NAME ASSIGN ORDER NAME BY opt_val_list
 {  emit_order($1, $4, $6);}
 | NAME ASSIGN SELECT expr_list FROM NAME join_list opt_group_list
-{  emit_join($1,$6,$7); }
+{  emit_join($1,$6,$7,0,-1); }
 | STORE NAME INTO FILENAME USING '(' FILENAME ')' opt_limit
 {  emit_store($2,$4,$7); }
 | STORE NAME INTO FILENAME opt_limit BINARY sort_def
@@ -199,7 +202,9 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | SHOW TABLES
 {  emit_show_tables();}
 | DROP TABLE NAME
-{  emit_drop_table($3);};
+{  emit_drop_table($3);}
+| CREATE BITMAP INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
+{  emit_create_bitmap_index($4, $6, $8, $10, $19, $23);};
 
 
 expr:
@@ -223,7 +228,6 @@ NAME { emit_name($1); }
 | MIN '(' expr ')' { emit_min(); }
 | MAX '(' expr ')' { emit_max(); }
 | DISTINCT expr { emit_distinct(); }
-| JOIN { emit_join(); }
 ;
 
 expr:
@@ -311,14 +315,10 @@ sort_def: { /* nil */
 #include "filter.h"
 #include "select.h"
 #include "merge.h"
-#include "zone_map.h"
-#include "atof.h"
-#include "sstream"
 #include "sorts.cu"
 #include "callbacks.h"
 
 using namespace mgpu;
-using namespace thrust::placeholders;
 using namespace std;
 
 size_t int_size = sizeof(int_type);
@@ -349,7 +349,7 @@ map<string, map<string, bool> > used_vars;
 bool save_dict = 0;
 ContextPtr context;
 
-void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name);
+void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name, int start_segment, int end_segment);
 void filter_op(char *s, char *f, unsigned int segment);
 
 void check_used_vars()
@@ -361,6 +361,7 @@ void check_used_vars()
         while(!vars.empty()) {
             if(s.count(vars.front()) != 0) {
                 used_vars[(*it).first][vars.front()] = 1;
+				//cout << "var " << (*it).first << " " << vars.front() << endl;
             };
             vars.pop();
         }
@@ -450,12 +451,6 @@ void emit_distinct()
     op_type.push("DISTINCT");
     distinct_cnt++;
 }
-
-void emit_join()
-{
-
-}
-
 
 void emit_or()
 {
@@ -776,10 +771,150 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
     return os;
 }
 
-
-void emit_join(char *s, char *j1, int grp)
+void star_join(char *s, string j1)
 {
-    statement_count++;
+    //CUDPPResult result;
+    map<string,bool> already_copied;
+    queue<string> op_left;
+
+    CudaSet* left = varNames.find(j1)->second;
+
+    queue<string> op_sel;
+    queue<string> op_sel_as;
+    for(int i=0; i < sel_count; i++) {
+		if(std::find(left->columnNames.begin(), left->columnNames.end(), op_value.front()) != left->columnNames.end())
+			op_left.push(op_value.front());
+        op_sel.push(op_value.front());
+        op_value.pop();
+        op_sel_as.push(op_value.front());
+        op_value.pop();
+    };
+    queue<string> op_sel_s(op_sel);
+    queue<string> op_sel_s_as(op_sel_as);
+    queue<string> op_g(op_value);
+
+    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as, op_join);
+
+    bool str_join = 0;
+    string f1, f2;
+    map<string, unsigned int> tab_map;
+
+    for(unsigned int i = 0; i < join_tab_cnt; i++) {
+
+        f1 = op_g.front();
+        op_g.pop();
+        f2 = op_g.front();
+        op_g.pop();
+
+        queue<string> op_jj(op_join);
+        for(unsigned int z = 0; z < (join_tab_cnt-1) - i; z++)
+            op_jj.pop();
+
+        size_t rcount;
+        queue<string> op_vd(op_g);
+        queue<string> op_alt(op_sel);
+        unsigned int jc = join_col_cnt;
+        while(jc) {
+            jc--;
+            op_vd.pop();
+            op_alt.push(op_vd.front());
+            op_vd.pop();
+        };
+
+        tab_map[op_jj.front()] = i;
+
+        CudaSet* right = varNames.find(op_jj.front())->second;
+		if(!check_bitmaps_exist(left, right)) {
+			cout << "Required bitmap on table " << op_jj.front() << " doesn't exists" << endl;
+			exit(0);		
+		};
+		//cout << "table " << op_jj.front() << " " << f2 << endl;
+		
+
+        queue<string> second;
+        while(!op_alt.empty()) {
+            if(f2.compare(op_alt.front()) != 0 && std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
+                second.push(op_alt.front());
+				//cout << "col " << op_alt.front() << endl;
+				op_left.push(f1);
+            };
+            op_alt.pop();
+        };
+        if(!second.empty()) {
+            load_queue(second, right, str_join, "", rcount, 0, right->segCount, 0,0); // put all used columns into GPU
+		};
+    };
+
+	
+    //thrust::device_vector<bool> d_star(left->maxRecs);
+	
+
+  
+    for (unsigned int i = 0; i < left->segCount; i++) {
+
+		if(verbose)
+			cout << "segment " << i << " " << getFreeMem() <<  endl;
+			
+		//queue<string> q_left(op_left);	
+		//while(!q_left.empty()) {
+		//	cout << "C " << q_left.front() << endl;
+		//	q_left.pop();
+		//};
+		while(!left->fil_value.empty()) {
+			//cout << "F " << left->fil_value.front() << endl;
+			//load the index
+			if(left->fil_value.front().find(".") != string::npos) { 
+				//extract table name and colname from index name				
+				size_t pos1 = left->fil_value.front().find_first_of(".", 0);
+				size_t pos2 = left->fil_value.front().find_first_of(".", pos1+1);
+				cout << "index " << left->fil_value.front() << " " << left->fil_value.front().substr(pos1+1, pos2-pos1-1) << " " << left->fil_value.front().substr(pos2+1, string::npos) << endl;
+				CudaSet* r = varNames.find(left->fil_value.front().substr(pos1+1, pos2-pos1-1))->second;
+				left->loadIndex(left->fil_value.front(), i, r->char_size[left->fil_value.front().substr(pos2+1, string::npos)]);
+			};
+			left->fil_value.pop();
+		};
+
+		exit(0);
+        //thrust::sequence(d_star.begin(), d_star.end(),1,0);
+		
+		//filter the fact table, the results are in prm_d
+
+        /*if(n_cnt) { //gather
+
+            offset = c->mRecCount;
+            c->resize_join(n_cnt);
+            queue<string> op_sel1(op_sel_s);
+
+            while(!op_sel1.empty()) {
+
+            };
+        };*/
+    };
+
+    /*while(!op_join.empty()) {
+        varNames[op_join.front()]->deAllocOnDevice();
+        op_join.pop();
+    };
+
+    varNames[s] = c;
+    c->mRecCount = tot_count;	
+    c->maxRecs = tot_count;
+	
+	if(verbose)
+		cout << endl << "join count " << tot_count << endl;
+		
+		*/
+	
+};
+
+
+
+
+
+void emit_join(char *s, char *j1, int grp, int start_seg, int end_seg)
+{
+	//cout << "emit_join " <<  s << " " << join_tab_cnt << " " << op_join.front() <<  endl;
+	statement_count++;
     if (scan_state == 0) {
         if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
             process_error(2, "Join : couldn't find variable " + string(j1) );
@@ -798,42 +933,46 @@ void emit_join(char *s, char *j1, int grp)
     };
 
     queue<string> op_m(op_value);
-    queue<string> op_m1(op_value);
 
-    if(join_tab_cnt > 1) {
-        string tab_name;
-        for(unsigned int i = 1; i <= join_tab_cnt; i++) {
-
-            if(i == join_tab_cnt)
-                tab_name = s;
-            else
-                tab_name = s + int_to_string(i);
-
-            string j, j2;
-            if(i == 1) {
-                j2 = op_join.front();
-                op_join.pop();
-                j = op_join.front();
-                op_join.pop();
-            }
-            else {
-                if(!op_join.empty()) {
-                    j = op_join.front();
-                    op_join.pop();
-                }
-                else
-                    j = j1;
-                j2 = s + int_to_string(i-1);
-            };
-            emit_multijoin(tab_name, j, j2, i, s);
-            op_value = op_m;
-        };
+	if(check_star_join(j1) && verbose) {
+        cout << "executing star join !! " << endl;
+        star_join(s, j1);
     }
-    else {
-        string j2 = op_join.front();
-        op_join.pop();
-        emit_multijoin(s, j1, j2, 1, s);
-    };
+    else { 
+		if(join_tab_cnt > 1) {
+			string tab_name;
+			for(unsigned int i = 1; i <= join_tab_cnt; i++) {
+
+				if(i == join_tab_cnt)
+					tab_name = s;
+				else
+					tab_name = s + int_to_string(i);
+
+				string j, j2;
+				if(i == 1) {
+					j2 = op_join.front();
+					op_join.pop();
+					j = op_join.front();
+					op_join.pop();
+				}
+				else {
+					if(!op_join.empty()) {
+						j = op_join.front();
+						op_join.pop();
+					}
+					else
+						j = j1;
+					j2 = s + int_to_string(i-1);
+				};
+				emit_multijoin(tab_name, j, j2, i, s, start_seg, end_seg);
+				op_value = op_m;
+			};
+		}	
+		else {			
+			emit_multijoin(s, j1, op_join.front(), 1, s, start_seg, end_seg);
+			op_join.pop();
+		};
+	};	
 
 
     queue<string> op_sel;
@@ -884,8 +1023,7 @@ void emit_join(char *s, char *j1, int grp)
     };
 
 
-
-    clean_queues();
+	clean_queues();
 
     if(stat[s] == statement_count) {
         varNames[s]->free();
@@ -902,8 +1040,9 @@ void emit_join(char *s, char *j1, int grp)
 }
 
 
+thrust::device_vector<int> p_tmp;
 
-void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name)
+void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name, int start_segment, int end_segment)
 {
 
     if(varNames.find(j1) == varNames.end() || varNames.find(j2) == varNames.end()) {
@@ -911,14 +1050,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         if(varNames.find(j1) == varNames.end())
             cout << "Couldn't find j1 " << j1 << endl;
         if(varNames.find(j2) == varNames.end())
-            cout << "Couldn't find j2 " << j2 << endl;
+            cout << "Couldn't find j2 " << j2 << " here " << endl;
 
         return;
     };
 
     CudaSet* left = varNames.find(j1)->second;
     CudaSet* right = varNames.find(j2)->second;
-
+	
     queue<string> op_sel;
     queue<string> op_sel_as;
     for(int i=0; i < sel_count; i++) {
@@ -946,6 +1085,15 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     op_g.pop();
     string f2 = op_g.front();
     op_g.pop();
+	
+	// check if there are join bitmap indexes
+	
+	if(check_bitmaps_exist(left, right)) {
+		cout << "Bitmap join" << endl;
+		exit(0);
+	};	
+	
+	
 
     if (verbose)
         cout << "JOIN " << s <<  " " <<  f1 << " " << f2 << " " << getFreeMem() <<  endl;
@@ -1032,8 +1180,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     left->hostRecCount = left->mRecCount;
 
     size_t cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
-    queue<string> lc(cc);
-    thrust::device_vector<int> p_tmp;
+    queue<string> lc(cc);    
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
     std::vector<int> j_data;
@@ -1087,7 +1234,14 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             };
         };
 
-        for (unsigned int i = 0; i < left->segCount; i++) {
+		int e_segment;
+		if(end_segment == -1) {
+			e_segment  = left->segCount;
+		}
+		else
+			e_segment = end_segment;		
+		
+        for (unsigned int i = start_segment; i < e_segment; i++) {
 
             if(verbose)
                 //cout << "segment " << i <<  '\xd';
@@ -1121,6 +1275,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 copyColumns(left, lc, i, cnt_l);
             }
             else {
+				if(left->filtered) {
+					filter_op(left->fil_s, left->fil_f, i);
+				};
                 left->add_hashed_strings(f1, i);
             };
 			
@@ -1134,7 +1291,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             else {
                 cnt_l = left->mRecCount;
             };
-
 
             if (cnt_l) {
 
@@ -1180,7 +1336,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 if (left->type[colname1] == 2) {
                     thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));
 
-                    //for(int z = 0; z < cnt_r ; z++)
+                   // for(int z = 0; z < cnt_r ; z++)
                     //	cout << " R " << right->d_columns_int[colname2][z] << endl;
 
                     //for(int z = 0; z < cnt_l ; z++)
@@ -1217,7 +1373,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     mgpu::less<int_type>(), *context);
                 };
 
-                //cout << "RES " << res_count << " seg " << i << endl;
+                cout << "RES " << res_count << " seg " << i << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -1339,6 +1495,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                     //std::clock_t start1 = std::clock();
                     while(!op_sel1.empty()) {
 
+						
                         if (processed.find(op_sel1.front()) != processed.end()) {
                             op_sel1.pop();
                             continue;
@@ -1352,112 +1509,9 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                         cc.push(op_sel1.front());
 
 						if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
-                            // copy field's segment to device, gather it and copy to the host
-
-                   /*         if(left->filtered)
-                                cmp_type = varNames[left->source_name]->compTypes[op_sel1.front()];
-                            else
-                                cmp_type = left->compTypes[op_sel1.front()];
-
-                            if ((((left->type[op_sel1.front()] == 0) || ((left->type[op_sel1.front()] == 1) &&
-                                    left->decimal[op_sel1.front()])) && cmp_type == 0) && (op_sel1.front() != colname1) && left->not_compressed == 0) { // do the processing on host
-
-                                void* h;
-                                unsigned int cnt, bits;
-                                int_type lower_val;
-
-
-                                if(verbose)
-                                    cout << "processing " << op_sel1.front() << " " << i << " " << cmp_type << endl;
-								std::clock_t start2 = std::clock();
-                                if(!copied) {
-                                    if(left->filtered && left->prm_index == 'R') {
-                                        thrust::device_vector<unsigned int> prm_v(res_count);
-                                        thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->prm_d.begin(), prm_v.begin());
-                                        prm_vh = prm_v;
-                                    }
-                                    else {
-                                        prm_vh = p_tmp;
-                                    };
-                                    copied = 1;
-                                };
-
-                                CudaSet *t;
-                                if(left->filtered)
-                                    t = varNames[left->source_name];
-                                else
-                                    t = left;
-
-                                t->readSegmentsFromFile(i, op_sel1.front(), 0);
-
-                                if(t->type[op_sel1.front()] == 0) {
-                                    h = t->h_columns_int[op_sel1.front()].data();
-                                }
-                                else {
-                                    h = t->h_columns_float[op_sel1.front()].data();
-                                };
-
-                                cnt = ((unsigned int*)h)[0];
-                                lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
-                                bits = ((unsigned int*)((char*)h + cnt))[8];
-                                //cout << cnt << " " << lower_val << " " << bits << endl;
-
-                                if(bits == 8) {
-                                    if(left->type[op_sel1.front()] == 0) {
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-                                    }
-                                    else {
-                                        int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), ptr + offset);
-                                    };
-                                }
-                                else if(bits == 16) {
-                                    if(left->type[op_sel1.front()] == 0) {
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-                                    }
-                                    else {
-                                        int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), ptr + offset);
-                                    };
-                                }
-                                else if(bits == 32) {
-                                    if(left->type[op_sel1.front()] == 0) {
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-                                    }
-                                    else {
-                                        int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), ptr + offset);
-                                    };
-                                }
-                                else if(bits == 64) {
-                                    if(left->type[op_sel1.front()] == 0) {
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-                                    }
-                                    else {
-                                        int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-                                        thrust::gather(prm_vh.begin(), prm_vh.end(), (int_type*)((unsigned int*)h + 6), ptr + offset);
-                                    };
-                                };
-
-                                if(left->type[op_sel1.front()] == 0) {
-                                    thrust::transform(c->h_columns_int[op_sel1.front()].begin() + offset, c->h_columns_int[op_sel1.front()].begin() + offset + res_count,
-                                                      thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
-                                }
-                                else {
-                                    int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
-                                    thrust::transform(ptr + offset, ptr + offset + res_count,
-                                                      thrust::make_constant_iterator(lower_val), ptr + offset, thrust::plus<int_type>());
-                                    thrust::transform(ptr + offset, ptr + offset + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());
-                                };
-								
-								std::cout<< "cpu time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
-
-                            }
-                            else {
-*/
                                 allocColumns(left, cc);
                                 copyColumns(left, cc, i, k, 0, 0);
-
+								
                                 //gather
                                 if(left->type[op_sel1.front()] == 0) {
                                     thrust::device_ptr<int_type> d_tmp((int_type*)temp);
@@ -1484,7 +1538,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                 if(op_sel1.front() != colname1)
                                     left->deAllocColumnOnDevice(op_sel1.front());
                             }
-                        //}  
 						else if(std::find(right->columnNames.begin(), right->columnNames.end(), op_sel1.front()) !=  right->columnNames.end()) {
 
                             //gather
@@ -1552,7 +1605,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
     };
 
-
     if(right->tmp_table == 1) {
         right->free();
         varNames.erase(j2);
@@ -1564,7 +1616,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
         };
 
     };
-
     if(stat[j1] == statement_count) {
         left->free();
         varNames.erase(j1);
@@ -2158,6 +2209,69 @@ void emit_case()
     */
 }
 
+void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char *rcolumn, char *lid, char *rid)
+{
+	statement_count++;	
+	if (scan_state == 0) {		
+		emit_name(rcolumn);
+		emit_sel_name(rcolumn);
+		emit_name(lid);
+		emit_name(rid);
+		emit_eq();
+		emit_join_tab(rtable,'I');	
+		check_used_vars();		
+		stat["BITMAP"] = std::numeric_limits<unsigned int>::max();
+		stat[rtable] = std::numeric_limits<unsigned int>::max();
+		stat[ltable] = std::numeric_limits<unsigned int>::max();
+	}	
+	else {
+		CudaSet* left = varNames.find(ltable)->second;		
+		for(int i = 0; i < left->segCount; i++) {
+			emit_name(rcolumn);
+			emit_sel_name(rcolumn);
+			emit_name(lid);
+			emit_name(rid);
+			emit_eq();
+			emit_join_tab(rtable,'I');
+			emit_join("BITMAP", ltable, 0, i, i+1);			
+			CudaSet* res = varNames.find("BITMAP")->second;		
+			
+			thrust::host_vector<unsigned int> s_tmp = p_tmp;
+			string str = std::string(ltable) + std::string(".") + std::string(rtable) + std::string(".") + std::string(rcolumn) + std::string(".") + int_to_string(i);
+			
+            if(res->type[rcolumn] == 0) {
+                int_type* d_tmp = new int_type[res->mRecCount];
+                thrust::scatter(res->h_columns_int[rcolumn].begin(), res->h_columns_int[rcolumn].begin() + res->mRecCount,
+								s_tmp.begin(), d_tmp);
+                thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_int[rcolumn].begin());
+				delete [] d_tmp;
+				cout << "int1 " << endl;
+				res->compress_int(str, rcolumn, res->mRecCount);
+				cout << "int2 " << endl;
+            }
+            else if(res->type[rcolumn] == 1) {
+                float_type* d_tmp = new float_type[res->mRecCount];
+                thrust::scatter(res->h_columns_float[rcolumn].begin(), res->h_columns_float[rcolumn].begin() + res->mRecCount,
+								s_tmp.begin(), d_tmp);
+                thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_float[rcolumn].begin());				
+				delete [] d_tmp;				
+            }
+            else { //strings							
+                char* d_tmp = new char[res->mRecCount*res->char_size[rcolumn]];
+				memset(d_tmp, 0, res->mRecCount*res->char_size[rcolumn]);
+                str_scatter_host(thrust::raw_pointer_cast(s_tmp.data()), res->mRecCount, (void*)res->h_columns_char[rcolumn],
+                                (void*)d_tmp, res->char_size[rcolumn]);							
+				memcpy(res->h_columns_char[rcolumn], d_tmp, res->mRecCount*res->char_size[rcolumn]);		
+				cout << "copied " << res->mRecCount	<< endl;			
+				delete [] d_tmp;				
+				res->compress_char(str, rcolumn, res->mRecCount, 0);
+				
+            };	
+			
+		};	
+	};	
+}
+
 void emit_display(char *f, char* sep)
 {
     statement_count++;
@@ -2560,7 +2674,7 @@ void clean_queues()
     while(!references.empty()) references.pop();
     while(!references_names.empty()) references_names.pop();
     while(!op_presort.empty()) op_presort.pop();
-	
+	while(!join_type.empty()) join_type.pop();
 
     op_case = 0;
     sel_count = 0;

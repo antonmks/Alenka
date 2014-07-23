@@ -1100,8 +1100,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 }
 
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-
-
                     exe_type.push("VECTOR");
                     bool_vectors.push('R'); // later I plan to change implementation of char type so I will leave indexing of char off for now
                 }
