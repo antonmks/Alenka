@@ -261,8 +261,7 @@ expr IS BOOL1 { emit("ISBOOL %d", $3); }
 opt_group_list: { /* nil */
     $$ = 0;
 }
-| GROUP BY val_list { $$ = $3}
-
+| GROUP BY val_list { $$ = $3;}
 
 expr_list:
 expr AS NAME { $$ = 1; emit_sel_name($3);}
@@ -281,7 +280,7 @@ expr { $$ = 1; }
 ;
 
 opt_val_list: { /* nil */
-    $$ = 0
+    $$ = 0;
 }  | val_list;
 
 opt_where:
@@ -299,12 +298,12 @@ JOIN NAME ON expr { $$ = 1; emit_join_tab($2, 'I');}
 | OUTER JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'O'); };
 
 opt_limit: { /* nil */
-    $$ = 0
+    $$ = 0;
 }
 | LIMIT INTNUM { emit_limit($2); };
 
 sort_def: { /* nil */
-    $$ = 0
+    $$ = 0;
 }
 |SORT SEGMENTS BY NAME { emit_sort($4, 0); };
 |SORT SEGMENTS BY NAME PARTITION BY INTNUM { emit_sort($4, $7); };
@@ -1877,6 +1876,7 @@ void emit_select(char *s, char *f, int ll)
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
         cout << "Couldn't find1 " << f << endl;
+        process_error(2, "Couldn't find(1) " + string(f) );
         return;
     };
 
@@ -2652,6 +2652,7 @@ void yyerror(char *s, ...)
 
     fprintf(stderr, "%d: error: ", yylineno);
     cout << yytext << endl;
+    error_cb(1, s);
     //vfprintf(stderr, s, ap);
     //fprintf(stderr, "\n");
 
@@ -2946,14 +2947,25 @@ void alenkaInit(char ** av)
     printf("Alenka initialised\n");
 }
 
+void
+alenkaSetSegSize(long segsize) {
+    process_count = segsize;
+}
 
 void alenkaClose()
 {
     statement_count = 0;
     hash_seed = 100;
 
-    if(alloced_sz)
+    if(alloced_sz) {
         cudaFree(alloced_tmp);
+        alloced_sz = 0;
+    };
+    if(raw_decomp_length) {
+        cudaFree(raw_decomp);
+        raw_decomp_length = 0;
+    };
+    printf("Alenka closed\n");
 }
 
 

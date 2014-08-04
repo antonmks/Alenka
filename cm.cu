@@ -1409,12 +1409,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
 
     cout << "mRecCount=" << mRecCount << " mcount = " << mCount << " term " << term <<  " limit=" << limit << " print_all=" << print_all << endl;
 
-    //map<unsigned int, string> ordered_columnNames;
-    //for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
-    //        ordered_columnNames[it->second] = it->first;
-
     unsigned int cc =0;
-    //for (map<unsigned int, string>::iterator it=ordered_columnNames.begin() ; it != ordered_columnNames.end(); ++it )
     for(unsigned int i = 0; i < columnNames.size(); i++)
     {
         fields[cc] = &(bigbuf[cc*MAXFIELDSIZE]);                        // a hack to avoid malloc overheads     - refine later
@@ -1432,8 +1427,8 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                     sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
                 else {
                     strncpy(fields[j], h_columns_char[columnNames[j]] + (i*char_size[columnNames[j]]), char_size[columnNames[j]]);
-                    //ss.assign(h_columns_char[type_index[j]] + (i*char_size[type_index[j]]), char_size[type_index[j]]);
-                    //fields[j] = (char *) ss.c_str();
+		    if ( char_size[columnNames[j]] > 0)
+                        fields[j][char_size[columnNames[j]] -0] ='\0';		// zero terminate string
                 };
             };
             row_cb(mColumnCount, (char **)fields, (char **)dcolumns);
@@ -1442,7 +1437,6 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
     }
     else {
         queue<string> op_vx;
-        //for (map<string,unsigned int>::iterator it=columnNames.begin() ; it != columnNames.end(); ++it )
         for(unsigned int i = 0; i < columnNames.size(); i++)
             op_vx.push(columnNames[i]);
 
@@ -1477,8 +1471,9 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                     else if (type[columnNames[j]] == 1)
                         sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
                     else {
-                        ss.assign(h_columns_char[columnNames[j]] + (i*char_size[columnNames[j]]), char_size[columnNames[j]]);
-                        fields[j] = (char *) ss.c_str();
+                        strncpy(fields[j], h_columns_char[columnNames[j]] + (i*char_size[columnNames[j]]), char_size[columnNames[j]]);
+		        if ( char_size[columnNames[j]] > 0)
+                            fields[j][char_size[columnNames[j]] -0] ='\0';		// zero terminate string
                     };
                 };
                 row_cb(mColumnCount, (char **)fields, (char**)dcolumns);
