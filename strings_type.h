@@ -18,7 +18,7 @@
 //---------------------------------------------------------------------------
 
 /// Number of turns of the templated functors
-//#define UNROLL_COUNT 40		// now in Makefile
+//#define UNROLL_COUNT 40
 
 /// Static string type 4
 template<unsigned int N, typename T = unsigned char>

@@ -298,7 +298,8 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
 
 
 template< typename T>
-void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
+//void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
+void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host, bool tp)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -440,7 +441,8 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 
 // non sorted compressed fields should have 1,2,4 or 8 byte values for direct operations on compressed values
 template< typename T>
-void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
+//void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
+void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host,  bool tp)
 {
     unsigned int recCount;
     long long int orig_lower_val;
@@ -449,26 +451,26 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     unsigned int fit_count = 0;
     unsigned int comp_type = 0; // FOR
     long long int start_val = 0;
-    bool sorted = 0;
+    //bool sorted = 0;
 
     // check if sorted
 
     if (tp == 0) {
         recCount = source_len/int_size;
         thrust::device_ptr<int_type> s((int_type*)source);
-        sorted = thrust::is_sorted(s, s+recCount);
+        //sorted = thrust::is_sorted(s, s+recCount);
     }
     else {
         recCount = source_len/float_size;
         thrust::device_ptr<long long int> s((long long int*)source);
-        sorted = thrust::is_sorted(s, s+recCount);
+        //sorted = thrust::is_sorted(s, s+recCount);
     };
     //cout << "file " << file_name << " is sorted " << sorted << endl;
 
-    if(sorted) {
-        pfor_delta_compress(source, source_len, file_name, host, tp);
-        return;
-    };
+    //if(sorted) {
+    //    pfor_delta_compress(source, source_len, file_name, host, tp);
+    //    return;
+    //};
 
 
     if (tp == 0) {

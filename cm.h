@@ -26,6 +26,7 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/adjacent_difference.h>
+#include <thrust/binary_search.h>
 #include <thrust/transform.h>
 #include <thrust/partition.h>
 #include <thrust/fill.h>
@@ -88,6 +89,8 @@ extern std::clock_t tot_fil;
 extern bool verbose;
 extern bool save_dict;
 extern bool interactive;
+extern bool ssd;
+extern map<string, char*> index_buffers;
 extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
@@ -243,8 +246,10 @@ extern map<string, map<string, col_data> > data_dict;
 class CudaSet
 {
 public:
-    map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-    map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
+    //map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
+	map<string, thrust::host_vector<int_type> > h_columns_int;
+    //map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
+	map<string, thrust::host_vector<float_type> > h_columns_float;	
     map<string, char*> h_columns_char;
 	/*std::vector<thrust::host_vector<int32_type, pinned_allocator<int32_type> > > h_columns_int32;
 	std::vector<thrust::host_vector<int16_type, pinned_allocator<int16_type> > > h_columns_int16;
@@ -267,8 +272,7 @@ public:
 	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
     // to do filters in-place (during joins, groupby etc ops) we need to save a state of several queues's and a few misc. variables:
-    char* fil_s;
-    char* fil_f;
+    char* fil_s, * fil_f, sort_check;
     queue<string> fil_type,fil_value;
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
@@ -318,6 +322,8 @@ public:
     bool onDevice(string colname);
     CudaSet* copyDeviceStruct();
     void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
+	int_type readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest);
+	int_type readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest);
     void decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
     void CopyColumnToGpu(string colname);
@@ -356,7 +362,7 @@ public:
     int_type* op(int_type* column1, int_type d, string op_type, int reverse);
     float_type* op(int_type* column1, float_type d, string op_type, int reverse);
     float_type* op(float_type* column1, float_type d, string op_type,int reverse);
-	void loadIndex(const string index_name, const unsigned int segment, const size_t char_size);
+	char loadIndex(const string index_name, const unsigned int segment, const size_t char_size);
 
 protected:
 
@@ -405,6 +411,9 @@ void load_col_data(map<string, map<string, col_data> >& data_dict, string file_n
 bool var_exists(CudaSet* a, string name);
 int file_exist (const char *filename);
 bool check_bitmaps_exist(CudaSet* left, CudaSet* right); 
+bool check_bitmap_file_exist(CudaSet* left, CudaSet* right); 
+void check_sort(const string str, const char* rtable, const char* rid);
+void filter_op(const char *s, const char *f, unsigned int segment);
 
 #endif
 

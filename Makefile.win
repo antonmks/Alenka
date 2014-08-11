@@ -10,7 +10,7 @@ alenka : cm.obj merge.obj \
 		 atof.obj cm.obj bison.obj callbacks.obj main.obj 
 
 
-nvcc = nvcc --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
+nvcc = nvcc -D UNROLL_COUNT=40 --compiler-options /bigobj --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
 
 
 callbacks.obj : callbacks.c callbacks.h
