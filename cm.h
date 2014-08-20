@@ -90,6 +90,7 @@ extern bool verbose;
 extern bool save_dict;
 extern bool interactive;
 extern bool ssd;
+extern bool delta;
 extern map<string, char*> index_buffers;
 extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
