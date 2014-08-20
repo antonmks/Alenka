@@ -39,6 +39,7 @@ void str_copy_if(char* source, const size_t mRecCount, char* dest, thrust::devic
 	else if(len  == 100) T_str_copy_if<100>().operator()(source, mRecCount, dest, d_grp);
 	else if(len  == 101) T_str_copy_if<101>().operator()(source, mRecCount, dest, d_grp);
 	else if(len  == 255) T_str_copy_if<255>().operator()(source, mRecCount, dest, d_grp);
+	else if(len  == 1023) T_str_copy_if<1023>().operator()(source, mRecCount, dest, d_grp);
 }
 
 
@@ -127,6 +128,7 @@ void str_grp(char* d_char, const size_t real_count, thrust::device_ptr<bool>& d_
 	else if(len  == 100) T_str_grp<100>().operator()(d_char, real_count, d_group);
 	else if(len  == 101) T_str_grp<101>().operator()(d_char, real_count, d_group);
 	else if(len  == 255) T_str_grp<255>().operator()(d_char, real_count, d_group);
+	else if(len  == 1023) T_str_grp<1023>().operator()(d_char, real_count, d_group);
 }
 
 				 

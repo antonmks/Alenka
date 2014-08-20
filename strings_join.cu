@@ -49,6 +49,7 @@ void str_gather_host(unsigned int* d_int, const size_t real_count, void* d, void
 	else if(len  == 100) T_str_gather_host<100>().operator()(d_int, real_count, d, d_char);
 	else if(len  == 101) T_str_gather_host<101>().operator()(d_int, real_count, d, d_char);
 	else if(len  == 255) T_str_gather_host<255>().operator()(d_int, real_count, d, d_char);
+	else if(len  == 1023) T_str_gather_host<1023>().operator()(d_int, real_count, d, d_char);
 }
 // ---------------------------------------------------------------------------
 
@@ -74,6 +75,7 @@ void str_gather(void* d_int, const size_t real_count, void* d, void* d_char, con
 	else if(len  == 100) T_str_gather<100>().operator()(res, real_count, d, d_char);
 	else if(len  == 101) T_str_gather<101>().operator()(res, real_count, d, d_char);
 	else if(len  == 255) T_str_gather<255>().operator()(res, real_count, d, d_char);
+	else if(len  == 1023) T_str_gather<1023>().operator()(res, real_count, d, d_char);
 }
 
 
