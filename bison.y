@@ -263,6 +263,7 @@ opt_group_list: { /* nil */
 }
 | GROUP BY val_list { $$ = $3;}
 
+
 expr_list:
 expr AS NAME { $$ = 1; emit_sel_name($3);}
 | expr_list ',' expr AS NAME { $$ = $1 + 1; emit_sel_name($5);}
@@ -349,7 +350,6 @@ bool save_dict = 0;
 ContextPtr context;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name, int start_segment, int end_segment);
-void filter_op(char *s, char *f, unsigned int segment);
 
 void check_used_vars()
 {
@@ -747,7 +747,7 @@ bool check_star_join(string j1)
         op_vals.pop();
     };
 
-    if(join_tab_cnt > 1) {
+    if(join_tab_cnt > 0) {
 
         while(op_vals.size()) {
             if (std::find(varNames[j1]->columnNames.begin(), varNames[j1]->columnNames.end(), op_vals.front()) != varNames[j1]->columnNames.end()) {
@@ -758,9 +758,14 @@ bool check_star_join(string j1)
                 return 0;
             };
         };
+		if(join_tab_cnt == 1) {
+			if(!check_bitmap_file_exist(varNames[j1], varNames[op_join.front()])) {
+				return 0;
+			};
+		};	
         return 1;
     }
-    else
+    else 
         return 0;
 }
 
@@ -772,9 +777,11 @@ std::ostream &operator<<(std::ostream &os, const uint2 &x)
 
 void star_join(char *s, string j1)
 {
-    //CUDPPResult result;
+	
     map<string,bool> already_copied;
     queue<string> op_left;
+	
+	std::clock_t start2 = std::clock();
 
     CudaSet* left = varNames.find(j1)->second;
 
@@ -796,7 +803,10 @@ void star_join(char *s, string j1)
 
     bool str_join = 0;
     string f1, f2;
-    map<string, unsigned int> tab_map;
+	map<string, string> key_map;
+	map<string, char> sort_map;
+	map<string, string> r_map;
+	std::clock_t start1;
 
     for(unsigned int i = 0; i < join_tab_cnt; i++) {
 
@@ -804,6 +814,7 @@ void star_join(char *s, string j1)
         op_g.pop();
         f2 = op_g.front();
         op_g.pop();
+		r_map[f1] = f2;
 
         queue<string> op_jj(op_join);
         for(unsigned int z = 0; z < (join_tab_cnt-1) - i; z++)
@@ -820,7 +831,9 @@ void star_join(char *s, string j1)
             op_vd.pop();
         };
 
-        tab_map[op_jj.front()] = i;
+        //tab_map[op_jj.front()] = i;
+		key_map[op_jj.front()] = f1;
+		//cout << "Set " << op_jj.front() << " to " << f1 << endl;
 
         CudaSet* right = varNames.find(op_jj.front())->second;
 		if(!check_bitmaps_exist(left, right)) {
@@ -829,81 +842,292 @@ void star_join(char *s, string j1)
 		};
 		//cout << "table " << op_jj.front() << " " << f2 << endl;
 		
-
-        queue<string> second;
+        queue<string> second;	
         while(!op_alt.empty()) {
             if(f2.compare(op_alt.front()) != 0 && std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
                 second.push(op_alt.front());
-				//cout << "col " << op_alt.front() << endl;
+				//cout << "col " << op_alt.front() << " " << op_jj.front() <<  endl;
 				op_left.push(f1);
             };
             op_alt.pop();
         };
         if(!second.empty()) {
+			right->filtered = 0;
+			right->mRecCount = right->maxRecs;
             load_queue(second, right, str_join, "", rcount, 0, right->segCount, 0,0); // put all used columns into GPU
-		};
+		};				
     };
 
-	
-    //thrust::device_vector<bool> d_star(left->maxRecs);
-	
 
-  
+	queue<string> idx;
+	set<string> already_loaded;		
     for (unsigned int i = 0; i < left->segCount; i++) {
-
+		std::clock_t start2 = std::clock();
 		if(verbose)
 			cout << "segment " << i << " " << getFreeMem() <<  endl;
 			
-		//queue<string> q_left(op_left);	
-		//while(!q_left.empty()) {
-		//	cout << "C " << q_left.front() << endl;
-		//	q_left.pop();
-		//};
-		while(!left->fil_value.empty()) {
-			//cout << "F " << left->fil_value.front() << endl;
+		idx = left->fil_value;	
+		already_loaded.clear();
+		start1 = std::clock();	
+		while(!idx.empty()) {
 			//load the index
-			if(left->fil_value.front().find(".") != string::npos) { 
-				//extract table name and colname from index name				
-				size_t pos1 = left->fil_value.front().find_first_of(".", 0);
-				size_t pos2 = left->fil_value.front().find_first_of(".", pos1+1);
-				cout << "index " << left->fil_value.front() << " " << left->fil_value.front().substr(pos1+1, pos2-pos1-1) << " " << left->fil_value.front().substr(pos2+1, string::npos) << endl;
-				CudaSet* r = varNames.find(left->fil_value.front().substr(pos1+1, pos2-pos1-1))->second;
-				left->loadIndex(left->fil_value.front(), i, r->char_size[left->fil_value.front().substr(pos2+1, string::npos)]);
+			if(idx.front().find(".") != string::npos && (already_loaded.find(idx.front()) == already_loaded.end())) { 
+				//extract table name and colname from index name	
+				already_loaded.insert(idx.front());	
+				size_t pos1 = idx.front().find_first_of(".", 0);
+				size_t pos2 = idx.front().find_first_of(".", pos1+1);				
+				CudaSet* r = varNames.find(idx.front().substr(pos1+1, pos2-pos1-1))->second;
+				char a;
+				a = left->loadIndex(idx.front(), i, r->char_size[idx.front().substr(pos2+1, string::npos)]);
+				sort_map[idx.front().substr(pos1+1, pos2-pos1-1)] = a;
 			};
-			left->fil_value.pop();
+			idx.pop();
 		};
+		std::cout<< "filter load " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 
-		exit(0);
-        //thrust::sequence(d_star.begin(), d_star.end(),1,0);
+		left->filtered = 0;
+		size_t cnt_c = 0;
+		allocColumns(left, left->fil_value);		
+		copyColumns(left, left->fil_value, i, cnt_c);		
+		bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left, i);				
+        thrust::device_ptr<bool> star((bool*)res);
+		size_t cnt = thrust::count(star, star + (unsigned int)left->mRecCount, 1);
+		cout << "res " << cnt << " out of " << left->mRecCount << endl;
+		thrust::host_vector<unsigned int> prm_vh(cnt);
+		thrust::device_vector<unsigned int> prm_v(cnt);
+		thrust::host_vector<unsigned int> prm_tmp(cnt);
+		thrust::device_vector<unsigned int> prm_tmp_d(cnt);
+		//std::cout<< "seg filter " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+				
+        if(cnt) { //gather
 		
-		//filter the fact table, the results are in prm_d
-
-        /*if(n_cnt) { //gather
-
-            offset = c->mRecCount;
-            c->resize_join(n_cnt);
+			//start1 = std::clock();	
+			left->prm_d.resize(cnt);
+			thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)left->mRecCount-1),
+							star, left->prm_d.begin(), thrust::identity<bool>());	
+			thrust::device_free(star);					
+			prm_vh = left->prm_d;
+			
+            size_t offset = c->mRecCount;
+            c->resize_join(cnt);
             queue<string> op_sel1(op_sel_s);
+            void* temp;
+            CUDA_SAFE_CALL(cudaMalloc((void **) &temp, cnt*max_char(c)));
+            CudaSet *t;
+            unsigned int cnt1, bits;
+            int_type lower_val;	
+			thrust::device_vector<unsigned int> output(cnt);											
+			//std::cout<< "seg start " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 
             while(!op_sel1.empty()) {
+				
+				if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
+					//out << "Left " << op_sel1.front() << endl;					
+										
+                    if(left->filtered)
+                        t = varNames[left->source_name];
+                    else
+                       t = left;
 
+					if(left->type[op_sel1.front()] <= 1) {					
+
+						if(ssd && !interactive) {
+							//start1 = std::clock();									
+							lower_val = t->readSsdSegmentsFromFile(i, op_sel1.front(), offset, prm_vh, c);							
+							//std::cout<<  "SSD L SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
+						}
+						else {
+							t->readSegmentsFromFile(i, op_sel1.front(), 0);
+							void* h;
+							
+							if(!interactive) {
+								if(left->type[op_sel1.front()] == 0) 
+									h = t->h_columns_int[op_sel1.front()].data();
+								else	
+									h = t->h_columns_float[op_sel1.front()].data();
+							}
+							else {
+								string ff = t->load_file_name + "." + op_sel1.front()+ "." + int_to_string(i);
+								h = buffers[ff];
+							};	
+							cnt1 = ((unsigned int*)h)[0];
+							lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
+							bits = ((unsigned int*)((char*)h + cnt1))[8];
+							//cout << cnt1 << " " << lower_val << " " << bits << " " << left->type[op_sel1.front()] << endl;
+						
+							if(bits == 8) {			
+								if(left->type[op_sel1.front()] == 0) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+								}
+								else {
+									int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), ptr + offset);
+								};	                         
+							}
+							else if(bits == 16) {
+								if(left->type[op_sel1.front()] == 0) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+								}
+								else {
+									int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), ptr + offset);
+								};	
+							}	
+							else if(bits == 32) {
+								if(left->type[op_sel1.front()] == 0) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+								}
+								else {
+									int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), ptr + offset);
+								}
+							}
+							else if(bits == 64) {
+								if(left->type[op_sel1.front()] == 0) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+								}
+								else {
+									int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
+									thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), ptr + offset);
+								};
+							};
+						};
+						
+						//cout << "lower_val bits " << lower_val << " " << bits << endl;
+						if(left->type[op_sel1.front()] == 0) 
+							thrust::transform( c->h_columns_int[op_sel1.front()].begin() + offset,  c->h_columns_int[op_sel1.front()].begin() + offset + cnt, 
+												thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());	
+						else {	
+							int_type* ptr = (int_type*)c->h_columns_float[op_sel1.front()].data();
+                            thrust::transform(ptr + offset, ptr + offset + cnt,
+                                              thrust::make_constant_iterator(lower_val), ptr + offset, thrust::plus<int_type>());
+                            thrust::transform(ptr + offset, ptr + offset + cnt, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());	
+						};		
+
+					}
+					else { //gather string. There are no strings in fact tables.
+					
+					};
+				}
+				else {
+				
+					for(map<string, string>::iterator it = key_map.begin(); it != key_map.end(); it++) {
+						CudaSet* r = varNames.find(it->first)->second;
+						if(std::find(r->columnNames.begin(), r->columnNames.end(), op_sel1.front()) !=  r->columnNames.end()) {
+							//cout << "Right " << op_sel1.front() << " " << it->first << " " << key_map[it->first] << endl;
+							
+                            if(left->filtered)
+                                t = varNames[left->source_name];
+                            else
+                                t = left;
+
+							if(ssd && !interactive) {		
+								//start1 = std::clock();									
+								lower_val = t->readSsdSegmentsFromFileR(i, key_map[it->first], prm_vh, prm_tmp);							
+								//std::cout<<  "SSD R SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;		
+							}
+							else {
+
+								t->readSegmentsFromFile(i, key_map[it->first], 0);		
+								void* h;
+								if(!interactive) {
+									h = t->h_columns_int[key_map[it->first]].data();
+								}
+								else {
+									string ff = t->load_file_name + "." + key_map[it->first] + "." + int_to_string(i);
+									h = buffers[ff];
+								};	
+								cnt1 = ((unsigned int*)h)[0];
+								lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
+								bits = ((unsigned int*)((char*)h + cnt1))[8];
+							   // cout << cnt1 << " " << lower_val << " " << bits << endl;														
+						
+
+								if(bits == 8) {								
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), prm_tmp.begin());
+								}
+								else if(bits == 16) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned short int*)((unsigned int*)h + 6), prm_tmp.begin());								
+								}	
+								else if(bits == 32) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), prm_tmp.begin());
+								}
+								else if(bits == 64) {
+									thrust::gather(prm_vh.begin(), prm_vh.end(),  (int_type*)((unsigned int*)h + 6), prm_tmp.begin());
+								};								
+							};							
+			
+
+							if(lower_val != 1)
+								thrust::transform(prm_tmp.begin(), prm_tmp.end(), thrust::make_constant_iterator(lower_val-1), prm_tmp.begin(), thrust::plus<unsigned int>());	
+							if(sort_map[r->source_name] == '1') { // sorted consecutive starting with 1 dimension keys
+								prm_tmp_d = prm_tmp;		
+								//cout << "PATH 1 " << endl;
+							}
+							else {							
+								//cout << "PATH 2 " << r->source_name << endl;
+								output = prm_tmp;									
+								
+								if(r->d_columns_int[r_map[key_map[it->first]]].size() == 0) {
+									r->d_columns_int[r_map[key_map[it->first]]].resize(r->maxRecs);
+									r->CopyColumnToGpu(r_map[key_map[it->first]]);									
+								};	
+								
+								thrust::lower_bound(r->d_columns_int[r_map[key_map[it->first]]].begin(), r->d_columns_int[r_map[key_map[it->first]]].end(),
+													output.begin(), output.end(),
+													prm_tmp_d.begin());								
+							};			
+
+                            if(r->type[op_sel1.front()] == 0) {
+                                thrust::device_ptr<int_type> d_tmp((int_type*)temp);
+                                thrust::sequence(d_tmp, d_tmp+cnt,0,0);
+                                thrust::gather(prm_tmp_d.begin(), prm_tmp_d.end(), r->d_columns_int[op_sel1.front()].begin(), d_tmp);
+                                thrust::copy(d_tmp, d_tmp + cnt, c->h_columns_int[op_sel1.front()].begin() + offset);
+                            }
+                            else if(r->type[op_sel1.front()] == 1) {
+                                thrust::device_ptr<float_type> d_tmp((float_type*)temp);
+                                thrust::sequence(d_tmp, d_tmp+cnt,0,0);
+                                thrust::gather(prm_tmp_d.begin(), prm_tmp_d.end(), r->d_columns_float[op_sel1.front()].begin(), d_tmp);
+                                thrust::copy(d_tmp, d_tmp + cnt, c->h_columns_float[op_sel1.front()].begin() + offset);
+                            }
+                            else { //strings	
+                                thrust::device_ptr<char> d_tmp((char*)temp);
+                                thrust::fill(d_tmp, d_tmp+cnt*r->char_size[op_sel1.front()],0);	
+                                str_gather(thrust::raw_pointer_cast(prm_tmp_d.data()), cnt, (void*)r->d_columns_char[op_sel1.front()],
+                                           (void*) thrust::raw_pointer_cast(d_tmp), r->char_size[op_sel1.front()]);										   
+                                cudaMemcpy( (void*)&c->h_columns_char[op_sel1.front()][offset*c->char_size[op_sel1.front()]], (void*) thrust::raw_pointer_cast(d_tmp),
+                                            c->char_size[op_sel1.front()] * cnt, cudaMemcpyDeviceToHost);											
+                            };
+							break;
+						};
+					};
+					
+				};
+				op_sel1.pop();
+				//std::cout<<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
             };
-        };*/
+			cudaFree(temp);
+        };	
+		//std::cout<< "SEG " << i << " "  <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
     };
+	
+	
+    //if(verbose)
+    //    std::cout<< "star join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+	
 
-    /*while(!op_join.empty()) {
+    while(!op_join.empty()) {
         varNames[op_join.front()]->deAllocOnDevice();
         op_join.pop();
     };
 
     varNames[s] = c;
-    c->mRecCount = tot_count;	
-    c->maxRecs = tot_count;
+    c->maxRecs = c->mRecCount;
 	
 	if(verbose)
-		cout << endl << "join count " << tot_count << endl;
+		cout << endl << "join count " << c->mRecCount << endl;
 		
-		*/
-	
+
 };
 
 
@@ -933,8 +1157,9 @@ void emit_join(char *s, char *j1, int grp, int start_seg, int end_seg)
 
     queue<string> op_m(op_value);
 
-	if(check_star_join(j1) && verbose) {
-        cout << "executing star join !! " << endl;
+	if(check_star_join(j1)) {
+		if(verbose)
+			cout << "executing star join !! " << endl;
         star_join(s, j1);
     }
     else { 
@@ -1087,10 +1312,10 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 	
 	// check if there are join bitmap indexes
 	
-	if(check_bitmaps_exist(left, right)) {
-		cout << "Bitmap join" << endl;
-		exit(0);
-	};	
+	//if(check_bitmaps_exist(left, right)) {
+	//	cout << "Bitmap join" << endl;
+	//	exit(0);
+	//};	
 	
 	
 
@@ -1216,6 +1441,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
         //cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
         right->mRecCount = cnt_r;
+		
+		if(thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].end()) && right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
+			right->sort_check = '1';
+		else 
+			right->sort_check = '0';
+
 
         if(right->not_compressed && getFreeMem() < right->mRecCount*maxsz(right)*2) {
             right->CopyToHost(0, right->mRecCount);
@@ -1246,7 +1477,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 //cout << "segment " << i <<  '\xd';
                 cout << "segment " << i <<  endl;
             j_data.clear();
-            std::clock_t start2 = std::clock();
 
             //for (set<unsigned int>::iterator it = left->ref_joins[colInd1][i].begin(); it != left->ref_joins[colInd1][i].end(); it++) {
             //	cout << "seg match " << *it << endl;
@@ -1255,20 +1485,18 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             //for (set<unsigned int>::iterator it = right->orig_segs[left->ref_sets[colInd1]].begin(); it != right->orig_segs[left->ref_sets[colInd1]].end(); it++) {
             //	cout << "right segs " << *it << endl;
             //};
-
-
-            if(left->ref_joins[colname1][i].size() && right->orig_segs[left->ref_sets[colname1]].size()) {
-                set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
-                                 right->orig_segs[left->ref_sets[colname1]].begin(), right->orig_segs[left->ref_sets[colname1]].end(),
-                                 std::back_inserter(j_data));
-                if(j_data.empty()) {
-                    cout << "skipping a segment " << endl;
-                    continue;
-                };
-
-            };
-
-
+			if(!left->ref_joins.empty() && !right->orig_segs.empty()) {
+				if(left->ref_joins[colname1][i].size() && right->orig_segs[left->ref_sets[colname1]].size()) {
+					set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
+									right->orig_segs[left->ref_sets[colname1]].begin(), right->orig_segs[left->ref_sets[colname1]].end(),
+									std::back_inserter(j_data));
+					if(j_data.empty()) {
+						cout << "skipping a segment " << endl;
+						continue;
+					};
+				};
+			};	
+			
             cnt_l = 0;
             if (left->type[colname1]  != 2) {
                 copyColumns(left, lc, i, cnt_l);
@@ -1329,17 +1557,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
                 //cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 
-
                 char join_kind = join_type.front();
 
                 if (left->type[colname1] == 2) {
                     thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));
 
-                   // for(int z = 0; z < cnt_r ; z++)
-                    //	cout << " R " << right->d_columns_int[colname2][z] << endl;
+                    //for(int z = 0; z < cnt_r ; z++)
+                    	//cout << " R " << right->d_columns_int[colname2][z] << endl;
 
                     //for(int z = 0; z < cnt_l ; z++)
-                    //	cout << " L " << left->d_columns_int[colname1][z] << endl;
+                    	//cout << " L " << left->d_columns_int[colname1][z] << endl;
 
 
                     res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
@@ -1372,7 +1599,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     mgpu::less<int_type>(), *context);
                 };
 
-                cout << "RES " << res_count << " seg " << i << endl;
+                //cout << "RES " << res_count << " seg " << i << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -1876,7 +2103,7 @@ void emit_select(char *s, char *f, int ll)
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
         cout << "Couldn't find1 " << f << endl;
-        process_error(2, "Couldn't find(1) " + string(f) );
+		 process_error(2, "Couldn't find(1) " + string(f) );
         return;
     };
 
@@ -2019,7 +2246,6 @@ void emit_select(char *s, char *f, int ll)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-        //std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
         op_s = op_v2;
 
         while(!op_s.empty() && a->mRecCount != 0 && a->not_compressed) {
@@ -2030,7 +2256,7 @@ void emit_select(char *s, char *f, int ll)
             };
             op_s.pop();
         };
-
+		
         if(a->mRecCount) {
             if (ll != 0) {
                 order_inplace(a, op_v2, field_names, 1);
@@ -2244,10 +2470,13 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
                 thrust::scatter(res->h_columns_int[rcolumn].begin(), res->h_columns_int[rcolumn].begin() + res->mRecCount,
 								s_tmp.begin(), d_tmp);
                 thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_int[rcolumn].begin());
+				
+				for(int z = 0; z < 10; z++)
+				cout << "SG " << i << " " << rcolumn << " " <<  res->h_columns_int[rcolumn][z] << endl;
+				
 				delete [] d_tmp;
-				cout << "int1 " << endl;
 				res->compress_int(str, rcolumn, res->mRecCount);
-				cout << "int2 " << endl;
+				check_sort(str, rtable, rid);
             }
             else if(res->type[rcolumn] == 1) {
                 float_type* d_tmp = new float_type[res->mRecCount];
@@ -2261,11 +2490,10 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
 				memset(d_tmp, 0, res->mRecCount*res->char_size[rcolumn]);
                 str_scatter_host(thrust::raw_pointer_cast(s_tmp.data()), res->mRecCount, (void*)res->h_columns_char[rcolumn],
                                 (void*)d_tmp, res->char_size[rcolumn]);							
-				memcpy(res->h_columns_char[rcolumn], d_tmp, res->mRecCount*res->char_size[rcolumn]);		
-				cout << "copied " << res->mRecCount	<< endl;			
+				memcpy(res->h_columns_char[rcolumn], d_tmp, res->mRecCount*res->char_size[rcolumn]);					
 				delete [] d_tmp;				
 				res->compress_char(str, rcolumn, res->mRecCount, 0);
-				
+				check_sort(str, rtable, rid);
             };	
 			
 		};	
@@ -2637,10 +2865,8 @@ void emit_describe_table(char* table_name)
             };
         };
     };
-
     return;
 }
-
 
 
 void yyerror(char *s, ...)
@@ -2652,11 +2878,14 @@ void yyerror(char *s, ...)
 
     fprintf(stderr, "%d: error: ", yylineno);
     cout << yytext << endl;
-    error_cb(1, s);
+	error_cb(1, s);
     //vfprintf(stderr, s, ap);
     //fprintf(stderr, "\n");
+}
 
-
+void
+alenkaSetSegSize(long segsize) {
+ process_count = segsize;
 }
 
 void clean_queues()
@@ -2729,6 +2958,8 @@ int execute_file(int ac, char **av)
 
     process_count = 6200000;
     verbose = 0;
+	ssd = 0;
+	delta = 0;
     total_buffer_size = 0;
 
     for (int i = 1; i < ac; i++) {
@@ -2738,6 +2969,13 @@ int execute_file(int ac, char **av)
         else if(strcmp(av[i],"-v") == 0) {
             verbose = 1;
         }
+        else if(strcmp(av[i],"-delta") == 0) {
+            delta = 1;
+        }		
+        else if(strcmp(av[i],"-ssd") == 0) {
+            ssd = 1;
+			cout << "ssd " << endl;
+        }		
         else if(strcmp(av[i],"-i") == 0) {
             interactive = 1;
             break;
@@ -2846,6 +3084,9 @@ int execute_file(int ac, char **av)
             buffers.erase(buffer_names.front());
             buffer_names.pop();
         };
+		for(map<string, char*>::iterator it = index_buffers.begin(); it != index_buffers.end();it++) {
+			cudaFreeHost(it->second);
+        };
 
     };
     if(save_dict)
@@ -2947,25 +3188,21 @@ void alenkaInit(char ** av)
     printf("Alenka initialised\n");
 }
 
-void
-alenkaSetSegSize(long segsize) {
-    process_count = segsize;
-}
 
 void alenkaClose()
 {
     statement_count = 0;
     hash_seed = 100;
 
-    if(alloced_sz) {
-        cudaFree(alloced_tmp);
-        alloced_sz = 0;
-    };
-    if(raw_decomp_length) {
-        cudaFree(raw_decomp);
-        raw_decomp_length = 0;
-    };
-    printf("Alenka closed\n");
+    if(alloced_sz){
+		cudaFree(alloced_tmp);
+		alloced_sz = 0;
+	};
+	if(raw_decomp_length) {
+		cudaFree(raw_decomp);
+		raw_decomp_length = 0;
+	};
+	printf("Alenka closed\n");
 }
 
 

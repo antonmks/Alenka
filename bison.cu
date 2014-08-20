@@ -3690,7 +3690,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                 //cout << "segment " << i <<  '\xd';
                 cout << "segment " << i <<  endl;
             j_data.clear();
-            std::clock_t start2 = std::clock();
 
             //for (set<unsigned int>::iterator it = left->ref_joins[colInd1][i].begin(); it != left->ref_joins[colInd1][i].end(); it++) {
             //	cout << "seg match " << *it << endl;
@@ -3699,20 +3698,18 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             //for (set<unsigned int>::iterator it = right->orig_segs[left->ref_sets[colInd1]].begin(); it != right->orig_segs[left->ref_sets[colInd1]].end(); it++) {
             //	cout << "right segs " << *it << endl;
             //};
-
-
-            if(left->ref_joins[colname1][i].size() && right->orig_segs[left->ref_sets[colname1]].size()) {
-                set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
-                                 right->orig_segs[left->ref_sets[colname1]].begin(), right->orig_segs[left->ref_sets[colname1]].end(),
-                                 std::back_inserter(j_data));
-                if(j_data.empty()) {
-                    cout << "skipping a segment " << endl;
-                    continue;
-                };
-
-            };
-
-
+			if(!left->ref_joins.empty() && !right->orig_segs.empty()) {
+				if(left->ref_joins[colname1][i].size() && right->orig_segs[left->ref_sets[colname1]].size()) {
+					set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
+									right->orig_segs[left->ref_sets[colname1]].begin(), right->orig_segs[left->ref_sets[colname1]].end(),
+									std::back_inserter(j_data));
+					if(j_data.empty()) {
+						cout << "skipping a segment " << endl;
+						continue;
+					};
+				};
+			};	
+			
             cnt_l = 0;
             if (left->type[colname1]  != 2) {
                 copyColumns(left, lc, i, cnt_l);
@@ -3773,17 +3770,16 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
                 //cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 
-
                 char join_kind = join_type.front();
 
                 if (left->type[colname1] == 2) {
                     thrust::device_ptr<int_type> d_col_r((int_type*)thrust::raw_pointer_cast(right->d_columns_int[colname2].data()));
 
-                   // for(int z = 0; z < cnt_r ; z++)
-                    //	cout << " R " << right->d_columns_int[colname2][z] << endl;
+                    //for(int z = 0; z < cnt_r ; z++)
+                    	//cout << " R " << right->d_columns_int[colname2][z] << endl;
 
                     //for(int z = 0; z < cnt_l ; z++)
-                    //	cout << " L " << left->d_columns_int[colname1][z] << endl;
+                    	//cout << " L " << left->d_columns_int[colname1][z] << endl;
 
 
                     res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(d_col), cnt_l,
@@ -3816,7 +3812,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     mgpu::less<int_type>(), *context);
                 };
 
-                cout << "RES " << res_count << " seg " << i << endl;
+                //cout << "RES " << res_count << " seg " << i << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -4463,7 +4459,6 @@ void emit_select(char *s, char *f, int ll)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-        //std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
         op_s = op_v2;
 
         while(!op_s.empty() && a->mRecCount != 0 && a->not_compressed) {
@@ -4474,7 +4469,7 @@ void emit_select(char *s, char *f, int ll)
             };
             op_s.pop();
         };
-
+		
         if(a->mRecCount) {
             if (ll != 0) {
                 order_inplace(a, op_v2, field_names, 1);
@@ -5177,6 +5172,7 @@ int execute_file(int ac, char **av)
     process_count = 6200000;
     verbose = 0;
 	ssd = 0;
+	delta = 0;
     total_buffer_size = 0;
 
     for (int i = 1; i < ac; i++) {
@@ -5186,6 +5182,9 @@ int execute_file(int ac, char **av)
         else if(strcmp(av[i],"-v") == 0) {
             verbose = 1;
         }
+        else if(strcmp(av[i],"-delta") == 0) {
+            delta = 1;
+        }		
         else if(strcmp(av[i],"-ssd") == 0) {
             ssd = 1;
 			cout << "ssd " << endl;

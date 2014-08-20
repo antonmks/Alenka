@@ -444,43 +444,44 @@ template< typename T>
 //void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
 void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host,  bool tp)
 {
-    unsigned int recCount;
+    unsigned int recCount = source_len/int_size;
     long long int orig_lower_val;
     long long int orig_upper_val;
     unsigned int  bits;
     unsigned int fit_count = 0;
     unsigned int comp_type = 0; // FOR
     long long int start_val = 0;
-    //bool sorted = 0;
+    bool sorted = 0;
 
     // check if sorted
 
+	
+	if(delta) {
+		if (tp == 0) {
+			thrust::device_ptr<int_type> s((int_type*)source);
+			sorted = thrust::is_sorted(s, s+recCount);
+		}
+		else {
+			recCount = source_len/float_size;
+			thrust::device_ptr<long long int> s((long long int*)source);
+			sorted = thrust::is_sorted(s, s+recCount);
+		};
+		//cout << "file " << file_name << " is sorted " << sorted << endl;
+
+		if(sorted) {
+			pfor_delta_compress(source, source_len, file_name, host, tp);
+			return;
+		};
+	};	
+
+
     if (tp == 0) {
-        recCount = source_len/int_size;
         thrust::device_ptr<int_type> s((int_type*)source);
-        //sorted = thrust::is_sorted(s, s+recCount);
-    }
-    else {
-        recCount = source_len/float_size;
-        thrust::device_ptr<long long int> s((long long int*)source);
-        //sorted = thrust::is_sorted(s, s+recCount);
-    };
-    //cout << "file " << file_name << " is sorted " << sorted << endl;
-
-    //if(sorted) {
-    //    pfor_delta_compress(source, source_len, file_name, host, tp);
-    //    return;
-    //};
-
-
-    if (tp == 0) {
-        thrust::device_ptr<int_type> s((int_type*)source);
-
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
-        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
+        cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
@@ -490,7 +491,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
-        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
 

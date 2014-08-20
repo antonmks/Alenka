@@ -32,7 +32,6 @@
 #include <unistd.h>
 #endif
 
-
 using namespace std;
 
 size_t total_count = 0, total_max;
@@ -42,7 +41,7 @@ unsigned int process_count;
 size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
 bool verbose;
-bool interactive, ssd;
+bool interactive, ssd, delta;
 void* d_v = NULL;
 void* s_v = NULL;
 queue<string> op_sort;
@@ -1553,7 +1552,7 @@ using namespace mgpu;
 void CudaSet::Display(unsigned int limit, bool binary, bool term)
 {
 #define MAXCOLS 128
-#define MAXFIELDSIZE 128
+#define MAXFIELDSIZE 1400
 
     //-- This should/will be converted to an array holding pointers of malloced sized structures--
     char    bigbuf[MAXCOLS * MAXFIELDSIZE];
@@ -2127,7 +2126,6 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 	};
 
 
-    //while (count < process_count && fgets(line, 1000, file_p) != NULL) {
     while (count < process_count && fgets(line, 2000, file_p) != NULL) {
         strtok(line, "\n");
         current_column = 0;
@@ -3493,10 +3491,8 @@ void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCoun
 
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len)
 {
-    str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);
-	
+    str_gather_host(permutation, RecCount, (void*)key, (void*)res, len);	
 }
-
 
 
 void filter_op(const char *s, const char *f, unsigned int segment)
@@ -3513,7 +3509,6 @@ void filter_op(const char *s, const char *f, unsigned int segment)
     else {
         if(verbose)
             cout << "FILTER " << s << " " << f << " " << getFreeMem() << '\xd';
-
 
         b = varNames[s];
         b->name = s;
