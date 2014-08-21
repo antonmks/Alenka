@@ -26,7 +26,7 @@ IBM BLU Box :
 
 Alenka Box
 
-1 x Intel Pentium G620 (2 cores, 2.6 GHz)
+1 x Intel i3-4130 (2 cores, 3.4 GHz)
 
 4 x 4 GB DDR3 
 
@@ -83,7 +83,7 @@ warm execution :
 
 IBM BlU **1,59** sec.
 
-Alenka **1,48** sec.
+Alenka **1,17** sec.
 
 As we can see, Alenka runs the query faster on a decidedly inferior hardware. There several Alenka features
 that allow this kind of performance : 
