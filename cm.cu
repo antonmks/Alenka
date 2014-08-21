@@ -859,7 +859,6 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             cout << "added buffer " << f1 << " " << fileSize << endl;
         };
         // get data from buffers
-		std::clock_t start2 = std::clock();
         if(type[colname] == 0) {
             unsigned int cnt = ((unsigned int*)buffers[f1])[0];
             if(cnt > h_columns_int[colname].size()/8 + 10)
@@ -888,9 +887,9 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         if(type[colname] == 0) {
             if(1 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(1);
-            fread(h_columns_int[colname].data(), 4, 1, f);
+            fread(h_columns_int[colname].data(), 4, 1, f);			
             unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];
-            if(cnt > h_columns_int[colname].size() + 10)
+            if(cnt+10 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
@@ -904,7 +903,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
                 h_columns_float[colname].resize(1);
             fread(h_columns_float[colname].data(), 4, 1, f);
             unsigned int cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
-            if(cnt > h_columns_float[colname].size() + 10)
+            if(cnt+10 > h_columns_float[colname].size())
                 h_columns_float[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
