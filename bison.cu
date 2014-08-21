@@ -2561,6 +2561,9 @@ bool scan_state = 0;
 map<string, map<string, bool> > used_vars;
 bool save_dict = 0;
 ContextPtr context;
+void* p_tmp1 = NULL;
+bool set_p = 0;
+int p_sz = 0;
 
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name, int start_segment, int end_segment);
 
@@ -3477,8 +3480,6 @@ void emit_join(char *s, char *j1, int grp, int start_seg, int end_seg)
 }
 
 
-thrust::device_vector<int> p_tmp;
-
 void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_name, int start_segment, int end_segment)
 {
 
@@ -3632,6 +3633,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
     };
 	
     right->hostRecCount = right->mRecCount;
+	
+	thrust::device_vector<int> p_tmp;
     while(start_part < right->segCount) {
 
         bool rsz = 1;
@@ -3683,7 +3686,7 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 		}
 		else
 			e_segment = end_segment;		
-		
+			
         for (unsigned int i = start_segment; i < e_segment; i++) {
 
             if(verbose)
@@ -4015,6 +4018,15 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             //std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
     };
+	
+	if(set_p) {
+		if(p_tmp1)
+			cudaFree(p_tmp1);
+		cudaMalloc((void **) &p_tmp1, 4*p_tmp.size());
+		thrust::device_ptr<int> d_tmp((int*)p_tmp1);
+		p_sz = p_tmp.size();
+		thrust::copy(p_tmp.begin(), p_tmp.end(), d_tmp);
+	};	
 
     left->deAllocOnDevice();
     right->deAllocOnDevice();
@@ -4063,7 +4075,6 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
 
     if(verbose)
         std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-
 
 }
 
@@ -4665,6 +4676,7 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
 	}	
 	else {
 		CudaSet* left = varNames.find(ltable)->second;		
+		set_p = 1;
 		for(int i = 0; i < left->segCount; i++) {
 			emit_name(rcolumn);
 			emit_sel_name(rcolumn);
@@ -4675,7 +4687,12 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
 			emit_join("BITMAP", ltable, 0, i, i+1);			
 			CudaSet* res = varNames.find("BITMAP")->second;		
 			
-			thrust::host_vector<unsigned int> s_tmp = p_tmp;
+			thrust::host_vector<unsigned int> s_tmp(p_sz);
+			thrust::device_ptr<int> d_tmp((int*)p_tmp1);
+			thrust::copy(d_tmp, d_tmp + p_sz, s_tmp.begin());
+			thrust::device_free(d_tmp);
+			p_tmp1 = 0;
+			
 			string str = std::string(ltable) + std::string(".") + std::string(rtable) + std::string(".") + std::string(rcolumn) + std::string(".") + int_to_string(i);
 			
             if(res->type[rcolumn] == 0) {
@@ -4683,10 +4700,6 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
                 thrust::scatter(res->h_columns_int[rcolumn].begin(), res->h_columns_int[rcolumn].begin() + res->mRecCount,
 								s_tmp.begin(), d_tmp);
                 thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_int[rcolumn].begin());
-				
-				for(int z = 0; z < 10; z++)
-				cout << "SG " << i << " " << rcolumn << " " <<  res->h_columns_int[rcolumn][z] << endl;
-				
 				delete [] d_tmp;
 				res->compress_int(str, rcolumn, res->mRecCount);
 				check_sort(str, rtable, rid);
@@ -4710,6 +4723,7 @@ void emit_create_bitmap_index(char *index_name, char *ltable, char *rtable, char
             };	
 			
 		};	
+		set_p = 0;
 	};	
 }
 
