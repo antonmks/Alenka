@@ -576,7 +576,7 @@ void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
         void *d;
         cudaMalloc((void **) &d, RecCount*char_size[colname]);        
         if (d_columns_char[colname] != NULL) {
-			cudaMemcpy( d, (void*)d_columns_char[colname], char_size[colname] * mRecCount, cudaMemcpyDeviceToDevice);			
+			cudaMemcpy( d, (void*)d_columns_char[colname], char_size[colname] * (RecCount-mRecCount), cudaMemcpyDeviceToDevice);			
             cudaFree(d_columns_char[colname]);		
 		};	
 		d_columns_char[colname] = (char*)d;		
@@ -883,14 +883,15 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             cout << "Error opening " << f1 << " file " << endl;
             exit(0);
         };
+		
 	
         if(type[colname] == 0) {
             if(1 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(1);
             fread(h_columns_int[colname].data(), 4, 1, f);
             unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];
-            if(cnt > h_columns_int[colname].size()/8 + 10)
-                h_columns_int[colname].resize(cnt/8 + 10);
+            if(cnt > h_columns_int[colname].size() + 10)
+                h_columns_int[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
                 char buf[1024];
@@ -903,8 +904,8 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
                 h_columns_float[colname].resize(1);
             fread(h_columns_float[colname].data(), 4, 1, f);
             unsigned int cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
-            if(cnt > h_columns_float[colname].size()/8 + 10)
-                h_columns_float[colname].resize(cnt/8 + 10);
+            if(cnt > h_columns_float[colname].size() + 10)
+                h_columns_float[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
                 char buf[1024];
@@ -987,8 +988,9 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
     d_columns_int[colname].resize(real_count);
     thrust::copy(d_int2, d_int2+real_count, d_columns_int[colname].begin());
 
-    if(!alloced_switch)
-        str_gather(d_int, real_count, d, d_columns_char[colname] + offset*len, len);
+	if(!alloced_switch) {
+        str_gather(d_int, real_count, d, d_columns_char[colname] + offset*len, len);		
+	}	
     else
         str_gather(d_int, real_count, d, alloced_tmp, len);
 
@@ -1058,7 +1060,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
 				}
 				else {
 					mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[colname].data() + offset), buffers[f1], d_v, s_v);
-				};
+				};				
             }
             else {
 				if(buffers.find(f1) == buffers.end()) {
@@ -3173,11 +3175,11 @@ size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt)
 {
     set<string> uniques;
-
     if(a->filtered) { //filter the segment
         if(flt) {
-            filter_op(a->fil_s, a->fil_f, segment);
+            filter_op(a->fil_s, a->fil_f, segment);			
 		};
+		
         if(rsz && a->mRecCount) {
             queue<string> fields1(fields);			
             while(!fields1.empty()) {
@@ -3201,8 +3203,8 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                 };
             }
             else {
-                if(a->mRecCount) {								
-                    a->CopyColumnToGpu(fields.front(), segment, count);						
+                if(a->mRecCount) {							
+                    a->CopyColumnToGpu(fields.front(), segment, count);	
 	            };
             };
             uniques.insert(fields.front());
@@ -3258,9 +3260,9 @@ void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_si
                            t->d_columns_int[colname].begin(), a->d_columns_int[colname].begin() + offset);
 
         }
-        else {
+        else {			
             str_gather((void*)thrust::raw_pointer_cast(a->prm_d.data()), g_size,
-                       alloced_tmp, (void*)(a->d_columns_char[colname] + offset*a->char_size[colname]), (unsigned int)a->char_size[colname] );			   
+                       alloced_tmp, (void*)(a->d_columns_char[colname] + offset*a->char_size[colname]), (unsigned int)a->char_size[colname] );			   					   					   					   
         };
         if(a->d_columns_int.find(colname) != a->d_columns_int.end())
             thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size,
@@ -3616,9 +3618,9 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
         if(right->segCount == 1) { //need to partition it. Not compressed.
             right->segCount = ((tot_size*2 )/getFreeMem())+1;
             //right->segCount = 8;
-            cout << "seg count " << right->segCount << endl;
+            //cout << "seg count " << right->segCount << endl;
             right->maxRecs = (right->mRecCount/right->segCount)+1;
-            cout << "max recs " << right->maxRecs << endl;
+            //cout << "max recs " << right->maxRecs << endl;
             return 1;
         }
         else { //compressed
@@ -4065,7 +4067,6 @@ bool check_bitmap_file_exist(CudaSet* left, CudaSet* right)
 	
 	
 	if(cols.size() == 0) {
-		cout << "cols " << right->name << " " << right->fil_value.size() << endl;
 		bitmaps_exist = 0;
 	};	
 	while(cols.size() ) {

@@ -1441,15 +1441,12 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, str_join, rcount, start_part, start_part+r_parts, rsz);
             start_part = start_part+r_parts;
         };
-
-        //cout << "loaded " << cnt_r << " " << getFreeMem() << endl;
         right->mRecCount = cnt_r;
 		
 		if(thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].end()) && right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
 			right->sort_check = '1';
 		else 
 			right->sort_check = '0';
-
 
         if(right->not_compressed && getFreeMem() < right->mRecCount*maxsz(right)*2) {
             right->CopyToHost(0, right->mRecCount);
@@ -1465,7 +1462,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
             else {
                 order_inplace(right, exe_type, field_names, 1);
             };
-        };
+        };		
+
 
 		int e_segment;
 		if(end_segment == -1) {
@@ -1602,7 +1600,8 @@ void emit_multijoin(string s, string j1, string j2, unsigned int tab, char* res_
                                     mgpu::less<int_type>(), *context);
                 };
 
-                //cout << "RES " << res_count << " seg " << i << endl;
+				if(verbose)
+					cout << "RES " << res_count << " seg " << i << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
