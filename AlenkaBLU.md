@@ -79,17 +79,26 @@ Alenka :
     R1 := ORDER R BY d_year1 ASC, s_city1 ASC, p_brand2 ASC;		 	 
     STORE R1 INTO 'ss43.txt' USING ('|');
 
-warm execution :
+*warm execution* :
 
-IBM BlU **1,59** sec.
+IBM BlU - **1,59** sec.
 
-Alenka **1,17** sec.
+Alenka - **1,17** sec.
 
 As we can see, Alenka runs the query faster on a decidedly inferior hardware. There several Alenka features
 that allow this kind of performance : 
 
 - bitmap join indexes on dimension columns
-- use of SSD acceleration allowing to read only needed records from SSD drive as opposed to reading entire blocks/decompressing/selecting records
+
+      Filtering bitmaps is fast.Executing "AND" operation on bitmap indexes using gpu is even faster :
+
+    `thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, dev_ptr1, thrust::logical_and<bool>());`
+
+- use of SSD acceleration allowing to read only needed records from SSD drive as opposed to reading entire blocks 	and decompressing/gathering records
+ 
+ 	For example if we need to 'gather' just 25,000 records, it would be faster to read 25,000 4k blocks from SSD drive than to read entire 100,000,000 of 4 byte records segment from the same SSD drive (500 ms versus 1 second)   
+ 
+- 
 - ability to operate on compressed records.
 
 References :
