@@ -98,7 +98,7 @@ that allow this kind of performance :
  
  	For example if we need to 'gather' just 25,000 records, it would be faster to read 25,000 4k blocks from SSD drive than to read entire 100,000,000 of 4 byte records segment from the same SSD drive (500 ms versus 1 second)   
  
-- 
+ 
 - ability to operate on compressed records.
 
 References :
