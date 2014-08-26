@@ -294,7 +294,7 @@ public:
     map<string, unsigned int> type; // 0 - integer, 1-float_type, 2-char
     map<string, bool> decimal; // column is decimal - affects only compression
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
-    map<string, unsigned int> cols; // column positions in a file
+    map<unsigned int, string> cols; // column positions in a file
 	
 	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
 	//but just boolean indicators.
