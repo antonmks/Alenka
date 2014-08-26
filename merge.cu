@@ -13,7 +13,6 @@
  */
 
 #include "merge.h"
-#include "zone_map.h"
 
 using namespace std;
 
@@ -27,7 +26,7 @@ void process_error(int severity, string err);	// this should probably live in a 
 #define BIG_CONSTANT(x) (x##LLU)
 #endif // !defined(_MSC_VER)
 
-
+unsigned int hash_seed;
 
 struct float_avg
 {
@@ -43,21 +42,6 @@ struct float_avg1
     }
 };
 
-
-/*struct float_avg  : public binary_function<float_type,int_type,float_type>
-{
-  __host__ __device__ float_type operator()(const float_type &lhs, const int_type &rhs) const {return lhs/(float_type)rhs;}
-}; // end not_equal_to
-*/
-
-
-
-
-
-//typedef thrust::device_vector<int_type>::iterator    IntIterator;
-//typedef thrust::tuple<IntIterator,IntIterator> IteratorTuple;
-//typedef thrust::zip_iterator<IteratorTuple> ZipIterator;
-unsigned int hash_seed = 100;
 thrust::host_vector<unsigned long long int> h_merge;
 
 using namespace std;
@@ -66,10 +50,8 @@ using namespace thrust::placeholders;
 
 void create_c(CudaSet* c, CudaSet* b)
 {
-    map<string,unsigned int>::iterator it;
     c->not_compressed = 1;
     c->segCount = 1;
-
     c->columnNames = b->columnNames;
     h_merge.clear();
     c->cols = b->cols;
@@ -99,6 +81,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
          vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
          vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a)
 {
+
     if (c->columnNames.empty()) {
         // create d_columns and h_columns
         create_c(c,b);
@@ -126,10 +109,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     for(unsigned int z = 0; z < cycle_sz; z++) {
         if(b->type[opv[z]] == 0) {  //int
-            //for(int i = 0; i < b->mRecCount; i++) {
-            //sum[i*cycle_sz + z] = MurmurHash64A(&b->h_columns_int[opv[z]][i], 8, hash_seed);
             memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_int[opv[z]].data()), b->mRecCount*8);
-            //};
         }
         else if(b->type[opv[z]] == 2) {  //string
             for(int i = 0; i < b->mRecCount; i++) {
@@ -138,8 +118,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
         }
         else {  //float
             process_error(2, "No group by on float/decimal columns ");
-            //cout << "No group by on float/decimal columns " << endl;
-            //exit(0);
         };
     };
 
@@ -162,26 +140,18 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
         if(b->type[b->columnNames[i]] == 0) {
-            //int_type* d_tmp = new int_type[b->mRecCount];
             thrust::device_ptr<int_type> d_tmp_int((int_type*)d_tmp);
             thrust::gather(v.begin(), v.end(), b->d_columns_int[b->columnNames[i]].begin(), d_tmp_int);
             thrust::copy(d_tmp_int, d_tmp_int + b->mRecCount, b->h_columns_int[b->columnNames[i]].begin());
-            //delete [] d_tmp;
         }
         else if(b->type[b->columnNames[i]] == 1) {
-            //float_type* d_tmp = new float_type[b->mRecCount];
             thrust::device_ptr<float_type> d_tmp_float((float_type*)d_tmp);
             thrust::gather(v.begin(), v.end(), b->d_columns_float[b->columnNames[i]].begin(), d_tmp_float);
             thrust::copy(d_tmp_float, d_tmp_float + b->mRecCount, b->h_columns_float[b->columnNames[i]].begin());
-            //delete [] d_tmp;
         }
         else {
-            //char* d_tmp = new char[b->mRecCount*b->char_size[b->columnNames[i]]];
-            //thrust::device_ptr<char> d_tmp_char((char*)d_tmp);
             str_gather((void*)thrust::raw_pointer_cast(v.data()), b->mRecCount, b->d_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
-            //memcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]]);
             cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
-            //delete [] d_tmp;
         };
     };
     cudaFree(d_tmp);
@@ -193,12 +163,9 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     //lets merge every column
 
-    //MGPU_MEM(unsigned long long int) cKeys = context3->Malloc<unsigned long long int>(c->mRecCount + b->mRecCount);
-
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
         if(b->type[b->columnNames[i]] == 0) {
-
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_int[c->columnNames[i]].begin(), b->h_columns_int[b->columnNames[i]].begin(),

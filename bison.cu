@@ -2985,11 +2985,6 @@ bool check_star_join(string j1)
         return 0;
 }
 
-std::ostream &operator<<(std::ostream &os, const uint2 &x)
-{
-    os << x.x << ", " << x.y;
-    return os;
-}
 
 void star_join(char *s, string j1)
 {

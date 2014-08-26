@@ -772,11 +772,6 @@ bool check_star_join(string j1)
         return 0;
 }
 
-std::ostream &operator<<(std::ostream &os, const uint2 &x)
-{
-    os << x.x << ", " << x.y;
-    return os;
-}
 
 void star_join(char *s, string j1)
 {
@@ -2974,6 +2969,7 @@ int execute_file(int ac, char **av)
 	ssd = 0;
 	delta = 0;
     total_buffer_size = 0;
+	hash_seed = 100;
 
     for (int i = 1; i < ac; i++) {
         if(strcmp(av[i],"-l") == 0) {
@@ -3027,7 +3023,6 @@ int execute_file(int ac, char **av)
 
         extern FILE *yyin;
         context = CreateCudaDevice(0, NULL, verbose);
-        hash_seed = 100;
 
         if(!yyparse()) {
             if(verbose)
@@ -3046,8 +3041,7 @@ int execute_file(int ac, char **av)
         };
     }
     else {
-        context = CreateCudaDevice(0, NULL, verbose);
-        hash_seed = 100;
+        context = CreateCudaDevice(0, NULL, verbose);        
         if(!just_once)
             getline(cin, script);
 
@@ -3205,7 +3199,6 @@ void alenkaInit(char ** av)
 void alenkaClose()
 {
     statement_count = 0;
-    hash_seed = 100;
 
     if(alloced_sz){
 		cudaFree(alloced_tmp);

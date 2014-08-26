@@ -583,8 +583,6 @@ void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
     };
 };
 
-
-
 void CudaSet::resizeDevice(size_t RecCount)
 {
     for(unsigned int i=0; i < columnNames.size(); i++) {
@@ -594,29 +592,20 @@ void CudaSet::resizeDevice(size_t RecCount)
 
 bool CudaSet::onDevice(string colname)
 {
-
     if (type[colname] == 0) {
-        if (d_columns_int.empty())
-            return 0;
-        if (d_columns_int[colname].size() == 0)
-            return 0;
+        if (!d_columns_int.empty() && d_columns_int[colname].size())
+            return 1;
     }
     else if (type[colname] == 1) {
-        if (d_columns_float.empty())
-            return 0;
-        if(d_columns_float[colname].size() == 0)
-            return 0;
+        if (!d_columns_float.empty() && d_columns_float[colname].size())
+            return 1;
     }
     else if  (type[colname] == 2) {
-        if(d_columns_char.empty())
-            return 0;
-        if(d_columns_char[colname] == NULL)
-            return 0;
+        if(!d_columns_char.empty() && d_columns_char[colname])
+            return 1;
     };
-    return 1;
+    return 0;
 }
-
-
 
 CudaSet* CudaSet::copyDeviceStruct()
 {
@@ -1850,7 +1839,7 @@ void CudaSet::Store(string file_name, char* sep, unsigned int limit, bool binary
                     a->type[ref_cols[columnNames[i]]] = 0;
                     a->not_compressed = 0;
                     a->load_file_name = ref_sets[columnNames[i]];
-                    a->cols[ref_cols[columnNames[i]]] = 1;
+                    a->cols[1] = ref_cols[columnNames[i]];
                     a->columnNames.push_back(ref_cols[columnNames[i]]);
                     MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
                     size_t res_count;
@@ -2097,25 +2086,7 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     string colname;
     char *p,*t;
     const char* sep = separator.c_str();
-
-
-    unsigned int maxx = 0;
-    for(unsigned int i = 0; i < mColumnCount; i++) {
-        if(cols[columnNames[i]] > maxx)
-            maxx = cols[columnNames[i]];
-    };
-
-    bool *check_col = new bool[maxx+1];
-    vector<string> names(maxx+1);
-
-    for(unsigned int i = 0; i <= maxx; i++) {
-        check_col[i] = 0;
-    };
-
-    for(unsigned int i = 0; i < mColumnCount; i++) {
-        names[cols[columnNames[i]]] = columnNames[i];
-        check_col[cols[columnNames[i]]] = 1;
-    };
+    unsigned int maxx = cols.rbegin()->first;	
 	
 	//clear the varchars
 	
@@ -2126,25 +2097,22 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 		};
 	};
 
-
     while (count < process_count && fgets(line, 2000, file_p) != NULL) {
         strtok(line, "\n");
         current_column = 0;
 
         for(t=mystrtok(&p,line,*sep); t && current_column < maxx; t=mystrtok(&p,0,*sep)) {
             current_column++;
-            if(!check_col[current_column]) {
-                //cout << "Didn't find " << current_column << endl;
+			if(cols.find(current_column) == cols.end()) {
                 continue;
             };
-            //cout << "curr " << current_column << " " << names[current_column] << endl;
 
-            if (type[names[current_column]] == 0) {
+            if (type[cols[current_column]] == 0) {
                 if (strchr(t,'-') != NULL ) { // handling possible dates
                     strncpy(t+4,t+5,2);
                     strncpy(t+6,t+8,2);
                     t[8] = '\0';
-                    (h_columns_int[names[current_column]])[count] = atoll(t);
+                    (h_columns_int[cols[current_column]])[count] = atoll(t);
                 }
 				else if (strchr(t,'/') != NULL ) { // 4/30/2014
 					string s(t);
@@ -2157,25 +2125,23 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 					if(day.length() == 1)
 						day = "0" + day;						
 					string s2 = s.substr(pos2+1, string::npos) + month + day;
-                    (h_columns_int[names[current_column]])[count] = atoll(s2.c_str());				
+                    (h_columns_int[cols[current_column]])[count] = atoll(s2.c_str());				
 				}
                 else {   
-                    (h_columns_int[names[current_column]])[count] = atoll(t);
+                    (h_columns_int[cols[current_column]])[count] = atoll(t);
                 };
             }
-            else if (type[names[current_column]] == 1) {
-                (h_columns_float[names[current_column]])[count] = atoff(t);
+            else if (type[cols[current_column]] == 1) {
+                (h_columns_float[cols[current_column]])[count] = atoff(t);
             }
             else  {//char
-                strcpy(h_columns_char[names[current_column]] + count*char_size[names[current_column]], t);
+                strcpy(h_columns_char[cols[current_column]] + count*char_size[cols[current_column]], t);
             }
         };
         count++;
     };
 
-    delete [] check_col;
     mRecCount = count;
-
     if(count < process_count)  {
         fclose(file_p);
         return 1;
@@ -2779,7 +2745,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         //fclose(f);
 		
         columnNames.push_back(nameRef.front());
-        cols[nameRef.front()] = colsRef.front();
+        cols[colsRef.front()] = nameRef.front();
 
         if (((typeRef.front()).compare("decimal") == 0) || ((typeRef.front()).compare("int") == 0)) {
             f1 = file_name + "." + nameRef.front() + ".0";
@@ -2884,7 +2850,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     for(unsigned int i=0; i < mColumnCount; i++) {
 
         columnNames.push_back(nameRef.front());
-        cols[nameRef.front()] = colsRef.front();
+        cols[colsRef.front()] = nameRef.front();
 
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
@@ -2961,7 +2927,7 @@ void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as, queue<st
 
 		
 		type[op_sel.front()] = a->type[op_sel.front()];	
-		cols[op_sel.front()] = i;
+		cols[i] = op_sel.front();
         decimal[op_sel.front()] = a->decimal[op_sel.front()];
 		columnNames.push_back(op_sel.front());
         
@@ -3018,7 +2984,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 	
 		if(std::find(columnNames.begin(), columnNames.end(), op_sel.front()) ==  columnNames.end()) {
 			if(std::find(a->columnNames.begin(), a->columnNames.end(), op_sel.front()) !=  a->columnNames.end()) {
-				cols[op_sel.front()] = i;
+				cols[i] = op_sel.front();
 				decimal[op_sel.front()] = a->decimal[op_sel.front()];
 				columnNames.push_back(op_sel.front());
 				type[op_sel.front()] = a->type[op_sel.front()];
@@ -3042,7 +3008,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 			}
 			else if(std::find(b->columnNames.begin(), b->columnNames.end(), op_sel.front()) !=  b->columnNames.end()) {
 				columnNames.push_back(op_sel.front());
-				cols[op_sel.front()] = i;
+				cols[i] = op_sel.front();
 				decimal[op_sel.front()] = b->decimal[op_sel.front()];
 				type[op_sel.front()] = b->type[op_sel.front()];
 
@@ -3112,31 +3078,9 @@ void allocColumns(CudaSet* a, queue<string> fields)
         }
     }
     else {
-
         while(!fields.empty()) {
-            if(var_exists(a, fields.front())) {
-
-                bool onDevice = 0;
-
-                if(a->type[fields.front()] == 0) {
-                    if(a->d_columns_int[fields.front()].size() > 0) {
-                        onDevice = 1;
-                    }
-                }
-                else if(a->type[fields.front()] == 1) {
-                    if(a->d_columns_float[fields.front()].size() > 0) {
-                        onDevice = 1;
-                    };
-                }
-                else {
-                    if((a->d_columns_char[fields.front()]) != NULL) {
-                        onDevice = 1;
-                    };
-                };
-
-                if (!onDevice) {
-                    a->allocColumnOnDevice(fields.front(), a->maxRecs);
-                }
+            if(var_exists(a, fields.front()) && !a->onDevice(fields.front())) {
+				a->allocColumnOnDevice(fields.front(), a->maxRecs);
             }
             fields.pop();
         };
