@@ -477,7 +477,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_value.pop();
                         n1 = exe_nums.top();
                         exe_nums.pop();
-
+						
                         if (a->type[s1_val] == 1) {
                             float_type* t = a->get_float_type_by_name(s1_val);
                             exe_type.push("VECTOR F");
@@ -493,7 +493,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         n1 = exe_nums.top();
                         exe_nums.pop();
                         s2_val = exe_value.top();
-                        exe_value.pop();
+                        exe_value.pop();					
 
                         if (a->type[s2_val] == 1) {
                             float_type* t = a->get_float_type_by_name(s2_val);
@@ -527,7 +527,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         }
                         else {
                             float_type* t = a->get_float_type_by_name(s1_val);
-
                             if (a->type[s2_val] == 0) {
                                 int_type* t1 = a->get_int_by_name(s2_val);
                                 exe_type.push("VECTOR F");
@@ -859,7 +858,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     void *d;
                     cudaMalloc((void **) &d, res_size*a->char_size[exe_value1.top()]);
                     b->d_columns_char[col_val.top()] = (char*)d;
-                    b->h_columns_char[col_val.top()] = NULL;
+                    b->h_columns_char[col_val.top()] = nullptr;
                     b->char_size[col_val.top()] = a->char_size[exe_value1.top()];
                     b->columnNames.push_back(col_val.top());
                     b->type[col_val.top()] = 2;

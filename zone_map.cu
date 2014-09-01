@@ -16,7 +16,6 @@
 
 void process_error(int severity, string err);   // this should probably live in a utils header file
 
-
 bool fh_equal_to(const float_type x, const float_type y)
 {
     return (((x-y) < EPSILON) && ((x-y) > -EPSILON));
@@ -631,9 +630,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             // copy t min and max values to a only if int, decimal or float
             if(t->type[fields.front()] <= 1) {
 
-                f1 = t->load_file_name + "." + fields.front() + "." + int_to_string(segment);
+                f1 = t->load_file_name + "." + fields.front() + "." + to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
-                if(f == NULL) {
+                if(!f) {
                     cout << "Error opening " << f1 << " file " << endl;
                     exit(0);
                 };
