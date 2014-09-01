@@ -26,10 +26,9 @@ int main(int ac, char **av)
     std::clock_t start;
     int x;
 
-
     // test QPS via alenkaExecute	-- this section is the only C++ dependency
     if (string(av[1]) == "--QPS-test") {
-        alenkaInit(NULL);
+        alenkaInit(nullptr);
         start = std::clock();
         for (x=0; x< 1000; x++)  {
             alenkaExecute("A1 := SELECT  count(n_name) AS col1 FROM nation;\n DISPLAY A1 USING ('|');");

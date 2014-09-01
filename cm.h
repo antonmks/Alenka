@@ -53,14 +53,7 @@ typedef long long int int_type;
 typedef unsigned int int32_type;
 typedef unsigned short int int16_type;
 typedef char int8_type;
-
 typedef double float_type;
-
-typedef thrust::device_vector<int_type>::iterator ElementIterator_int;
-typedef thrust::device_vector<float_type>::iterator ElementIterator_float;
-typedef thrust::device_vector<unsigned int>::iterator   IndexIterator;
-typedef thrust::device_vector<int>::iterator   IndexIterator2;
-typedef thrust::device_ptr<int> IndexIterator1;
 
 using namespace std;
 using namespace mgpu;
@@ -91,6 +84,7 @@ extern bool save_dict;
 extern bool interactive;
 extern bool ssd;
 extern bool delta;
+extern bool star;
 extern map<string, char*> index_buffers;
 extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
@@ -260,10 +254,6 @@ public:
     map<string, thrust::device_vector<int_type > > d_columns_int;
     map<string, thrust::device_vector<float_type > > d_columns_float;	
     map<string, char*> d_columns_char;		
-	/*std::vector<thrust::device_vector<int32_type > > d_columns_int32;
-	std::vector<thrust::device_vector<int16_type > > d_columns_int16;
-	std::vector<thrust::device_vector<int8_type > > d_columns_int8;	
-	*/
 	
     map<string, size_t> char_size;
     thrust::device_vector<unsigned int> prm_d;
@@ -278,7 +268,6 @@ public:
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
 
-    //map<unsigned int, size_t> type_index;
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size, totalRecs;
     vector<string> columnNames;
 	map<string,bool> compTypes; // pfor delta or not
@@ -343,7 +332,7 @@ public:
 	void reWriteHeader(string file_name, string colname, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
-    void Store(string file_name, char* sep, unsigned int limit, bool binary, bool term = 0);
+    void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term = 0);
     void compress_char(string file_name, string colname, size_t mCount, size_t offset);
 	void compress_int(string file_name, string colname, size_t mCount);
     bool LoadBigFile(FILE* file_p);
@@ -404,9 +393,8 @@ uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
-string int_to_string(int number);
-void delete_records(char* f);
-void insert_records(char* f, char* s);
+void delete_records(const char* f);
+void insert_records(const char* f, const char* s);
 void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 bool var_exists(CudaSet* a, string name);

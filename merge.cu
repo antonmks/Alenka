@@ -70,8 +70,8 @@ void create_c(CudaSet* c, CudaSet* b)
             c->d_columns_float[b->columnNames[i]] = thrust::device_vector<float_type>();
         }
         else {
-            c->h_columns_char[b->columnNames[i]] = NULL;
-            c->d_columns_char[b->columnNames[i]] = NULL;
+            c->h_columns_char[b->columnNames[i]] = nullptr;
+            c->d_columns_char[b->columnNames[i]] = nullptr;
             c->char_size[b->columnNames[i]] = b->char_size[b->columnNames[i]];
         };
     };

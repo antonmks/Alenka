@@ -21,7 +21,7 @@
 
 using namespace std;
 
-unsigned long long int* raw_decomp = NULL;
+unsigned long long int* raw_decomp = nullptr;
 unsigned int raw_decomp_length = 0;
 
 std::map<string, unsigned int> cnt_counts;
@@ -245,7 +245,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
     //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 
     if(raw_decomp_length < cnt) {
-        if(raw_decomp != NULL) {
+        if(raw_decomp) {
             cudaFree(raw_decomp);
         };
         cudaMalloc((void **) &raw_decomp, cnt);
@@ -480,8 +480,8 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
-        cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
+        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
@@ -491,7 +491,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
 
-        cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
 
