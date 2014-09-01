@@ -1477,8 +1477,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			};	
 			
             cnt_l = 0;
+			cout << "host " << left->hostRecCount << endl;
             if (left->type[colname1]  != 2) {
                 copyColumns(left, lc, i, cnt_l);
+				cout << "copied seg " << i << " " << cnt_l << endl;
             }
             else {
 				if(left->filtered) {
@@ -1497,6 +1499,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             else {
                 cnt_l = left->mRecCount;
             };
+			cout << "cnt_l " << cnt_l << " " << left->mRecCount << endl;
 
             if (cnt_l) {
 
@@ -1538,14 +1541,15 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                 char join_kind = join_type.front();
 				
-/*					if(cnt_r > 10) {	
+				/*	if(cnt_r > 10) {	
                     for(int z = 0; z < 10 ; z++)
                     	cout << " R " << right->d_columns_int[colname2][z] << endl;
 
                     for(int z = 0; z < 10 ; z++)
                     	cout << " L " << left->d_columns_int[colname1][z] << endl;
 					};	
-*/					
+				*/	
+					
 				
 
                 if (left->type[colname1] == 2) {
@@ -1602,18 +1606,19 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 while(mul_cnt) {
 
                     mul_cnt--;
-                    string f3 = op_g.front();
-                    op_g.pop();
-                    string f4 = op_g.front();
-                    op_g.pop();
+					queue<string> mult(op_g);
+                    string f3 = mult.front();
+                    mult.pop();
+                    string f4 = mult.front();
+                    mult.pop();
 
-      //              cout << "ADDITIONAL COL JOIN " << f3 << " " << f4 << " " << getFreeMem() << endl;
+                    cout << "ADDITIONAL COL JOIN " << f3 << " " << f4 << " " << getFreeMem() << endl;
 
                     queue<string> rc;
                     rc.push(f3);
 
                     allocColumns(left, rc);
-                    left->hostRecCount = left->mRecCount;
+					//left->hostRecCount = left->mRecCount;                    
                     size_t offset = 0;
                     copyColumns(left, rc, i, offset, 0, 0);
                     rc.pop();
@@ -1815,10 +1820,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     if ((getFreeMem() - 300000000) > tot_size) {
         c->maxRecs = tot_count;
     }
-    //else {
-    //    c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);
-    //    c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
-    //};
+    else {
+        c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);
+        c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);	
+    };
 	
 
     if(right->tmp_table == 1) {
