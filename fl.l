@@ -83,6 +83,9 @@ DROP {return DROP; }
 DELETE {return DELETE; }
 FROM {return FROM; }
 LIKE {return LIKE; }
+CREATE {return CREATE; }
+BITMAP {return BITMAP; }
+INDEX {return INDEX; }
 
 
 [0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
