@@ -990,6 +990,61 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
     cudaFree(d_int);
 }
 
+void CudaSet::decompress_char_host(string colname, unsigned int segment, size_t offset)
+{
+    unsigned int bits_encoded, fit_count, sz, vals_count, real_count;
+    const unsigned int len = char_size[colname];
+
+    string f1 = load_file_name + "." + colname + "." + to_string(segment);
+    FILE* f;
+    f = fopen (f1.c_str() , "rb" );
+	
+    fread(&sz, 4, 1, f);
+
+    size_t a_sz = (size_t)sz*(size_t)len;
+    char* d_array = new char[a_sz];
+    fread((void*)d_array, a_sz, 1, f);	
+
+    fread(&fit_count, 4, 1, f);
+    fread(&bits_encoded, 4, 1, f);
+    fread(&vals_count, 4, 1, f);
+    fread(&real_count, 4, 1, f);
+	
+	//cout << "DECOMP " << colname << " " << fit_count << " " << bits_encoded << " " << vals_count << " " << real_count << endl;
+
+    thrust::device_ptr<unsigned int> param = thrust::device_malloc<unsigned int>(2);
+    param[1] = fit_count;
+    param[0] = bits_encoded;
+
+    unsigned long long int* int_array = new unsigned long long int[vals_count];
+    fread((void*)int_array, 1, vals_count*8, f);
+	fclose(f);	
+
+    void* d_val;
+    cudaMalloc((void **) &d_val, vals_count*8);
+    cudaMemcpy(d_val, (void *) int_array, vals_count*8, cudaMemcpyHostToDevice);
+    delete[] int_array;
+
+    void* d_int;
+    cudaMalloc((void **) &d_int, real_count*4);
+
+    thrust::counting_iterator<unsigned int> begin(0);
+    decompress_functor_str ff((unsigned long long int*)d_val,(unsigned int*)d_int, (unsigned int*)thrust::raw_pointer_cast(param));
+    thrust::for_each(begin, begin + real_count, ff);
+	
+	unsigned int* d_array1 = new unsigned int[real_count];
+	cudaMemcpy(d_array1, d_array, real_count*4, cudaMemcpyDeviceToHost);
+
+    str_gather_host(d_array1, real_count, d_array, h_columns_char[colname] + offset*len, len);		
+
+    mRecCount = real_count;
+
+    cudaFree(d_val);
+    thrust::device_free(param);
+    cudaFree(d_int);
+}
+
+
 
 
 void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offset)
@@ -2290,7 +2345,7 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
 {
     thrust::device_ptr<bool> res = thrust::device_malloc<bool>(mRecCount);
     thrust::device_ptr<float_type> dev_ptr(column1);
-
+	
     if (op_type == 2) // >
         thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), res, f_greater());
     else if (op_type == 1)  // <
@@ -2388,9 +2443,8 @@ float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, 
     thrust::device_ptr<int_type> dev_ptr(column1);
 
     thrust::transform(dev_ptr, dev_ptr + mRecCount, temp, long_to_float_type()); // in-place transformation
-
     thrust::device_ptr<float_type> dev_ptr1(column2);
-
+	
     if(reverse == 0) {
         if (op_type.compare("MUL") == 0)
             thrust::transform(dev_ptr1, dev_ptr1+mRecCount, temp, temp, thrust::multiplies<float_type>());
@@ -2412,7 +2466,7 @@ float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, 
             thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::divides<float_type>());
 
     };
-
+	
     return thrust::raw_pointer_cast(temp);
 
 }
@@ -2550,7 +2604,7 @@ float_type* CudaSet::op(float_type* column1, float_type d, string op_type,int re
 {
     thrust::device_ptr<float_type> temp = thrust::device_malloc<float_type>(mRecCount);
     thrust::device_ptr<float_type> dev_ptr1(column1);
-
+	
     if(reverse == 0) {
         if (op_type.compare("MUL") == 0)
             thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_constant_iterator(d), temp, thrust::multiplies<float_type>());
@@ -2744,7 +2798,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 		
         columnNames.push_back(nameRef.front());
         cols[colsRef.front()] = nameRef.front();
-
+		
         if (((typeRef.front()).compare("decimal") == 0) || ((typeRef.front()).compare("int") == 0)) {
             f1 = file_name + "." + nameRef.front() + ".0";
             f = fopen (f1.c_str() , "rb" );
@@ -3139,7 +3193,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
             }
             else {
                 if(a->mRecCount) {							
-                    a->CopyColumnToGpu(fields.front(), segment, count);	
+                    a->CopyColumnToGpu(fields.front(), segment, count);						
 	            };
             };
             uniques.insert(fields.front());
@@ -3278,7 +3332,6 @@ size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, si
         };
         ct.pop();
     };
-
 
     size_t cnt_r = 0;
     right->devRecCount = 0;
@@ -3455,9 +3508,9 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
         //cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-        //cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+        cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
-        if(map_check == 'R') {
+        if(map_check == 'R') {			
             copyColumns(a, b->fil_value, segment, cnt);
             bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
             thrust::device_ptr<bool> bp((bool*)res);
@@ -3543,7 +3596,7 @@ unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> o
         op_sel.pop();
     };
 
-    //cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
+    cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
 
     if(tot_size + 300000000 < getFreeMem()) //00
         return right->segCount;

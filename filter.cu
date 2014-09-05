@@ -182,34 +182,61 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-		//cout << ss << endl;
+		//cout << endl << ss << endl;
 
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
-                || ss.compare("STRING") == 0) {
+                || ss.compare("STRING") == 0 || ss.compare("FIELD") == 0) {
 
-            exe_type.push(ss);
+            
             if (ss.compare("NUMBER") == 0) {
                 exe_nums.push(op_nums.front());
                 op_nums.pop();
+				exe_type.push(ss);
             }
             else if (ss.compare("NAME") == 0 || ss.compare("STRING") == 0) {
                 exe_value.push(op_value.front());
                 op_value.pop();
+				exe_type.push(ss);
             }
-            if (ss.compare("FLOAT") == 0) {
+			else if(ss.compare("FIELD") == 0){
+				size_t pos1 = op_value.front().find_first_of(".", 0);
+				string tbl = op_value.front().substr(0,pos1);
+				string field = op_value.front().substr(pos1+1, string::npos);
+				//cout << endl << "RR " << tbl << " " << field << endl;
+				op_value.pop();
+				//if(varNames.find(tbl) == varNames.end())
+				//cout << "DIDN'T FIND " << endl;
+				CudaSet *b = varNames.find(tbl)->second;
+				if(b->type[field] == 0) {
+					auto val = b->h_columns_int[field][0];
+					exe_nums.push(val);
+					exe_type.push("NUMBER");
+				}
+				if(b->type[field] == 1) {
+					auto val = b->h_columns_float[field][0];
+					exe_nums_f.push(val);
+					//cout << "pushed " << val << endl;
+					exe_type.push("FLOAT");					
+				}
+				else { // not for now
+				
+				};
+			}
+            else if (ss.compare("FLOAT") == 0) {
                 exe_nums_f.push(op_nums_f.front());
                 op_nums_f.pop();
+				exe_type.push(ss);
             }
 
         }
         else {
             if (ss.compare("MUL") == 0  || ss.compare("ADD") == 0 || ss.compare("DIV") == 0 || ss.compare("MINUS") == 0) {
                 // get 2 values from the stack
+							
                 s1 = exe_type.top();
                 exe_type.pop();
                 s2 = exe_type.top();
                 exe_type.pop();
-
 
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
@@ -259,7 +286,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
-
+					
                     exe_type.push("VECTOR F");
 
                     if (a->type[s1_val] == 1) {
@@ -294,9 +321,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
-
-                    printf("CMP1 %lld \n" , n1);
-
+					
                     if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
                         exe_type.push("VECTOR F");
@@ -607,8 +632,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     exe_type.push("VECTOR");
                     bool_vectors.push(a->compare(n1_f,float_type(n2),cmp_type));
-                }
-
+                }				
+				
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
 
                     s1_val = exe_value.top();
@@ -621,7 +646,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 					thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 					thrust::counting_iterator<unsigned int> begin(0);					
 					
-					//cout << s1_val << " " << s2_val << endl;
+					//cout << endl << s1_val << " " << s2_val << endl;
 					if(s2_val.find(".") != string::npos) { //bitmap index
 					//for now lets handle just equality condition					
 						
@@ -644,7 +669,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 					else {
 						void* d_str;
 						dd_v[0] = a->char_size[s2_val];
-						dd_v[1] = (unsigned int)s1_val.length() + 1;						
+						dd_v[1] = (unsigned int)s1_val.length() + 1;		
 						
 						if(cmp_type != 7) {
 							cudaMalloc((void **) &d_str, a->char_size[s2_val]);
@@ -654,6 +679,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							thrust::for_each(begin, begin + a->mRecCount, ff);
 						}
 						else {
+							//cout << "regex " << endl;
 							cudaMalloc((void **) &d_str, s1_val.length()+1);
 							cudaMemset(d_str,0, s1_val.length()+1);
 							cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
@@ -812,7 +838,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums_f.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-
+					
                     if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
@@ -830,7 +856,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums_f.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-
+					
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         exe_type.push("VECTOR");
@@ -1002,7 +1028,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 }
 
                 else if (s1.compare("VECTOR") == 0 && s2.compare("VECTOR") == 0) {
-					cout << "vector vector " << endl;
                     int_type* s3 = exe_vectors.top();
                     exe_vectors.pop();
                     int_type* s2 = exe_vectors.top();

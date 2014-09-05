@@ -71,6 +71,7 @@
     void emit_drop_table(const char* table_name);
     void process_error(const int severity, const string err);
 	void emit_create_bitmap_index(const char *index_name, const char *ltable, const char *rtable, const char *rcolumn, const char *lid, const char *rid);
+	void emit_fieldname(const char* name1, const char* name2);
 
 %}
 
@@ -209,7 +210,7 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 
 expr:
 NAME { emit_name($1); }
-| NAME '.' NAME { emit("FIELDNAME %s.%s", $1, $3); }
+| NAME '.' NAME { emit_fieldname($1, $3); }
 | USERVAR { emit("USERVAR %s", $1); }
 | STRING { emit_string($1); }
 | INTNUM { emit_number($1); }
@@ -387,6 +388,14 @@ void emit_string(const char *str)
     op_type.push("STRING");
     op_value.push(sss);
 }
+
+void emit_fieldname(const char* name1, const char* name2)
+{
+	string s1(name1);
+	string s2(name2);	
+    op_type.push("FIELD");
+    op_value.push(s1 + "." + s2);
+};
 
 
 void emit_number(const int_type val)
@@ -1363,7 +1372,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
     bool str_join = 0;
     size_t rcount = 0, cnt_r;
-    unsigned int r_parts = calc_right_partition(left, right, op_sel);
+    //unsigned int r_parts = calc_right_partition(left, right, op_sel);// it is kinda screwed cause it doesn't take into account the possible filtering so lets set it to 1 for now
+	unsigned int r_parts = right->segCount;
     //cout << "partitioned to " << r_parts << endl;
     unsigned int start_part = 0;
     queue<string> cc;
@@ -1440,9 +1450,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         };		
 		
-		cout << "ordered right " << getFreeMem() << endl;
-
-
 		int e_segment;
 		if(end_segment == -1) {
 			e_segment  = left->segCount;
@@ -1477,10 +1484,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			};	
 			
             cnt_l = 0;
-			cout << "host " << left->hostRecCount << endl;
             if (left->type[colname1]  != 2) {
                 copyColumns(left, lc, i, cnt_l);
-				cout << "copied seg " << i << " " << cnt_l << endl;
             }
             else {
 				if(left->filtered) {
@@ -1499,7 +1504,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             else {
                 cnt_l = left->mRecCount;
             };
-			cout << "cnt_l " << cnt_l << " " << left->mRecCount << endl;
 
             if (cnt_l) {
 
@@ -1805,7 +1809,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     c->mRecCount = tot_count;
     c->hostRecCount = tot_count;
     c->name = s;
-
+	
     if(verbose)
         cout << endl << "tot res " << tot_count << " " << getFreeMem() << endl;
 
@@ -1922,8 +1926,10 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
         return;
     };
 
-    if (scan_state == 0)
+    if (scan_state == 0) {
         check_used_vars();
+		return;
+	};	
 
     if(varNames.find(f) == varNames.end() ) {
         clean_queues();
@@ -1932,8 +1938,7 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
 
     CudaSet* a = varNames.find(f)->second;
 
-
-    if (a->mRecCount == 0)	{
+    /*if (a->mRecCount == 0)	{
         if(varNames.find(s) == varNames.end())
             varNames[s] = new CudaSet(0,1);
         else {
@@ -1942,11 +1947,12 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
         };
         return;
     };
+	*/
 
     stack<string> exe_type, exe_value;
 
     if(verbose)
-        cout << "order: " << s << " " << f << endl;
+        cout << "ORDER: " << s << " " << f << endl;
 
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop(),op_value.pop()) {
@@ -1992,12 +1998,21 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
     if (rec_size*a->mRecCount > (mem_available/2)) // doesn't fit into a GPU
         fits = 0;
     else fits = 1;
-
+	
     if(!fits) {
         order_on_host(a, b, names, exe_type, exe_value);
     }
     else {
         // initialize permutation to [0, 1, 2, ... ,N-1]
+			
+        size_t rcount;	
+		if(a->filtered) {
+            CudaSet *t = varNames[a->source_name];
+			a->mRecCount = t->mRecCount;
+			a->hostRecCount = a->mRecCount;		
+		};
+		
+        a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount, 0, a->segCount);		
         thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(a->mRecCount);
         thrust::sequence(permutation, permutation+(a->mRecCount));
 
@@ -2010,15 +2025,12 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
             varNames[a->source_name]->hostRecCount = varNames[a->source_name]->mRecCount;
         else
             a->hostRecCount = a->mRecCount;;
-
-        size_t rcount;
-        a->mRecCount = load_queue(names, a, 1, op_vx.front(), rcount, 0, a->segCount);
-
+		
+		
         if(a->filtered)
             varNames[a->source_name]->mRecCount = varNames[a->source_name]->hostRecCount;
         else
             a->mRecCount = a->hostRecCount;;
-
 
         for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
             if (a->type[exe_type.top()] == 0)
@@ -2046,7 +2058,7 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
                 //str_count++;
             };
         };
-
+		
         for(unsigned int i = 0; i < a->mColumnCount; i++) {
             switch(a->type[a->columnNames[i]]) {
             case 0 :
@@ -2059,11 +2071,8 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
                 cudaMemcpy(b->h_columns_char[a->columnNames[i]], a->d_columns_char[a->columnNames[i]], a->char_size[a->columnNames[i]]*a->mRecCount, cudaMemcpyDeviceToHost);
             }
         };
-
         b->deAllocOnDevice();
         a->deAllocOnDevice();
-
-
         thrust::device_free(permutation);
         cudaFree(temp);
     };
@@ -2302,7 +2311,7 @@ void emit_select(const char *s, const char *f, const int ll)
         };
         //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
-
+	
     a->mRecCount = ol_count;
     a->mRecCount = a->hostRecCount;
     a->deAllocOnDevice();
@@ -2327,11 +2336,11 @@ void emit_select(const char *s, const char *f, const int ll)
     };
 
     c->maxRecs = c->mRecCount;
+	c->hostRecCount = c->mRecCount;
     c->name = s;
     c->keep = 1;
     //cout << "select res " << c->mRecCount << endl;
-
-
+	
     clean_queues();
 
     varNames[s] = c;
@@ -2381,11 +2390,6 @@ void emit_insert(const char *f, const char* s) {
     insert_records(f,s);
     clean_queues();
 
-
-};
-
-void emit_mulite(const char *f)
-{
 
 };
 
@@ -2542,11 +2546,20 @@ void emit_filter(char *s, char *f)
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             process_error(1, "Filter : couldn't find variable " + string(f));
-            //cout << "Filter : couldn't find variable " << f << endl;
-            //exit(1);
         };
         stat[s] = statement_count;
         stat[f] = statement_count;
+		// check possible use of other variables in filters
+		queue<string> op(op_value);
+		while(!op.empty()) {
+			size_t pos1 = op.front().find_first_of(".", 0);
+			if(pos1 != string::npos) {
+				cout << endl << "FOUND " << op_value.front().substr(0,pos1) << endl;
+				stat[op.front().substr(0,pos1)] = statement_count;
+			};
+			op.pop();
+		};
+		
         check_used_vars();
         clean_queues();
         return;
@@ -2554,7 +2567,7 @@ void emit_filter(char *s, char *f)
 
 
     CudaSet *a, *b;
-
+	
     a = varNames.find(f)->second;
     a->name = f;
 

@@ -314,6 +314,7 @@ public:
 	int_type readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest);
 	int_type readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest);
     void decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem);
+	void decompress_char_host(string colname, unsigned int segment, size_t offset);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
     void CopyColumnToGpu(string colname);
     void CopyColumnToHost(string colname, size_t offset, size_t RecCount);

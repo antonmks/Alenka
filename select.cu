@@ -162,8 +162,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     	}
 
                     };
-                    */
-
+                    */					
 
                     grp_type = "SUM";
                     s1 = exe_type.top();
@@ -177,10 +176,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             thrust::device_ptr<float_type> source((float_type*)(s3));
                             //thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                             thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(a->mRecCount);
-
                             ReduceByKeyApply(*ppData, s3, (float_type)0,
                                              mgpu::plus<float_type>(), thrust::raw_pointer_cast(count_diff), *context);
-
                             //thrust::reduce_by_key(d_di, d_di + a->mRecCount, source,
                             //                      thrust::make_discard_iterator(), count_diff,
                             //                      head_flag_predicate<bool>(),thrust::plus<float_type>());
@@ -194,10 +191,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             count_diff[0] = mgpu::Reduce(thrust::raw_pointer_cast(source), a->mRecCount, *context);
                             exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
                             exe_type.push("VECTOR F");
+							a->mRecCount = 1;
                         };
                         cudaFree(s3);
                     }
                     if (s1.compare("VECTOR") == 0) {
+						
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
 
@@ -532,7 +531,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t1,t,ss,0));
                             }
-                            else {
+                            else {								
                                 float_type* t1 = a->get_float_type_by_name(s2_val);
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t1,t,ss,0));
@@ -543,7 +542,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                         s2_val = exe_value.top();
                         exe_value.pop();
-
+						
                         if (a->type[s2_val] == 0) {
                             int_type* t = a->get_int_by_name(s2_val);
 
@@ -664,6 +663,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     }
 
                     else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0)  && s2.compare("FLOAT") == 0) {
+						
                         n1_f = exe_nums_f.top();
                         exe_nums_f.pop();
 
@@ -682,7 +682,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             cudaFree(s3);
                         }
                     }
-                    else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR") == 0) {
+                    else if (s1.compare("FLOAT") == 0 && (s2.compare("VECTOR") == 0 || s2.compare("VECTOR F") == 0)) {
                         n1_f = exe_nums_f.top();
                         exe_nums.pop();
 
@@ -701,6 +701,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             cudaFree(s3);
                         }
                     }
+
 
                     else if (s1.compare("VECTOR") == 0 && s2.compare("VECTOR") == 0) {
                         int_type* s3 = exe_vectors.top();
@@ -798,8 +799,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         else if ((grp_type1.top()).compare("COUNTD") == 0 ) {
             b->grp_type[col_val.top()] = 6;
         };
-
-
+		
+			
         if(col_type.top() == 0) {
 
             // create a vector
@@ -905,7 +906,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 if(!one_line) {
                     b->addDeviceColumn(exe_vectors1_d.top() , col_val.top(), a->mRecCount, 1);
                 }
-                else {
+                else {			
                     b->addDeviceColumn(exe_vectors1_d.top() , col_val.top(), 1, 1);
                 };
             };
@@ -916,6 +917,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         col_val.pop();
         grp_type1.pop();
     };
+	
 
     if (a->columnGroups.empty()) {
         if(!one_line)
