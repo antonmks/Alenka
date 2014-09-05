@@ -70,8 +70,8 @@ void create_c(CudaSet* c, CudaSet* b)
             c->d_columns_float[b->columnNames[i]] = thrust::device_vector<float_type>();
         }
         else {
-            c->h_columns_char[b->columnNames[i]] = NULL;
-            c->d_columns_char[b->columnNames[i]] = NULL;
+            c->h_columns_char[b->columnNames[i]] = nullptr;
+            c->d_columns_char[b->columnNames[i]] = nullptr;
             c->char_size[b->columnNames[i]] = b->char_size[b->columnNames[i]];
         };
     };
@@ -117,7 +117,8 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             };
         }
         else {  //float
-            process_error(2, "No group by on float/decimal columns ");
+            //process_error(2, "No group by on float/decimal columns ");
+			memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_float[opv[z]].data()), b->mRecCount*8);
         };
     };
 
