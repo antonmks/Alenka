@@ -1590,7 +1590,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 };
 
 				if(verbose)
-					cout << "RES " << res_count << " seg " << i << endl;
+					cout << "RES " << res_count << " seg " << getFreeMem() << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -1815,17 +1815,19 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
     size_t tot_size = 0;
     for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
-        if(c->type[c->columnNames[i]] <= 1)
+        if(c->type[c->columnNames[i]] <= 1) {
             tot_size = tot_size + tot_count*8;
-        else
+		}	
+        else {
             tot_size = tot_size + tot_count*c->char_size[c->columnNames[i]];
+		};	
     };
 
     if ((getFreeMem() - 300000000) > tot_size) {
         c->maxRecs = tot_count;
     }
     else {
-        c->segCount = ((tot_size/(getFreeMem() - 300000000)) + 1);
+        c->segCount = ((tot_size/(getFreeMem()/2)) + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);	
     };
 	
