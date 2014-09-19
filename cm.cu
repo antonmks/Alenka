@@ -878,7 +878,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
                 h_columns_int[colname].resize(1);
             fread(h_columns_int[colname].data(), 4, 1, f);			
             unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];
-            if(cnt+10 > h_columns_int[colname].size())
+            if(cnt/8+10 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
@@ -892,7 +892,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
                 h_columns_float[colname].resize(1);
             fread(h_columns_float[colname].data(), 4, 1, f);
             unsigned int cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
-            if(cnt+10 > h_columns_float[colname].size())
+            if(cnt/8+10 > h_columns_float[colname].size())
                 h_columns_float[colname].resize(cnt + 10);
             size_t rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
@@ -957,8 +957,7 @@ void CudaSet::decompress_char(FILE* f, string colname, unsigned int segNum, size
     }
     else {
         memcpy(int_array, &mem[4+sz*len+16], vals_count*8);
-    };
-	
+    };	
 
     void* d_val;
     cudaMalloc((void **) &d_val, vals_count*8);
@@ -1575,7 +1574,12 @@ void CudaSet::writeSortHeader(string file_name)
         };
         binary_file.close();
     }
-    else if(!op_presort.empty()) {
+	else {
+	  str += ".sort";
+	  remove(str.c_str());
+	};
+	
+    if(!op_presort.empty()) {
         str += ".presort";
         fstream binary_file(str.c_str(),ios::out|ios::binary|ios::trunc);
         idx = (unsigned int)op_presort.size();
@@ -1589,7 +1593,11 @@ void CudaSet::writeSortHeader(string file_name)
             os.pop();
         };
         binary_file.close();
-    };
+    }
+	else {
+		str += ".presort";
+		remove(str.c_str());
+	};
 }
 
 using namespace mgpu;

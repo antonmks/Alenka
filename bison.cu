@@ -3611,7 +3611,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     set<string> field_names;
     exe_type.push(f2);
 	for(unsigned int i = 0; i < right->columnNames.size(); i++) {
-        if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2) {
+        if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2 || join_and_cnt[join_tab_cnt - tab]) {
             field_names.insert(right->columnNames[i]);
         };
     };
@@ -3656,6 +3656,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         }
         else {
             if (left->type[colname1]  != 2) {
+				cout << "sorting right on " << f2 << endl;
                 order_inplace(right, exe_type, field_names, 0);
 			}	
             else {
@@ -4030,11 +4031,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
         if(c->type[c->columnNames[i]] <= 1) {
             tot_size = tot_size + tot_count*8;
-			cout <<  c->columnNames[i] << " " << tot_size << endl;
 		}	
         else {
             tot_size = tot_size + tot_count*c->char_size[c->columnNames[i]];
-			cout <<  c->columnNames[i] << " " << tot_size << " " << c->char_size[c->columnNames[i]] << endl;
 		};	
     };
 
@@ -4045,7 +4044,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         c->segCount = ((tot_size/(getFreeMem()/2)) + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);	
     };
-	cout << "seg count " << c->segCount << " " << tot_size << endl;
 	
 
     if(right->tmp_table == 1) {

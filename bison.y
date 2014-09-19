@@ -1398,7 +1398,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     set<string> field_names;
     exe_type.push(f2);
 	for(unsigned int i = 0; i < right->columnNames.size(); i++) {
-        if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2) {
+        if (std::find(c->columnNames.begin(), c->columnNames.end(), right->columnNames[i]) != c->columnNames.end() || right->columnNames[i] == f2 || join_and_cnt[join_tab_cnt - tab]) {
             field_names.insert(right->columnNames[i]);
         };
     };
@@ -1443,6 +1443,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         }
         else {
             if (left->type[colname1]  != 2) {
+				cout << "sorting right on " << f2 << endl;
                 order_inplace(right, exe_type, field_names, 0);
 			}	
             else {
