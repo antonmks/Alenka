@@ -19,13 +19,13 @@
 
 template<unsigned int len>
 struct T_str_scatter_host {
-    inline void operator()(unsigned int* d_int, const size_t real_count, void* d, void* d_char) {
+    inline void operator()(const unsigned int* d_int, const size_t real_count, void* d, void* d_char) {
         thrust::scatter((Str<len> *)d, (Str<len> *)d + real_count, d_int, (Str<len> *)d_char);
     }
 };
 
 /// JOIN on host static strings
-void str_scatter_host(unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
+void str_scatter_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
 {
     T_unroll_functor<UNROLL_COUNT, T_str_scatter_host> str_scatter_host_functor;
     if (str_scatter_host_functor(d_int, real_count, d, d_char, len)) {}
@@ -34,13 +34,13 @@ void str_scatter_host(unsigned int* d_int, const size_t real_count, void* d, voi
 /// JOIN on host static strings (functor)
 template<unsigned int len>
 struct T_str_gather_host {
-	inline void operator()(unsigned int* d_int, const size_t real_count, void* d, void* d_char) {
+	inline void operator()(const unsigned int* d_int, const size_t real_count, void* d, void* d_char) {
 		thrust::gather(d_int, d_int + real_count, (Str<len> *)d, (Str<len> *)d_char);
 	}
 };
 
 /// JOIN on host static strings
-void str_gather_host(unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
+void str_gather_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
 {
 	T_unroll_functor<UNROLL_COUNT, T_str_gather_host> str_gather_host_functor;
 	if (str_gather_host_functor(d_int, real_count, d, d_char, len)) {}

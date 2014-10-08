@@ -78,7 +78,7 @@ extern void* alloced_tmp;
 extern unsigned int partition_count;
 extern map<string,string> setMap; //map to keep track of column names and set names
 extern std::clock_t tot;
-extern std::clock_t tot_fil;
+extern std::clock_t tot_disk;
 extern bool verbose;
 extern bool save_dict;
 extern bool interactive;
@@ -289,7 +289,7 @@ public:
 	map<string, string> ref_sets; // referencing datasets
 	map<string, string> ref_cols; // referencing dataset's column names
 	map<string, map<unsigned int, set<unsigned int> > > ref_joins; // columns referencing dataset segments 
-	map<string, set<unsigned int> > orig_segs;
+	vector< map<string, set<unsigned int> > > orig_segs;
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
@@ -386,9 +386,7 @@ void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCoun
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
 size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
                         queue<string> op_alt, bool decimal_join, bool& str_join, 
-                        size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);
-unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> op_sel);
-			
+                        size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);		
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);

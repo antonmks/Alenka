@@ -816,11 +816,14 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
 	return lower_val;
 }
 
+std::clock_t tot_disk;
 
 void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t offset)
 {
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
 
+	std::clock_t start1 = std::clock();
+	
     if(interactive) { //check if data are in buffers
         if(buffers.find(f1) == buffers.end()) { // add data to buffers
             FILE* f = fopen(f1.c_str(), "rb" );
@@ -906,6 +909,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
         };
         fclose(f);
     };
+	tot_disk =  tot_disk + (std::clock() - start1);
 };
 
 
@@ -1931,7 +1935,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                                         &aIndicesDevice, &bIndicesDevice,
                                         mgpu::less<int_type>(), *context);
                         };
-                        //cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;
+                        cout << "RES " << i << " " << total_segments << ":" << z << " " << res_count << endl;
                         f_file.write((char *)&z, 4);
                         f_file.write((char *)&res_count, 8);
                     };
@@ -3195,8 +3199,9 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                     alloced_switch = 1;
                     t->CopyColumnToGpu(fields.front(), segment);
                     gatherColumns(a, t, fields.front(), segment, count);
-                    alloced_switch = 0;
-                    a->orig_segs[t->load_file_name].insert(segment);
+                    alloced_switch = 0;					
+					a->orig_segs.resize(segment+1);											
+                    a->orig_segs[segment] = t->orig_segs[segment];					
                 };
             }
             else {
@@ -3516,7 +3521,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
         //cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
-        cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+        //cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
         if(map_check == 'R') {			
             copyColumns(a, b->fil_value, segment, cnt);
@@ -3586,41 +3591,6 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
     return cnt_r;
 };
 
-unsigned int calc_right_partition(CudaSet* left, CudaSet* right, queue<string> op_sel) {
-    size_t tot_size = left->maxRecs*8;
-
-    while(!op_sel.empty()) {
-        if (std::find(right->columnNames.begin(), right->columnNames.end(), op_sel.front()) != right->columnNames.end()) {
-
-            if(right->type[op_sel.front()] <= 1) {
-                tot_size = tot_size + right->maxRecs*8*right->segCount;
-            }
-            else {
-                tot_size = tot_size + right->maxRecs*
-                           right->char_size[op_sel.front()]*
-                           right->segCount;
-            };
-        };
-        op_sel.pop();
-    };
-
-    cout << "tot size " << tot_size << " " << right->maxRecs << " " << right->mRecCount << endl;
-
-    if(tot_size + 300000000 < getFreeMem()) //00
-        return right->segCount;
-    else {
-        if(right->segCount == 1) { //need to partition it. Not compressed.
-            right->segCount = ((tot_size*2 )/getFreeMem())+1;
-            //cout << "seg count " << right->segCount << endl;
-            right->maxRecs = (right->mRecCount/right->segCount)+1;
-            //cout << "max recs " << right->maxRecs << endl;
-            return 1;
-        }
-        else { //compressed
-            return right->segCount / ((tot_size+300000000)/getFreeMem());
-        };
-    };
-};
 
 
 void insert_records(const char* f, const char* s) {

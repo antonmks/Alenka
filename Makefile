@@ -12,8 +12,7 @@ alenka : bison.o merge.o \
 		 MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o \
-		 callbacks.o main.o
-		 
+		 callbacks.o main.o		 
 
 #nvcc = nvcc --machine 64 -O3 -arch=sm_20  -c
 nvcc = nvcc $(CFLAGS)  -c

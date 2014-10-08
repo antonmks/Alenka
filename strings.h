@@ -28,8 +28,8 @@
 * @param d_char - the output array of joined strings.
 * @param len - the input length of string.
 */
-void str_gather_host(unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
-void str_scatter_host(unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
+void str_gather_host(const unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
+void str_scatter_host(const unsigned int* d_int, size_t real_count, void* d, void* d_char, unsigned int len);
 
 /**
 * JOIN on device static strings
