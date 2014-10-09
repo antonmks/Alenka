@@ -1,7 +1,7 @@
 # Makefile
 #
 # The -D below may have to change to /D on some dos compilers
-CFLAGS=--machine 64 -O3 -arch=sm_20 -D UNROLL_COUNT=40
+CFLAGS=--machine 64 -O3 -arch=sm_20 -D UNROLL_COUNT=40 -std=c++11
 
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \

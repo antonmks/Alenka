@@ -4641,6 +4641,7 @@ void emit_select(const char *s, const char *f, const int ll)
 	c->hostRecCount = c->mRecCount;
     c->name = s;
     c->keep = 1;
+	c->orig_segs = a->orig_segs;
 	if(verbose)
 		cout << "select res " << c->mRecCount << endl;
 	
