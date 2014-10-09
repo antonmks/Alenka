@@ -1399,15 +1399,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         };
     };
 	
-    // if the right table doesn't fit into gpu we need to sort it on host on join key
-	// for now lets do it for non-compressed tables, later extending it to compressed tables
-	//if(right->not_compressed && getFreeMem() < right->mRecCount*maxsz(right)*2) {
-	//	order_inplace_host(right, exe_type, 0);	
-	//	r_parts = calc_right_partition(left, right, op_sel);
-	//};
-	
-	thrust::device_vector<int> p_tmp;
-	
+
+	thrust::device_vector<int> p_tmp;	
 	//to keep track of sources of each segment : <source_name, segment>
 	vector<size_t> border_boundaries;
 	vector< map<string, set<unsigned int> > > border_segments;
@@ -2435,7 +2428,8 @@ void emit_select(const char *s, const char *f, const int ll)
 	c->hostRecCount = c->mRecCount;
     c->name = s;
     c->keep = 1;
-    //cout << "select res " << c->mRecCount << endl;
+	if(verbose)
+		cout << "select res " << c->mRecCount << endl;
 	
     clean_queues();
 

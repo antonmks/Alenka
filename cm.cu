@@ -3191,6 +3191,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
         };
     };
 	
+
     while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()))	{
             if(a->filtered) {
@@ -3199,9 +3200,11 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
                     alloced_switch = 1;
                     t->CopyColumnToGpu(fields.front(), segment);
                     gatherColumns(a, t, fields.front(), segment, count);
-                    alloced_switch = 0;					
-					a->orig_segs.resize(segment+1);											
-                    a->orig_segs[segment] = t->orig_segs[segment];					
+                    alloced_switch = 0;				
+					if(t->orig_segs.size() >= segment+1) {	
+						a->orig_segs.resize(segment+1);							
+						a->orig_segs[segment] = t->orig_segs[segment];					
+					};	
                 };
             }
             else {
