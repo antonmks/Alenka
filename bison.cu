@@ -3308,6 +3308,26 @@ void star_join(const char *s, const string j1)
 			cudaFree(temp);
         };	
 		//std::cout<< "SEG " << i << " "  <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+		//unload the segment indexes :
+		idx = left->fil_value;	
+		already_loaded.clear();
+		while(!idx.empty()) {
+			if(idx.front().find(".") != string::npos && (already_loaded.find(idx.front()) == already_loaded.end())) { 
+				//extract table name and colname from index name	
+				already_loaded.insert(idx.front());	
+				size_t pos1 = idx.front().find_first_of(".", 0);
+				size_t pos2 = idx.front().find_first_of(".", pos1+1);				
+				CudaSet* r = varNames.find(idx.front().substr(pos1+1, pos2-pos1-1))->second;
+				string f1 = idx.front() + "." + to_string(i);
+				auto it = index_buffers.find(f1);
+				if(it != index_buffers.end()) {
+					cudaFreeHost(index_buffers[f1]); 
+					index_buffers.erase(it);
+				};	
+			};
+			idx.pop();
+		};
+		
     };
 	
 	

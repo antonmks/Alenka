@@ -2713,6 +2713,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment, con
 				string s(d_array + i*char_size, char_size);									
 				idx_dictionary_str[index_name][s] = i;        			
 			};	
+			delete [] d_array;
 		}
 		else {// int	
 			int_type* d_array = new int_type[sz];
@@ -2720,7 +2721,8 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment, con
 			fread((void*)d_array, sz*int_size, 1, f);
 			for(unsigned int i = 0; i < sz; i++) {
 				idx_dictionary_int[index_name][d_array[i]] = i;   
-			};						
+			};					
+			delete [] d_array;			
 		};
 
 		fread(&fit_count, 4, 1, f);
