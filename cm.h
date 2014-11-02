@@ -40,6 +40,7 @@
 #include <queue>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <vector>
 #include <stack>
@@ -52,7 +53,7 @@
 typedef long long int int_type;
 typedef unsigned int int32_type;
 typedef unsigned short int int16_type;
-typedef char int8_type;
+typedef unsigned char int8_type;
 typedef double float_type;
 
 using namespace std;
@@ -95,6 +96,7 @@ extern unsigned int raw_decomp_length;
 extern size_t alloced_sz;
 extern void* alloced_tmp;
 extern ContextPtr context;
+extern unordered_map<string, unordered_map<unsigned long long int,bool> > char_hash; // mapping between column's string hashes and string positions
 
 
 template<typename T>
@@ -256,6 +258,7 @@ public:
 	
     map<string, size_t> char_size;
     thrust::device_vector<unsigned int> prm_d;
+	map<string, string> string_map; //maps char column names to string files, only select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
 	map<string, map<string, unsigned int> > idx_dictionary_str; //stored in host memory
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
@@ -267,7 +270,7 @@ public:
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
 
-    size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, prealloc_char_size, totalRecs;
+    size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, totalRecs;
     vector<string> columnNames;
 	map<string,bool> compTypes; // pfor delta or not
     map<string, FILE*> filePointers;
@@ -276,13 +279,15 @@ public:
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;
     string name, load_file_name, separator, source_name;
-    bool source, text_source, tmp_table, keep, filtered;
+    bool source, text_source, tmp_table, keep, filtered, cpy_strings;
     queue<string> sorted_fields; //segment is sorted by fields
     queue<string> presorted_fields; //globally sorted by fields
     map<string, unsigned int> type; // 0 - integer, 1-float_type, 2-char
     map<string, bool> decimal; // column is decimal - affects only compression
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
     map<unsigned int, string> cols; // column positions in a file
+	map<string, bool> map_like; //for LIKE processing
+	map<string, thrust::device_vector<unsigned long long int> > map_res; //also for LIKE processing
 	
 	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
 	//but just boolean indicators.
@@ -298,11 +303,8 @@ public:
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);    
     ~CudaSet();
     void allocColumnOnDevice(string colname, size_t RecordCount);
-    void decompress_char_hash(string colname, unsigned int segment);
-    void add_hashed_strings(string field, unsigned int segment);
     void resize(size_t addRecs);
     void resize_join(size_t addRecs);
-    void reserve(size_t Recs);
     void deAllocColumnOnDevice(string colIndex);
     void allocOnDevice(size_t RecordCount);
     void deAllocOnDevice();
@@ -313,8 +315,6 @@ public:
     void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
 	int_type readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest);
 	int_type readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest);
-    void decompress_char(FILE* f, string colname, unsigned int segNum, size_t offset, char* mem);
-	void decompress_char_host(string colname, unsigned int segment, size_t offset);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
     void CopyColumnToGpu(string colname);
     void CopyColumnToHost(string colname, size_t offset, size_t RecCount);
@@ -333,7 +333,7 @@ public:
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term = 0);
-    void compress_char(string file_name, string colname, size_t mCount, size_t offset);
+    void compress_char(string file_name, string colname, size_t mCount, size_t offset, unsigned int segment);
 	void compress_int(string file_name, string colname, size_t mCount);
     bool LoadBigFile(FILE* file_p);
     void free();
@@ -352,7 +352,7 @@ public:
     int_type* op(int_type* column1, int_type d, string op_type, int reverse);
     float_type* op(int_type* column1, float_type d, string op_type, int reverse);
     float_type* op(float_type* column1, float_type d, string op_type,int reverse);
-	char loadIndex(const string index_name, const unsigned int segment, const size_t char_size);
+	char loadIndex(const string index_name, const unsigned int segment);
 
 protected:
 
@@ -372,7 +372,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
 void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment);
 void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
 void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
-size_t load_queue(queue<string> c1, CudaSet* right, bool str_join, string f2, size_t &rcount,
+size_t load_queue(queue<string> c1, CudaSet* right, string f2, size_t &rcount,
                   unsigned int start_segment, unsigned int end_segment, bool rsz = 1, bool flt = 1);
 size_t max_char(CudaSet* a);
 size_t max_tmp(CudaSet* a);
@@ -385,8 +385,7 @@ void update_permutation_char_host(char* key, unsigned int* permutation, size_t R
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
 size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
-                        queue<string> op_alt, bool decimal_join, bool& str_join, 
-                        size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);		
+                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);		
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);
@@ -401,6 +400,7 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right);
 bool check_bitmap_file_exist(CudaSet* left, CudaSet* right); 
 void check_sort(const string str, const char* rtable, const char* rid);
 void filter_op(const char *s, const char *f, unsigned int segment);
+void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 
 #endif
 

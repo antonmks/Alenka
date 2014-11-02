@@ -64,6 +64,9 @@ void create_c(CudaSet* c, CudaSet* b)
         if (b->type[b->columnNames[i]] == 0) {
             c->h_columns_int[b->columnNames[i]] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >();
             c->d_columns_int[b->columnNames[i]] = thrust::device_vector<int_type>();
+			if(b->string_map.find(b->columnNames[i]) != b->string_map.end()) {
+				c->string_map[b->columnNames[i]] = b->string_map[b->columnNames[i]];	
+			};	
         }
         else if (b->type[b->columnNames[i]] == 1) {
             c->h_columns_float[b->columnNames[i]] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >();
@@ -108,14 +111,14 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     b->CopyToHost(0, b->mRecCount);
 
     for(unsigned int z = 0; z < cycle_sz; z++) {
-        if(b->type[opv[z]] == 0) {  //int
+        if(b->type[opv[z]] == 0 || b->type[opv[z]] == 2) {  //int
             memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_int[opv[z]].data()), b->mRecCount*8);
         }
-        else if(b->type[opv[z]] == 2) {  //string
+        /*else if(b->type[opv[z]] == 2) {  //string
             for(int i = 0; i < b->mRecCount; i++) {
                 sum[z*b->mRecCount + i] = MurmurHash64A(&b->h_columns_char[opv[z]][i*b->char_size[opv[z]]], b->char_size[opv[z]], hash_seed);
             };
-        }
+        }*/
         else {  //float
             //process_error(2, "No group by on float/decimal columns ");
 			memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_float[opv[z]].data()), b->mRecCount*8);
@@ -136,11 +139,11 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     thrust::sort_by_key(d_hashes.begin(), d_hashes.end(), v.begin());
 
     void* d_tmp;
-    CUDA_SAFE_CALL(cudaMalloc((void **) &d_tmp, b->mRecCount*max_char(b)));
-
+    CUDA_SAFE_CALL(cudaMalloc((void **) &d_tmp, b->mRecCount*int_size));
+	
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
-        if(b->type[b->columnNames[i]] == 0) {
+        if(b->type[b->columnNames[i]] == 0 || b->type[b->columnNames[i]] == 2) {
             thrust::device_ptr<int_type> d_tmp_int((int_type*)d_tmp);
             thrust::gather(v.begin(), v.end(), b->d_columns_int[b->columnNames[i]].begin(), d_tmp_int);
             thrust::copy(d_tmp_int, d_tmp_int + b->mRecCount, b->h_columns_int[b->columnNames[i]].begin());
@@ -150,12 +153,14 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             thrust::gather(v.begin(), v.end(), b->d_columns_float[b->columnNames[i]].begin(), d_tmp_float);
             thrust::copy(d_tmp_float, d_tmp_float + b->mRecCount, b->h_columns_float[b->columnNames[i]].begin());
         }
-        else {
+        /*else {
             str_gather((void*)thrust::raw_pointer_cast(v.data()), b->mRecCount, b->d_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
             cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
         };
+		*/
     };
     cudaFree(d_tmp);
+	
 
     thrust::host_vector<unsigned long long int> hh(b->mRecCount);
     thrust::copy(d_hashes.begin(), d_hashes.end(), hh.begin());
@@ -166,7 +171,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
-        if(b->type[b->columnNames[i]] == 0) {
+        if(b->type[b->columnNames[i]] == 0 || b->type[b->columnNames[i]] == 2) {
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_int[c->columnNames[i]].begin(), b->h_columns_int[b->columnNames[i]].begin(),
@@ -182,11 +187,11 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
         }
         else {
-            str_merge_by_key(h_merge, hh, c->h_columns_char[c->columnNames[i]], b->h_columns_char[b->columnNames[i]], b->char_size[b->columnNames[i]], tmp);
-            memcpy(c->h_columns_char[c->columnNames[i]], tmp, (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]]);
+            //str_merge_by_key(h_merge, hh, c->h_columns_char[c->columnNames[i]], b->h_columns_char[b->columnNames[i]], b->char_size[b->columnNames[i]], tmp);
+            //memcpy(c->h_columns_char[c->columnNames[i]], tmp, (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]]);
         };
     };
-
+	
 
     //merge the keys
     thrust::merge(h_merge.begin(), h_merge.end(),
@@ -277,7 +282,7 @@ void count_simple(CudaSet* c)
 
         for(unsigned int k = 0; k < c->columnNames.size(); k++) {
             if(c->grp_type[c->columnNames[k]] == 1) {   // AVG
-                if(c->type[c->columnNames[k]] == 0) {
+                if(c->type[c->columnNames[k]] == 0 || c->type[c->columnNames[k]] == 2) {
                     int_type sum  = thrust::reduce(c->h_columns_int[c->columnNames[k]].begin(), c->h_columns_int[c->columnNames[k]].begin() + c->mRecCount);
                     c->h_columns_int[c->columnNames[k]][0] = sum/count;
                 }
@@ -287,7 +292,7 @@ void count_simple(CudaSet* c)
                 };
             }
             else if(c->grp_type[c->columnNames[k]] == 2) {   // SUM
-                if(c->type[c->columnNames[k]] == 0) {
+                if(c->type[c->columnNames[k]] == 0 || c->type[c->columnNames[k]] == 2) {
                     int_type sum  = thrust::reduce(c->h_columns_int[c->columnNames[k]].begin(), c->h_columns_int[c->columnNames[k]].begin() + c->mRecCount);
                     c->h_columns_int[c->columnNames[k]][0] = sum;
                 }
@@ -335,7 +340,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
             for(unsigned int k = 0; k < c->columnNames.size(); k++)	{
 
                 if(c->grp_type[c->columnNames[k]] <= 2) { //sum || avg || count
-                    if (c->type[c->columnNames[k]] == 0 ) { // int
+                    if (c->type[c->columnNames[k]] == 0) { // int
 
 
                         int_type* tmp =  new int_type[res_count];
@@ -391,7 +396,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     };
                 }
                 else if(c->grp_type[c->columnNames[k]] == 3) { //no group function
-                    if (c->type[c->columnNames[k]] == 0 ) { // int
+                    if (c->type[c->columnNames[k]] == 0 || c->type[c->columnNames[k]] == 2) { // int
                         int_type* tmp =  new int_type[res_count];
                         thrust::reduce_by_key(h_merge.begin(), h_merge.end(), c->h_columns_int[c->columnNames[k]].begin(),
                                               thrust::make_discard_iterator(), tmp, binary_pred, binary_op_max);
@@ -407,12 +412,13 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                         thrust::copy(tmp, tmp + res_count, c->h_columns_float[c->columnNames[k]].begin());
                         delete [] tmp;
                     }
-                    else { //char
+                    /*else { //char
                         char* tmp = new char[res_count*c->char_size[c->columnNames[k]]];
                         str_copy_if_host(c->h_columns_char[c->columnNames[k]], c->mRecCount, tmp, grp, c->char_size[c->columnNames[k]]);
                         thrust::copy(tmp, tmp + c->char_size[c->columnNames[k]]*res_count, c->h_columns_char[c->columnNames[k]]);
                         delete [] tmp;
                     };
+					*/
                 };
             };
 

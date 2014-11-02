@@ -31,16 +31,16 @@ string curr_file;
 struct int64_to_char
 {
     __host__ __device__
-    char operator()(const int_type x)
+    unsigned char operator()(const int_type x)
     {
-        return (char)x;
+        return (unsigned char)x;
     }
 };
 
 struct char_to_int64
 {
     __host__ __device__
-    int_type operator()(const char x)
+    int_type operator()(const unsigned char x)
     {
         return (int_type)x;
     }
@@ -252,9 +252,12 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
         cudaMalloc((void **) &raw_decomp, cnt);
         raw_decomp_length = cnt;
     };
-
+	
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
+	
+
     thrust::device_ptr<int_type> d_int((int_type*)destination);
+	
 
     if(comp_type == 1) {
         thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
@@ -291,7 +294,6 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
         };
         thrust::constant_iterator<int_type> iter(orig_lower_val);
         thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
-
     };
 
     return orig_recCount;
@@ -480,8 +482,6 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         thrust::device_ptr<int_type> s((int_type*)source);
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
-
-        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
@@ -491,7 +491,6 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
 
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
-
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };

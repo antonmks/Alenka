@@ -14,7 +14,6 @@
 
 #include "cm.h"
 
-
 struct cmp_functor_dict
 {
     const unsigned long long* source;
@@ -59,39 +58,6 @@ struct cmp_functor_dict
 		};
     }
 };
-
-
-struct cmp_functor_str
-{
-    const char  * source;
-    const char *str;
-    bool * dest;
-    const unsigned int * len;
-
-    cmp_functor_str(const char * _source, const char * _str, bool * _dest,
-                    const unsigned int * _len):
-        source(_source), str(_str), dest(_dest), len(_len) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        unsigned int length = len[0];
-        unsigned int start = i*length;
-
-        for(unsigned int z = 0; z < length ; z++) {
-            if(source[start+z] != str[z]) {
-                dest[i] = 0;
-                return;
-            };
-
-        };
-        dest[i] = 1;
-
-    }
-};
-
-
 
 
 struct gpu_regex
@@ -202,10 +168,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 				size_t pos1 = op_value.front().find_first_of(".", 0);
 				string tbl = op_value.front().substr(0,pos1);
 				string field = op_value.front().substr(pos1+1, string::npos);
-				//cout << endl << "RR " << tbl << " " << field << endl;
 				op_value.pop();
-				//if(varNames.find(tbl) == varNames.end())
-				//cout << "DIDN'T FIND " << endl;
 				CudaSet *b = varNames.find(tbl)->second;
 				if(b->type[field] == 0) {
 					auto val = b->h_columns_int[field][0];
@@ -215,7 +178,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 				if(b->type[field] == 1) {
 					auto val = b->h_columns_float[field][0];
 					exe_nums_f.push(val);
-					//cout << "pushed " << val << endl;
 					exe_type.push("FLOAT");					
 				}
 				else { // not for now
@@ -339,8 +301,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-                    printf("CMP %lld \n" , n1);
-
 
                     if (a->type[s2_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -634,120 +594,139 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     bool_vectors.push(a->compare(n1_f,float_type(n2),cmp_type));
                 }				
 				
-                else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
-
+                else if ((s1.compare("STRING") == 0 && s2.compare("NAME") == 0) ||
+						 (s1.compare("NAME") == 0 && s2.compare("STRING") == 0))
+				{
+				
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-					void* d_res, *d_v;
-					cudaMalloc((void **) &d_res, a->mRecCount);
+										
+					if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
+						s1.swap(s2);
+						s1_val.swap(s2_val);
+					};										
+										
+					void* d_res, *d_v;					
+					if(cmp_type != 7)
+						cudaMalloc((void **) &d_res, a->mRecCount);
+					else	
+						cudaMalloc((void **) &d_res, a->hostRecCount);
+					thrust::device_ptr<bool> dd_res((bool*)d_res);
+					
 					cudaMalloc((void **) &d_v, 8);
 					thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
 					thrust::counting_iterator<unsigned int> begin(0);					
 					
-					//cout << endl << s1_val << " " << s2_val << endl;
 					if(s2_val.find(".") != string::npos) { //bitmap index
-					//for now lets handle just equality condition					
 						
-						map<string, unsigned int>::iterator it = a->idx_dictionary_str[s2_val].begin();						
-						size_t len = it->first.length(); //strings stored as fixed size, zero padded strings
+						//map<string, unsigned int>::iterator it = a->idx_dictionary_str[s2_val].begin();						
+						//size_t len = it->first.length(); //strings stored as fixed size, zero padded strings
+						auto pos1 = s2_val.find_first_of(".");
+						auto pos2 = s2_val.find_last_of(".");
+						auto set = s2_val.substr(pos1+1, (pos2-pos1)-1);
+						auto col = s2_val.substr(pos2+1);
+						auto len = data_dict[set][col].col_length;
+						
 						while(s1_val.length() < len)
 							s1_val = s1_val + '\0';
+						auto s1_hash = MurmurHash64A(&s1_val, len, hash_seed)/2;	
 						
-						if(a->idx_dictionary_str[s2_val].find(s1_val) != a->idx_dictionary_str[s2_val].end()) {
-							dd_v[0] = a->idx_dictionary_str[s2_val][s1_val];
+						if(a->idx_dictionary_int[s2_val].find(s1_hash) != a->idx_dictionary_int[s2_val].end()) {
+							dd_v[0] = a->idx_dictionary_int[s2_val][s1_hash];
 							dd_v[1] = (unsigned int)cmp_type;						
-							//cout << "index " << dd_v[0] << " " << dd_v[1] << " " << a->mRecCount << endl;
+							//cout << endl << "index " << s1_val << " " << dd_v[0] <<  " " << a->mRecCount << endl;
 							cmp_functor_dict ff(a->idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
 							thrust::for_each(begin, begin + a->mRecCount, ff);															
+							//auto cnt = thrust::count(dd_res, dd_res + a->mRecCount, 1);
+							//cout << "Res " << cnt << endl;	
 						}
 						else {							
 							cudaMemset(d_res,0,a->mRecCount);
-						}						
+						}		
 					}
 					else {
-						void* d_str;
-						dd_v[0] = a->char_size[s2_val];
+					
+						auto s = a->string_map[s2_val];
+						auto pos = s.find_first_of(".");
+						auto len = data_dict[s.substr(0, pos)][s.substr(pos+1)].col_length;
+
+						dd_v[0] = len;
 						dd_v[1] = (unsigned int)s1_val.length() + 1;		
 						
 						if(cmp_type != 7) {
-							cudaMalloc((void **) &d_str, a->char_size[s2_val]);
-							cudaMemset(d_str,0,a->char_size[s2_val]);
-							cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-							cmp_functor_str ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-							thrust::for_each(begin, begin + a->mRecCount, ff);
+							thrust::device_vector<unsigned long long int> vv(1);
+							while(s1_val.length() < len) {
+								s1_val = s1_val + '\0';
+							};	
+							
+							vv[0] = MurmurHash64A(&s1_val[0], s1_val.length(), hash_seed)/2;		
+							if(cmp_type == 4) //==	
+								thrust::transform(a->d_columns_int[s2_val].begin(), a->d_columns_int[s2_val].begin() + a->mRecCount, thrust::make_constant_iterator(vv[0]), dd_res, thrust::equal_to<unsigned long long int>());
+							else 
+								if(cmp_type == 3) //!=								
+									thrust::transform(a->d_columns_int[s2_val].begin(), a->d_columns_int[s2_val].begin() + a->mRecCount, thrust::make_constant_iterator(vv[0]), dd_res, thrust::not_equal_to<unsigned long long int>());
+									
+							//auto cnt = thrust::count(dd_res, dd_res + a->mRecCount, 1);
+							//cout << endl << "R" << endl;	
 						}
 						else {
-							//cout << "regex " << endl;
-							cudaMalloc((void **) &d_str, s1_val.length()+1);
-							cudaMemset(d_str,0, s1_val.length()+1);
-							cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-							gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-							thrust::for_each(begin, begin + a->mRecCount, ff);
-						};	                    
-						cudaFree(d_str);
+							if(a->map_like.find(s2_val) == a->map_like.end()) {
+								a->cpy_strings = 1;								
+								string f1 = a->load_file_name + "." + s2_val;
+								FILE* f = fopen(f1.c_str(), "rb" );
+								fseek(f, 0, SEEK_END);
+								long fileSize = ftell(f);
+								fseek(f, 0, SEEK_SET);
+								char* buff = new char[fileSize];
+								fread(buff, fileSize, 1, f);
+								fclose(f);								
+								
+								thrust::device_vector<char> dev(fileSize);
+								cudaMemcpy( thrust::raw_pointer_cast(dev.data()), (void*)buff, fileSize, cudaMemcpyHostToDevice);
+								delete [] buff;
+								
+								void* d_str;
+								cudaMalloc((void **) &d_str, len);
+								cudaMemset(d_str,0,len);
+								cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
+						
+								gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+								thrust::for_each(begin, begin + fileSize/len, ff);
+								cudaFree(d_str);
+								
+								auto cnt = thrust::count(dd_res, dd_res + fileSize/len, 1);
+								a->map_res[s2_val] = thrust::device_vector<unsigned long long int>(cnt);
+
+								f1 = a->load_file_name + "." + s2_val + ".hash";
+								f = fopen(f1.c_str(), "rb" );
+								fseek(f, 0, SEEK_END);
+								fileSize = ftell(f);
+								fseek(f, 0, SEEK_SET);
+								char* buff1 = new char[fileSize];
+								fread(buff1, fileSize, 1, f);
+								fclose(f);
+								thrust::device_vector<unsigned long long int> dev1(fileSize/int_size);
+								cudaMemcpy( thrust::raw_pointer_cast(dev1.data()), (void*)buff1, fileSize, cudaMemcpyHostToDevice);
+								delete [] buff1;								
+								
+					            thrust::copy_if(dev1.begin(), dev1.end(), dd_res, a->map_res[s2_val].begin(), thrust::identity<bool>());
+								thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());
+								a->cpy_strings = 0;
+								a->map_like[s2_val] = 1;		
+							
+							};		
+							// now lets calc the current segments's matches	
+							cudaMemset(d_res, 0, a->hostRecCount);
+							binary_search(a->map_res[s2_val].begin(),a->map_res[s2_val].end(), a->d_columns_int[s2_val].begin(), a->d_columns_int[s2_val].end(), dd_res);	
+						};	                    						
 					};	
 
 					cudaFree(d_v);
                     exe_type.push("VECTOR");					
                     bool_vectors.push((bool*)d_res);
-
                 }
-                else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {				
-                    s1_val = exe_value.top();
-                    exe_value.pop();
-                    s2_val = exe_value.top();
-                    exe_value.pop();					
-					void* d_v, *d_res;
-                    cudaMalloc((void **) &d_v, 8);
-                    thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-                    cudaMalloc((void **) &d_res, a->mRecCount);					
-					thrust::counting_iterator<unsigned int> begin(0);
-
-					if(s1_val.find(".") != string::npos) { //bitmap index
-						
-						map<string, unsigned int>::iterator it = a->idx_dictionary_str[s1_val].begin();						
-						size_t len = it->first.length(); //strings stored as fixed size, zero padded strings
-						while(s2_val.length() < len)
-							s2_val = s2_val + '\0';
-						
-						if(a->idx_dictionary_str[s1_val].find(s2_val) != a->idx_dictionary_str[s1_val].end()) {
-							dd_v[0] = a->idx_dictionary_str[s1_val][s2_val];
-							dd_v[1] = (unsigned int)cmp_type;						
-							cmp_functor_dict ff(a->idx_vals[s1_val], (bool*)d_res, (unsigned int*)d_v);
-							thrust::for_each(begin, begin + a->mRecCount, ff);								
-						}
-						else {							
-							cudaMemset(d_res,0,a->mRecCount);
-						}	
-					}					
-					else {			
-						void *d_str;
-						dd_v[0] = a->char_size[s1_val];
-						
-						if(cmp_type != 7) {
-							cudaMalloc((void **) &d_str, a->char_size[s1_val]);
-							cudaMemset(d_str,0,a->char_size[s1_val]);
-							cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-							cmp_functor_str ff(a->d_columns_char[s1_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-							thrust::for_each(begin, begin + a->mRecCount, ff);
-						}
-						else {
-							cudaMalloc((void **) &d_str, s1_val.length()+1);
-							cudaMemset(d_str,0, s1_val.length()+1);
-							cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-							gpu_regex ff(a->d_columns_char[s2_val], (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-							thrust::for_each(begin, begin + a->mRecCount, ff);
-						};
-						cudaFree(d_str);
-					};	
-
-                    exe_type.push("VECTOR");
-                    bool_vectors.push((bool*)d_res);
-                    cudaFree(d_v);                    
-                }
-
 
                 else if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
                     n1 = exe_nums.top();
@@ -1080,7 +1059,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     exe_type.push("VECTOR");
 
-                    if (a->type[s1_val] == 0) {
+                    if (a->type[s1_val] == 0 || a->type[s1_val] == 2) {
                         int_type* t = a->get_int_by_name(s1_val);
                         if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_int_by_name(s2_val);

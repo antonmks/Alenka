@@ -820,7 +820,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
         if(col_type.top() == 1) {
 
-            if(a->type[exe_value1.top()] == 0) {
+            if(a->type[exe_value1.top()] == 0 || a->type[exe_value1.top()] == 2) {
 
                 //modify what we push there in case of a grouping
                 if (!a->columnGroups.empty()) {
@@ -834,6 +834,12 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[exe_value1.top()].data()) , col_val.top(), a->mRecCount);
+					
+				if(a->type[exe_value1.top()] == 2 || (a->type[exe_value1.top()] == 0 && a->string_map.find(exe_value1.top()) != a->string_map.end())) {	
+					b->string_map[col_val.top()] = a->string_map[exe_value1.top()];	
+					//b->type[col_val.top()] = 2;
+					//cout << "SETTING " << col_val.top() << " to " << exe_value1.top() << " " << a->string_map[exe_value1.top()] << endl;
+				};	
             }
             else if(a->type[exe_value1.top()] == 1) {
 
@@ -850,15 +856,15 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 else
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[exe_value1.top()].data()), col_val.top(), a->mRecCount, a->decimal[exe_value1.top()]);
             }
-            else if(a->type[exe_value1.top()] == 2) { //varchar
+            /*else if(a->type[exe_value1.top()] == 2) { //varchar
 
                 if (a->columnGroups.empty())
                     res_size = a->mRecCount;
 
                 if (std::find(b->columnNames.begin(), b->columnNames.end(), col_val.top()) == b->columnNames.end()) {
                     void *d;
-                    cudaMalloc((void **) &d, res_size*a->char_size[exe_value1.top()]);
-                    b->d_columns_char[col_val.top()] = (char*)d;
+                    //cudaMalloc((void **) &d, res_size*a->char_size[exe_value1.top()]);
+                    //b->d_columns_char[col_val.top()] = (char*)d;
                     b->h_columns_char[col_val.top()] = nullptr;
                     b->char_size[col_val.top()] = a->char_size[exe_value1.top()];
                     b->columnNames.push_back(col_val.top());
@@ -866,18 +872,22 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else {  // already exists, my need to resize it
                     if(b->mRecCount < res_size)
-                        b->resizeDeviceColumn(res_size, col_val.top());
+                    //    b->resizeDeviceColumn(res_size, col_val.top());
+						b->d_columns_int[col_val.top()].resize(b->mRecCount + res_size);
                 };
 
                 if (!a->columnGroups.empty()) {
                     thrust::device_ptr<bool> d_grp(a->grp);
-                    str_copy_if(a->d_columns_char[exe_value1.top()], a->mRecCount, b->d_columns_char[col_val.top()], d_grp, a->char_size[exe_value1.top()]);
+                    //str_copy_if(a->d_columns_char[exe_value1.top()], a->mRecCount, b->d_columns_char[col_val.top()], d_grp, a->char_size[exe_value1.top()]);
+					thrust::gather(d_grp, d_grp + a->mRecCount, a->d_columns_int[exe_value1.top()].begin(), b->d_columns_int[col_val.top()].begin());
                 }
                 else {
-                    cudaMemcpy((void*)(thrust::raw_pointer_cast(b->d_columns_char[col_val.top()])), (void*)thrust::raw_pointer_cast(a->d_columns_char[exe_value1.top()]),
-                               a->mRecCount*a->char_size[exe_value1.top()], cudaMemcpyDeviceToDevice);
-                }
-            }
+                    //cudaMemcpy((void*)(thrust::raw_pointer_cast(b->d_columns_char[col_val.top()])), (void*)thrust::raw_pointer_cast(a->d_columns_char[exe_value1.top()]),
+                    //           a->mRecCount*a->char_size[exe_value1.top()], cudaMemcpyDeviceToDevice);
+					thrust::copy(a->d_columns_int[exe_value1.top()].begin(), a->d_columns_int[exe_value1.top()].begin() + a->mRecCount, b->d_columns_int[col_val.top()].begin());
+                };
+				b->string_map[col_val.top()] = a->string_map[exe_value1.top()];
+            }*/
             exe_value1.pop();
 
         };
