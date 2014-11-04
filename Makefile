@@ -6,17 +6,19 @@ CFLAGS=--machine 64 -O3 -arch=sm_20 -D UNROLL_COUNT=40 -std=c++11
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o atof.o cm.o mgpucontext.o callbacks.o main.o
+		 select.o zone_map.o atof.o cm.o mgpucontext.o callbacks.o main.o operators.o
 	#nvcc -O3 -arch=sm_20 -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o 
 	nvcc $(CFLAGS) -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
 		 MurmurHash2_64.o filter.o \
 		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o \
-		 callbacks.o main.o		 
+		 callbacks.o main.o	operators.o	 
 
 #nvcc = nvcc --machine 64 -O3 -arch=sm_20  -c
 nvcc = nvcc $(CFLAGS)  -c
 
+operators.obj : operators.cu operators.h 
+	$(nvcc) operators.cu
 callbacks.o : callbacks.c callbacks.h
 	$(nvcc) callbacks.c
 main.o : main.cu

@@ -2,23 +2,25 @@ alenka : cm.obj merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 zone_map.obj \
-		 select.obj atof.obj bison.obj mgpucontext.obj callbacks.obj main.obj
+		 select.obj atof.obj bison.obj mgpucontext.obj callbacks.obj main.obj operators.obj
 	nvcc.exe --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
          MurmurHash2_64.obj filter.obj \
 		 strings_filter.obj strings_join.obj strings_sort_host.obj strings_sort_device.obj \
 		 select.obj zone_map.obj \
-		 atof.obj cm.obj bison.obj callbacks.obj main.obj 
+		 atof.obj cm.obj bison.obj callbacks.obj main.obj operators.obj
 
 
 nvcc = nvcc.exe -D UNROLL_COUNT=55 --compiler-options /bigobj --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
 
+operators.obj : operators.cu operators.h 
+	$(nvcc) operators.cu
 callbacks.obj : callbacks.c callbacks.h
 	$(nvcc) callbacks.c
 main.obj : main.cu
 	$(nvcc) main.cu
 cm.obj : cm.cu cm.h	
 	$(nvcc) cm.cu 
-bison.obj : bison.cu cm.h sorts.cu
+bison.obj : bison.cu cm.h sorts.cu 
 	$(nvcc) bison.cu
 merge.obj : merge.cu cm.h merge.h
 	$(nvcc) merge.cu

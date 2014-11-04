@@ -97,6 +97,10 @@ extern size_t alloced_sz;
 extern void* alloced_tmp;
 extern ContextPtr context;
 extern unordered_map<string, unordered_map<unsigned long long int,bool> > char_hash; // mapping between column's string hashes and string positions
+extern bool scan_state;
+extern unsigned int statement_count;
+extern map<string, map<string, bool> > used_vars;
+
 
 
 template<typename T>
