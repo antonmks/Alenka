@@ -17,7 +17,7 @@ alenka : bison.o merge.o \
 #nvcc = nvcc --machine 64 -O3 -arch=sm_20  -c
 nvcc = nvcc $(CFLAGS)  -c
 
-operators.obj : operators.cu operators.h 
+operators.o : operators.cu operators.h 
 	$(nvcc) operators.cu
 callbacks.o : callbacks.c callbacks.h
 	$(nvcc) callbacks.c
