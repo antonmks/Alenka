@@ -12,7 +12,6 @@
  *  limitations under the License.
  */
 
-
 #include <cctype>
 #include <algorithm>
 #include <functional>
@@ -1360,15 +1359,16 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
     if(not_compressed && prm_d.size() == 0) {
         for(unsigned int i=0; i < mCount; i++) {                            // for each record
             for(unsigned int j=0; j < columnNames.size(); j++) {                // for each col
-                if (type[columnNames[j]] == 0 && string_map.find(columnNames[j]) == string_map.end())
-                    sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
-                else if (type[columnNames[j]] == 1)
-                    sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
-                else {
-                    strncpy(fields[j], string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size());
-					if ( char_size[columnNames[j]] > 0)
+                if (type[columnNames[j]] != 1) {
+					if(string_map.find(columnNames[j]) == string_map.end())
+						sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
+					else {
+						strncpy(fields[j], string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size());
 						fields[j][string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size() -0] ='\0'; // zero terminate string
-                };
+					};	
+				}	
+                else 
+                    sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
             };
             row_cb(mColumnCount, (char **)fields, (char **)dcolumns);
             rows++;
@@ -1405,15 +1405,16 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
             sum_printed = sum_printed + mRecCount;
             for(unsigned int i=0; i < curr_count; i++) {
                 for(unsigned int j=0; j < columnNames.size(); j++) {
-                    if (type[columnNames[j]] == 0)
-                        sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
-                    else if (type[columnNames[j]] == 1)
-                        sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
-                    else {
-						strncpy(fields[j], string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size());
-						if ( char_size[columnNames[j]] > 0)
+                    if (type[columnNames[j]] != 1) {
+						if(string_map.find(columnNames[j]) == string_map.end())
+							sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
+						else {
+							strncpy(fields[j], string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size());							
 							fields[j][string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size() -0] ='\0'; // zero terminate string
-                    };
+						};						
+					}	
+                    else 
+                        sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
                 };
                 row_cb(mColumnCount, (char **)fields, (char**)dcolumns);
                 rows++;
@@ -1566,6 +1567,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 							if(string_map.find(columnNames[j]) == string_map.end())
 								fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
 							else {
+								//cout << "SZ of " << string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size() << " " << string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]] << endl;
 								fprintf(file_pr, "%.*s", string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str());
 							};							
                             fputs(sep, file_pr);
@@ -3598,7 +3600,7 @@ void load_col_data(map<string, map<string, col_data> >& data_dict, string file_n
         binary_file.close();
     }
     else {
-        cout << "Coudn't open data dictionary" << endl;
+        cout << "Couldn't open data dictionary" << endl;
     };
 }
 
@@ -3622,7 +3624,6 @@ bool check_bitmap_file_exist(CudaSet* left, CudaSet* right)
 	queue<string> cols(right->fil_value);
 	bool bitmaps_exist = 1;
 	
-	
 	if(cols.size() == 0) {
 		bitmaps_exist = 0;
 	};	
@@ -3631,7 +3632,7 @@ bool check_bitmap_file_exist(CudaSet* left, CudaSet* right)
 			string fname = left->load_file_name + "."  + right->load_file_name + "." + cols.front() + ".0";
 			if( !file_exist(fname.c_str())) {
 				bitmaps_exist = 0;
-			};
+			};			
 		};
 		cols.pop();
 	};
@@ -3644,9 +3645,7 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right)
 	queue<string> cols(right->fil_value);
 	bool bitmaps_exist = 1;
 	
-	
 	if(cols.size() == 0) {
-		cout << "cols " << right->name << " " << right->fil_value.size() << endl;
 		bitmaps_exist = 1;
 		return 1;
 	};	

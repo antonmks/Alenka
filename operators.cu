@@ -1790,7 +1790,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         std::clock_t start3 = std::clock();
 
         cnt = 0;
-        copyColumns(a, op_vx, i, cnt);
+        copyColumns(a, op_vx, i, cnt);		
 		
 		if(a->mRecCount) {
             if (grp_cnt != 0) {

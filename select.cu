@@ -684,7 +684,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     }
                     else if (s1.compare("FLOAT") == 0 && (s2.compare("VECTOR") == 0 || s2.compare("VECTOR F") == 0)) {
                         n1_f = exe_nums_f.top();
-                        exe_nums.pop();
+                        exe_nums_f.pop();
 
                         if (s2.compare("VECTOR") == 0 ) {
                             int_type* s3 = exe_vectors.top();
@@ -701,7 +701,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             cudaFree(s3);
                         }
                     }
-
 
                     else if (s1.compare("VECTOR") == 0 && s2.compare("VECTOR") == 0) {
                         int_type* s3 = exe_vectors.top();
@@ -780,6 +779,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 
+	
 
 
     for(unsigned int j=0; j < colCount; j++) {
