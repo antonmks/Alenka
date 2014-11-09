@@ -64,9 +64,9 @@ void create_c(CudaSet* c, CudaSet* b)
         if (b->type[b->columnNames[i]] == 0) {
             c->h_columns_int[b->columnNames[i]] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >();
             c->d_columns_int[b->columnNames[i]] = thrust::device_vector<int_type>();
-			if(b->string_map.find(b->columnNames[i]) != b->string_map.end()) {
-				c->string_map[b->columnNames[i]] = b->string_map[b->columnNames[i]];	
-			};	
+            if(b->string_map.find(b->columnNames[i]) != b->string_map.end()) {
+                c->string_map[b->columnNames[i]] = b->string_map[b->columnNames[i]];
+            };
         }
         else if (b->type[b->columnNames[i]] == 1) {
             c->h_columns_float[b->columnNames[i]] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >();
@@ -121,7 +121,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
         }*/
         else {  //float
             //process_error(2, "No group by on float/decimal columns ");
-			memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_float[opv[z]].data()), b->mRecCount*8);
+            memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_float[opv[z]].data()), b->mRecCount*8);
         };
     };
 
@@ -140,7 +140,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     void* d_tmp;
     CUDA_SAFE_CALL(cudaMalloc((void **) &d_tmp, b->mRecCount*int_size));
-	
+
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
         if(b->type[b->columnNames[i]] == 0 || b->type[b->columnNames[i]] == 2) {
@@ -157,10 +157,10 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             str_gather((void*)thrust::raw_pointer_cast(v.data()), b->mRecCount, b->d_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
             cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
         };
-		*/
+        */
     };
     cudaFree(d_tmp);
-	
+
 
     thrust::host_vector<unsigned long long int> hh(b->mRecCount);
     thrust::copy(d_hashes.begin(), d_hashes.end(), hh.begin());
@@ -191,7 +191,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             //memcpy(c->h_columns_char[c->columnNames[i]], tmp, (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]]);
         };
     };
-	
+
 
     //merge the keys
     thrust::merge(h_merge.begin(), h_merge.end(),
@@ -418,7 +418,7 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                         thrust::copy(tmp, tmp + c->char_size[c->columnNames[k]]*res_count, c->h_columns_char[c->columnNames[k]]);
                         delete [] tmp;
                     };
-					*/
+                    */
                 };
             };
 

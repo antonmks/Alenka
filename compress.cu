@@ -252,12 +252,12 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
         cudaMalloc((void **) &raw_decomp, cnt);
         raw_decomp_length = cnt;
     };
-	
+
     cudaMemcpy( (void*)raw_decomp, (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
-	
+
 
     thrust::device_ptr<int_type> d_int((int_type*)destination);
-	
+
 
     if(comp_type == 1) {
         thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
@@ -458,24 +458,24 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
 
     // check if sorted
 
-	
-	if(delta) {
-		if (tp == 0) {
-			thrust::device_ptr<int_type> s((int_type*)source);
-			sorted = thrust::is_sorted(s, s+recCount);
-		}
-		else {
-			recCount = source_len/float_size;
-			thrust::device_ptr<long long int> s((long long int*)source);
-			sorted = thrust::is_sorted(s, s+recCount);
-		};
-		//cout << "file " << file_name << " is sorted " << sorted << endl;
 
-		if(sorted) {
-			pfor_delta_compress(source, source_len, file_name, host, tp);
-			return;
-		};
-	};	
+    if(delta) {
+        if (tp == 0) {
+            thrust::device_ptr<int_type> s((int_type*)source);
+            sorted = thrust::is_sorted(s, s+recCount);
+        }
+        else {
+            recCount = source_len/float_size;
+            thrust::device_ptr<long long int> s((long long int*)source);
+            sorted = thrust::is_sorted(s, s+recCount);
+        };
+        //cout << "file " << file_name << " is sorted " << sorted << endl;
+
+        if(sorted) {
+            pfor_delta_compress(source, source_len, file_name, host, tp);
+            return;
+        };
+    };
 
 
     if (tp == 0) {

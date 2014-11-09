@@ -96,7 +96,7 @@ extern unsigned int raw_decomp_length;
 extern size_t alloced_sz;
 extern void* alloced_tmp;
 extern ContextPtr context;
-extern unordered_map<string, unordered_map<unsigned long long int,bool> > char_hash; // mapping between column's string hashes and string positions
+extern unordered_map<string, unordered_map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
 extern bool scan_state;
 extern unsigned int statement_count;
 extern map<string, map<string, bool> > used_vars;
@@ -264,7 +264,7 @@ public:
     thrust::device_vector<unsigned int> prm_d;
 	map<string, string> string_map; //maps char column names to string files, only select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
-	map<string, map<string, unsigned int> > idx_dictionary_str; //stored in host memory
+	//map<string, map<string, unsigned int> > idx_dictionary_str; //stored in host memory
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
 	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
@@ -291,7 +291,7 @@ public:
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
     map<unsigned int, string> cols; // column positions in a file
 	map<string, bool> map_like; //for LIKE processing
-	map<string, thrust::device_vector<unsigned long long int> > map_res; //also for LIKE processing
+	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing
 	
 	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
 	//but just boolean indicators.
@@ -337,8 +337,8 @@ public:
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term = 0);
-    void compress_char(string file_name, string colname, size_t mCount, size_t offset, unsigned int segment);
-	void compress_int(string file_name, string colname, size_t mCount);
+    void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
+	void compress_int(const string file_name, const string colname, const size_t mCount);
     bool LoadBigFile(FILE* file_p);
     void free();
     bool* logical_and(bool* column1, bool* column2);
