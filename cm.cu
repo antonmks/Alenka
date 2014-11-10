@@ -317,7 +317,7 @@ void CudaSet::resize(size_t addRecs)
 
 void CudaSet::deAllocColumnOnDevice(string colname)
 {
-    if (type[colname] == 0 && !d_columns_int.empty()) {
+    if (type[colname] != 1 && !d_columns_int.empty()) {
         if(d_columns_int[colname].size() > 0) {
             d_columns_int[colname].resize(0);
             d_columns_int[colname].shrink_to_fit();
@@ -328,10 +328,6 @@ void CudaSet::deAllocColumnOnDevice(string colname)
             d_columns_float[colname].resize(0);
             d_columns_float[colname].shrink_to_fit();
         };
-    }
-    else if (type[colname] == 2 && d_columns_char[colname]) {
-        cudaFree(d_columns_char[colname]);
-        d_columns_char[colname] = nullptr;
     };
 };
 
@@ -374,20 +370,11 @@ void CudaSet::deAllocOnDevice()
 
 void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
 {
-    if (type[colname] == 0) {
+    if (type[colname] != 1) {
         d_columns_int[colname].resize(RecCount);
     }
-    else if (type[colname] == 1)
+    else 
         d_columns_float[colname].resize(RecCount);
-    else {
-        void *d;
-        cudaMalloc((void **) &d, RecCount*char_size[colname]);
-        if (d_columns_char[colname]) {
-            cudaMemcpy( d, (void*)d_columns_char[colname], char_size[colname] * (RecCount-mRecCount), cudaMemcpyDeviceToDevice);
-            cudaFree(d_columns_char[colname]);
-        };
-        d_columns_char[colname] = (char*)d;
-    };
 };
 
 void CudaSet::resizeDevice(size_t RecCount)
@@ -1901,20 +1888,14 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 void CudaSet::free()  {
 
     for(unsigned int i = 0; i < columnNames.size(); i++ ) {
-        if(type[columnNames[i]] == 2 && h_columns_char[columnNames[i]]) {
-            delete [] h_columns_char[columnNames[i]];
-            h_columns_char[columnNames[i]] = nullptr;
-        }
-        else {
-            if(type[columnNames[i]] == 0 ) {
-                h_columns_int[columnNames[i]].resize(0);
-                h_columns_int[columnNames[i]].shrink_to_fit();
-            }
-            else if(type[columnNames[i]] == 1) {
-                h_columns_float[columnNames[i]].resize(0);
-                h_columns_float[columnNames[i]].shrink_to_fit();
-            };
-        }
+		if(type[columnNames[i]] == 0 ) {
+			h_columns_int[columnNames[i]].resize(0);
+			h_columns_int[columnNames[i]].shrink_to_fit();
+		}
+		else {
+			h_columns_float[columnNames[i]].resize(0);
+			h_columns_float[columnNames[i]].shrink_to_fit();
+		};
     };
 
     prm_d.resize(0);

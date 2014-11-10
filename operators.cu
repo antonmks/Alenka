@@ -1334,18 +1334,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     if(verbose)
         cout << endl << "tot res " << tot_count << " " << getFreeMem() << endl;
 
-    size_t tot_size = 0;
-    for (unsigned int i = 0; i < c->columnNames.size(); i++ ) {
-        if(c->type[c->columnNames[i]] <= 1) {
-            tot_size = tot_size + tot_count*8;
-        }
-        else {
-            tot_size = tot_size + 2*tot_count*c->char_size[c->columnNames[i]];
-        };
-    };
-
+    size_t tot_size = tot_count*8*c->columnNames.size();
+	
     //super-important partitioning of result datasets
-    if (getFreeMem() > tot_size*2) {
+    if (getFreeMem() > tot_size*3) {
 
         //vector< map<string, set<unsigned int> > > border_segments;
         map<string, set<unsigned int> > m;
@@ -1365,7 +1357,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         c->segCount = 1;
     }
     else {
-        c->segCount = ((tot_size*2)/getFreeMem() + 1);
+        c->segCount = ((tot_size*3)/getFreeMem() + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
         c->orig_segs.resize(c->segCount);
         size_t bb;
@@ -2281,7 +2273,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     };
 
     if(verbose)
-        printf("BINARY LOAD: %s \n", s, f);
+        printf("BINARY LOAD: %s %s \n", s, f);
 
     CudaSet *a;
     unsigned int segCount, maxRecs;
