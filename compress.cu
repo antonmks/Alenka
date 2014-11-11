@@ -228,20 +228,14 @@ struct decompress_functor_str
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
 {
-    unsigned int bits, cnt, fit_count, orig_recCount;
-    long long int  orig_lower_val;
     unsigned int bit_count = 64;
-    unsigned int comp_type;
-    long long int start_val;
-
-    cnt = ((unsigned int*)host)[0];
-    orig_recCount = ((unsigned int*)((char*)host + cnt))[7];
-    bits = ((unsigned int*)((char*)host + cnt))[8];
-    orig_lower_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 9))[0];
-    fit_count = ((unsigned int*)((char*)host + cnt))[11];
-    start_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 12))[0];
-    comp_type = ((unsigned int*)((char*)host + cnt))[14];
-    comp_type = ((unsigned int*)host)[5];
+    auto cnt = ((unsigned int*)host)[0];
+    auto orig_recCount = ((unsigned int*)((char*)host + cnt))[7];
+    auto bits = ((unsigned int*)((char*)host + cnt))[8];
+    auto orig_lower_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 9))[0];
+    auto fit_count = ((unsigned int*)((char*)host + cnt))[11];
+    auto start_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 12))[0];
+    auto comp_type = ((unsigned int*)host)[5];
 
     //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
 

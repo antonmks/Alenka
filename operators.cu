@@ -1042,7 +1042,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
             if(!left->ref_joins.empty() && !right->orig_segs.empty()) {
                 if(left->ref_joins[colname1][i].size() && r_segs[left->ref_sets[colname1]].size()) {
-                    cout << "refs1 " << endl;
                     set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
                                      r_segs[left->ref_sets[colname1]].begin(), r_segs[left->ref_sets[colname1]].end(),
                                      std::back_inserter(j_data));

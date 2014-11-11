@@ -267,7 +267,7 @@ void CudaSet::allocColumnOnDevice(string colname, size_t RecordCount)
             cudaError_t cudaStatus = cudaMalloc(&d, sz);
             if(cudaStatus != cudaSuccess) {
                 char buf[1024];
-                sprintf( buf, "Could not allocate %llu bytes of GPU memory for %d records ", sz, RecordCount);
+                sprintf( buf, "Could not allocate %llu bytes of GPU memory for %lu records ", sz, RecordCount);
                 process_error(3, string(buf));
             };
             d_columns_char[colname] = (char*)d;
@@ -1287,18 +1287,16 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
     {
         fields[cc] = &(bigbuf[cc*MAXFIELDSIZE]);                        // a hack to avoid malloc overheads     - refine later
         dcolumns[cc++] = columnNames[i].c_str();
-
-        for(unsigned int j=0; j < columnNames.size(); j++) {
-            if(string_map.find(columnNames[j]) != string_map.end()) {
-                auto s = string_map[columnNames[j]];
-                auto pos = s.find_first_of(".");
-                auto len = data_dict[s.substr(0, pos)][s.substr(pos+1)].col_length;
-                FILE *f;
-                f = fopen(string_map[columnNames[j]].c_str(), "rb");
-                file_map[string_map[columnNames[j]]] = f;
-                len_map[string_map[columnNames[j]]] = len;
-            };
-        };
+    
+		if(string_map.find(columnNames[i]) != string_map.end()) {
+			auto s = string_map[columnNames[i]];
+			auto pos = s.find_first_of(".");
+			auto len = data_dict[s.substr(0, pos)][s.substr(pos+1)].col_length;
+			FILE *f;
+			f = fopen(string_map[columnNames[i]].c_str(), "rb");
+			file_map[string_map[columnNames[i]]] = f;
+			len_map[string_map[columnNames[i]]] = len;
+		};
     };
 
     // The goal here is to loop fast and avoid any double handling of outgoing data - pointers are good.
@@ -1372,11 +1370,8 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
                 print_all = 0;
         };
     };      // end else
-    for(unsigned int j=0; j < columnNames.size(); j++) {
-        for(auto it = file_map.begin(); it != file_map.end(); it++)
-            fclose(it->second);
-    };
-
+    for(auto it = file_map.begin(); it != file_map.end(); it++)
+		fclose(it->second);
 }
 
 void CudaSet::Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term)
@@ -1535,6 +1530,8 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 fclose(file_pr);
             };
         };
+		for(auto it = file_map.begin(); it != file_map.end(); it++)
+			fclose(it->second);		
     }
     else {
         //lets update the data dictionary
