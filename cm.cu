@@ -933,7 +933,6 @@ void CudaSet::GroupBy(stack<string> columnRef)
 
 void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
 {
-	cout << "adding " << colname << endl;
     if (std::find(columnNames.begin(), columnNames.end(), colname) == columnNames.end()) {
         columnNames.push_back(colname);
         type[colname] = 0;
