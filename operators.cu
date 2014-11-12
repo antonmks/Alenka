@@ -1786,6 +1786,9 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             };
 
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+			//cout << "RES " << b->mRecCount << endl;
+			//for(int z= 0; z<b->mRecCount; z++)
+			//cout << b->d_columns_int["lf1"][z] << " " << b->d_columns_int["rf1"][z] << endl;
 
             if(i == 0)
                 std::reverse(b->columnNames.begin(), b->columnNames.end());
@@ -1859,6 +1862,13 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     c->orig_segs = a->orig_segs;
     if(verbose)
         cout << "select res " << c->mRecCount << endl;
+		
+    size_t tot_size = c->maxRecs*8*c->columnNames.size();	
+    if (getFreeMem() < tot_size*3) {	
+        c->segCount = ((tot_size*3)/getFreeMem() + 1);
+        c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
+	};
+		
 
     clean_queues();
 

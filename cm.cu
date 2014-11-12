@@ -933,6 +933,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
 
 void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
 {
+	cout << "adding " << colname << endl;
     if (std::find(columnNames.begin(), columnNames.end(), colname) == columnNames.end()) {
         columnNames.push_back(colname);
         type[colname] = 0;
@@ -1716,15 +1717,14 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
     if(d_columns_int.find(colname) == d_columns_int.end())
         d_columns_int[colname] = thrust::device_vector<int_type >(mCount);
 
-    size_t cnt = 0;
     for (unsigned int i = 0 ; i < mCount; i++) {
         string_hash = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
         binary_file_h.write((char *)&string_hash, 8);
         if(char_hash[colname].find(string_hash) == char_hash[colname].end()) {
+			auto cnt = char_hash[colname].size();
             char_hash[colname][string_hash] = cnt;
             b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
             h_columns_int[colname][i] = cnt;
-            cnt++;
         }
         else {
             h_columns_int[colname][i] = char_hash[colname][string_hash];

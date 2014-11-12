@@ -678,33 +678,48 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         }
                         else {
                             if(a->map_like.find(s2_val) == a->map_like.end()) {
-                                a->cpy_strings = 1;
-                                string f1 = a->load_file_name + "." + s2_val;
-                                FILE* f = fopen(f1.c_str(), "rb" );
-                                fseek(f, 0, SEEK_END);
-                                long fileSize = ftell(f);
-                                fseek(f, 0, SEEK_SET);
-                                char* buff = new char[fileSize];
-                                fread(buff, fileSize, 1, f);
-                                fclose(f);
-
-                                thrust::device_vector<char> dev(fileSize);
-                                cudaMemcpy( thrust::raw_pointer_cast(dev.data()), (void*)buff, fileSize, cudaMemcpyHostToDevice);
-                                delete [] buff;
-
+						
                                 void* d_str;
                                 cudaMalloc((void **) &d_str, len);
                                 cudaMemset(d_str,0,len);
                                 cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
+								
+                                string f1 = a->load_file_name + "." + s2_val;
+                                FILE* f = fopen(f1.c_str(), "rb" );
+                                fseek(f, 0, SEEK_END);
+                                long fileSize = ftell(f);
+                                fseek(f, 0, SEEK_SET);																
+                                								
+								unsigned int pieces = 1;
+								if(fileSize > getFreeMem()/2)
+									pieces = fileSize /(getFreeMem()/2) + 1;
+								auto piece_sz = fileSize/pieces;
+								ldiv_t ldivresult = ldiv(fileSize/pieces, len);		
+								if(ldivresult.rem != 0)
+									piece_sz = fileSize/pieces + (len - ldivresult.rem);										
+								thrust::device_vector<char> dev(piece_sz);	
+								char* buff = new char[piece_sz];
+								a->map_res[s2_val] = thrust::device_vector<unsigned int>();
+								for(auto i = 0; i < pieces; i++) {	
+									
+									if(i == pieces-1)
+										piece_sz = fileSize - piece_sz*i;											
+									fread(buff, piece_sz, 1, f);	
+									cudaMemcpy( thrust::raw_pointer_cast(dev.data()), (void*)buff, piece_sz, cudaMemcpyHostToDevice);
 
-                                gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-                                thrust::for_each(begin, begin + fileSize/len, ff);
-                                cudaFree(d_str);
-
-                                auto cnt = thrust::count(dd_res, dd_res + fileSize/a->char_size[s2_val], 1);
-                                a->map_res[s2_val] = thrust::device_vector<unsigned int>(cnt);
-                                thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)(fileSize/a->char_size[s2_val])),
-                                                dd_res, a->map_res[s2_val].begin(), thrust::identity<bool>());
+									gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+									thrust::for_each(begin, begin + piece_sz/len, ff);
+									
+									auto cnt = thrust::count(dd_res, dd_res + piece_sz/len, 1);
+									auto offset = a->map_res[s2_val].size();
+									a->map_res[s2_val].resize(a->map_res[s2_val].size() + cnt);
+									thrust::copy_if(thrust::make_counting_iterator((unsigned int)(i*(piece_sz/len))), thrust::make_counting_iterator((unsigned int)((i+1)*(piece_sz/len))),
+													dd_res, a->map_res[s2_val].begin() + offset, thrust::identity<bool>());
+								};				
+								
+								fclose(f);
+								delete [] buff;												
+								cudaFree(d_str);
                                 thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());
                                 a->cpy_strings = 0;
                                 a->map_like[s2_val] = 1;
