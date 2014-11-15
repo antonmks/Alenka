@@ -721,7 +721,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								delete [] buff;												
 								cudaFree(d_str);
                                 thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());
-                                a->cpy_strings = 0;
                                 a->map_like[s2_val] = 1;
 
 

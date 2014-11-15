@@ -171,14 +171,14 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     for(unsigned int i = 0; i < b->columnNames.size(); i++) {
 
-        if(b->type[b->columnNames[i]] == 0 || b->type[b->columnNames[i]] == 2) {
+        if(b->type[b->columnNames[i]] != 1) {
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_int[c->columnNames[i]].begin(), b->h_columns_int[b->columnNames[i]].begin(),
                                  thrust::make_discard_iterator(), (int_type*)tmp);
             memcpy(thrust::raw_pointer_cast(c->h_columns_int[c->columnNames[i]].data()), (int_type*)tmp, (h_merge.size() + b->mRecCount)*int_size);
         }
-        else if(b->type[b->columnNames[i]] == 1) {
+        else {
             thrust::merge_by_key(h_merge.begin(), h_merge.end(),
                                  hh.begin(), hh.end(),
                                  c->h_columns_float[c->columnNames[i]].begin(), b->h_columns_float[b->columnNames[i]].begin(),
@@ -186,10 +186,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             memcpy(thrust::raw_pointer_cast(c->h_columns_float[c->columnNames[i]].data()), (float_type*)tmp, (h_merge.size() + b->mRecCount)*float_size);
 
         }
-        else {
-            //str_merge_by_key(h_merge, hh, c->h_columns_char[c->columnNames[i]], b->h_columns_char[b->columnNames[i]], b->char_size[b->columnNames[i]], tmp);
-            //memcpy(c->h_columns_char[c->columnNames[i]], tmp, (h_merge.size() + b->mRecCount)*b->char_size[b->columnNames[i]]);
-        };
     };
 
 
@@ -412,13 +408,6 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                         thrust::copy(tmp, tmp + res_count, c->h_columns_float[c->columnNames[k]].begin());
                         delete [] tmp;
                     }
-                    /*else { //char
-                        char* tmp = new char[res_count*c->char_size[c->columnNames[k]]];
-                        str_copy_if_host(c->h_columns_char[c->columnNames[k]], c->mRecCount, tmp, grp, c->char_size[c->columnNames[k]]);
-                        thrust::copy(tmp, tmp + c->char_size[c->columnNames[k]]*res_count, c->h_columns_char[c->columnNames[k]]);
-                        delete [] tmp;
-                    };
-                    */
                 };
             };
 

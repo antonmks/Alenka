@@ -5,12 +5,12 @@ CFLAGS=--machine 64 -O3 -arch=sm_20 -D UNROLL_COUNT=40 -std=c++11
 
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
-		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
+		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o mgpucontext.o callbacks.o main.o operators.o
 	#nvcc -O3 -arch=sm_20 -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o 
 	nvcc $(CFLAGS) -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
 		 MurmurHash2_64.o filter.o \
-		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
+		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o \
 		 callbacks.o main.o	operators.o	 
 
@@ -33,8 +33,6 @@ MurmurHash2_64.o : MurmurHash2_64.cu cm.h
 	$(nvcc) MurmurHash2_64.cu
 filter.o : filter.cu cm.h filter.h
 	$(nvcc) filter.cu
-strings_filter.o : strings_filter.cu strings.h strings_type.h
-	$(nvcc) strings_filter.cu
 strings_join.o : strings_join.cu strings.h strings_type.h
 	$(nvcc) strings_join.cu
 strings_sort_host.o : strings_sort_host.cu strings.h strings_type.h
@@ -52,6 +50,6 @@ mgpucontext.o : moderngpu-master/src/mgpucontext.cu
 	
 clean : del bison.o merge.o \
          MurmurHash2_64.o filter.o \
-		 strings_filter.o strings_join.o strings_sort_host.o strings_sort_device.o \
+		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o itoa.o \
 		 atof.o cm.o mgpucontext.o 

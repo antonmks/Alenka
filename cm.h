@@ -283,7 +283,7 @@ public:
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;
     string name, load_file_name, separator, source_name;
-    bool source, text_source, tmp_table, keep, filtered, cpy_strings;
+    bool source, text_source, tmp_table, keep, filtered;
     queue<string> sorted_fields; //segment is sorted by fields
     queue<string> presorted_fields; //globally sorted by fields
     map<string, unsigned int> type; // 0 - integer, 1-float_type, 2-char
@@ -384,7 +384,6 @@ void setSegments(CudaSet* a, queue<string> cols);
 size_t max_char(CudaSet* a, set<string> field_names);
 size_t max_char(CudaSet* a, queue<string> field_names);
 size_t maxsz(CudaSet* a);
-void update_permutation_char(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
