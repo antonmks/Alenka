@@ -323,7 +323,7 @@ void star_join(const char *s, const string j1)
         op_value.pop();
     };
     auto op_sel_s(op_sel), op_sel_s_as(op_sel_as), op_g(op_value);
-    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as, op_join);
+    CudaSet* c = new CudaSet(op_sel_s, op_sel_s_as);
 
     string f1, f2;
     map<string, string> key_map;
@@ -854,9 +854,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right, left, op_sel_s, op_sel_s_as);
-    left->cpy_strings = 0;
-    right->cpy_strings = 0;
-    c->cpy_strings = 0;
 
     if ((left->mRecCount == 0 && !left->filtered) || (right->mRecCount == 0 && !right->filtered)) {
         c = new CudaSet(left, right, op_sel_s, op_sel_s_as);
@@ -954,8 +951,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     unsigned int start_part = 0;
     size_t r_size = right->columnNames.size()*right->hostRecCount*8;
     map<string, set<unsigned int> > r_segs;
-    left->cpy_strings = 0;
-    right->cpy_strings = 0;
 
     while(start_part < right->segCount) {
 
@@ -1557,7 +1552,6 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
             a->hostRecCount = a->mRecCount;
         };
 
-        a->cpy_strings = 1;
         a->mRecCount = load_queue(names, a, op_vx.front(), rcount, 0, a->segCount);
 
         thrust::device_ptr<unsigned int> permutation = thrust::device_malloc<unsigned int>(a->mRecCount);
@@ -1730,7 +1724,6 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     // find out how many columns a new set will have
     queue<string> op_t(op_type);
     int_type col_count = 0;
-    a->cpy_strings = 0;
 
     for(int i=0; !op_t.empty(); ++i, op_t.pop())
         if((op_t.front()).compare("emit sel_name") == 0)
@@ -1799,7 +1792,6 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
                 b->mRecCount = 0;
                 b->resize(a->maxRecs);
                 b->mRecCount = old_cnt;
-                b->cpy_strings = 0;
             };
 
 
@@ -2201,7 +2193,6 @@ void emit_store(const char *s, const char *f, const char* sep)
         op_nums.pop();
     };
 
-    a->cpy_strings = 0;
     a->Store(f,sep, limit, 0);
 
     if(stat[s] == statement_count  && a->keep == 0) {
@@ -2228,7 +2219,6 @@ void emit_store_binary(const char *s, const char *f)
         return;
 
     CudaSet* a = varNames.find(s)->second;
-    a->cpy_strings = 1;
 
     if(stat[f] == statement_count)
         a->deAllocOnDevice();
@@ -2338,7 +2328,6 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
 
     a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_names);
     a->mRecCount = 0;
-    a->cpy_strings = 1;
     a->resize(process_count);
     a->keep = true;
     a->not_compressed = 1;

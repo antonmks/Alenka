@@ -302,8 +302,8 @@ public:
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
-    CudaSet(size_t RecordCount, unsigned int ColumnCount);
-	CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> op_join);
+    CudaSet(const size_t RecordCount, const unsigned int ColumnCount);
+	CudaSet(queue<string> op_sel, const queue<string> op_sel_as);
     CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);    
     ~CudaSet();
     void allocColumnOnDevice(string colname, size_t RecordCount);
@@ -362,9 +362,9 @@ protected:
 
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
-    void initialize(size_t RecordCount, unsigned int ColumnCount);
+    void initialize(const size_t RecordCount, const unsigned int ColumnCount);
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
-    void initialize(queue<string> op_sel, queue<string> op_sel_as, queue<string> t_list);
+    void initialize(queue<string> op_sel, const queue<string> op_sel_as);
 };
 
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
@@ -379,11 +379,8 @@ void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size
 size_t load_queue(queue<string> c1, CudaSet* right, string f2, size_t &rcount,
                   unsigned int start_segment, unsigned int end_segment, bool rsz = 1, bool flt = 1);
 size_t max_char(CudaSet* a);
-size_t max_tmp(CudaSet* a);
 void setSegments(CudaSet* a, queue<string> cols);
-size_t max_char(CudaSet* a, set<string> field_names);
 size_t max_char(CudaSet* a, queue<string> field_names);
-size_t maxsz(CudaSet* a);
 void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);

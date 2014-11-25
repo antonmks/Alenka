@@ -84,7 +84,6 @@ DELETE {return DELETE; }
 FROM {return FROM; }
 LIKE {return LIKE; }
 CREATE {return CREATE; }
-BITMAP {return BITMAP; }
 INDEX {return INDEX; }
 
 

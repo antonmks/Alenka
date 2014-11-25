@@ -13,7 +13,6 @@
  */
  
 /// Number of turns of the templated functors
-#define UNROLL_COUNT 45
 
 
 #include "strings.h"

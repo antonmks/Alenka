@@ -105,7 +105,6 @@
 %token DESCRIBE
 %token DROP
 %token CREATE
-%token BITMAP
 %token INDEX
 
 %type <intval> load_list  opt_where opt_limit sort_def
@@ -151,8 +150,8 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_show_tables();}
 | DROP TABLE NAME
 {  emit_drop_table($3);}
-| CREATE BITMAP INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
-{  emit_create_bitmap_index($4, $6, $8, $10, $19, $23);};
+| CREATE INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
+{  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);};
 
 
 expr:

@@ -20,6 +20,9 @@
 //---------------------------------------------------------------------------
 #include "cm.h"
 //---------------------------------------------------------------------------
+
+#define UNROLL_COUNT 55
+
 /**
 * JOIN on host static strings
 * @param d_int - the input array of indices of joining strings.

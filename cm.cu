@@ -212,7 +212,7 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     fil_s = nullptr;
 };
 
-CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
+CudaSet::CudaSet(const size_t RecordCount, const unsigned int ColumnCount)
 {
     initialize(RecordCount, ColumnCount);
     keep = false;
@@ -224,9 +224,9 @@ CudaSet::CudaSet(size_t RecordCount, unsigned int ColumnCount)
 };
 
 
-CudaSet::CudaSet(queue<string> op_sel, queue<string> op_sel_as, queue<string> op_join)
+CudaSet::CudaSet(queue<string> op_sel, const queue<string> op_sel_as)
 {
-    initialize(op_sel, op_sel_as, op_join);
+    initialize(op_sel, op_sel_as);
     keep = false;
     source = 0;
     text_source = 0;
@@ -2545,7 +2545,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     };
 };
 
-void CudaSet::initialize(size_t RecordCount, unsigned int ColumnCount)
+void CudaSet::initialize(const size_t RecordCount, const unsigned int ColumnCount)
 {
     mRecCount = RecordCount;
     hostRecCount = RecordCount;
@@ -2554,7 +2554,7 @@ void CudaSet::initialize(size_t RecordCount, unsigned int ColumnCount)
 };
 
 
-void CudaSet::initialize(queue<string> op_sel, queue<string> op_sel_as, queue<string> op_join)
+void CudaSet::initialize(queue<string> op_sel, const queue<string> op_sel_as)
 {
     mRecCount = 0;
     mColumnCount = (unsigned int)op_sel.size();
@@ -2943,17 +2943,6 @@ size_t max_char(CudaSet* a)
     return max_char1;
 };
 
-size_t max_char(CudaSet* a, set<string> field_names)
-{
-    size_t max_char1 = 8;
-    for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
-        if (a->type[*it] == 2) {
-            if (a->char_size[*it] > max_char1)
-                max_char1 = a->char_size[*it];
-        };
-    };
-    return max_char1;
-};
 
 size_t max_char(CudaSet* a, queue<string> field_names)
 {
@@ -2967,25 +2956,6 @@ size_t max_char(CudaSet* a, queue<string> field_names)
     };
     return max_char;
 };
-
-
-
-size_t maxsz(CudaSet* a)
-{
-    size_t tot_sz = 0;
-    for(unsigned int i = 0; i < a->columnNames.size(); i++) {
-        if(a->type[a->columnNames[i]] == 0) {
-            tot_sz = tot_sz + int_size;
-        }
-        else if(a->type[a->columnNames[i]] == 1) {
-            tot_sz = tot_sz + float_size;
-        }
-        else
-            tot_sz = tot_sz + a->char_size[a->columnNames[i]];
-    };
-    return tot_sz;
-};
-
 
 
 void setSegments(CudaSet* a, queue<string> cols)
