@@ -727,7 +727,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
                         mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[colname].data() + offset) , buffers[f1], d_v, s_v);
                     };
                     thrust::device_ptr<long long int> d_col_int((long long int*)thrust::raw_pointer_cast(d_columns_float[colname].data() + offset));
-                    thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[colname].begin(), long_to_float());
+                    thrust::transform(d_col_int,d_col_int+mRecCount,d_columns_float[colname].begin(), long_to_float());					
                 }
                 else {
                     if(buffers.find(f1) == buffers.end()) {
@@ -739,6 +739,9 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
                     thrust::device_ptr<long long int> d_col_int((long long int*)alloced_tmp);
                     thrust::device_ptr<float_type> d_col_float((float_type*)alloced_tmp);
                     thrust::transform(d_col_int,d_col_int+mRecCount, d_col_float, long_to_float());
+					//for(int i = 0; i < mRecCount;i++)
+					//cout << "DECOMP " << (float_type)(d_col_int[i]) << " " << d_col_float[i] << endl;
+
                 };
             }
             //else // uncompressed float
@@ -928,7 +931,7 @@ void CudaSet::addDeviceColumn(float_type* col, string colname, size_t recCount, 
 
     decimal[colname] = is_decimal;
     thrust::device_ptr<float_type> d_col((float_type*)col);
-    thrust::copy(d_col, d_col+recCount, d_columns_float[colname].begin());
+    thrust::copy(d_col, d_col+recCount, d_columns_float[colname].begin());	
 };
 
 void CudaSet::compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, size_t mCount)
@@ -1053,7 +1056,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
                 else {
                     thrust::copy(h_columns_float[colname].begin() + offset, h_columns_float[colname].begin() + offset + mCount, d_col);
                     thrust::device_ptr<long long int> d_col_dec((long long int*)d);
-                    thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
+                    thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());				
                     pfor_compress( d, mCount*float_size, str, h_columns_float[colname], 1);
                 };
             }
@@ -1393,8 +1396,9 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
             for(unsigned int i=0; i < mCount; i++) {
                 for(unsigned int j=0; j < columnNames.size(); j++) {
                     if (type[columnNames[j]] != 1 ) {
-                        if(string_map.find(columnNames[j]) == string_map.end())
+                        if(string_map.find(columnNames[j]) == string_map.end()) {
                             fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+						}									
                         else {
                             //fprintf(file_pr, "%.*s", string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str());
                             fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
@@ -1469,8 +1473,9 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 for(unsigned int i=0; i < curr_count; i++) {
                     for(unsigned int j=0; j < columnNames.size(); j++) {
                         if (type[columnNames[j]] != 1) {
-                            if(string_map.find(columnNames[j]) == string_map.end())
+                            if(string_map.find(columnNames[j]) == string_map.end()) {
                                 fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+							}	
                             else {
                                 fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
                                 fread(&bf[0], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
@@ -1478,7 +1483,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                             };
                             fputs(sep, file_pr);
                         }
-                        else  {
+                        else  {							
                             fprintf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
                             fputs(sep, file_pr);
                         };
@@ -1782,14 +1787,15 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     unsigned int maxx = cols.rbegin()->first;
 
     //clear the varchars
-
     //for(auto it=columnNames.begin(); it!=columnNames.end();it++) {
     for(unsigned int i = 0; i < mColumnCount; i++) {
         if(type[columnNames[i]] == 2) {
+			if(!h_columns_char[columnNames[i]])
+				h_columns_char[columnNames[i]] = new char[maxRecs*char_size[columnNames[i]]];
             memset(h_columns_char[columnNames[i]], 0, maxRecs*char_size[columnNames[i]]);
         };
     };
-
+	
     while (count < process_count && fgets(line, 2000, file_p)) {
         strtok(line, "\n");
         current_column = 0;
@@ -1801,7 +1807,8 @@ bool CudaSet::LoadBigFile(FILE* file_p)
             };
 
             if (type[cols[current_column]] == 0) {
-                if (strchr(t,'-')) { // handling possible dates
+				
+                if (strchr(t,'-') && t[0] != '-') { // handling possible dates
                     strncpy(t+4,t+5,2);
                     strncpy(t+6,t+8,2);
                     t[8] = '\0';
@@ -1833,7 +1840,7 @@ bool CudaSet::LoadBigFile(FILE* file_p)
         };
         count++;
     };
-
+	
     mRecCount = count;
     if(count < process_count)  {
         fclose(file_p);

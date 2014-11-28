@@ -167,11 +167,16 @@ struct float_to_long
     __host__ __device__
     long long int operator()(const float_type x)
     {
-        if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-            return (long long int)((x+EPSILON)*100.0);
-        else return (long long int)(x*100.0);
-
-
+		if(x > 0) {
+			if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
+				return (long long int)((x+EPSILON)*100.0);
+			else return (long long int)(x*100.0);
+		}
+		else {	
+			if ((long long int)((x-EPSILON)*100.0) < (long long int)(x*100.0))
+				return (long long int)((x-EPSILON)*100.0);	
+			else return (long long int)(x*100.0);
+		};
     }
 };
 
