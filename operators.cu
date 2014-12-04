@@ -245,6 +245,44 @@ void emit_join_tab(const char *s, const char tp)
 };
 
 
+void order_inplace_host(CudaSet* a, stack<string> exe_type, set<string> field_names,  bool update_str)
+{
+    unsigned int* permutation = new unsigned int[a->mRecCount];
+    thrust::sequence(permutation, permutation + a->mRecCount);
+
+    char* temp = new char[a->mRecCount*max_char(a)];
+    stack<string> exe_type1(exe_type), exe_value;
+
+    while(!exe_type1.empty()) {
+        exe_value.push("ASC");
+        exe_type1.pop();
+    };
+
+    // sort on host
+
+    for(;!exe_type.empty(); exe_type.pop(),exe_value.pop()) {
+        if (a->type[exe_type.top()] != 1)
+            update_permutation_host(a->h_columns_int[exe_type.top()].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
+        else 
+            update_permutation_host(a->h_columns_float[exe_type.top()].data(), permutation, a->mRecCount,exe_value.top(), (float_type*)temp);
+    };
+
+	for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+        if (a->type[*it] != 1) {
+            thrust::gather(permutation, permutation + a->mRecCount, a->h_columns_int[*it].data(), (int_type*)temp);
+            thrust::copy((int_type*)temp, (int_type*)temp + a->mRecCount, a->h_columns_int[*it].data());
+        }
+        else  {
+            thrust::gather(permutation, permutation + a->mRecCount, a->h_columns_float[*it].data(), (float_type*)temp);
+            thrust::copy((float_type*)temp, (float_type*)temp + a->mRecCount, a->h_columns_float[*it].data());
+        }
+    };
+
+    delete [] temp;
+    delete [] permutation;
+}
+
+
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
 {
@@ -981,6 +1019,17 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     };
                 };
             };
+			// 
+			cout << "Before shrink " << getFreeMem() << endl;
+			for(unsigned int i=0; i < right->columnNames.size(); i++) {
+				if (right->type[right->columnNames[i]] != 1) {
+					right->d_columns_int[right->columnNames[i]].shrink_to_fit();
+				}
+				else 
+					right->d_columns_float[right->columnNames[i]].shrink_to_fit();
+			};
+			cout << "After shrink " << getFreeMem() << endl;
+    
         };
 
         right->mRecCount = cnt_r;
@@ -1007,7 +1056,34 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 //cout << f2 << " already sorted " << endl;
             }
             else {
-                order_inplace(right, exe_type, field_names, 0);
+				size_t tot_size = right->mRecCount*8*right->columnNames.size();
+				if (getFreeMem() > tot_size*1.5) {
+					order_inplace(right, exe_type, field_names, 0);
+				}
+				else {
+   				    //for(unsigned int i = 0; i < right->columnNames.size(); i++) {
+					for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+						if(right->type[*it] != 1) {
+							if(right->h_columns_int[*it].size() < right->mRecCount)
+								right->h_columns_int[*it].resize(right->mRecCount);
+							thrust::copy(right->d_columns_int[*it].begin(), right->d_columns_int[*it].begin() +	right->mRecCount, right->h_columns_int[*it].begin());			
+						}	
+						else {
+							if(right->type[*it] == 1) {						
+								if(right->h_columns_float[*it].size() < right->mRecCount)
+									right->h_columns_float[*it].resize(right->mRecCount);
+							};		
+							thrust::copy(right->d_columns_float[*it].begin(), right->d_columns_float[*it].begin() +	right->mRecCount, right->h_columns_float[*it].begin());			
+						};		
+					};	
+					order_inplace_host(right, exe_type, field_names, 0);
+				    for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+						if(right->type[*it] != 1) 
+							thrust::copy(right->h_columns_int[*it].begin(), right->h_columns_int[*it].begin() + right->mRecCount, right->d_columns_int[*it].begin());
+						else	
+							thrust::copy(right->h_columns_float[*it].begin(), right->h_columns_float[*it].begin() + right->mRecCount, right->d_columns_float[*it].begin());
+					};
+				};				
             };
         };
 
