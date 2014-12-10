@@ -1867,12 +1867,6 @@ void CudaSet::free()  {
     prm_d.resize(0);
     prm_d.shrink_to_fit();
     deAllocOnDevice();
-
-    if(fil_s)
-        delete fil_s;
-    if(fil_f)
-        delete fil_f;
-
 };
 
 
@@ -2423,16 +2417,20 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if(f) {
             unsigned int len;
             fread(&len, 4, 1, f);
-            char* array = new char[len];
+            char* array = new char[len+1];			
+			memset(array, 0, len+1);
             fread((void*)array, len, 1, f);
-            ref_sets[nameRef.front()] = array;
+			string s(array);
+            ref_sets[nameRef.front()] = s;
             delete [] array;
             unsigned int segs, seg_num, curr_seg;
             size_t res_count;
             fread(&len, 4, 1, f);
-            char* array1 = new char[len];
+            char* array1 = new char[len+1];
+			memset(array1, 0, len+1);
             fread((void*)array1, len, 1, f);
-            ref_cols[nameRef.front()] = array1;
+			string s1(array1);
+            ref_cols[nameRef.front()] = s1;
             delete [] array1;
 
             unsigned int bytes_read = fread((void*)&curr_seg, 4, 1, f);
