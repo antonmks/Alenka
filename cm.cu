@@ -1683,7 +1683,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
         h_columns_int[colname] = thrust::host_vector<int_type >(mCount);
     if(d_columns_int.find(colname) == d_columns_int.end())
         d_columns_int[colname] = thrust::device_vector<int_type >(mCount);
-
+		
     for (unsigned int i = 0 ; i < mCount; i++) {
         string_hash = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
         binary_file_h.write((char *)&string_hash, 8);
@@ -1698,7 +1698,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
         };
 
     };
-    //compress_int(i_name, colname, mCount);
+
     thrust::device_vector<int_type> d_col(mCount);
     thrust::copy(h_columns_int[colname].begin(), h_columns_int[colname].begin() + mCount, d_col.begin());
     pfor_compress(thrust::raw_pointer_cast(d_col.data()), mCount*int_size, i_name, h_columns_int[colname], 0);
@@ -3129,17 +3129,85 @@ void insert_records(const char* f, const char* s) {
     cout << "SOURCES " << a->source << ":" << b->source << endl;
     if(a->source && b->source) {
         for(unsigned int i = 0; i < a->segCount; i++) {
-            for(unsigned int z = 0; z < a->columnNames.size(); z++) {
-                str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i);
-                str_d = b->load_file_name + "." + a->columnNames[z] + "." + to_string(b->segCount + i);
-                cout << str_s << " " << str_d << endl;
-                FILE* source = fopen(str_s.c_str(), "rb");
-                FILE* dest = fopen(str_d.c_str(), "wb");
-                while (size = fread(buf, 1, BUFSIZ, source)) {
-                    fwrite(buf, 1, size, dest);
-                }
-                fclose(source);
-                fclose(dest);
+            for(unsigned int z = 0; z < a->columnNames.size(); z++) {			
+		
+				if(a->type[a->columnNames[z]] != 2) {
+					str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i);
+					str_d = b->load_file_name + "." + a->columnNames[z] + "." + to_string(b->segCount + i);
+					cout << str_s << " " << str_d << endl;
+					FILE* source = fopen(str_s.c_str(), "rb");
+					FILE* dest = fopen(str_d.c_str(), "wb");
+					while (size = fread(buf, 1, BUFSIZ, source)) {
+						fwrite(buf, 1, size, dest);
+					}
+					fclose(source);
+					fclose(dest);
+				}
+				else { //merge strings
+					//read b's strings
+					str_s = b->load_file_name + "." + b->columnNames[z];
+					FILE* dest = fopen(str_s.c_str(), "rb");
+					auto len = b->char_size[b->columnNames[z]];
+					map<string, unsigned long long int> map_d;
+					buf[len] = 0;
+					unsigned long long cnt = 0;
+					while (fread(buf, len, 1, dest)) {
+						map_d[buf] = cnt;
+						cnt++;
+					};
+					fclose(dest);
+					unsigned long long int cct = cnt;
+					
+					str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i) + ".hash";
+					str_d = b->load_file_name + "." + b->columnNames[z] + "." + to_string(b->segCount + i) + ".hash";
+					FILE* source = fopen(str_s.c_str(), "rb");
+					dest = fopen(str_d.c_str(), "wb");
+					while (size = fread(buf, 1, BUFSIZ, source)) {
+						fwrite(buf, 1, size, dest);
+					}
+					fclose(source);
+					fclose(dest);
+					
+					str_s = a->load_file_name + "." + a->columnNames[z];
+					source = fopen(str_s.c_str(), "rb");
+					map<unsigned long long int, string> map_s;
+					buf[len] = 0;
+					cnt = 0;
+					while (fread(buf, len, 1, source)) {
+						map_s[cnt] = buf;
+						cnt++;
+					};
+					fclose(source);
+					
+					queue<string> op_vx;
+					op_vx.push(a->columnNames[z]);
+					allocColumns(a, op_vx);
+					a->resize(a->maxRecs);
+					a->CopyColumnToGpu(a->columnNames[z], z, 0);
+					a->CopyColumnToHost(a->columnNames[z]);
+					
+					str_d = b->load_file_name + "." + b->columnNames[z];					
+                    fstream f_file;
+                    f_file.open(str_d.c_str(), ios::out|ios::app|ios::binary);
+					
+					for(auto j = 0; j < a->mRecCount; j++) {
+						auto ss = map_s[a->h_columns_int[a->columnNames[z]][j]];
+						if(map_d.find(ss) == map_d.end()) { //add
+							f_file.write((char *)ss.c_str(), len);
+							a->h_columns_int[a->columnNames[z]][j] = cct;
+							cct++;							
+						}
+						else {
+							a->h_columns_int[a->columnNames[z]][j] = map_d[ss];
+						};
+					};											
+					f_file.close();	
+					
+					thrust::device_vector<int_type> d_col(a->mRecCount);
+					thrust::copy(a->h_columns_int[a->columnNames[z]].begin(), a->h_columns_int[a->columnNames[z]].begin() + a->mRecCount, d_col.begin());
+					auto i_name = b->load_file_name + "." + b->columnNames[z] + "." + to_string(b->segCount + i) + ".idx";
+					pfor_compress(thrust::raw_pointer_cast(d_col.data()), a->mRecCount*int_size, i_name, a->h_columns_int[a->columnNames[z]], 0);					
+				};	
             };
         };
 
@@ -3331,12 +3399,9 @@ void delete_records(const char* f) {
                                     };
                                 }
                                 else {
-                                    void* t;
-                                    CUDA_SAFE_CALL(cudaMalloc((void **) &t, tmp*a->char_size[colname]));
-                                    apply_permutation_char(a->d_columns_char[colname], (unsigned int*)thrust::raw_pointer_cast(a->prm_d.data()), tmp, (char*)t, a->char_size[colname]);
-                                    cudaMemcpy(a->h_columns_char[colname], a->d_columns_char[colname], a->char_size[colname]*a->mRecCount, cudaMemcpyDeviceToHost);
-                                    cudaFree(t);
-                                    a->compress_char(str, colname, a->mRecCount, 0, i);
+                                    thrust::device_ptr<int_type> d_col((int_type*)d);
+                                    thrust::gather(a->prm_d.begin(), a->prm_d.begin() + a->mRecCount, a->d_columns_int[colname].begin(), d_col);
+                                    pfor_compress( d, a->mRecCount*int_size, str + ".hash", a->h_columns_int[colname], 0);
                                 };
                             };
                             new_seg_count++;
