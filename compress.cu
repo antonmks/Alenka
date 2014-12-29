@@ -295,8 +295,8 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
 
 
 template< typename T>
-//void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
-void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host, bool tp)
+void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
+//void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host, bool tp)
 {
     long long int orig_lower_val, orig_upper_val, start_val, real_lower, real_upper;
     unsigned int  bits, recCount;
@@ -438,8 +438,8 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 
 // non sorted compressed fields should have 1,2,4 or 8 byte values for direct operations on compressed values
 template< typename T>
-//void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
-void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host,  bool tp)
+void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host,  bool tp)
+//void pfor_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T>& host,  bool tp)
 {
     unsigned int recCount = source_len/int_size;
     long long int orig_lower_val;

@@ -581,14 +581,20 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             fseek(f, 0, SEEK_END);
             long fileSize = ftell(f);
             while(total_buffer_size + fileSize > getTotalSystemMemory() && !buffer_names.empty()) { //free some buffers
-                delete [] buffers[buffer_names.front()];
+                //delete [] buffers[buffer_names.front()];
+				cudaFreeHost(buffers[buffer_names.front()]);
                 total_buffer_size = total_buffer_size - buffer_sizes[buffer_names.front()];
                 buffer_sizes.erase(buffer_names.front());
                 buffers.erase(buffer_names.front());
                 buffer_names.pop();
             };
             fseek(f, 0, SEEK_SET);
-            char* buff = new char[fileSize];
+			
+			char* buff;
+			cudaHostAlloc((void**) &buff, fileSize,cudaHostAllocDefault);
+			
+            //char* buff = new char[fileSize];
+			
             fread(buff, fileSize, 1, f);
             fclose(f);
             buffers[f1] = buff;
@@ -2456,22 +2462,22 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 0;
-            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            h_columns_int[nameRef.front()] = thrust::host_vector<int_type >();
+            h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type >();
             d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 0;
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
+            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type >();
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 1;
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
+            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
         }
         else {
@@ -2510,22 +2516,22 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 0;
-            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            h_columns_int[nameRef.front()] = thrust::host_vector<int_type>();
+            h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type>();
             d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 0;
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
+            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 1;
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
+            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
         }
 
@@ -2635,8 +2641,8 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 
                 if (a->type[op_sel.front()] == 0)  {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
-                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-                    h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
+                    h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
                     if(a->string_map.find(op_sel.front()) != a->string_map.end()) {
                         string_map[op_sel.front()] = a->string_map[op_sel.front()];
                         //cout << "SETTING J " << op_sel.front() << " " << a->string_map[op_sel.front()] << endl;
@@ -2644,8 +2650,8 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 }
                 else if (a->type[op_sel.front()] == 1) {
                     d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
-                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-                    h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
+                    h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
                 }
                 else {
                     h_columns_char[op_sel.front()] = nullptr;
@@ -2664,8 +2670,8 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 
                 if (b->type[op_sel.front()] == 0) {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
-                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-                    h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
+                    h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
                     if(b->string_map.find(op_sel.front()) != b->string_map.end()) {
                         string_map[op_sel.front()] = b->string_map[op_sel.front()];
                         //cout << "SETTING J " << op_sel.front() << " " << b->string_map[op_sel.front()] << endl;
@@ -2674,8 +2680,8 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 }
                 else if (b->type[op_sel.front()] == 1) {
                     d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
-                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-                    h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
+                    h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
+                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
                 }
                 else {
                     h_columns_char[op_sel.front()] = nullptr;

@@ -1127,7 +1127,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
 
             cnt_l = 0;
+			std::clock_t start12 = std::clock();
             copyColumns(left, lc, i, cnt_l);
+			std::cout<< "Left cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
             cnt_l = left->mRecCount;
 
             if (cnt_l) {
@@ -1179,6 +1181,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 	};
                 */
 
+				std::clock_t start11 = std::clock();
+				
                 if (join_kind == 'I')
                     res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
@@ -1199,6 +1203,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
+								
+				std::cout<< "join time " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
                 if(verbose)
                     cout << "RES " << res_count << " seg " << getFreeMem() << endl;
@@ -1287,6 +1293,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                 tot_count = tot_count + res_count;
 
+				std::clock_t start12 = std::clock();
                 if(res_count) {
 
                     border_boundaries.push_back(res_count);
@@ -1377,6 +1384,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     };
                     cudaFree(temp);
                 };
+				std::cout<< endl << "cpy back time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
             };
             //std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
@@ -1847,14 +1855,18 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
+		std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         if(a->mRecCount) {
             if (grp_cnt != 0) {
                 order_inplace(a, op_v2, field_names, 1);
                 a->GroupBy(op_v2);
             };
+			std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
+			
+			std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 			//cout << "RES " << b->mRecCount << endl;
 			//for(int z= 0; z<b->mRecCount; z++)
 			//cout << b->d_columns_int["lf1"][z] << " " << b->d_columns_int["rf1"][z] << endl;
@@ -1895,8 +1907,9 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
                     };
                 };
             };
+			std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
         };
-        //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+        std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
 
     a->mRecCount = ol_count;

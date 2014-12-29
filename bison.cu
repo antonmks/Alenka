@@ -2608,7 +2608,8 @@ int execute_file(int ac, char **av)
         };
 
         while(!buffer_names.empty()) {
-            delete [] buffers[buffer_names.front()];
+            //delete [] buffers[buffer_names.front()];
+			cudaFreeHost(buffers[buffer_names.front()]);
             buffer_sizes.erase(buffer_names.front());
             buffers.erase(buffer_names.front());
             buffer_names.pop();

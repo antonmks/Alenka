@@ -62,11 +62,14 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
+		
+	std::clock_t start11 = std::clock();	
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
         //cout << ss << endl;
+		
 
 
         if(ss.compare("emit sel_name") != 0) {
@@ -778,6 +781,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             colCount++;
         };
     };
+	
+	std::cout<< "op0 " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';
 
 
 
