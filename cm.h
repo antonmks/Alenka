@@ -251,10 +251,10 @@ extern map<string, map<string, col_data> > data_dict;
 class CudaSet
 {
 public:
-    //map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-	map<string, thrust::host_vector<int_type> > h_columns_int;
-    //map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
-	map<string, thrust::host_vector<float_type> > h_columns_float;	
+    map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
+	//map<string, thrust::host_vector<int_type> > h_columns_int;
+    map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
+	//map<string, thrust::host_vector<float_type> > h_columns_float;	
     map<string, char*> h_columns_char;
 	/*std::vector<thrust::host_vector<int32_type, pinned_allocator<int32_type> > > h_columns_int32;
 	std::vector<thrust::host_vector<int16_type, pinned_allocator<int16_type> > > h_columns_int16;

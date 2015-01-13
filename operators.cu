@@ -839,7 +839,6 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
             varNames.erase(op_join.front());
         };
     };
-
 }
 
 
@@ -995,8 +994,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         bool rsz = 1;
         right->deAllocOnDevice();
 
+		std::clock_t start12 = std::clock();
         if(right->not_compressed || (!right->filtered && getFreeMem() < r_size*2)) {
-            //cout << "load by segment " << endl;
+            //cout << "load by segment " << endl			
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1, rsz);
             start_part = start_part+1;
 
@@ -1008,7 +1008,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         }
         else {
             //cout << "load all segments " << endl;
-            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);
+            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);			
             //cout << "loaded all segs " << endl;
             start_part = right->segCount;
 
@@ -1031,6 +1031,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			cout << "After shrink " << getFreeMem() << endl;
     
         };
+		std::cout<< "Right cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         right->mRecCount = cnt_r;
         bool order = 1;
@@ -1129,7 +1130,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             cnt_l = 0;
 			std::clock_t start12 = std::clock();
             copyColumns(left, lc, i, cnt_l);
-			std::cout<< "Left cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+			std::cout<< "Left cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';							
             cnt_l = left->mRecCount;
 
             if (cnt_l) {
@@ -1860,6 +1861,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         if(a->mRecCount) {
             if (grp_cnt != 0) {
                 order_inplace(a, op_v2, field_names, 1);
+				std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
                 a->GroupBy(op_v2);
             };
 			std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
@@ -1909,7 +1911,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             };
 			std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
         };
-        std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+        //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
 
     a->mRecCount = ol_count;
@@ -2363,6 +2365,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     if(verbose)
         printf("BINARY LOAD: %s %s \n", s, f);
 
+	std::clock_t start1 = std::clock();	
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
@@ -2400,6 +2403,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
         a->free();
         varNames.erase(s);
     };
+	std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 

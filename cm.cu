@@ -3019,7 +3019,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
     a = varNames.find(f)->second;
     a->name = f;
-    //std::clock_t start1 = std::clock();
+    std::clock_t start1 = std::clock();
 
     if(a->mRecCount == 0 && !a->filtered) {
         b = new CudaSet(0,1);
@@ -3059,7 +3059,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
     }
     if(verbose)
         cout << endl << "filter res " << b->mRecCount << endl;
-    //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+    std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 
