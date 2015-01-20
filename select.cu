@@ -782,9 +782,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-	std::cout<< "op0 " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';
-
-
 
 
     for(unsigned int j=0; j < colCount; j++) {

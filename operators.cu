@@ -994,12 +994,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         bool rsz = 1;
         right->deAllocOnDevice();
 
-		std::clock_t start12 = std::clock();
+		//std::clock_t start12 = std::clock();
         if(right->not_compressed || (!right->filtered && getFreeMem() < r_size*2)) {
-            //cout << "load by segment " << endl			
+
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1, rsz);
             start_part = start_part+1;
-
+			
             for(auto it = right->orig_segs[start_part-1].begin(); it != right->orig_segs[start_part-1].end(); it++) {
                 for(auto itr = it->second.begin(); itr != it->second.end(); itr++) {
                     r_segs[it->first].insert(*itr);
@@ -1011,7 +1011,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);			
             //cout << "loaded all segs " << endl;
             start_part = right->segCount;
-
+			
             for(auto& m : right->orig_segs) {
                 for(auto it = m.begin(); it != m.end(); it++) {
                     for(auto itr = it->second.begin(); itr != it->second.end(); itr++) {
@@ -1019,8 +1019,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     };
                 };
             };
-			// 
-			cout << "Before shrink " << getFreeMem() << endl;
+			
+			//cout << "Before shrink " << getFreeMem() << endl;
 			for(unsigned int i=0; i < right->columnNames.size(); i++) {
 				if (right->type[right->columnNames[i]] != 1) {
 					right->d_columns_int[right->columnNames[i]].shrink_to_fit();
@@ -1028,10 +1028,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				else 
 					right->d_columns_float[right->columnNames[i]].shrink_to_fit();
 			};
-			cout << "After shrink " << getFreeMem() << endl;
+			//cout << "After shrink " << getFreeMem() << endl;
     
         };
-		std::cout<< "Right cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+		//std::cout<< "Right cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         right->mRecCount = cnt_r;
         bool order = 1;
@@ -1117,20 +1117,21 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
                                      r_segs[left->ref_sets[colname1]].begin(), r_segs[left->ref_sets[colname1]].end(),
                                      std::back_inserter(j_data));
-                    //for(auto it = right->orig_segs[start_part-1][left->ref_sets[colname1]].begin(); it != right->orig_segs[start_part-1][left->ref_sets[colname1]].end(); it++)
-                    //cout << "Checking right " << 	left->ref_sets[colname1] << " " << *it << endl;
-
+                    //for(auto it = r_segs[left->ref_sets[colname1]].begin(); it != r_segs[left->ref_sets[colname1]].end(); it++)
+                    // cout << "Checking right " << 	*it << endl;
+					//for(auto it = left->ref_joins[colname1][i].begin(); it != left->ref_joins[colname1][i].end(); it++)
+                    // cout << "Checking left " << 	*it << endl;
                     if(j_data.empty()) {
                         cout << "skipping a segment " << endl;
                         continue;
                     };
-                };
+                }
             };
 
             cnt_l = 0;
-			std::clock_t start12 = std::clock();
+			//std::clock_t start12 = std::clock();
             copyColumns(left, lc, i, cnt_l);
-			std::cout<< "Left cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';							
+			//std::cout<< "Left cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';							
             cnt_l = left->mRecCount;
 
             if (cnt_l) {
@@ -1204,11 +1205,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
-								
-				std::cout<< "join time " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+				
+				if(verbose)	
+					std::cout<< "join time " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
                 if(verbose)
-                    cout << "RES " << res_count << " seg " << getFreeMem() << endl;
+                    cout << "RES " << res_count << endl;
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);
@@ -1342,9 +1344,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         cc.push(op_sel1.front());
 
                         if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
+						//std::clock_t start14 = std::clock();
                             allocColumns(left, cc);
                             copyColumns(left, cc, i, k, 0, 0);
-
+						//std::cout<< endl << "cpy left others " <<  ( ( std::clock() - start14 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
                             //gather
                             if(left->type[op_sel1.front()] != 1 ) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)temp);
@@ -1385,7 +1388,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     };
                     cudaFree(temp);
                 };
-				std::cout<< endl << "cpy back time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+				//std::cout<< endl << "cpy back time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
             };
             //std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
@@ -1411,23 +1414,23 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
 
     if(verbose)
-        cout << endl << "tot res " << tot_count << " " << getFreeMem() << endl;
+        cout << "tot res " << tot_count << " " << getFreeMem() << endl;
 
     size_t tot_size = tot_count*8*c->columnNames.size();
 	
+		
     //super-important partitioning of result datasets
     if (getFreeMem() > tot_size*3) {
 
-        //vector< map<string, set<unsigned int> > > border_segments;
         map<string, set<unsigned int> > m;
         for(auto& val : border_segments) {
             for (auto it=val.begin(); it!=val.end(); ++it) {
                 for (auto its=(it->second).begin(); its!=(it->second).end(); ++its) {
-                    if(m[it->first].find(*its) != m[it->first].end()) {
+                    if(m[it->first].find(*its) == m[it->first].end()) {
                         m[it->first].insert(*its);
-                        if(verbose)
-                            cout << "SEGS " << it->first << " : " << *its << endl;
-                    };
+                        //if(verbose)
+                        //    cout << "SEGS " << it->first << " : " << *its << endl;
+                    }
                 };
             };
         };
@@ -1436,6 +1439,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         c->segCount = 1;
     }
     else {
+		
         c->segCount = ((tot_size*3)/getFreeMem() + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
         c->orig_segs.resize(c->segCount);
@@ -1856,19 +1860,19 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-		std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         if(a->mRecCount) {
             if (grp_cnt != 0) {
                 order_inplace(a, op_v2, field_names, 1);
-				std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
                 a->GroupBy(op_v2);
             };
-			std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+			//std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
 			
-			std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 			//cout << "RES " << b->mRecCount << endl;
 			//for(int z= 0; z<b->mRecCount; z++)
 			//cout << b->d_columns_int["lf1"][z] << " " << b->d_columns_int["rf1"][z] << endl;
@@ -1909,7 +1913,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
                     };
                 };
             };
-			std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+			//std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
         };
         //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
@@ -2403,7 +2407,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
         a->free();
         varNames.erase(s);
     };
-	std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+	//std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 

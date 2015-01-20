@@ -3059,7 +3059,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
     }
     if(verbose)
         cout << endl << "filter res " << b->mRecCount << endl;
-    std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+    //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 
