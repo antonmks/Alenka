@@ -994,7 +994,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         bool rsz = 1;
         right->deAllocOnDevice();
 
-		//std::clock_t start12 = std::clock();
+		std::clock_t start12 = std::clock();
         if(right->not_compressed || (!right->filtered && getFreeMem() < r_size*2)) {
 
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1, rsz);
@@ -1031,7 +1031,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			//cout << "After shrink " << getFreeMem() << endl;
     
         };
-		//std::cout<< "Right cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+		std::cout<< "Right cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         right->mRecCount = cnt_r;
         bool order = 1;
@@ -1346,6 +1346,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
 						//std::clock_t start14 = std::clock();
                             allocColumns(left, cc);
+						//std::cout<< endl << "cpy alloc others " <<  ( ( std::clock() - start14 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
                             copyColumns(left, cc, i, k, 0, 0);
 						//std::cout<< endl << "cpy left others " <<  ( ( std::clock() - start14 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
                             //gather
@@ -1834,7 +1835,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     a->hostRecCount = a->mRecCount;
     b = new CudaSet(0, col_count);
     b->name = "tmp b in select";
-    bool b_set = 0, c_set = 0;
+    bool c_set = 0;
 
     //size_t tmp_size = a->mRecCount;
     //if(a->segCount > 1)
@@ -1880,21 +1881,13 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             if(i == 0)
                 std::reverse(b->columnNames.begin(), b->columnNames.end());
 
-            if(!b_set) {
-                b_set = 1;
-                unsigned int old_cnt = b->mRecCount;
-                b->mRecCount = 0;
-                b->resize(a->maxRecs);
-                b->mRecCount = old_cnt;
-            };
-
 
             if (!c_set && b->mRecCount > 0) {
                 c = new CudaSet(0, col_count);
                 create_c(c,b);
                 c_set = 1;
                 c->name = s;
-            };
+            };			
 
             if (grp_cnt && cycle_count > 1  && b->mRecCount > 0) {
                 add(c,b,op_v3, aliases, distinct_tmp, distinct_val, distinct_hash, a);

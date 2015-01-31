@@ -592,9 +592,6 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
 			
 			char* buff;
 			cudaHostAlloc((void**) &buff, fileSize,cudaHostAllocDefault);
-			
-            //char* buff = new char[fileSize];
-			
             fread(buff, fileSize, 1, f);
             fclose(f);
             buffers[f1] = buff;
@@ -822,16 +819,14 @@ void CudaSet::CopyColumnToGpu(string colname) // copy all segments
 void CudaSet::CopyColumnToHost(string colname, size_t offset, size_t RecCount)
 {
 
-    switch(type[colname]) {
-    case 0 :
+    if(type[colname] != 1) {
+		//cout << "copied " << colname << " " <<  RecCount << endl;
         thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin() + RecCount, h_columns_int[colname].begin() + offset);
-        break;
-    case 1 :
+		//cout << "to " << colname << " " << h_columns_int[colname][0] << " " << h_columns_int[colname][1] << endl;
+		//cout << "to " << colname << " " << d_columns_int[colname][0] << " " << d_columns_int[colname][1] << endl;
+	}
+    else 
         thrust::copy(d_columns_float[colname].begin(), d_columns_float[colname].begin() + RecCount, h_columns_float[colname].begin() + offset);
-        break;
-    default :
-        thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin() + RecCount, h_columns_int[colname].begin() + offset);
-    }
 }
 
 
@@ -910,16 +905,30 @@ void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
         columnNames.push_back(colname);
         type[colname] = 0;
         d_columns_int[colname] = thrust::device_vector<int_type>(recCount);
-        h_columns_int[colname] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >();
+        h_columns_int[colname] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >(recCount);
     }
     else {  // already exists, my need to resize it
         if(d_columns_int[colname].size() < recCount) {
             d_columns_int[colname].resize(recCount);
         };
+		if(h_columns_int[colname].size() < recCount) {
+            h_columns_int[colname].resize(recCount);
+        };
     };
     // copy data to d columns
     thrust::device_ptr<int_type> d_col((int_type*)col);
     thrust::copy(d_col, d_col+recCount, d_columns_int[colname].begin());
+	//cout << "added " << colname << " " << d_columns_int[colname][0] << " " << d_columns_int[colname][1] << " " << recCount << endl;
+	thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin()+recCount, h_columns_int[colname].begin());
+	//for(int i = 0; i < recCount; i++) {
+		//h_columns_int[colname][i] =  d_columns_int[colname][i];
+	//	cout << "set " << " " << h_columns_int[colname][i] << " to " << d_columns_int[colname][i] << endl;
+	//};	
+	//cout << "added host " << colname << " " << h_columns_int[colname][0] << " " << h_columns_int[colname][1] << endl;
+	
+	//thrust::host_vector<int_type> test(recCount);
+	//thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin()+recCount, test.begin());
+	//cout << "added test " << test[0] << " " << test[1] << endl;
 };
 
 void CudaSet::addDeviceColumn(float_type* col, string colname, size_t recCount, bool is_decimal)
@@ -928,11 +937,13 @@ void CudaSet::addDeviceColumn(float_type* col, string colname, size_t recCount, 
         columnNames.push_back(colname);
         type[colname] = 1;
         d_columns_float[colname] = thrust::device_vector<float_type>(recCount);
-        h_columns_float[colname] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >();
+        h_columns_float[colname] = thrust::host_vector<float_type, uninitialized_host_allocator<float_type> >(recCount);		
     }
     else {  // already exists, my need to resize it
         if(d_columns_float[colname].size() < recCount)
             d_columns_float[colname].resize(recCount);
+        if(h_columns_float[colname].size() < recCount)
+            h_columns_float[colname].resize(recCount);			
     };
 
     decimal[colname] = is_decimal;
@@ -2370,7 +2381,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             str.assign(buffer, idx);
             sorted_fields.push(str);
             if(verbose)
-                cout << "segment sorted on " << idx << endl;
+                cout << "segment sorted on " << str << endl;
         };
         fclose(f);
     };

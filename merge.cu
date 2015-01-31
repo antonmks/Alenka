@@ -103,30 +103,32 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
         ss.push(aliases[op_v3.front()]);
         op_v3.pop();
     };
-
-
+	
+	
     // create hashes of groupby columns
     unsigned long long int* hashes = new unsigned long long int[b->mRecCount];
     unsigned long long int* sum = new unsigned long long int[cycle_sz*b->mRecCount];
-    b->CopyToHost(0, b->mRecCount);
 
     for(unsigned int z = 0; z < cycle_sz; z++) {
-        if(b->type[opv[z]] == 0 || b->type[opv[z]] == 2) {  //int
-            memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_int[opv[z]].data()), b->mRecCount*8);
+	   // b->CopyColumnToHost(opv[z]);
+        if(b->type[opv[z]] != 1) {  //int or string
+			for(int i = 0; i < b->mRecCount; i++) {
+				//memcpy(&sum[i*cycle_sz + z], &b->h_columns_int[opv[z]][i], 8);			
+				sum[i*cycle_sz + z] = b->h_columns_int[opv[z]][i];
+				//cout << "CPY to " << i*cycle_sz + z << " " << opv[z] << " " << b->h_columns_int[opv[z]][i] <<   endl;
+				//cout << "SET " << sum[i*cycle_sz + z] << endl;
+			};			
         }
-        /*else if(b->type[opv[z]] == 2) {  //string
-            for(int i = 0; i < b->mRecCount; i++) {
-                sum[z*b->mRecCount + i] = MurmurHash64A(&b->h_columns_char[opv[z]][i*b->char_size[opv[z]]], b->char_size[opv[z]], hash_seed);
-            };
-        }*/
         else {  //float
-            //process_error(2, "No group by on float/decimal columns ");
-            memcpy(&sum[z*b->mRecCount], thrust::raw_pointer_cast(b->h_columns_float[opv[z]].data()), b->mRecCount*8);
+			for(int i = 0; i < b->mRecCount; i++) {
+				memcpy(&sum[i*cycle_sz + z], &b->h_columns_float[opv[z]][i], 8);
+			};	
         };
     };
 
     for(int i = 0; i < b->mRecCount; i++) {
-        hashes[i] = MurmurHash64S(&sum[i], 8, hash_seed, cycle_sz, b->mRecCount);
+        hashes[i] = MurmurHash64A(&sum[i*cycle_sz], 8*cycle_sz, hash_seed);
+		//cout << "hash " << hashes[i] << " " << i*cycle_sz << " "  << sum[i*cycle_sz] << " " << sum[i*cycle_sz + 1] << endl;
     };
 
     delete [] sum;
@@ -153,17 +155,10 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
             thrust::gather(v.begin(), v.end(), b->d_columns_float[b->columnNames[i]].begin(), d_tmp_float);
             thrust::copy(d_tmp_float, d_tmp_float + b->mRecCount, b->h_columns_float[b->columnNames[i]].begin());
         }
-        /*else {
-            str_gather((void*)thrust::raw_pointer_cast(v.data()), b->mRecCount, b->d_columns_char[b->columnNames[i]], d_tmp, b->char_size[b->columnNames[i]]);
-            cudaMemcpy(b->h_columns_char[b->columnNames[i]], d_tmp, b->mRecCount*b->char_size[b->columnNames[i]], cudaMemcpyDeviceToHost);
-        };
-        */
     };
     cudaFree(d_tmp);
 
-
-    thrust::host_vector<unsigned long long int> hh(b->mRecCount);
-    thrust::copy(d_hashes.begin(), d_hashes.end(), hh.begin());
+    thrust::host_vector<unsigned long long int> hh = d_hashes;
     char* tmp = new char[max_char(b)*(c->mRecCount + b->mRecCount)];
     c->resize(b->mRecCount);
 
@@ -184,7 +179,6 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
                                  c->h_columns_float[c->columnNames[i]].begin(), b->h_columns_float[b->columnNames[i]].begin(),
                                  thrust::make_discard_iterator(), (float_type*)tmp);
             memcpy(thrust::raw_pointer_cast(c->h_columns_float[c->columnNames[i]].data()), (float_type*)tmp, (h_merge.size() + b->mRecCount)*float_size);
-
         }
     };
 
@@ -196,6 +190,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     size_t cpy_sz = h_merge.size() + b->mRecCount;
     h_merge.resize(h_merge.size() + b->mRecCount);
     thrust::copy((unsigned long long int*)tmp, (unsigned long long int*)tmp + cpy_sz, h_merge.begin());
+	
     delete [] tmp;
     delete [] hashes;
 
@@ -410,7 +405,6 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
                     }
                 };
             };
-
             c->mRecCount = res_count;
         };
 

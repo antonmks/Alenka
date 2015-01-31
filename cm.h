@@ -108,7 +108,7 @@ struct uninitialized_host_allocator
         : std::allocator<T>
 {
     // note that construct is annotated as
-    __host__ __device__
+    __host__ 
     void construct(T *p)
     {
         // no-op
