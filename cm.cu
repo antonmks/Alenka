@@ -10,7 +10,7 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- */
+ */  
 
 #include <cctype>
 #include <algorithm>
@@ -22,7 +22,6 @@
 #include "sorts.cu"
 #include "filter.h"
 #include "callbacks.h"
-
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
@@ -870,10 +869,8 @@ void CudaSet::GroupBy(stack<string> columnRef)
         cudaFree(grp);
 
     CUDA_SAFE_CALL(cudaMalloc((void **) &grp, mRecCount * sizeof(bool)));
+	cudaMemset(grp, 0 , mRecCount * sizeof(bool));
     thrust::device_ptr<bool> d_grp(grp);
-
-    thrust::sequence(d_grp, d_grp+mRecCount, 0, 0);
-
     thrust::device_ptr<bool> d_group = thrust::device_malloc<bool>(mRecCount);
 
     d_group[mRecCount-1] = 1;
@@ -1360,7 +1357,6 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
 
 void CudaSet::Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term)
 {
-
     if (mRecCount == 0 && binary == 1 && !term) { // write tails
         for(unsigned int j=0; j < columnNames.size(); j++) {
             writeHeader(file_name, columnNames[j], total_segments);
@@ -1802,6 +1798,7 @@ bool CudaSet::LoadBigFile(FILE* file_p)
     char *p,*t;
     const char* sep = separator.c_str();
     unsigned int maxx = cols.rbegin()->first;
+	map<unsigned int, string>::iterator it;
 
     //clear the varchars
     //for(auto it=columnNames.begin(); it!=columnNames.end();it++) {
@@ -1813,23 +1810,36 @@ bool CudaSet::LoadBigFile(FILE* file_p)
         };
     };
 	
+	vector<int> types;
+	types.push_back(0);
+	for(int i = 0; i < maxx; i++) {
+		auto iter = cols.find(i+1);
+		if(iter != cols.end())
+			types.push_back(type[iter->second]);
+		else	
+			types.push_back(0);
+	};
+		
+	
     while (count < process_count && fgets(line, 2000, file_p)) {
         strtok(line, "\n");
         current_column = 0;
 
         for(t=mystrtok(&p,line,*sep); t && current_column < maxx; t=mystrtok(&p,0,*sep)) {
             current_column++;
-            if(cols.find(current_column) == cols.end()) {
+			it = cols.find(current_column);
+            if(it == cols.end()) {
                 continue;
             };
 
-            if (type[cols[current_column]] == 0) {
-				
+			//tp = types[current_column];
+			switch(types[current_column]) {
+			case 0 :            		
                 if (strchr(t,'-') && t[0] != '-') { // handling possible dates
                     strncpy(t+4,t+5,2);
                     strncpy(t+6,t+8,2);
                     t[8] = '\0';
-                    (h_columns_int[cols[current_column]])[count] = atoll(t);
+                    (h_columns_int[it->second])[count] = atoll(t);
                 }
                 else if (strchr(t,'/')) { // 4/30/2014
                     string s(t);
@@ -1842,18 +1852,20 @@ bool CudaSet::LoadBigFile(FILE* file_p)
                     if(day.length() == 1)
                         day = "0" + day;
                     string s2 = s.substr(pos2+1, string::npos) + month + day;
-                    (h_columns_int[cols[current_column]])[count] = atoll(s2.c_str());
+                    (h_columns_int[it->second])[count] = atoll(s2.c_str());
                 }
                 else {
-                    (h_columns_int[cols[current_column]])[count] = atoll(t);
-                };
-            }
-            else if (type[cols[current_column]] == 1) {
-                (h_columns_float[cols[current_column]])[count] = atoff(t);
-            }
-            else  {//char
-                strcpy(h_columns_char[cols[current_column]] + count*char_size[cols[current_column]], t);
-            }
+				
+                    (h_columns_int[it->second])[count] = atoll(t);
+                };				
+				break;
+            case 1 :
+                (h_columns_float[it->second])[count] = atoff(t);
+				break;            
+            default :  //char
+                strcpy(h_columns_char[it->second] + count*char_size[it->second], t);
+				break;
+            };			
         };
         count++;
     };
