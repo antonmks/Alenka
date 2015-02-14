@@ -100,8 +100,9 @@ extern unordered_map<string, unordered_map<unsigned long long int, size_t> > cha
 extern bool scan_state;
 extern unsigned int statement_count;
 extern map<string, map<string, bool> > used_vars;
-
-
+extern map<string, unsigned int> cpy_bits;
+extern map<string, long long int> cpy_init_val;
+extern bool phase_copy;
 
 template<typename T>
 struct uninitialized_host_allocator
@@ -378,6 +379,7 @@ void allocColumns(CudaSet* a, queue<string> fields);
 void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, size_t& count);
 size_t getSegmentRecCount(CudaSet* a, unsigned int segment);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
+void copyFinalize(CudaSet* a, queue<string> fields);
 void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment);
 void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
 void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);

@@ -24,6 +24,7 @@ using namespace std;
 
 unsigned long long int* raw_decomp = nullptr;
 unsigned int raw_decomp_length = 0;
+bool phase_copy = 0;
 
 std::map<string, unsigned int> cnt_counts;
 string curr_file;
@@ -226,7 +227,7 @@ struct decompress_functor_str
 
 
 
-size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
+size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname)
 {
     unsigned int bit_count = 64;
     auto cnt = ((unsigned int*)host)[0];
@@ -270,25 +271,52 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v)
         thrust::inclusive_scan(d_int, d_int + orig_recCount, d_int);
     }
     else {
-        if(bits == 8) {
-            thrust::device_ptr<char> src((char*)raw_decomp);
-            thrust::transform(src, src+orig_recCount, d_int, char_to_int64());
-        }
-        else if(bits == 16) {
-            thrust::device_ptr<unsigned short int> src((unsigned short int*)raw_decomp);
-            thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
-        }
-        else if(bits == 32) {
-            thrust::device_ptr<unsigned int> src((unsigned int*)raw_decomp);
-            thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
-        }
-        else {
-            thrust::device_ptr<int_type> src((int_type*)raw_decomp);
-            thrust::copy(src, src+orig_recCount, d_int);
-        };
-        thrust::constant_iterator<int_type> iter(orig_lower_val);
-        thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
+		if(!phase_copy) {
+			if(bits == 8) {
+				thrust::device_ptr<unsigned char> src((unsigned char*)raw_decomp);
+				thrust::transform(src, src+orig_recCount, d_int, char_to_int64());
+			}
+			else if(bits == 16) {
+				thrust::device_ptr<unsigned short int> src((unsigned short int*)raw_decomp);
+				thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
+			}
+			else if(bits == 32) {
+				thrust::device_ptr<unsigned int> src((unsigned int*)raw_decomp);
+				thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
+			}
+			else {
+				thrust::device_ptr<int_type> src((int_type*)raw_decomp);
+				thrust::copy(src, src+orig_recCount, d_int);
+			};
+			thrust::constant_iterator<int_type> iter(orig_lower_val);
+			thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
+		}
+		else {
+			cpy_bits[colname] = bits;
+			cpy_init_val[colname] = orig_lower_val;
+			if(bits == 8) {
+				thrust::device_ptr<unsigned char> src((unsigned char*)raw_decomp);
+				thrust::device_ptr<unsigned char> dest((unsigned char*)destination);
+				thrust::copy(src, src+orig_recCount, dest);
+			}
+			else if(bits == 16) {
+				thrust::device_ptr<unsigned short int> src((unsigned short int*)raw_decomp);
+				thrust::device_ptr<unsigned short int> dest((unsigned short int*)destination);
+				thrust::copy(src, src+orig_recCount, dest);
+			}
+			else if(bits == 32) {
+				thrust::device_ptr<unsigned int> src((unsigned int*)raw_decomp);
+				thrust::device_ptr<unsigned int> dest((unsigned int*)destination);
+				thrust::copy(src, src+orig_recCount, dest);			
+			}
+			else {
+				thrust::device_ptr<int_type> src((int_type*)raw_decomp);
+				thrust::copy(src, src+orig_recCount, d_int);
+			};			
+			//cout << "using phase copy on " << colname << " " << bits << endl;
+		};	
     };
+	
 
     return orig_recCount;
 }

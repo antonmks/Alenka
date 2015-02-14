@@ -57,7 +57,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     one_line = 0;
 
     thrust::device_ptr<bool> d_di(a->grp);
-
     std::auto_ptr<ReduceByKeyPreprocessData> ppData;
 
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
@@ -153,7 +152,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                 }
                 else if (ss.compare("SUM") == 0) {
-
+				
                     /*if(op_case) {
                     	cout << "found case " << endl;
                     	op_case = 0;
@@ -276,7 +275,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     }
                 }
                 else if (ss.compare("MIN") == 0) {
-
+				
                     grp_type = "MIN";
                     s1 = exe_type.top();
                     exe_type.pop();
@@ -293,17 +292,20 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_type.push("VECTOR");
 
                     }
-                    else if(a->type[s1_val] == 1) {
+                    else if(a->type[s1_val] == 1) {			
 
                         thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                         //ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(a->d_columns_float[s1_val].data()), (float_type)0,
-                        //						mgpu::minimum<float_type>(), thrust::raw_pointer_cast(count_diff), *context);
+                        	//					mgpu::minimum<float_type>(), thrust::raw_pointer_cast(count_diff), *context);
 
-
-                        thrust::reduce_by_key(d_di, d_di+(a->mRecCount), a->d_columns_float[s1_val].begin(),
+						thrust::device_vector<unsigned int> d_di1(a->mRecCount);
+						thrust::copy(d_di, d_di+a->mRecCount,d_di1.begin());
+						thrust::exclusive_scan(d_di1.begin(), d_di1.end(), d_di1.begin());
+						thrust::equal_to<unsigned int> binary_pred;					  
+						
+                        thrust::reduce_by_key(d_di1.begin(), d_di1.begin()+(a->mRecCount), a->d_columns_float[s1_val].begin(),
                                               thrust::make_discard_iterator(), count_diff,
-                                              head_flag_predicate<bool>(), thrust::minimum<float_type>());
-
+                                              binary_pred, thrust::minimum<float_type>());
                         exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
                         exe_type.push("VECTOR F");
                     }

@@ -21,7 +21,7 @@
 #include "cm.h"
 //---------------------------------------------------------------------------
 
-#define UNROLL_COUNT 55
+#define UNROLL_COUNT 101
 
 /**
 * JOIN on host static strings

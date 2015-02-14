@@ -292,19 +292,34 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
     void* temp;
     CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*int_size));
 	
+	unsigned int bits;
+	
     for(; !exe_type.empty(); exe_type.pop()) {
+		if(cpy_bits.empty())
+			bits = 0;
+		else	
+			bits = cpy_bits[exe_type.top()];			
+			
         if (a->type[exe_type.top()] != 1)
-            update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, "ASC", (int_type*)temp);
+            update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, "ASC", (int_type*)temp, bits);
         else
-            update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,"ASC", (float_type*)temp);
-    };
+            update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,"ASC", (float_type*)temp, bits);			
+    };	
+	
 	
     for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+		if(cpy_bits.empty())
+			bits = 0;
+		else	
+			bits = cpy_bits[*it];
+			
         if (a->type[*it] != 1) {
-            apply_permutation(a->d_columns_int[*it], raw_ptr, a->mRecCount, (int_type*)temp);
+            apply_permutation(a->d_columns_int[*it], raw_ptr, a->mRecCount, (int_type*)temp, bits);		
         }
-        else
-            apply_permutation(a->d_columns_float[*it], raw_ptr, a->mRecCount, (float_type*)temp);
+        else {
+            apply_permutation(a->d_columns_float[*it], raw_ptr, a->mRecCount, (float_type*)temp, bits);			
+		};	
+			
     };
     cudaFree(temp);
     thrust::device_free(permutation);
@@ -885,7 +900,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     op_g.pop();
 
     if (verbose)
-        cout << "JOIN " << s <<  " " <<  f1 << " " << f2 << " " << getFreeMem() <<  endl;
+        cout << "JOIN " << s <<  " " <<  f1 << " " << f2 << " " << getFreeMem() <<  " " << phase_copy << endl;
 
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right, left, op_sel_s, op_sel_s_as);
@@ -1357,8 +1372,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
                             };
 
-                            //if(op_sel1.front() != colname1)
-                            //    left->deAllocColumnOnDevice(op_sel1.front());
+                            if(op_sel1.front() != colname1)
+                                left->deAllocColumnOnDevice(op_sel1.front());
                         }
                         else if(std::find(right->columnNames.begin(), right->columnNames.end(), op_sel1.front()) !=  right->columnNames.end()) {
 
@@ -1656,9 +1671,9 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
 
         for(int i=0; !exe_type.empty(); ++i, exe_type.pop(),exe_value.pop()) {
             if (a->type[exe_type.top()] == 0 && a->string_map.find(exe_type.top()) == a->string_map.end())
-                update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp);
+                update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, exe_value.top(), (int_type*)temp, 64);
             else if (a->type[exe_type.top()] == 1)
-                update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp);
+                update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,exe_value.top(), (float_type*)temp, 64);
             else {
                 //get strings to device
                 update_char_permutation(a, exe_type.top(), raw_ptr, exe_value.top(), temp, 0);
@@ -1670,10 +1685,10 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
 
         for (unsigned int i = 0; i < a->mColumnCount; i++) {
             if (a->type[a->columnNames[i]] != 1) {
-                apply_permutation(a->d_columns_int[a->columnNames[i]], raw_ptr, a->mRecCount, (int_type*)temp);
+                apply_permutation(a->d_columns_int[a->columnNames[i]], raw_ptr, a->mRecCount, (int_type*)temp, 64);
             }
             else
-                apply_permutation(a->d_columns_float[a->columnNames[i]], raw_ptr, a->mRecCount, (float_type*)temp);
+                apply_permutation(a->d_columns_float[a->columnNames[i]], raw_ptr, a->mRecCount, (float_type*)temp, 64);
         };
 
         for(unsigned int i = 0; i < a->mColumnCount; i++) {
@@ -1844,11 +1859,14 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     */
 
     bool one_liner;
+	if (grp_cnt != 0)
+		phase_copy = 1;
+	
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         if(verbose)
             cout << "segment " << i << " select mem " << getFreeMem() << endl;
-        std::clock_t start3 = std::clock();
+        //std::clock_t start3 = std::clock();
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
@@ -1856,10 +1874,16 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
         if(a->mRecCount) {
             if (grp_cnt != 0) {
+				//start3 = std::clock();
                 order_inplace(a, op_v2, field_names, 1);
-		//		std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+				copyFinalize(a, op_vx);
+				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+				//start3 = std::clock();
                 a->GroupBy(op_v2);
-            };
+				//std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+            }
+			else
+				copyFinalize(a, op_vx);
 		//	std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
@@ -1901,6 +1925,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         };
         //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
+	phase_copy = 0;
 
     a->mRecCount = ol_count;
     a->mRecCount = a->hostRecCount;
