@@ -66,7 +66,6 @@ map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 map<string, unsigned int> cpy_bits;
 map<string, long long int> cpy_init_val;
 
-
 struct is_match
 {
     __host__ __device__
@@ -197,7 +196,6 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     keep = false;
     source = 1;
     text_source = 1;
-    grp = nullptr;
     fil_f = nullptr;
     fil_s = nullptr;
 };
@@ -210,7 +208,6 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     keep = false;
     source = 1;
     text_source = 0;
-    grp = nullptr;
     fil_f = nullptr;
     fil_s = nullptr;
 };
@@ -221,7 +218,6 @@ CudaSet::CudaSet(const size_t RecordCount, const unsigned int ColumnCount)
     keep = false;
     source = 0;
     text_source = 0;
-    grp = nullptr;
     fil_f = nullptr;
     fil_s = nullptr;
 };
@@ -233,7 +229,6 @@ CudaSet::CudaSet(queue<string> op_sel, const queue<string> op_sel_as)
     keep = false;
     source = 0;
     text_source = 0;
-    grp = nullptr;
     fil_f = nullptr;
     fil_s = nullptr;
 };
@@ -244,7 +239,6 @@ CudaSet::CudaSet(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_
     keep = false;
     source = 0;
     text_source = 0;
-    grp = nullptr;
     fil_f = nullptr;
     fil_s = nullptr;
 };
@@ -331,11 +325,6 @@ void CudaSet::deAllocOnDevice()
             it->second.resize(0);
             it->second.shrink_to_fit();
         };
-    };
-
-    if(grp) {
-        cudaFree(grp);
-        grp = nullptr;
     };
 
     if(filtered) { // free the sources
@@ -875,13 +864,12 @@ int_type* CudaSet::get_host_int_by_name(string name)
 
 void CudaSet::GroupBy(stack<string> columnRef)
 {
-    if(grp)
-        cudaFree(grp);
-
-    CUDA_SAFE_CALL(cudaMalloc((void **) &grp, mRecCount * sizeof(bool)));
-	cudaMemset(grp, 0 , mRecCount * sizeof(bool));
-    thrust::device_ptr<bool> d_grp(grp);
-    thrust::device_ptr<bool> d_group = thrust::device_malloc<bool>(mRecCount);
+    if(grp.size() < mRecCount)
+        grp.resize(mRecCount);	
+	thrust::fill(grp.begin(), grp.begin()+mRecCount,0);
+	if(scratch.size() < mRecCount)
+		scratch.resize(mRecCount*sizeof(bool));
+	thrust::device_ptr<bool> d_group((bool*)thrust::raw_pointer_cast(scratch.data()));	
 
     d_group[mRecCount-1] = 1;
 
@@ -896,11 +884,9 @@ void CudaSet::GroupBy(stack<string> columnRef)
             thrust::transform(d_columns_float[columnRef.top()].begin(), d_columns_float[columnRef.top()].begin() + mRecCount - 1,
                               d_columns_float[columnRef.top()].begin()+1, d_group, f_not_equal_to());
         };
-        thrust::transform(d_group, d_group+mRecCount, d_grp, d_grp, thrust::logical_or<bool>());
+        thrust::transform(d_group, d_group+mRecCount, grp.begin(), grp.begin(), thrust::logical_or<bool>());
     };
-
-    thrust::device_free(d_group);
-    grp_count = thrust::count(d_grp, d_grp+mRecCount,1);
+    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);
 };
 
 
@@ -926,15 +912,6 @@ void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
     thrust::copy(d_col, d_col+recCount, d_columns_int[colname].begin());
 	//cout << "added " << colname << " " << d_columns_int[colname][0] << " " << d_columns_int[colname][1] << " " << recCount << endl;
 	thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin()+recCount, h_columns_int[colname].begin());
-	//for(int i = 0; i < recCount; i++) {
-		//h_columns_int[colname][i] =  d_columns_int[colname][i];
-	//	cout << "set " << " " << h_columns_int[colname][i] << " to " << d_columns_int[colname][i] << endl;
-	//};	
-	//cout << "added host " << colname << " " << h_columns_int[colname][0] << " " << h_columns_int[colname][1] << endl;
-	
-	//thrust::host_vector<int_type> test(recCount);
-	//thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin()+recCount, test.begin());
-	//cout << "added test " << test[0] << " " << test[1] << endl;
 };
 
 void CudaSet::addDeviceColumn(float_type* col, string colname, size_t recCount, bool is_decimal)
@@ -1889,7 +1866,6 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 
 
 void CudaSet::free()  {
-
     for(unsigned int i = 0; i < columnNames.size(); i++ ) {
 		if(type[columnNames[i]] == 0 ) {
 			h_columns_int[columnNames[i]].resize(0);
@@ -1900,7 +1876,6 @@ void CudaSet::free()  {
 			h_columns_float[columnNames[i]].shrink_to_fit();
 		};
     };
-
     prm_d.resize(0);
     prm_d.shrink_to_fit();
     deAllocOnDevice();
@@ -2807,59 +2782,61 @@ size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
 
 void copyFinalize(CudaSet* a, queue<string> fields)
 {
-   set<string> uniques;
-   thrust::device_vector<int_type> scratch(a->mRecCount);
+	set<string> uniques;   
+	if(scratch.size() < a->mRecCount*8)
+		scratch.resize(a->mRecCount*8);
+	thrust::device_ptr<int_type> tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));		
    
-   while(!fields.empty()) {
+	while(!fields.empty()) {
         if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()) && cpy_bits.find(fields.front()) != cpy_bits.end())	{
 						
 			if(cpy_bits[fields.front()] == 8) {				
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<char> src((char*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));					
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), char_to_int64());					
+					thrust::transform(src, src+a->mRecCount, tmp, char_to_int64());					
 				}
 				else {
 					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), char_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, char_to_int64());
 				};	
 			}
 			else if(cpy_bits[fields.front()] == 16) {
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), int16_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, int16_to_int64());
 				}
 				else {
 					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), int16_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, int16_to_int64());
 				};	
 			}
 			else if(cpy_bits[fields.front()] == 32) {
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), int32_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, int32_to_int64());
 				}	
 				else {
 					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, scratch.begin(), int32_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, int32_to_int64());
 				};
 			}
 			else {
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<int_type> src((int_type*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));
-					thrust::copy(src, src+a->mRecCount, scratch.begin());
+					thrust::copy(src, src+a->mRecCount, tmp);
 				}	
 				else {					
 					thrust::device_ptr<int_type> src((int_type*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::copy(src, src+a->mRecCount, scratch.begin());
+					thrust::copy(src, src+a->mRecCount, tmp);
 				};
 			};			
 			thrust::constant_iterator<int_type> iter(cpy_init_val[fields.front()]);
 			if(a->type[fields.front()] != 1) {
-				thrust::transform(scratch.begin(), scratch.begin() + a->mRecCount, iter, a->d_columns_int[fields.front()].begin(), thrust::plus<int_type>());				
+				thrust::transform(tmp, tmp + a->mRecCount, iter, a->d_columns_int[fields.front()].begin(), thrust::plus<int_type>());				
 			}
 			else {
 				thrust::device_ptr<int_type> dest((int_type*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-				thrust::transform(scratch.begin(), scratch.begin() + a->mRecCount, iter, dest, thrust::plus<int_type>());	
+				thrust::transform(tmp, tmp + a->mRecCount, iter, dest, thrust::plus<int_type>());	
                 thrust::transform(dest, dest+a->mRecCount, a->d_columns_float[fields.front()].begin(), long_to_float());				
 			};				
 		};		

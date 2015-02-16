@@ -91,8 +91,7 @@ extern map<string, char*> buffers;
 extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
 extern size_t total_buffer_size;
-extern unsigned long long int* raw_decomp;
-extern unsigned int raw_decomp_length;
+extern thrust::device_vector<unsigned char> scratch;
 extern size_t alloced_sz;
 extern void* alloced_tmp;
 extern ContextPtr context;
@@ -270,7 +269,6 @@ public:
     thrust::device_vector<unsigned int> prm_d;
 	map<string, string> string_map; //maps char column names to string files, only select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
-	//map<string, map<string, unsigned int> > idx_dictionary_str; //stored in host memory
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
 	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
@@ -284,7 +282,7 @@ public:
     vector<string> columnNames;
 	map<string,bool> compTypes; // pfor delta or not
     map<string, FILE*> filePointers;
-    bool *grp;
+    thrust::device_vector<bool> grp;
     queue<string> columnGroups;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;

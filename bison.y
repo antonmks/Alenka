@@ -408,11 +408,6 @@ int execute_file(int ac, char **av)
         cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
-    if(raw_decomp_length) {
-        cudaFree(raw_decomp);
-        raw_decomp_length = 0;
-    };
-
     return 0;
 }
 

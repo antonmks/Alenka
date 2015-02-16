@@ -56,7 +56,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     bool prep = 0;
     one_line = 0;
 
-    thrust::device_ptr<bool> d_di(a->grp);
+    thrust::device_ptr<bool> d_di(thrust::raw_pointer_cast(a->grp.data()));
     std::auto_ptr<ReduceByKeyPreprocessData> ppData;
 
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
@@ -784,8 +784,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-
-
     for(unsigned int j=0; j < colCount; j++) {
 
         if ((grp_type1.top()).compare("COUNT") == 0 )
@@ -813,26 +811,25 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             thrust::sequence(s, s+(a->mRecCount), (int)exe_nums1.top(), 0);
             if (!a->columnGroups.empty()) {
                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                thrust::device_ptr<bool> d_grp(a->grp);
-                thrust::copy_if(s,s+(a->mRecCount), d_grp, count_diff, thrust::identity<bool>());
+                //thrust::device_ptr<bool> d_grp(a->grp);
+                thrust::copy_if(s,s+(a->mRecCount), d_di, count_diff, thrust::identity<bool>());
                 b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , col_val.top(), res_size);
                 thrust::device_free(count_diff);
             }
             else
                 b->addDeviceColumn(thrust::raw_pointer_cast(s), col_val.top(), a->mRecCount);
             exe_nums1.pop();
-        };
-        if(col_type.top() == 1) {
+        }
+        else if(col_type.top() == 1) {
 
             if(a->type[exe_value1.top()] == 0 || a->type[exe_value1.top()] == 2) {
 
                 //modify what we push there in case of a grouping
                 if (!a->columnGroups.empty()) {
                     thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                    thrust::device_ptr<bool> d_grp(a->grp);
-
+                    //thrust::device_ptr<bool> d_grp(a->grp);
                     thrust::copy_if(a->d_columns_int[exe_value1.top()].begin(),a->d_columns_int[exe_value1.top()].begin() + a->mRecCount,
-                                    d_grp, count_diff, thrust::identity<bool>());
+                                    d_di, count_diff, thrust::identity<bool>());
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) ,  col_val.top(), res_size);
                     thrust::device_free(count_diff);
                 }
@@ -848,22 +845,18 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 //modify what we push there in case of a grouping
                 if (!a->columnGroups.empty()) {
                     thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
-                    thrust::device_ptr<bool> d_grp(a->grp);
-
+                    //thrust::device_ptr<bool> d_grp(a->grp);
                     thrust::copy_if(a->d_columns_float[exe_value1.top()].begin(), a->d_columns_float[exe_value1.top()].begin() + a->mRecCount,
-                                    d_grp, count_diff, thrust::identity<bool>());
+                                    d_di, count_diff, thrust::identity<bool>());
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , col_val.top(), res_size, a->decimal[exe_value1.top()]);
                     thrust::device_free(count_diff);
                 }
                 else
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[exe_value1.top()].data()), col_val.top(), a->mRecCount, a->decimal[exe_value1.top()]);
             }
-
             exe_value1.pop();
-
-        };
-
-        if(col_type.top() == 2) {	    // int
+        }
+        else if(col_type.top() == 2) {	    // int
 
             if (!a->columnGroups.empty())
                 b->addDeviceColumn(exe_vectors1.top() , col_val.top(), res_size);
@@ -873,12 +866,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 else
                     b->addDeviceColumn(exe_vectors1.top() , col_val.top(), 1);
             };
-
             cudaFree(exe_vectors1.top());
             exe_vectors1.pop();
-
         }
-        if(col_type.top() == 3) {        //float
+        else if(col_type.top() == 3) {        //float
 
             if (!a->columnGroups.empty()) {
                 b->addDeviceColumn(exe_vectors1_d.top() , col_val.top(), res_size, 1);
