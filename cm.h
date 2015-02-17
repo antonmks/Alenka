@@ -93,7 +93,6 @@ extern queue<string> buffer_names;
 extern size_t total_buffer_size;
 extern thrust::device_vector<unsigned char> scratch;
 extern size_t alloced_sz;
-extern void* alloced_tmp;
 extern ContextPtr context;
 extern unordered_map<string, unordered_map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
 extern bool scan_state;
