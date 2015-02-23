@@ -102,6 +102,8 @@ extern map<string, unsigned int> cpy_bits;
 extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
 
+extern vector<void*> alloced_mem;
+
 template<typename T>
 struct uninitialized_host_allocator
         : std::allocator<T>
@@ -405,6 +407,7 @@ bool check_bitmap_file_exist(CudaSet* left, CudaSet* right);
 void check_sort(const string str, const char* rtable, const char* rid);
 void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
+void alloc_pool(unsigned int maxRecs);
 
 #endif
 

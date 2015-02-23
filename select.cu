@@ -17,6 +17,8 @@
 
 using namespace mgpu;
 
+vector<void*> alloced_mem;
+
 template<typename T>
 struct distinct : public binary_function<T,T,T>
 {
@@ -58,18 +60,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
     thrust::device_ptr<bool> d_di(thrust::raw_pointer_cast(a->grp.data()));
     std::auto_ptr<ReduceByKeyPreprocessData> ppData;
-
+	
     if (!a->columnGroups.empty() && (a->mRecCount != 0))
         res_size = a->grp_count;
 		
-	std::clock_t start11 = std::clock();	
+	std::clock_t start1 = std::clock();	
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
         //cout << ss << endl;
-		
-
 
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
@@ -77,7 +77,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
 
                 if(!prep && !a->columnGroups.empty()) {
-
                     mgpu::ReduceByKeyPreprocess<float_type>((int)a->mRecCount, thrust::raw_pointer_cast(d_di),
                                                             (bool*)0, head_flag_predicate<bool>(), (int*)0, (int*)0,
                                                             &ppData, *context);
@@ -127,12 +126,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                         if (!a->columnGroups.empty()) {
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                            thrust::device_ptr<int_type> const_seq = thrust::device_malloc<int_type>(a->mRecCount);
+							if(alloced_mem.empty()) {		
+								cout << "CNT " << endl;
+								alloc_pool(a->maxRecs);
+							};
+							thrust::device_ptr<int_type> const_seq((int_type*)alloced_mem.back());								
                             thrust::fill(const_seq, const_seq+a->mRecCount, (int_type)1);
                             ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(const_seq), (int_type)0,
                                              mgpu::plus<int_type>(), thrust::raw_pointer_cast(count_diff), *context);
 
-                            thrust::device_free(const_seq);
+                            //thrust::device_free(const_seq);
                             //thrust::reduce_by_key(d_di, d_di+(a->mRecCount), thrust::constant_iterator<int_type>(1),
                             //                      thrust::make_discard_iterator(), count_diff,
                             //                      head_flag_predicate<bool>(),thrust::plus<int_type>());
@@ -176,8 +179,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
                         if (!a->columnGroups.empty()) {
                             thrust::device_ptr<float_type> source((float_type*)(s3));
-                            //thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
-                            thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(a->mRecCount);
+                            thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                             ReduceByKeyApply(*ppData, s3, (float_type)0,
                                              mgpu::plus<float_type>(), thrust::raw_pointer_cast(count_diff), *context);
                             //thrust::reduce_by_key(d_di, d_di + a->mRecCount, source,
@@ -298,12 +300,17 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         //ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(a->d_columns_float[s1_val].data()), (float_type)0,
                         	//					mgpu::minimum<float_type>(), thrust::raw_pointer_cast(count_diff), *context);
 
-						thrust::device_vector<unsigned int> d_di1(a->mRecCount);
-						thrust::copy(d_di, d_di+a->mRecCount,d_di1.begin());
-						thrust::exclusive_scan(d_di1.begin(), d_di1.end(), d_di1.begin());
+						if(alloced_mem.empty()) {								
+							alloc_pool(a->maxRecs);
+						};
+						thrust::device_ptr<unsigned int> d_di1((unsigned int*)alloced_mem.back());								
+							
+						//thrust::device_vector<unsigned int> d_di1(a->mRecCount);
+						thrust::copy(d_di, d_di+a->mRecCount,d_di1);
+						thrust::exclusive_scan(d_di1, d_di1+a->mRecCount, d_di1);
 						thrust::equal_to<unsigned int> binary_pred;					  
 						
-                        thrust::reduce_by_key(d_di1.begin(), d_di1.begin()+(a->mRecCount), a->d_columns_float[s1_val].begin(),
+                        thrust::reduce_by_key(d_di1, d_di1+a->mRecCount, a->d_columns_float[s1_val].begin(),
                                               thrust::make_discard_iterator(), count_diff,
                                               binary_pred, thrust::minimum<float_type>());
                         exe_vectors_f.push(thrust::raw_pointer_cast(count_diff));
@@ -557,7 +564,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_type.push("VECTOR");
                                 exe_vectors.push(a->op(t,s3,ss,0));
                                 //free s3
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
+								
 
                             }
                             else {
@@ -565,7 +574,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_vectors_f.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t,s3,ss,0));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                         }
                         else {
@@ -575,14 +585,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_vectors.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(s3,t, ss,0));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                             else {
                                 float_type* s3 = exe_vectors_f.top();
                                 exe_vectors_f.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t,s3,ss,0));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                         };
                     }
@@ -599,14 +611,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_vectors.pop();
                                 exe_type.push("VECTOR");
                                 exe_vectors.push(a->op(t,s3,ss,1));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                             else {
                                 float_type* s3 = exe_vectors_f.top();
                                 exe_vectors_f.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t,s3,ss,1));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                         }
                         else {
@@ -617,14 +631,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 exe_vectors.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(s3,t,ss,1));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                             else {
                                 float_type* s3 = exe_vectors_f.top();
                                 exe_vectors_f.pop();
                                 exe_type.push("VECTOR F");
                                 exe_vectors_f.push(a->op(t,s3,ss,1));
-                                cudaFree(s3);
+                                //cudaFree(s3);
+								alloced_mem.push_back(s3);
                             }
                         };
                     }
@@ -637,14 +653,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
                             exe_vectors.push(a->op(s3,n1, ss,1));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                         else {
                             float_type* s3 = exe_vectors_f.top();
                             exe_vectors_f.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,(float_type)n1, ss,1));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                     }
                     else if (s1.compare("NUMBER") == 0 && (s2.compare("VECTOR") || s2.compare("VECTOR F") == 0)) {
@@ -656,14 +674,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
                             exe_vectors.push(a->op(s3,n1, ss,0));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                         else {
                             float_type* s3 = exe_vectors_f.top();
                             exe_vectors_f.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,(float_type)n1, ss,0));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                     }
 
@@ -677,14 +697,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             exe_vectors.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,n1_f, ss,1));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                         else {
                             float_type* s3 = exe_vectors_f.top();
                             exe_vectors_f.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,n1_f, ss,1));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                     }
                     else if (s1.compare("FLOAT") == 0 && (s2.compare("VECTOR") == 0 || s2.compare("VECTOR F") == 0)) {
@@ -696,14 +718,16 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             exe_vectors.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,n1_f, ss,0));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                         else {
                             float_type* s3 = exe_vectors_f.top();
                             exe_vectors_f.pop();
                             exe_type.push("VECTOR F");
                             exe_vectors_f.push(a->op(s3,n1_f, ss,0));
-                            cudaFree(s3);
+                            //cudaFree(s3);
+							alloced_mem.push_back(s3);
                         }
                     }
 
@@ -714,8 +738,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_vectors.pop();
                         exe_type.push("VECTOR");
                         exe_vectors.push(a->op(s3, s4,ss,0));
-                        cudaFree(s3);
-                        cudaFree(s4);
+                        //cudaFree(s3);
+						alloced_mem.push_back(s3);
+                        //cudaFree(s4);
+						alloced_mem.push_back(s4);
                     }
                     else if(s1.compare("VECTOR") == 0 && s2.compare("VECTOR F") == 0) {
                         int_type* s3 = exe_vectors.top();
@@ -724,8 +750,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(s3, s4,ss,1));
-                        cudaFree(s3);
-                        cudaFree(s4);
+                        //cudaFree(s3);
+						alloced_mem.push_back(s3);
+                        //cudaFree(s4);
+						alloced_mem.push_back(s4);
                     }
                     else if(s1.compare("VECTOR F") == 0 && s2.compare("VECTOR") == 0) {
                         int_type* s3 = exe_vectors.top();
@@ -734,8 +762,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(s3, s4,ss,0));
-                        cudaFree(s3);
-                        cudaFree(s4);
+                        //cudaFree(s3);
+						alloced_mem.push_back(s3);
+						alloced_mem.push_back(s4);
+                        //cudaFree(s4);
                     }
                     else if(s1.compare("VECTOR F") == 0 && s2.compare("VECTOR F") == 0) {
                         float_type* s3 = exe_vectors_f.top();
@@ -744,8 +774,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_vectors_f.pop();
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(a->op(s3, s4,ss,1));
-                        cudaFree(s3);
-                        cudaFree(s4);
+                        //cudaFree(s3);
+                        //cudaFree(s4);
+						alloced_mem.push_back(s3);
+						alloced_mem.push_back(s4);
                     }
                 }
             }
@@ -784,6 +816,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
+	
     for(unsigned int j=0; j < colCount; j++) {
 
         if ((grp_type1.top()).compare("COUNT") == 0 )
@@ -804,20 +837,18 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
 
         if(col_type.top() == 0) {
-
             // create a vector
-
-            thrust::device_ptr<int_type> s = thrust::device_malloc<int_type>(a->mRecCount);
-            thrust::sequence(s, s+(a->mRecCount), (int)exe_nums1.top(), 0);
             if (!a->columnGroups.empty()) {
                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                //thrust::device_ptr<bool> d_grp(a->grp);
-                thrust::copy_if(s,s+(a->mRecCount), d_di, count_diff, thrust::identity<bool>());
+                thrust::copy_if(thrust::make_constant_iterator((int)exe_nums1.top()), thrust::make_constant_iterator((int)exe_nums1.top()) + a->mRecCount, d_di, count_diff, thrust::identity<bool>());
                 b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , col_val.top(), res_size);
                 thrust::device_free(count_diff);
             }
-            else
-                b->addDeviceColumn(thrust::raw_pointer_cast(s), col_val.top(), a->mRecCount);
+            else {
+				thrust::device_ptr<int_type> s = thrust::device_malloc<int_type>(a->mRecCount);
+				thrust::sequence(s, s+(a->mRecCount), (int)exe_nums1.top(), 0);
+				b->addDeviceColumn(thrust::raw_pointer_cast(s), col_val.top(), a->mRecCount);
+			}	
             exe_nums1.pop();
         }
         else if(col_type.top() == 1) {
@@ -889,8 +920,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         col_val.pop();
         grp_type1.pop();
     };
-
-
+	
+	
     if (a->columnGroups.empty()) {
         if(!one_line)
             b->mRecCount = a->mRecCount;
