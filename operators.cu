@@ -285,7 +285,7 @@ void order_inplace_host(CudaSet* a, stack<string> exe_type, set<string> field_na
 
 void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, bool update_str)
 {
-	if(scratch.size() < a->mRecCount)
+	if(scratch.size() < a->mRecCount*4)
 		scratch.resize(a->mRecCount*4);
 	thrust::device_ptr<unsigned int> permutation((unsigned int*)thrust::raw_pointer_cast(scratch.data()));	
     thrust::sequence(permutation, permutation+a->mRecCount,0,1);
@@ -295,19 +295,18 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 		a->grp.resize(a->mRecCount*8);
  	unsigned int bits;
 	
-    for(; !exe_type.empty(); exe_type.pop()) {
+    for(; !exe_type.empty(); exe_type.pop()) {	
 		if(cpy_bits.empty())
 			bits = 0;
 		else	
 			bits = cpy_bits[exe_type.top()];			
-			
         if (a->type[exe_type.top()] != 1)
             update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, "ASC", (int_type*)thrust::raw_pointer_cast(a->grp.data()), bits);
         else
             update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,"ASC", (float_type*)thrust::raw_pointer_cast(a->grp.data()), bits);			
     };	
 	
-	
+
     for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
 		if(cpy_bits.empty())
 			bits = 0;
@@ -319,8 +318,7 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
         }
         else {
             apply_permutation(a->d_columns_float[*it], raw_ptr, a->mRecCount, (float_type*)thrust::raw_pointer_cast(a->grp.data()), bits);			
-		};	
-			
+		};				
     };
 }
 
@@ -1012,9 +1010,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         }
         else {
-            //cout << "load all segments " << endl;
+			//cout << "loading " << endl;
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);			
-            //cout << "loaded all segs " << endl;
+			//cout << "loaded " << endl;
             start_part = right->segCount;
 			
             for(auto& m : right->orig_segs) {
@@ -1031,22 +1029,23 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				}
 				else 
 					right->d_columns_float[right->columnNames[i]].shrink_to_fit();
-			};    
+			};    			
         };
 
         right->mRecCount = cnt_r;
         bool order = 1;
-
+		
+		
         if(!right->sorted_fields.empty() && right->sorted_fields.front() == f2) {
             order = 0;
-            //cout << "No need to sort " << endl;
+            cout << "No need to sort " << endl;
             if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
                 right->sort_check = '1';
             else {
                 right->sort_check = '0';
             };
         };
-
+		
         if(order) {
             if(thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].end())) {
                 if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size()) {
@@ -1055,12 +1054,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 else {
                     right->sort_check = '0';
                 };
-                //cout << f2 << " already sorted " << endl;
             }
             else {
+				//cout << "sorting " << endl;
 				size_t tot_size = right->mRecCount*8*right->columnNames.size();
 				if (getFreeMem() > tot_size*1.5) {
-					order_inplace(right, exe_type, field_names, 0);
+					order_inplace(right, exe_type, field_names, 0);					
 				}
 				else {
    				    //for(unsigned int i = 0; i < right->columnNames.size(); i++) {
@@ -1085,7 +1084,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 						else	
 							thrust::copy(right->h_columns_float[*it].begin(), right->h_columns_float[*it].begin() + right->mRecCount, right->d_columns_float[*it].begin());
 					};
-				};				
+				};		
             };
         };
 
@@ -1134,8 +1133,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             cnt_l = left->mRecCount;
 
             if (cnt_l) {
-                // sort the left index column, save the permutation vector, it might be needed later
-
+                // sort the left index column, save the permutation vector, it might be needed later				
                 thrust::device_ptr<int_type> d_col((int_type*)thrust::raw_pointer_cast(left->d_columns_int[colname1].data()));
                 thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
 
@@ -1324,9 +1322,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 					
 					if(scratch.size() < res_count*int_size)
 						scratch.resize(res_count*int_size);
-					thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);					
-					
-                    thrust::host_vector<unsigned int> prm_vh;
+					thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
                     std::map<string,bool> processed;
 
                     while(!op_sel1.empty()) {
@@ -1343,14 +1339,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                         cc.push(op_sel1.front());
 
-                        if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
-						//std::clock_t start14 = std::clock();
+                        if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {						
                             allocColumns(left, cc);
-						//std::cout<< endl << "cpy alloc others " <<  ( ( std::clock() - start14 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-						//std::clock_t start14 = std::clock();
-                            copyColumns(left, cc, i, k, 0, 0);
-						//if(left->not_compressed)	
-							//std::cout<< endl << "cpy left othersL " <<  ( ( std::clock() - start14 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+                            copyColumns(left, cc, i, k, 0, 0);						
                             //gather
                             if(left->type[op_sel1.front()] != 1 ) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
@@ -1384,7 +1375,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         };
                         op_sel1.pop();
                     };
-                    //cudaFree(temp);
                 };
 				//std::cout<< endl << "process cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
             };
@@ -1857,33 +1847,26 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         if(verbose)
             cout << "segment " << i << " select mem " << getFreeMem() << endl;
-        //std::clock_t start3 = std::clock();
+        std::clock_t start3 = std::clock();
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
 
         if(a->mRecCount) {
             if (grp_cnt != 0) {
-				//start3 = std::clock();
-                order_inplace(a, op_v2, field_names, 1);
-				copyFinalize(a, op_vx);
-				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
-				//start3 = std::clock();
-                a->GroupBy(op_v2);
-				//std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
-            }
-			else
-				copyFinalize(a, op_vx);
-		//	std::cout<< "grp time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+				start3 = std::clock();
+                order_inplace(a, op_v2, field_names, 1);																
+				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
+				start3 = std::clock();
+                a->GroupBy(op_v2);				
+            };			
+			copyFinalize(a, op_vx);
+			//std::cout<< "grp time1 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
 
-			//start3 = std::clock();
-            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);
-			
+			start3 = std::clock();
+            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);			
 			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
-			//cout << "RES " << b->mRecCount << endl;
-			//for(int z= 0; z<b->mRecCount; z++)
-			//cout << b->d_columns_int["lf1"][z] << " " << b->d_columns_int["rf1"][z] << endl;
 
             if(i == 0)
                 std::reverse(b->columnNames.begin(), b->columnNames.end());
@@ -1925,6 +1908,10 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     b->deAllocOnDevice();
 	a->grp.resize(0);
 	a->grp.shrink_to_fit();
+	for(auto i = 0; i < alloced_mem.size(); i++) {
+		cudaFree(alloced_mem[i]);
+		alloced_mem.pop_back();
+	};
 
     if(!c_set) {
         CudaSet *c;

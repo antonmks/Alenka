@@ -619,8 +619,9 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
                 h_columns_int[colname].resize(1);
             fread(h_columns_int[colname].data(), 4, 1, f);
             unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];
-            if(cnt/8+10 > h_columns_int[colname].size())
+            if(cnt/8+10 > h_columns_int[colname].size()) {
                 h_columns_int[colname].resize(cnt + 10);
+			};	
             size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
             if(rr != cnt+52) {
                 char buf[1024];
@@ -3114,7 +3115,7 @@ size_t load_queue(queue<string> c1, CudaSet* right, string f2, size_t &rcount,
             right->mRecCount = 0;
         }
         else {
-            right->allocColumnOnDevice(ct.front(), rcount);
+            right->allocColumnOnDevice(ct.front(), rcount*right->segCount);
         };
         ct.pop();
     };

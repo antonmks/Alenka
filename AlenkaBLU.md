@@ -81,7 +81,7 @@ Alenka :
 
 *warm execution* :
 
-IBM BlU - **1,59** sec.
+IBM BLU - **1,59** sec.
 
 Alenka - **1,17** sec.
 
