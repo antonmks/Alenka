@@ -1,4 +1,5 @@
 #include "operators.h"
+#include <thrust/iterator/permutation_iterator.h>
 
 using namespace mgpu;
 using namespace std;
@@ -1213,11 +1214,11 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 thrust::device_ptr<int> d_res1((int*)r1);
                 int* r2 = bIndicesDevice->get();
                 thrust::device_ptr<int> d_res2((int*)r2);
-
+				
                 if(res_count) {
                     p_tmp.resize(res_count);
                     thrust::sequence(p_tmp.begin(), p_tmp.end(),-1);
-                    thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive<int>());
+                    thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive<int>());					
                 };
 
 
@@ -1243,13 +1244,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     copyColumns(left, rc, i, offset, 0, 0);
                     rc.pop();
 
-                    void* temp;
-                    CUDA_SAFE_CALL(cudaMalloc((void **) &temp, res_count*float_size));
-                    void* temp1;
-                    CUDA_SAFE_CALL(cudaMalloc((void **) &temp1, res_count*float_size));
-                    cudaMemset(temp,0,res_count*float_size);
-                    cudaMemset(temp1,0,res_count*float_size);
-
                     if (res_count) {
                         thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(res_count);
 
@@ -1257,38 +1251,36 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                             if(right->d_columns_float[f4].size() == 0)
                                 load_queue(rc, right, f4, rcount, 0, right->segCount, 0, 0);
-
-                            thrust::device_ptr<float_type> d_tmp((float_type*)temp);
-                            thrust::device_ptr<float_type> d_tmp1((float_type*)temp1);
-                            thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_float[f3].begin(), d_tmp, is_positive<int>());
-                            thrust::gather_if(d_res2, d_res2+res_count, d_res2, right->d_columns_float[f4].begin(), d_tmp1, is_positive<int>());
-                            thrust::transform(d_tmp, d_tmp+res_count, d_tmp1, d_add, float_equal_to());
+                   
+							thrust::transform(make_permutation_iterator(left->d_columns_float[f3].begin(), p_tmp.begin()),
+											  make_permutation_iterator(left->d_columns_float[f3].begin(), p_tmp.end()),
+											  make_permutation_iterator(right->d_columns_float[f4].begin(), d_res2),
+											  d_add, float_equal_to());
                         }
                         else {
                             if(right->d_columns_int[f4].size() == 0) {
                                 load_queue(rc, right, f4, rcount, 0, right->segCount, 0, 0);
                             };
+							
+							thrust::transform(make_permutation_iterator(left->d_columns_int[f3].begin(), p_tmp.begin()),
+											  make_permutation_iterator(left->d_columns_int[f3].begin(), p_tmp.end()),
+											  make_permutation_iterator(right->d_columns_int[f4].begin(), d_res2),
+											  d_add, thrust::equal_to<int_type>());
+							
 
-                            thrust::device_ptr<int_type> d_tmp((int_type*)temp);
-                            thrust::device_ptr<int_type> d_tmp1((int_type*)temp1);
-                            thrust::gather_if(p_tmp.begin(), p_tmp.end(), p_tmp.begin(), left->d_columns_int[f3].begin(), d_tmp, is_positive<int>());
-                            thrust::gather_if(d_res2, d_res2+res_count, d_res2, right->d_columns_int[f4].begin(), d_tmp1, is_positive<int>());
-                            thrust::transform(d_tmp, d_tmp+res_count, d_tmp1, d_add, thrust::equal_to<int_type>());
                         };
 
                         if (join_kind == 'I') {  // result count changes only in case of an inner join
                             unsigned int new_cnt = thrust::count(d_add, d_add+res_count, 1);
                             thrust::stable_partition(d_res2, d_res2 + res_count, d_add, thrust::identity<unsigned int>());
-                            thrust::stable_partition(p_tmp.begin(), p_tmp.end(), d_add, thrust::identity<unsigned int>());
-                            thrust::device_free(d_add);
+                            thrust::stable_partition(p_tmp.begin(), p_tmp.end(), d_add, thrust::identity<unsigned int>());                            
                             res_count = new_cnt;
                         }
                         else { //otherwise we consider it a valid left join result with non-nulls on the left side and nulls on the right side
                             thrust::transform(d_res2, d_res2 + res_count, d_add , d_res2, set_minus());
                         };
+						thrust::device_free(d_add);
                     };
-                    cudaFree(temp);
-                    cudaFree(temp1);
                 };
 
                 tot_count = tot_count + res_count;
