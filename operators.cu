@@ -33,7 +33,6 @@ void* p_tmp1 = nullptr;
 bool set_p = 0;
 int p_sz = 0;
 
-
 void check_used_vars()
 {
     for (auto it=data_dict.begin() ; it != data_dict.end(); ++it ) {
@@ -2309,14 +2308,15 @@ void emit_store_binary(const char *s, const char *f)
     };
     total_count = 0;
     total_segments = 0;
-
+	a->maxRecs = 0;
+	
     if(fact_file_loaded) {
         a->Store(f,"", limit, 1);
     }
     else {
         FILE* file_p;
         if(a->text_source) {
-            file_p = fopen(a->load_file_name.c_str(), "r");
+            file_p = fopen(a->load_file_name.c_str(), "rb");
             if (!file_p) {
                 process_error(2, "Could not open file " + a->load_file_name );
             };
@@ -2327,6 +2327,8 @@ void emit_store_binary(const char *s, const char *f)
                 cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
             if(a->text_source)
                 fact_file_loaded = a->LoadBigFile(file_p);
+			if(a->maxRecs < a->mRecCount)
+				a->maxRecs = a->mRecCount;
             a->Store(f,"", limit, 1);
         };
     };
@@ -2407,12 +2409,12 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
 
     a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_names);
     a->mRecCount = 0;
-    a->resize(process_count);
+    //a->resize(process_count);
     a->keep = true;
     a->not_compressed = 1;
     a->load_file_name = f;
     a->separator = sep;
-    a->maxRecs = a->mRecCount;
+    //a->maxRecs = a->mRecCount;
     a->segCount = 0;
     varNames[s] = a;
     fact_file_loaded = 0;
@@ -2591,7 +2593,7 @@ void process_error(int severity, string err) {
 
 void alenkaInit(char ** av)
 {
-    process_count = 6200000;
+    process_count = 760000000;
     verbose = 0;
     scan_state = 1;
     statement_count = 0;

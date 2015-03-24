@@ -267,7 +267,7 @@ int execute_file(int ac, char **av)
     bool just_once  = 0;
     string script;
 
-    process_count = 6200000;
+    process_count = 760000000;
     verbose = 0;
 	ssd = 0;
 	delta = 0;
@@ -276,7 +276,7 @@ int execute_file(int ac, char **av)
 
     for (int i = 1; i < ac; i++) {
         if(strcmp(av[i],"-l") == 0) {
-            process_count = atoff(av[i+1]);
+            process_count = 1000000*atoff(av[i+1]);
         }
         else if(strcmp(av[i],"-v") == 0) {
             verbose = 1;

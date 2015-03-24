@@ -11,6 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 #include <map>
 #include <string>
 #include <iostream>
@@ -38,7 +39,7 @@ int main(int ac, char **av)
     }
     else {				// ordinary alenka file mode
         if (ac < 2) {
-            cout << "Usage : alenka [--QPS-test] | [ [-l process_count] [-v] script.sql ]" << endl;
+            cout << "Usage : alenka [--QPS-test] | [ [-l load size(MB)] [-v] script.sql ]" << endl;
             exit(1);
         }
         else

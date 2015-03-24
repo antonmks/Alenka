@@ -1,4 +1,5 @@
 /*
+/*
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,6 +27,7 @@
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
+#define fseek(S, S1, S2) _fseeki64(S, S1, S2)
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -36,7 +38,7 @@ using namespace std;
 size_t total_count = 0, total_max;
 clock_t tot;
 unsigned int total_segments = 0;
-unsigned int process_count;
+size_t process_count;
 size_t alloced_sz = 0;
 bool fact_file_loaded = 1;
 bool verbose;
@@ -52,7 +54,7 @@ queue<int_type> op_nums;
 queue<float_type> op_nums_f;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
-unordered_map<string, unordered_map<unsigned long long int, size_t> > char_hash;
+map<unsigned int, map<unsigned long long int, size_t> > char_hash;
 
 map<string, char*> index_buffers;
 map<string, char*> buffers;
@@ -65,6 +67,8 @@ bool alloced_switch = 0;
 map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 map<string, unsigned int> cpy_bits;
 map<string, long long int> cpy_init_val;
+char* readbuff = nullptr;
+thrust::device_vector<char> d_readbuff;
 
 struct is_match
 {
@@ -333,6 +337,7 @@ void CudaSet::deAllocOnDevice()
         };
     };
 };
+
 
 void CudaSet::resizeDeviceColumn(size_t RecCount, string colname)
 {
@@ -818,10 +823,7 @@ void CudaSet::CopyColumnToHost(string colname, size_t offset, size_t RecCount)
 {
 
     if(type[colname] != 1) {
-		//cout << "copied " << colname << " " <<  RecCount << endl;
         thrust::copy(d_columns_int[colname].begin(), d_columns_int[colname].begin() + RecCount, h_columns_int[colname].begin() + offset);
-		//cout << "to " << colname << " " << h_columns_int[colname][0] << " " << h_columns_int[colname][1] << endl;
-		//cout << "to " << colname << " " << d_columns_int[colname][0] << " " << d_columns_int[colname][1] << endl;
 	}
     else 
         thrust::copy(d_columns_float[colname].begin(), d_columns_float[colname].begin() + RecCount, h_columns_float[colname].begin() + offset);
@@ -1000,10 +1002,10 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 
         while(!sf.empty()) {
 
-            if(type[sf.front()] != 2) {
-                allocColumnOnDevice(sf.front(), maxRecs);
-                CopyColumnToGpu(sf.front());
-            };
+            //if(type[sf.front()] != 2) {
+            //    allocColumnOnDevice(sf.front(), maxRecs);
+            //    CopyColumnToGpu(sf.front());
+            //};
 
             if (type[sf.front()] == 0)
                 update_permutation(d_columns_int[sf.front()], raw_ptr, mRecCount, sort_type, (int_type*)temp, 64);
@@ -1034,18 +1036,17 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
     unsigned int old_segments = total_segments;
     size_t new_offset;
     for(unsigned int i = 0; i < columnNames.size(); i++) {
-
+		std::clock_t start1 = std::clock();
         string colname = columnNames[i];
-
         str = file_name + "." + colname;
         curr_file = str;
         str += "." + to_string(total_segments-1);
         new_offset = 0;
 
-        if(!op_sort.empty() && type[colname] != 2) {
-            allocColumnOnDevice(colname, maxRecs);
-            CopyColumnToGpu(colname);
-        };		
+        //if(!op_sort.empty() && type[colname] != 2) {
+        //    allocColumnOnDevice(colname, maxRecs);
+        //    CopyColumnToGpu(colname);
+        //};		
 
         if(type[colname] == 0) {
             thrust::device_ptr<int_type> d_col((int_type*)d);
@@ -1160,8 +1161,8 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
             };
         };
 
-        if(type[colname] != 2)
-            deAllocColumnOnDevice(colname);
+        //if(type[colname] != 2)
+        //    deAllocColumnOnDevice(colname);
 
 
         if((check_type == 1 && fact_file_loaded) || (check_type == 1 && check_val == 0)) {
@@ -1172,7 +1173,8 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
             };
         };
 
-        total_segments = old_segments;
+        total_segments = old_segments;	
+		std::cout<< "time " << colname << " " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;		
     };
     cudaFree(d);
 
@@ -1194,6 +1196,7 @@ void CudaSet::writeHeader(string file_name, string colname, unsigned int tot_seg
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
     binary_file.write((char *)&cnt_counts[ff], 4);
+	//cout << "TOTALS " << total_count << " " << tot_segs << " " << total_max << endl;
     binary_file.close();
 };
 
@@ -1222,7 +1225,6 @@ void CudaSet::writeSortHeader(string file_name)
         binary_file.write((char *)&idx, 4);
         queue<string> os(op_sort);
         while(!os.empty()) {
-            //idx = cols[columnNames[os.front()]];
             if(verbose)
                 cout << "sorted on " << idx << endl;
             idx = os.front().size();
@@ -1244,7 +1246,6 @@ void CudaSet::writeSortHeader(string file_name)
         binary_file.write((char *)&idx, 4);
         queue<string> os(op_presort);
         while(!os.empty()) {
-            //idx = cols[columnNames[os.front()]];
             idx = os.front().size();
             binary_file.write((char *)&idx, 4);
             binary_file.write(os.front().data(), idx);
@@ -1397,7 +1398,6 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
         mCount = mRecCount;
         print_all = 1;
     };
-    //cout << "mCount " << mCount << " " << mRecCount << endl;
 
     if(binary == 0) {
 
@@ -1699,7 +1699,6 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 void CudaSet::compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment)
 {
     unsigned int len = char_size[colname];
-    unsigned long long int string_hash;
 
     string h_name, i_name, file_no_seg = file_name.substr(0, file_name.find_last_of("."));
     i_name = file_no_seg + "." + to_string(segment) + ".idx";
@@ -1708,38 +1707,54 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 
     fstream binary_file_h(h_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file_h.write((char *)&mCount, 4);
-
-    if(segment == 0) {
+	
+	if(segment == 0) {
         b_file_str.open(file_no_seg.c_str(),ios::out|ios::binary|ios::trunc);
     }
     else {
         b_file_str.open(file_no_seg.c_str(),ios::out|ios::binary|ios::app);
     };
-
-    if(h_columns_int.find(colname) == h_columns_int.end())
+	
+    if(h_columns_int.find(colname) == h_columns_int.end()) {	
         h_columns_int[colname] = thrust::host_vector<int_type >(mCount);
-    if(d_columns_int.find(colname) == d_columns_int.end())
+	}
+	else {
+		if(h_columns_int[colname].size() < mCount)
+			h_columns_int[colname].resize(mCount);
+	};
+    if(d_columns_int.find(colname) == d_columns_int.end()) {
         d_columns_int[colname] = thrust::device_vector<int_type >(mCount);
-		
-    for (unsigned int i = 0 ; i < mCount; i++) {
-        string_hash = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
-        binary_file_h.write((char *)&string_hash, 8);
-        if(char_hash[colname].find(string_hash) == char_hash[colname].end()) {
-			auto cnt = char_hash[colname].size();
-            char_hash[colname][string_hash] = cnt;
-            b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
-            h_columns_int[colname][i] = cnt;
-        }
-        else {
-            h_columns_int[colname][i] = char_hash[colname][string_hash];
-        };
+	}
+	else {
+		if(d_columns_int[colname].size() < mCount)
+			d_columns_int[colname].resize(mCount);
+	};	
 
-    };
+	size_t  cnt;		
+	long long int* hash_array = new long long int[mCount];	
+	map<unsigned long long int, size_t>::iterator iter;
+	unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
+	
+	for (unsigned int i = 0 ; i < mCount; i++) {
+		hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;				
+		iter = char_hash[ind].find(hash_array[i]);	
+		if(iter == char_hash[ind].end()) {
+			cnt = char_hash[ind].size();
+			char_hash[ind][hash_array[i]] = cnt;
+			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
+			h_columns_int[colname][i] = cnt;
+		}
+		else {
+			h_columns_int[colname][i] = iter->second;
+		};		
+	};	
 
+	binary_file_h.write((char *)hash_array, 8*mCount);
+	delete [] hash_array;	
+	
     thrust::device_vector<int_type> d_col(mCount);
     thrust::copy(h_columns_int[colname].begin(), h_columns_int[colname].begin() + mCount, d_col.begin());
     pfor_compress(thrust::raw_pointer_cast(d_col.data()), mCount*int_size, i_name, h_columns_int[colname], 0);
-
     binary_file_h.close();
     b_file_str.close();
 };
@@ -1812,94 +1827,210 @@ void CudaSet::compress_int(const string file_name, const string colname, const s
 };
 
 
-
+bool first_time = 1;
+size_t rec_sz = 0;
+size_t process_piece;
+thrust::device_vector<char*> dest;
+thrust::device_vector<unsigned int> ind;
+thrust::device_vector<unsigned int> dest_len;
 
 bool CudaSet::LoadBigFile(FILE* file_p)
-{
-    char line[2000];
-    unsigned int current_column, count = 0;
-    string colname;
-    char *p,*t;
+{    
     const char* sep = separator.c_str();
     unsigned int maxx = cols.rbegin()->first;
 	map<unsigned int, string>::iterator it;
-
-    //clear the varchars
-    //for(auto it=columnNames.begin(); it!=columnNames.end();it++) {
-    for(unsigned int i = 0; i < mColumnCount; i++) {
-        if(type[columnNames[i]] == 2) {
-			if(!h_columns_char[columnNames[i]])
-				h_columns_char[columnNames[i]] = new char[maxRecs*char_size[columnNames[i]]];
-            memset(h_columns_char[columnNames[i]], 0, maxRecs*char_size[columnNames[i]]);
-        };
-    };
+	bool done = 0;
+	std::clock_t start1 = std::clock();
 	
 	vector<int> types;
+	vector<int> cl;
 	types.push_back(0);
 	for(int i = 0; i < maxx; i++) {
 		auto iter = cols.find(i+1);
-		if(iter != cols.end())
+		if(iter != cols.end()) {
 			types.push_back(type[iter->second]);
+			cl.push_back(iter->first-1);
+		}	
 		else	
 			types.push_back(0);
 	};
+	
+	
+	if(first_time)	{
+		if(process_count*4 > getFreeMem()) {
+			process_piece = getFreeMem()/4;
+		}	
+		else	
+			process_piece = process_count;	
+		readbuff = new char[process_piece];	
+		d_readbuff.resize(process_piece);
+		cout << "set a piece to " << process_piece << " " << getFreeMem() << endl;		
+		dest.resize(mColumnCount);
+		ind.resize(mColumnCount);
+		dest_len.resize(mColumnCount);		
+	};	
 		
 	
-    while (count < process_count && fgets(line, 2000, file_p)) {
-        strtok(line, "\n");
-        current_column = 0;
-
-        for(t=mystrtok(&p,line,*sep); t && current_column < maxx; t=mystrtok(&p,0,*sep)) {
-            current_column++;
-			it = cols.find(current_column);
-            if(it == cols.end()) {
-                continue;
-            };
-
-			switch(types[current_column]) {
-			case 0 :            		
-                if (strchr(t,'-') && t[0] != '-') { // handling possible dates
-                    strncpy(t+4,t+5,2);
-                    strncpy(t+6,t+8,2);
-                    t[8] = '\0';
-                    (h_columns_int[it->second])[count] = atoll(t);
-                }
-                else if (strchr(t,'/')) { // 4/30/2014
-                    string s(t);
-                    size_t pos1 = s.find_first_of("/",0);
-                    size_t pos2 = s.find_first_of("/",pos1+1);
-                    string month = s.substr(0,pos1);
-                    if(month.length() == 1)
-                        month = "0" + month;
-                    string day = s.substr(pos1+1,pos2-pos1-1);
-                    if(day.length() == 1)
-                        day = "0" + day;
-                    string s2 = s.substr(pos2+1, string::npos) + month + day;
-                    (h_columns_int[it->second])[count] = atoll(s2.c_str());
-                }
-                else {
-				
-                    (h_columns_int[it->second])[count] = atoll(t);
-                };				
-				break;
-            case 1 :
-                (h_columns_float[it->second])[count] = atoff(t);
-				break;            
-            default :  //char
-                strcpy(h_columns_char[it->second] + count*char_size[it->second], t);
-				break;
-            };			
-        };
-        count++;
-    };
+	thrust::device_vector<unsigned int> ind_cnt(1);	
+	thrust::device_vector<char> sepp(1);
+	sepp[0] = *sep;	
 	
-    mRecCount = count;
-    if(count < process_count)  {
-        fclose(file_p);
-        return 1;
-    }
-    else
-        return 0;
+	long long int total_processed = 0;
+	size_t recs_processed = 0;
+	bool finished = 0;			
+	thrust::device_vector<long long int> dev_pos;
+	long long int offset;	
+	unsigned int cnt = 1;	
+	
+	while(!done) {		
+		
+		auto rb = fread(readbuff, 1, process_piece, file_p);	
+		cout << "read " << rb << endl;
+		
+		if(rb < process_piece) {
+			done = 1;
+			finished = 1;
+			fclose(file_p);
+		};	
+		if(total_processed >= process_count)
+			done = 1;
+		
+		thrust::fill(d_readbuff.begin(), d_readbuff.end(),0);
+		thrust::copy(readbuff, readbuff+rb, d_readbuff.begin());		
+		
+		auto curr_cnt = thrust::count(d_readbuff.begin(), d_readbuff.begin() + rb, '\n') - 1;
+		if(finished)
+			curr_cnt++;
+			
+		if(recs_processed == 0 && first_time) {
+			rec_sz = curr_cnt;
+			total_max = curr_cnt;
+		};	
+		
+		//cout << "curr_cnt " << curr_cnt << " " << getFreeMem() << endl;
+
+		if(first_time)	{
+			for(unsigned int i=0; i < columnNames.size(); i++) {
+				auto colname = columnNames[i];				
+				if (type[colname] == 0) {		
+					if(d_columns_int[colname].size() < rec_sz) {
+						d_columns_int[colname].resize(rec_sz);	
+						//cout << "resizing d to " << rec_sz << endl;
+					};						
+					//cout << "resizing h to " << h_columns_int[colname].size() + rec_sz << endl;
+					h_columns_int[colname].resize(h_columns_int[colname].size() + rec_sz);					
+				}
+				else if (type[colname] == 1) {
+					if(d_columns_float[colname].size() < rec_sz)
+						d_columns_float[colname].resize(rec_sz);
+					h_columns_float[colname].resize(h_columns_float[colname].size() + rec_sz);
+				}
+				else {
+					char* c = new char[cnt*rec_sz*char_size[columnNames[i]]];
+					if(recs_processed > 0) {
+						memcpy(c, h_columns_char[columnNames[i]], recs_processed*char_size[columnNames[i]]);
+						delete [] h_columns_char[columnNames[i]];
+					};	
+					h_columns_char[columnNames[i]] = c;
+					if(recs_processed == 0) {
+						void* temp;
+						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, char_size[columnNames[i]]*rec_sz));
+						cudaMemset(temp,0,char_size[columnNames[i]]*rec_sz);
+						d_columns_char[columnNames[i]] = (char*)temp;
+					};	
+				};	
+				
+				if(recs_processed == 0) {
+					ind[i] = cl[i];
+					void* temp;
+					if(type[columnNames[i]] != 2) {						
+						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 15*rec_sz));
+						cudaMemset(temp,0,15*rec_sz);
+						dest[i] = (char*)temp;
+						dest_len[i] = 15;
+					}	
+					else {	
+						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, char_size[columnNames[i]]*rec_sz));
+						cudaMemset(temp,0,char_size[columnNames[i]]*rec_sz);				
+						dest[i] = (char*)temp;
+						dest_len[i] = char_size[columnNames[i]];
+					};	
+				};	
+			};	
+		};
+		
+		if(dev_pos.size() < curr_cnt+1)
+			dev_pos.resize(curr_cnt+1);	//avoiding the unnecessary allocs	
+		dev_pos[0] = -1;			
+		thrust::copy_if(thrust::make_counting_iterator((unsigned long long int)0), thrust::make_counting_iterator((unsigned long long int)rb-1),
+						d_readbuff.begin(), dev_pos.begin()+1, is_break());						
+		
+		if(curr_cnt < rec_sz) {					
+			offset = (dev_pos[curr_cnt] - rb)+1;
+			//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
+			fseek(file_p, offset, SEEK_CUR);		
+			total_processed = total_processed + offset;
+			mRecCount = curr_cnt;	
+		}
+		else {			
+			offset = (dev_pos[rec_sz] - rb)+1;
+			//cout << "PATH 2 " << dev_pos[rec_sz] << " " << offset << endl;
+			fseek(file_p, offset, SEEK_CUR);					
+			total_processed = total_processed + offset;
+			mRecCount = rec_sz;	
+		};		
+		
+				
+		thrust::counting_iterator<unsigned int> begin(0);
+		ind_cnt[0] = mColumnCount;	
+		parse_functor ff((const char*)thrust::raw_pointer_cast(d_readbuff.data()),(char**)thrust::raw_pointer_cast(dest.data()), thrust::raw_pointer_cast(ind.data()),
+						thrust::raw_pointer_cast(ind_cnt.data()), thrust::raw_pointer_cast(sepp.data()), thrust::raw_pointer_cast(dev_pos.data()), thrust::raw_pointer_cast(dest_len.data()));
+		thrust::for_each(begin, begin + mRecCount, ff);
+			
+		ind_cnt[0] = 15;			
+		for(int i =0; i < mColumnCount; i++) {		
+			if(type[columnNames[i]] == 0) {  //int			
+				thrust::device_ptr<char> p1((char*)dest[i]);	
+				if(p1[4] == '-') { //date
+					gpu_date date_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()));
+					thrust::for_each(begin, begin + mRecCount, date_ff);
+				}
+				else { //int
+					gpu_atoll atoll_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()), 
+										thrust::raw_pointer_cast(ind_cnt.data()));				
+					thrust::for_each(begin, begin + mRecCount, atoll_ff);
+				};	
+				thrust::copy(d_columns_int[columnNames[i]].begin(), d_columns_int[columnNames[i]].begin()+mRecCount, h_columns_int[columnNames[i]].begin() + recs_processed);
+			}
+			else if(type[columnNames[i]] == 1) {
+				gpu_atof atof_ff((const char*)dest[i],(double*)thrust::raw_pointer_cast(d_columns_float[columnNames[i]].data()), 
+									thrust::raw_pointer_cast(ind_cnt.data()));
+				thrust::for_each(begin, begin + mRecCount, atof_ff);		
+				thrust::copy(d_columns_float[columnNames[i]].begin(), d_columns_float[columnNames[i]].begin()+mRecCount, h_columns_float[columnNames[i]].begin() + recs_processed);
+			}
+			else {//char is already done
+				thrust::device_ptr<char> p1((char*)dest[i]);	
+					for(int z =0; z < 100; z++)
+						cout << p1[z];
+					cout << endl;	
+				cudaMemcpy( h_columns_char[columnNames[i]] + char_size[columnNames[i]]*recs_processed, (void *)dest[i] , char_size[columnNames[i]]*mRecCount, cudaMemcpyDeviceToHost);
+			};
+		};
+		
+		recs_processed = recs_processed + mRecCount;
+		total_processed = total_processed + rb + offset;		
+		cnt++;
+	};	
+	if(finished) {		
+		for(int i =0; i < mColumnCount; i++) {
+			cudaFree(dest[i]);
+		};	
+		delete [] readbuff;
+	};
+	cout << "processed recs " << recs_processed << " " << getFreeMem() << endl;	
+	first_time = 0;
+	mRecCount = recs_processed;
+	return finished;			
 };
 
 
