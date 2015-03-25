@@ -996,8 +996,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
         unsigned int* raw_ptr = thrust::raw_pointer_cast(permutation.data());
         void* temp;
 
-        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, mRecCount*max_char(this, sf)));
-
+        CUDA_SAFE_CALL(cudaMalloc((void **) &temp, mRecCount*max_char(this, sf)));		
         string sort_type = "ASC";
 
         while(!sf.empty()) {
@@ -1006,17 +1005,22 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
             //    allocColumnOnDevice(sf.front(), maxRecs);
             //    CopyColumnToGpu(sf.front());
             //};
-
-            if (type[sf.front()] == 0)
+            if (type[sf.front()] == 0) {
+				if(d_columns_int[sf.front()].size() < mRecCount)
+					d_columns_int[sf.front()].resize(mRecCount);
                 update_permutation(d_columns_int[sf.front()], raw_ptr, mRecCount, sort_type, (int_type*)temp, 64);
-            else if (type[sf.front()] == 1)
+			}	
+            else if (type[sf.front()] == 1) {
+				if(d_columns_float[sf.front()].size() < mRecCount)
+					d_columns_float[sf.front()].resize(mRecCount);
                 update_permutation(d_columns_float[sf.front()], raw_ptr, mRecCount, sort_type, (float_type*)temp, 64);
+			}	
             else {
                 thrust::host_vector<unsigned int> permutation_h = permutation;
                 update_permutation_char_host(h_columns_char[sf.front()], permutation_h.data(), mRecCount, sort_type, (char*)temp, char_size[sf.front()]);
             };
-            if(type[sf.front()] != 2)
-                deAllocColumnOnDevice(sf.front());
+            //if(type[sf.front()] != 2)
+            //    deAllocColumnOnDevice(sf.front());
             sf.pop();
         };
         cudaFree(temp);
@@ -1049,8 +1053,10 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
         //};		
 
         if(type[colname] == 0) {
-            thrust::device_ptr<int_type> d_col((int_type*)d);
+            thrust::device_ptr<int_type> d_col((int_type*)d);			
             if(!op_sort.empty()) {
+				if(d_columns_int[colname].size() < mCount)
+					d_columns_int[colname].resize(mCount);
                 thrust::gather(permutation.begin(), permutation.end(), d_columns_int[colname].begin(), d_col);
 
                 for(unsigned int p = 0; p < partition_count; p++) {
@@ -1076,6 +1082,9 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
             if(decimal[colname]) {
                 thrust::device_ptr<float_type> d_col((float_type*)d);
                 if(!op_sort.empty()) {
+				
+					if(d_columns_float[colname].size() < mCount)
+						d_columns_float[colname].resize(mCount);
                     thrust::gather(permutation.begin(), permutation.end(), d_columns_float[colname].begin(), d_col);
                     thrust::device_ptr<long long int> d_col_dec((long long int*)d);
                     thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
@@ -2010,9 +2019,6 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 			}
 			else {//char is already done
 				thrust::device_ptr<char> p1((char*)dest[i]);	
-					for(int z =0; z < 100; z++)
-						cout << p1[z];
-					cout << endl;	
 				cudaMemcpy( h_columns_char[columnNames[i]] + char_size[columnNames[i]]*recs_processed, (void *)dest[i] , char_size[columnNames[i]]*mRecCount, cudaMemcpyDeviceToHost);
 			};
 		};
