@@ -1908,15 +1908,15 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 		thrust::copy(readbuff, readbuff+rb, d_readbuff.begin());		
 		
 		auto curr_cnt = thrust::count(d_readbuff.begin(), d_readbuff.begin() + rb, '\n') - 1;
-		if(finished)
-			curr_cnt++;
 			
 		if(recs_processed == 0 && first_time) {
 			rec_sz = curr_cnt;
+			if(finished)
+				rec_sz++;
 			total_max = curr_cnt;
-		};	
+		};			
 		
-		//cout << "curr_cnt " << curr_cnt << " " << getFreeMem() << endl;
+		cout << "curr_cnt " << curr_cnt << " " << getFreeMem() << endl;
 
 		if(first_time)	{
 			for(unsigned int i=0; i < columnNames.size(); i++) {
@@ -1974,20 +1974,25 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 		thrust::copy_if(thrust::make_counting_iterator((unsigned long long int)0), thrust::make_counting_iterator((unsigned long long int)rb-1),
 						d_readbuff.begin(), dev_pos.begin()+1, is_break());						
 		
-		if(curr_cnt < rec_sz) {					
-			offset = (dev_pos[curr_cnt] - rb)+1;
-			//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
-			fseek(file_p, offset, SEEK_CUR);		
-			total_processed = total_processed + offset;
-			mRecCount = curr_cnt;	
+		if(!finished) {		
+			if(curr_cnt < rec_sz) {					
+				offset = (dev_pos[curr_cnt] - rb)+1;
+				//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
+				fseek(file_p, offset, SEEK_CUR);		
+				total_processed = total_processed + rb + offset;
+				mRecCount = curr_cnt;	
+			}
+			else {			
+				offset = (dev_pos[rec_sz] - rb)+1;
+				//cout << "PATH 2 " << dev_pos[rec_sz] << " " << offset << endl;
+				fseek(file_p, offset, SEEK_CUR);					
+				total_processed = total_processed + rb + offset;
+				mRecCount = rec_sz;	
+			};		
 		}
-		else {			
-			offset = (dev_pos[rec_sz] - rb)+1;
-			//cout << "PATH 2 " << dev_pos[rec_sz] << " " << offset << endl;
-			fseek(file_p, offset, SEEK_CUR);					
-			total_processed = total_processed + offset;
-			mRecCount = rec_sz;	
-		};		
+		else {
+			mRecCount = curr_cnt + 1;	
+		};				
 		
 				
 		thrust::counting_iterator<unsigned int> begin(0);
@@ -2024,7 +2029,8 @@ bool CudaSet::LoadBigFile(FILE* file_p)
 		};
 		
 		recs_processed = recs_processed + mRecCount;
-		total_processed = total_processed + rb + offset;		
+		
+		//total_processed = total_processed + rb + offset;		
 		cnt++;
 	};	
 	if(finished) {		
