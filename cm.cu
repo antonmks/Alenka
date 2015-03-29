@@ -1056,7 +1056,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
             thrust::device_ptr<int_type> d_col((int_type*)d);			
             if(!op_sort.empty()) {
 				if(d_columns_int[colname].size() < mCount)
-					d_columns_int[colname].resize(mCount);
+					d_columns_int[colname].resize(mCount+10000);
                 thrust::gather(permutation.begin(), permutation.end(), d_columns_int[colname].begin(), d_col);
 
                 for(unsigned int p = 0; p < partition_count; p++) {
@@ -1084,7 +1084,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
                 if(!op_sort.empty()) {
 				
 					if(d_columns_float[colname].size() < mCount)
-						d_columns_float[colname].resize(mCount);
+						d_columns_float[colname].resize(mCount+10000);
                     thrust::gather(permutation.begin(), permutation.end(), d_columns_float[colname].begin(), d_col);
                     thrust::device_ptr<long long int> d_col_dec((long long int*)d);
                     thrust::transform(d_col,d_col+mCount,d_col_dec, float_to_long());
