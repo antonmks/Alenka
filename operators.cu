@@ -2322,11 +2322,16 @@ void emit_store_binary(const char *s, const char *f)
             };
         };
 
+		thrust::device_vector<char> d_readbuff;
+		thrust::device_vector<char*> dest;
+		thrust::device_vector<unsigned int> ind;
+		thrust::device_vector<unsigned int> dest_len;	
+		
         while(!fact_file_loaded) {
             if(verbose)
                 cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
             if(a->text_source)
-                fact_file_loaded = a->LoadBigFile(file_p);
+                fact_file_loaded = a->LoadBigFile(file_p, d_readbuff, dest, ind, dest_len);
 			if(a->maxRecs < a->mRecCount)
 				a->maxRecs = a->mRecCount;
             a->Store(f,"", limit, 1);

@@ -2619,8 +2619,9 @@ int execute_file(int ac, char **av)
         };
 
     };
-    if(save_dict)
+    if(save_dict) {
         save_col_data(data_dict,"data.dictionary");
+	};	
 
     if(alloced_sz) {
         cudaFree(alloced_tmp);

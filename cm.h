@@ -101,7 +101,6 @@ extern map<string, map<string, bool> > used_vars;
 extern map<string, unsigned int> cpy_bits;
 extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
-
 extern vector<void*> alloced_mem;
 
 template<typename T>
@@ -454,8 +453,7 @@ public:
 
     map<string, thrust::device_vector<int_type > > d_columns_int;
     map<string, thrust::device_vector<float_type > > d_columns_float;	
-    map<string, char*> d_columns_char;		
-	
+    map<string, char*> d_columns_char;			
     map<string, size_t> char_size;
     thrust::device_vector<unsigned int> prm_d;
 	map<string, string> string_map; //maps char column names to string files, only select operator changes the original mapping
@@ -468,7 +466,7 @@ public:
     queue<string> fil_type,fil_value;
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
-
+	
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, totalRecs;
     vector<string> columnNames;
 	map<string,bool> compTypes; // pfor delta or not
@@ -534,7 +532,8 @@ public:
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term = 0);
     void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
 	void compress_int(const string file_name, const string colname, const size_t mCount);
-    bool LoadBigFile(FILE* file_p);
+    bool LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
+						thrust::device_vector<unsigned int>& ind, thrust::device_vector<unsigned int>& dest_len);
     void free();
     bool* logical_and(bool* column1, bool* column2);
     bool* logical_or(bool* column1, bool* column2);
