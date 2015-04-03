@@ -1171,14 +1171,15 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                 char join_kind = join_type.front();
 
-                /*	if(cnt_r > 10) {
+                	/*if(cnt_r > 10) {
                     for(int z = 0; z < 10 ; z++)
-                    	cout << " R " << right->d_columns_int[colname2][z] << endl;
+                    	cout << " R " << right->d_columns_int[colname2][(cnt_r-1)-z] << endl;
 
                     for(int z = 0; z < 10 ; z++)
-                    	cout << " L " << left->d_columns_int[colname1][z] << endl;
+                    	cout << " L " << left->d_columns_int[colname1][(cnt_l-1)-z] << endl;
                 	};
-                */
+					*/
+                
 
 				std::clock_t start11 = std::clock();
 				
@@ -2320,12 +2321,12 @@ void emit_store_binary(const char *s, const char *f)
             if (!file_p) {
                 process_error(2, "Could not open file " + a->load_file_name );
             };
-        };
+        };		
 
 		thrust::device_vector<char> d_readbuff;
-		thrust::device_vector<char*> dest;
-		thrust::device_vector<unsigned int> ind;
-		thrust::device_vector<unsigned int> dest_len;	
+		thrust::device_vector<char*> dest(a->mColumnCount);
+		thrust::device_vector<unsigned int> ind(a->mColumnCount);
+		thrust::device_vector<unsigned int> dest_len(a->mColumnCount);	
 		
         while(!fact_file_loaded) {
             if(verbose)

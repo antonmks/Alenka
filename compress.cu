@@ -339,7 +339,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
         real_lower = s[0];
         real_upper = s[recCount-1];
         //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need for delta " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " <<  orig_upper_val-orig_lower_val << " values " << endl;
+        //cout << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " <<  orig_upper_val-orig_lower_val << " values " << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1)));
         if (bits == 0)
             bits = 1;
@@ -359,7 +359,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
         real_upper = s[recCount-1];
 
         //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need for delta " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " << orig_upper_val-orig_lower_val << " values" << endl;
+        //cout << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " << orig_upper_val-orig_lower_val << " values" << endl;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1)));
         if (bits == 0)
             bits = 1;
@@ -484,6 +484,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     };
 
 
+	//cout << "Recs " << recCount << endl;
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
         orig_lower_val = *(thrust::min_element(s, s + recCount));
@@ -494,7 +495,6 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     else {
 
         thrust::device_ptr<long long int> s((long long int*)source);
-
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
         //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;

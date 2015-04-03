@@ -1863,9 +1863,6 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		readbuff = new char[process_piece];	
 		d_readbuff.resize(process_piece);
 		cout << "set a piece to " << process_piece << " " << getFreeMem() << endl;		
-		dest.resize(mColumnCount);
-		ind.resize(mColumnCount);
-		dest_len.resize(mColumnCount);		
 	};	
 		
 	
@@ -1914,9 +1911,6 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 					//if(d_columns_int[colname].size() < rec_sz) {
 					//	d_columns_int[colname].resize(rec_sz);	
 					d_columns_int[colname].resize(d_columns_int[colname].size() + rec_sz);	
-						//cout << "resizing d to " << rec_sz << endl;
-					//};						
-					//cout << "resizing h to " << h_columns_int[colname].size() + rec_sz << endl;
 					h_columns_int[colname].resize(h_columns_int[colname].size() + rec_sz);					
 				}
 				else if (type[colname] == 1) {
@@ -1945,17 +1939,24 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 					void* temp;
 					if(type[columnNames[i]] != 2) {						
 						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 15*rec_sz));
-						cudaMemset(temp,0,15*rec_sz);						
 						dest_len[i] = 15;
 					}	
 					else {	
 						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, char_size[columnNames[i]]*rec_sz));
-						cudaMemset(temp,0,char_size[columnNames[i]]*rec_sz);										
 						dest_len[i] = char_size[columnNames[i]];
 					};	
 					dest[i] = (char*)temp;
 				};	
 			};	
+		};
+		
+		for(unsigned int i=0; i < columnNames.size(); i++) {
+			if(type[columnNames[i]] != 2) {						
+				cudaMemset(dest[i],0,15*rec_sz);						
+			}
+			else {
+				cudaMemset(dest[i],0,char_size[columnNames[i]]*rec_sz);										
+			};
 		};
 		
 			
@@ -1985,12 +1986,15 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			mRecCount = curr_cnt + 1;	
 		};				
 		
+		
 				
 		thrust::counting_iterator<unsigned int> begin(0);
 		ind_cnt[0] = mColumnCount;	
 		parse_functor ff((const char*)thrust::raw_pointer_cast(d_readbuff.data()),(char**)thrust::raw_pointer_cast(dest.data()), thrust::raw_pointer_cast(ind.data()),
 						thrust::raw_pointer_cast(ind_cnt.data()), thrust::raw_pointer_cast(sepp.data()), thrust::raw_pointer_cast(dev_pos.data()), thrust::raw_pointer_cast(dest_len.data()));
 		thrust::for_each(begin, begin + mRecCount, ff);
+		
+	
 			
 		ind_cnt[0] = 15;			
 		for(int i =0; i < mColumnCount; i++) {		
@@ -2000,18 +2004,21 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 					gpu_date date_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed);
 					thrust::for_each(begin, begin + mRecCount, date_ff);
 				}
-				else { //int
+				else { //int				
 					gpu_atoll atoll_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed, 
 										thrust::raw_pointer_cast(ind_cnt.data()));				
-					thrust::for_each(begin, begin + mRecCount, atoll_ff);
+					thrust::for_each(begin, begin + mRecCount, atoll_ff);					
 				};	
+				
 				thrust::copy(d_columns_int[columnNames[i]].begin() + recs_processed, d_columns_int[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_int[columnNames[i]].begin() + recs_processed);
+				cudaDeviceSynchronize();					
 			}
 			else if(type[columnNames[i]] == 1) {
 				gpu_atof atof_ff((const char*)dest[i],(double*)thrust::raw_pointer_cast(d_columns_float[columnNames[i]].data()) + recs_processed, 
 									thrust::raw_pointer_cast(ind_cnt.data()));
 				thrust::for_each(begin, begin + mRecCount, atof_ff);				
 				thrust::copy(d_columns_float[columnNames[i]].begin() + recs_processed, d_columns_float[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_float[columnNames[i]].begin() + recs_processed);								
+				cudaDeviceSynchronize();
 			}
 			else {//char is already done
 				thrust::device_ptr<char> p1((char*)dest[i]);	
@@ -2724,6 +2731,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
             //h_columns_int[nameRef.front()] = thrust::host_vector<int_type>();
             d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
+			
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[nameRef.front()] = 1;
