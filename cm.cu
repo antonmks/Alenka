@@ -2011,14 +2011,12 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 				};	
 				
 				thrust::copy(d_columns_int[columnNames[i]].begin() + recs_processed, d_columns_int[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_int[columnNames[i]].begin() + recs_processed);
-				cudaDeviceSynchronize();					
 			}
 			else if(type[columnNames[i]] == 1) {
 				gpu_atof atof_ff((const char*)dest[i],(double*)thrust::raw_pointer_cast(d_columns_float[columnNames[i]].data()) + recs_processed, 
 									thrust::raw_pointer_cast(ind_cnt.data()));
 				thrust::for_each(begin, begin + mRecCount, atof_ff);				
 				thrust::copy(d_columns_float[columnNames[i]].begin() + recs_processed, d_columns_float[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_float[columnNames[i]].begin() + recs_processed);								
-				cudaDeviceSynchronize();
 			}
 			else {//char is already done
 				thrust::device_ptr<char> p1((char*)dest[i]);	
