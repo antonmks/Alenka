@@ -991,6 +991,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     unsigned int start_part = 0;
     size_t r_size = right->columnNames.size()*right->hostRecCount*8;
     map<string, set<unsigned int> > r_segs;
+	MGPU_MEM(int) intersectionDevice;
+	bool prejoin = 0;
 
     while(start_part < right->segCount) {
 
@@ -1129,10 +1131,27 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
 
             cnt_l = 0;
+			std::clock_t start12 = std::clock();
             copyColumns(left, lc, i, cnt_l);
+			if(verbose)	
+				std::cout<< "join cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+			
             cnt_l = left->mRecCount;
 
-            if (cnt_l) {
+            if (cnt_l) {							
+				
+				if(prejoin) {
+					std::clock_t start15 = std::clock();
+					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
+															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
+															&intersectionDevice, *context, false);	
+					if(verbose)	
+						std::cout<< "inter time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+														
+					if(!res_count)
+						continue;     
+				};		
+			
                 // sort the left index column, save the permutation vector, it might be needed later				
                 thrust::device_ptr<int_type> d_col((int_type*)thrust::raw_pointer_cast(left->d_columns_int[colname1].data()));
                 thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
@@ -1155,8 +1174,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     cout << "No need of sorting " << endl;
                 if(verbose)
                     cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
-                //cout << "SZ " << left->d_columns_int[colname1].size() << endl;
-
 
                 if (left->d_columns_int[colname1][0] > right->d_columns_int[colname2][cnt_r-1] ||
                         left->d_columns_int[colname1][cnt_l-1] < right->d_columns_int[colname2][0]) {
@@ -1179,8 +1196,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     	cout << " L " << left->d_columns_int[colname1][(cnt_l-1)-z] << endl;
                 	};
 					*/
-                
-
+					
 				std::clock_t start11 = std::clock();
 				
                 if (join_kind == 'I')
@@ -1209,6 +1225,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                 if(verbose)
                     cout << "RES " << res_count << endl;
+				if(res_count == 0)
+					prejoin = 1; 
 
                 int* r1 = aIndicesDevice->get();
                 thrust::device_ptr<int> d_res1((int*)r1);

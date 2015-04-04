@@ -1876,6 +1876,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 	thrust::device_vector<long long int> dev_pos;
 	long long int offset;	
 	unsigned int cnt = 1;	
+	const unsigned int max_len = 15;
 	
 	while(!done) {		
 		
@@ -1938,8 +1939,8 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 					ind[i] = cl[i];
 					void* temp;
 					if(type[columnNames[i]] != 2) {						
-						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 15*rec_sz));
-						dest_len[i] = 15;
+						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, max_len*rec_sz));
+						dest_len[i] = max_len;
 					}	
 					else {	
 						CUDA_SAFE_CALL(cudaMalloc((void **) &temp, char_size[columnNames[i]]*rec_sz));
@@ -1952,7 +1953,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		
 		for(unsigned int i=0; i < columnNames.size(); i++) {
 			if(type[columnNames[i]] != 2) {						
-				cudaMemset(dest[i],0,15*rec_sz);						
+				cudaMemset(dest[i],0,max_len*rec_sz);						
 			}
 			else {
 				cudaMemset(dest[i],0,char_size[columnNames[i]]*rec_sz);										
@@ -1996,7 +1997,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		
 	
 			
-		ind_cnt[0] = 15;			
+		ind_cnt[0] = max_len;			
 		for(int i =0; i < mColumnCount; i++) {		
 			if(type[columnNames[i]] == 0) {  //int			
 				thrust::device_ptr<char> p1((char*)dest[i]);	
