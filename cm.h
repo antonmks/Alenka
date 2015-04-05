@@ -442,15 +442,8 @@ class CudaSet
 {
 public:
     map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
-	//map<string, thrust::host_vector<int_type> > h_columns_int;
     map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;	
-	//map<string, thrust::host_vector<float_type> > h_columns_float;	
     map<string, char*> h_columns_char;
-	/*std::vector<thrust::host_vector<int32_type, pinned_allocator<int32_type> > > h_columns_int32;
-	std::vector<thrust::host_vector<int16_type, pinned_allocator<int16_type> > > h_columns_int16;
-	std::vector<thrust::host_vector<int8_type, pinned_allocator<int8_type> > > h_columns_int8;	
-	*/
-
     map<string, thrust::device_vector<int_type > > d_columns_int;
     map<string, thrust::device_vector<float_type > > d_columns_float;	
     map<string, char*> d_columns_char;			
@@ -484,15 +477,8 @@ public:
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
     map<unsigned int, string> cols; // column positions in a file
 	map<string, bool> map_like; //for LIKE processing
-	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing
+	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing	
 	
-	//alternative to Bloom filters. Keep track of non-empty segment join results ( not the actual results
-	//but just boolean indicators.
-	map<string, string> ref_sets; // referencing datasets
-	map<string, string> ref_cols; // referencing dataset's column names
-	map<string, map<unsigned int, set<unsigned int> > > ref_joins; // columns referencing dataset segments 
-	vector< map<string, set<unsigned int> > > orig_segs;
-
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(const size_t RecordCount, const unsigned int ColumnCount);

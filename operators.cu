@@ -986,8 +986,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
     thrust::device_vector<int> p_tmp;
     //to keep track of sources of each segment : <source_name, segment>
-    vector<size_t> border_boundaries;
-    vector< map<string, set<unsigned int> > > border_segments;
     unsigned int start_part = 0;
     size_t r_size = right->columnNames.size()*right->hostRecCount*8;
     map<string, set<unsigned int> > r_segs;
@@ -1001,29 +999,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
 		std::clock_t start12 = std::clock();
         if(right->not_compressed || (!right->filtered && getFreeMem() < r_size*2)) {
-
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1, rsz);
-            start_part = start_part+1;
-			
-            for(auto it = right->orig_segs[start_part-1].begin(); it != right->orig_segs[start_part-1].end(); it++) {
-                for(auto itr = it->second.begin(); itr != it->second.end(); itr++) {
-                    r_segs[it->first].insert(*itr);
-                };
-            };
+            start_part = start_part+1;			
         }
         else {
-			//cout << "loading " << endl;
             cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);			
-			//cout << "loaded " << endl;
             start_part = right->segCount;
-			
-            for(auto& m : right->orig_segs) {
-                for(auto it = m.begin(); it != m.end(); it++) {
-                    for(auto itr = it->second.begin(); itr != it->second.end(); itr++) {
-                        r_segs[it->first].insert(*itr);
-                    };
-                };
-            };
 			
 			for(unsigned int i=0; i < right->columnNames.size(); i++) {
 				if (right->type[right->columnNames[i]] != 1) {
@@ -1038,7 +1019,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         bool order = 1;
 		
 		
-        if(!right->sorted_fields.empty() && right->sorted_fields.front() == f2) {
+        if(!right->presorted_fields.empty() && right->presorted_fields.front() == f2) {
             order = 0;
             cout << "No need to sort " << endl;
             if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
@@ -1048,6 +1029,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         };
 		
+		std::clock_t start16 = std::clock();
         if(order) {
             if(thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].end())) {
                 if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size()) {
@@ -1089,8 +1071,11 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				};		
             };
         };
+		std::cout<< "right sort time " <<  ( ( std::clock() - start16 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         //cout << right->sort_check << " " << getFreeMem() << endl;
+		
+		//std::cout<< "join right load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         int e_segment;
         if(end_segment == -1) {
@@ -1100,7 +1085,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             e_segment = end_segment;
 
         for (unsigned int i = start_segment; i < e_segment; i++) {
-
+		
             if(verbose)
                 //cout << "segment " << i <<  '\xd';
                 cout << "segment " << i <<  endl;
@@ -1114,27 +1099,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             //	cout << "right segs " << *it << endl;
             //};
 
-            if(!left->ref_joins.empty() && !right->orig_segs.empty()) {
-                if(left->ref_joins[colname1][i].size() && r_segs[left->ref_sets[colname1]].size()) {
-                    set_intersection(left->ref_joins[colname1][i].begin(),left->ref_joins[colname1][i].end(),
-                                     r_segs[left->ref_sets[colname1]].begin(), r_segs[left->ref_sets[colname1]].end(),
-                                     std::back_inserter(j_data));
-                    //for(auto it = r_segs[left->ref_sets[colname1]].begin(); it != r_segs[left->ref_sets[colname1]].end(); it++)
-                    // cout << "Checking right " << 	*it << endl;
-					//for(auto it = left->ref_joins[colname1][i].begin(); it != left->ref_joins[colname1][i].end(); it++)
-                    // cout << "Checking left " << 	*it << endl;
-                    if(j_data.empty()) {
-                        cout << "skipping a segment " << endl;
-                        continue;
-                    };
-                }
-            };
-
             cnt_l = 0;
-			std::clock_t start12 = std::clock();
             copyColumns(left, lc, i, cnt_l);
-			if(verbose)	
-				std::cout<< "join cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 			
             cnt_l = left->mRecCount;
 
@@ -1304,27 +1270,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 tot_count = tot_count + res_count;
 
 				std::clock_t start12 = std::clock();
-                if(res_count) {
-
-                    border_boundaries.push_back(res_count);
-                    map<string, set<unsigned int> > m;
-
-                    if(!left->orig_segs.empty() && !right->orig_segs.empty()) {
-                        for (auto itr = left->orig_segs[i].begin(); itr != left->orig_segs[i].end(); itr++) {
-                            for (auto it = itr->second.begin(); it != itr->second.end(); it++) {
-                                //cout << "LEFT SEGS " << itr->first << " : " << *it << endl;
-                                m[itr->first].insert(*it);
-                            };
-                        };
-
-                        for (auto it = r_segs.begin(); it != r_segs.end(); it++) {
-                            for (auto itr = it->second.begin(); itr != it->second.end(); itr++) {
-                                //cout << "RIGHT SEGS " << it->first << " : " << *itr << endl;
-                                m[it->first].insert(*itr);
-                            };
-                        };
-                        border_segments.push_back(m);
-                    };					
+                if(res_count) {          		
 					
                     offset = c->mRecCount;
                     queue<string> op_sel1(op_sel_s);
@@ -1388,7 +1334,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 };
 				//std::cout<< endl << "process cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
             };
-            //std::cout<< endl << "seg time " <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+            //std::cout<< endl << "seg time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
     };
 
@@ -1414,51 +1360,14 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     if(verbose)
         cout << "tot res " << tot_count << " " << getFreeMem() << endl;
 
-    size_t tot_size = tot_count*8*c->columnNames.size();
-	
-		
-    //super-important partitioning of result datasets
+    size_t tot_size = tot_count*8*c->columnNames.size();		
     if (getFreeMem() > tot_size*3) {
-
-        map<string, set<unsigned int> > m;
-        for(auto& val : border_segments) {
-            for (auto it=val.begin(); it!=val.end(); ++it) {
-                for (auto its=(it->second).begin(); its!=(it->second).end(); ++its) {
-                    if(m[it->first].find(*its) == m[it->first].end()) {
-                        m[it->first].insert(*its);
-                        //if(verbose)
-                        //    cout << "SEGS " << it->first << " : " << *its << endl;
-                    }
-                };
-            };
-        };
-        c->orig_segs.push_back(m);
         c->maxRecs = tot_count;
         c->segCount = 1;
     }
-    else {
-		
+    else {		
         c->segCount = ((tot_size*3)/getFreeMem() + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
-        c->orig_segs.resize(c->segCount);
-        size_t bb;
-        for(auto i = 0; i < c->segCount; i++) {
-            bb = 0;
-            for(auto j = 0; j < border_boundaries.size(); j++) {
-                auto lower_b = bb;
-                auto upper_b = bb + border_boundaries[j];
-                //cout << "border " << j << " " << lower_b << " " << upper_b << endl;
-                bb = bb + border_boundaries[j];
-                if(i*c->maxRecs <= upper_b && (i+1)*c->maxRecs >= lower_b) {
-                    for(auto it = border_segments[j].begin(); it != border_segments[j].end(); ++it)	 {
-                        for (auto itr = it->second.begin(); itr != it->second.end(); itr++) {
-                            c->orig_segs[i][it->first].insert(*itr);
-                            //cout << "C " << i << " " << it->first << " " << *itr << endl;
-                        }
-                    };
-                }
-            };
-        };
     };
 
     if(right->tmp_table == 1) {
@@ -1564,18 +1473,6 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
     };
 
     CudaSet* a = varNames.find(f)->second;
-
-    /*if (a->mRecCount == 0)	{
-        if(varNames.find(s) == varNames.end())
-            varNames[s] = new CudaSet(0,1);
-        else {
-            CudaSet* c = varNames.find(s)->second;
-            c->mRecCount = 0;
-        };
-        return;
-    };
-    */
-
     stack<string> exe_type, exe_value;
 
     if(verbose)
@@ -1946,7 +1843,6 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     c->string_map = b->string_map;
     c->name = s;
     c->keep = 1;
-    c->orig_segs = a->orig_segs;
     if(verbose)
         cout << "select res " << c->mRecCount << endl;
 		
@@ -2240,7 +2136,6 @@ void emit_filter(char *s, char *f)
                 a->fil_nums_f.pop();
             };
             a->filtered = 0;
-            //a->free();
             varNames.erase(f);
         }
         else
@@ -2404,12 +2299,6 @@ void emit_load_binary(const char *s, const char *f, const int d)
     a->name = s;
     a->hostRecCount = totRecs;
     varNames[s] = a;
-    for(unsigned int i = 0; i < segCount; i++) {
-        map<string, set<unsigned int> > m;
-        m[f].insert(i);
-        a->orig_segs.push_back(m);
-        //cout << a->name << " " << f << " " << i << endl;
-    };
 
     if(stat[s] == statement_count )  {
         a->free();
