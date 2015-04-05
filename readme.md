@@ -78,20 +78,3 @@ Run your queries from a command prompt or use Alenka [JDBC driver](https://githu
 `STORE RES INTO 'results.txt' USING ('|') LIMIT 10;`
 
 
-###Some benchmarks
-
-TPC-H Scale 100 (100 GB), data in a host memory
-
-Q1 - 3.0 s
-
-Q2 - 0.7 s
-
-Q3 - 1.7 s
-
-Q4 - 1.3 s
-
-Q5 - 2.3 s
-
-Q6 - 0.5 s
-
-Q7 - 2.4 s
