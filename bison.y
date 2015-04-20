@@ -266,8 +266,7 @@ int execute_file(int ac, char **av)
 {
     bool just_once  = 0;
     string script;
-
-    process_count = 760000000;
+    process_count = 1000000000; //1GB by default
     verbose = 0;
 	ssd = 0;
 	delta = 0;

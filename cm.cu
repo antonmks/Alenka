@@ -193,10 +193,10 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 size_t getTotalSystemMemory();
 void process_error(int severity, string err);
 
-CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names)
+CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs)
     : mColumnCount(0), mRecCount(0)
 {
-    initialize(nameRef, typeRef, sizeRef, colsRef, Recs, references, references_names);
+    initialize(nameRef, typeRef, sizeRef, colsRef, Recs);
     keep = false;
     source = 1;
     text_source = 1;
@@ -711,7 +711,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
                 }
                 else {
                     mRecCount = pfor_decompress(alloced_tmp, buffers[f1], d_v, s_v, colname);
-                };
+                };				
             };
         }
         else  {
@@ -2586,7 +2586,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 
 
 
-void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names)
+void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs)
 {
     mColumnCount = (unsigned int)nameRef.size();
     tmp_table = 0;
@@ -2640,8 +2640,6 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         typeRef.pop();
         sizeRef.pop();
         colsRef.pop();
-        references.pop();
-        references_names.pop();
     };
 };
 
@@ -2826,6 +2824,7 @@ void allocColumns(CudaSet* a, queue<string> fields)
             };
             cudaMalloc((void **) &alloced_tmp, int_size*t->maxRecs);
             alloced_sz = int_size*t->maxRecs;
+			cout << "ALLOCED " << int_size*t->maxRecs << endl;
         }
     }
     else {
@@ -2854,14 +2853,6 @@ void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, s
     };
 }
 
-
-size_t getSegmentRecCount(CudaSet* a, unsigned int segment) {
-    if (segment == a->segCount-1) {
-        return a->hostRecCount - a->maxRecs*segment;
-    }
-    else
-        return 	a->maxRecs;
-}
 
 void copyFinalize(CudaSet* a, queue<string> fields)
 {
@@ -2954,16 +2945,10 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
             if(a->filtered) {
                 if(a->mRecCount) {
                     CudaSet *t = varNames[a->source_name];
-                    alloced_switch = 1;
+                    alloced_switch = 1;					
                     t->CopyColumnToGpu(fields.front(), segment);
                     gatherColumns(a, t, fields.front(), segment, count);
                     alloced_switch = 0;
-                    /*if(t->orig_segs.size() >= segment+1) {
-                        a->orig_segs.resize(segment+1);
-                        a->orig_segs.resize(segment+1);
-                        a->orig_segs[segment] = t->orig_segs[segment];
-                    };
-					*/
                 };
             }
             else {
@@ -2977,17 +2962,6 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
     };
 }
 
-
-void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment)
-{
-    b->prm_index = val;
-    if (val == 'A') {
-        b->mRecCount = getSegmentRecCount(a,segment);
-    }
-    else if (val == 'N') {
-        b->mRecCount = 0;
-    }
-}
 
 void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size)
 {
@@ -3015,7 +2989,8 @@ void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_si
 		}
 		else {
 			thrust::device_ptr<int_type> d_col((int_type*)alloced_tmp);
-			thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size, d_col, a->d_columns_int[colname].begin() + offset);			
+			cout << endl << "mygather " << g_size << " " << a->d_columns_int[colname].size() << " " << a->prm_d.size() << endl;		
+			thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size, d_col, a->d_columns_int[colname].begin() + offset);						
 		};
 
     }
@@ -3255,8 +3230,9 @@ void filter_op(const char *s, const char *f, unsigned int segment)
         size_t cnt = 0;
         allocColumns(a, b->fil_value);
 
-        if (b->prm_d.size() == 0)
+        if (b->prm_d.size() == 0) {
             b->prm_d.resize(a->maxRecs);
+		};	
 
         //cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
@@ -3276,7 +3252,11 @@ void filter_op(const char *s, const char *f, unsigned int segment)
             cudaFree(res);
         }
         else  {
-            setPrm(a,b,map_check,segment);
+			b->prm_index = map_check;			
+			if(map_check == 'A')
+				b->mRecCount = a->mRecCount;
+			else
+				b->mRecCount = 0;			
         };
         if(segment == a->segCount-1)
             a->deAllocOnDevice();
@@ -3290,7 +3270,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
 
 size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
-                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz) {
+                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg) {
 
     size_t cnt_r = 0;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
@@ -3299,10 +3279,10 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
     if(right->not_compressed) {
         queue<string> op_alt1;
         op_alt1.push(f2);
-        cnt_r = load_queue(op_alt1, right, "", rcount, start_seg, end_seg, rsz, 1);
+        cnt_r = load_queue(op_alt1, right, "", rcount, start_seg, end_seg, 1, 1);
     }
     else {
-        cnt_r = load_queue(op_alt, right, f2, rcount, start_seg, end_seg, rsz, 1);
+        cnt_r = load_queue(op_alt, right, f2, rcount, start_seg, end_seg, 1, 1);
     };
 
 

@@ -642,6 +642,10 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_int[fields.front()].resize(2);
                     fread((char *)&a->h_columns_int[fields.front()][0], 8, 1, f);
                     fread((char *)&a->h_columns_int[fields.front()][1], 8, 1, f);
+					fseek(f, 8+cnt, SEEK_CUR);
+					fread((char *)&a->mRecCount, 4, 1, f);
+					//cout << endl << "ZONE " << a->mRecCount << endl;
+					fread((char *)&cnt, 4, 1, f);					
                     //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1] << endl;
                 }
                 else  {

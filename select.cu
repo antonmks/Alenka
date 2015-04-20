@@ -127,7 +127,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         if (!a->columnGroups.empty()) {
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 							if(alloced_mem.empty()) {		
-								cout << "CNT " << endl;
 								alloc_pool(a->maxRecs);
 							};
 							thrust::device_ptr<int_type> const_seq((int_type*)alloced_mem.back());								

@@ -479,7 +479,7 @@ public:
 	map<string, bool> map_like; //for LIKE processing
 	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing	
 	
-    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
+    CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
     CudaSet(const size_t RecordCount, const unsigned int ColumnCount);
 	CudaSet(queue<string> op_sel, const queue<string> op_sel_as);
@@ -541,7 +541,7 @@ public:
 protected:
 
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
-    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, queue<string> &references, queue<string> &references_names);
+    void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
     void initialize(const size_t RecordCount, const unsigned int ColumnCount);
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     void initialize(queue<string> op_sel, const queue<string> op_sel_as);
@@ -566,7 +566,7 @@ void update_permutation_char_host(char* key, unsigned int* permutation, size_t R
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
 size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
-                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg, bool rsz);		
+                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg);		
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);

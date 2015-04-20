@@ -11,8 +11,6 @@ queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
 queue<int> cols;
-queue<string> references;
-queue<string> references_names;
 
 queue<unsigned int> j_col_count;
 unsigned int sel_count = 0;
@@ -166,8 +164,6 @@ void emit_var(const char *s, const int c, const char *f, const char* ref, const 
     typevars.push(f);
     sizevars.push(0);
     cols.push(c);
-    references.push(ref);
-    references_names.push(ref_name);
 }
 
 void emit_var_asc(const char *s)
@@ -200,8 +196,6 @@ void emit_varchar(const char *s, const int c, const char *f, const int d, const 
     typevars.push(f);
     sizevars.push(d);
     cols.push(c);
-    references.push(ref);
-    references_names.push(ref_name);
 }
 
 void emit_sel_name(const char *s)
@@ -401,16 +395,13 @@ void star_join(const char *s, const string j1)
             op_vd.pop();
         };
 
-        //tab_map[op_jj.front()] = i;
         key_map[op_jj.front()] = f1;
-        //cout << "Set " << op_jj.front() << " to " << f1 << endl;
 
         CudaSet* right = varNames.find(op_jj.front())->second;
         if(!check_bitmaps_exist(left, right)) {
             cout << "Required bitmap on table " << op_jj.front() << " doesn't exists" << endl;
             exit(0);
         };
-        //cout << "table " << op_jj.front() << " " << f2 << endl;
 
         queue<string> second;
         while(!op_alt.empty()) {
@@ -984,26 +975,21 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         };
     };
 
-    thrust::device_vector<int> p_tmp;
-    //to keep track of sources of each segment : <source_name, segment>
+    thrust::device_vector<int> p_tmp;    
     unsigned int start_part = 0;
-    size_t r_size = right->columnNames.size()*right->hostRecCount*8;
-    map<string, set<unsigned int> > r_segs;
 	MGPU_MEM(int) intersectionDevice;
 	bool prejoin = 0;
 
     while(start_part < right->segCount) {
 
-        bool rsz = 1;
         right->deAllocOnDevice();
-
 		std::clock_t start12 = std::clock();
-        if(right->not_compressed || (!right->filtered && getFreeMem() < r_size*2)) {
-            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1, rsz);
+        if(right->not_compressed || (!right->filtered && getFreeMem() < right->columnNames.size()*right->hostRecCount*8*2)) {
+            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1);
             start_part = start_part+1;			
         }
         else {
-            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount, rsz);			
+            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount);			
             start_part = right->segCount;
 			
 			for(unsigned int i=0; i < right->columnNames.size(); i++) {
@@ -1029,7 +1015,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         };
 		
-		std::clock_t start16 = std::clock();
         if(order) {
             if(thrust::is_sorted(right->d_columns_int[f2].begin(), right->d_columns_int[f2].end())) {
                 if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size()) {
@@ -1071,11 +1056,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				};		
             };
         };
-		std::cout<< "right sort time " <<  ( ( std::clock() - start16 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
-        //cout << right->sort_check << " " << getFreeMem() << endl;
-		
-		//std::cout<< "join right load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+	//std::cout<< "join right load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         int e_segment;
         if(end_segment == -1) {
@@ -1090,18 +1072,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 //cout << "segment " << i <<  '\xd';
                 cout << "segment " << i <<  endl;
             j_data.clear();
-
-            //for (set<unsigned int>::iterator it = left->ref_joins[colInd1][i].begin(); it != left->ref_joins[colInd1][i].end(); it++) {
-            //	cout << "seg match " << *it << endl;
-            //};
-
-            //for (set<unsigned int>::iterator it = right->orig_segs[left->ref_sets[colInd1]].begin(); it != right->orig_segs[left->ref_sets[colInd1]].end(); it++) {
-            //	cout << "right segs " << *it << endl;
-            //};
-
             cnt_l = 0;
-            copyColumns(left, lc, i, cnt_l);
-			
+            copyColumns(left, lc, i, cnt_l);			
             cnt_l = left->mRecCount;
 
             if (cnt_l) {							
@@ -1111,6 +1083,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
 															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
 															&intersectionDevice, *context, false);	
+															
 					if(verbose)	
 						std::cout<< "inter time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 														
@@ -1140,6 +1113,16 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     cout << "No need of sorting " << endl;
                 if(verbose)
                     cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() << endl;
+					
+				/*if(cnt_r > 10) {
+                    for(int z = 0; z < 10 ; z++)
+                    	cout << " R " << right->d_columns_int[colname2][(cnt_r-1)-z] << endl;
+
+                    for(int z = 0; z < 10 ; z++)
+                    	cout << " L " << left->d_columns_int[colname1][(cnt_l-1)-z] << endl;
+                };
+				*/
+				
 
                 if (left->d_columns_int[colname1][0] > right->d_columns_int[colname2][cnt_r-1] ||
                         left->d_columns_int[colname1][cnt_l-1] < right->d_columns_int[colname2][0]) {
@@ -1153,23 +1136,13 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 //cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
 
                 char join_kind = join_type.front();
-
-                	/*if(cnt_r > 10) {
-                    for(int z = 0; z < 10 ; z++)
-                    	cout << " R " << right->d_columns_int[colname2][(cnt_r-1)-z] << endl;
-
-                    for(int z = 0; z < 10 ; z++)
-                    	cout << " L " << left->d_columns_int[colname1][(cnt_l-1)-z] << endl;
-                	};
-					*/
-					
 				std::clock_t start11 = std::clock();
 				
                 if (join_kind == 'I')
                     res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
-                                mgpu::less<int_type>(), *context);
+                                mgpu::less<int_type>(), *context);								
                 else if(join_kind == 'L')
                     res_count = RelationalJoin<MgpuJoinKindLeft>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
@@ -1205,10 +1178,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive<int>());					
                 };
 
-
                 // check if the join is a multicolumn join
                 unsigned int mul_cnt = join_and_cnt[join_tab_cnt - tab];
-
                 while(mul_cnt) {
 
                     mul_cnt--;
@@ -2320,7 +2291,7 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
 
     CudaSet *a;
 
-    a = new CudaSet(namevars, typevars, sizevars, cols, process_count, references, references_names);
+    a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
     a->mRecCount = 0;
     //a->resize(process_count);
     a->keep = true;
@@ -2418,10 +2389,6 @@ void yyerror(char *s, ...)
     error_cb(1, s);
 }
 
-void
-alenkaSetSegSize(long segsize) {
-    process_count = segsize;
-}
 
 void clean_queues()
 {
@@ -2436,8 +2403,6 @@ void clean_queues()
     while(!sizevars.empty()) sizevars.pop();
     while(!cols.empty()) cols.pop();
     while(!op_sort.empty()) op_sort.pop();
-    while(!references.empty()) references.pop();
-    while(!references_names.empty()) references_names.pop();
     while(!op_presort.empty()) op_presort.pop();
     while(!join_type.empty()) join_type.pop();
 
@@ -2506,7 +2471,7 @@ void process_error(int severity, string err) {
 
 void alenkaInit(char ** av)
 {
-    process_count = 760000000;
+    process_count = 1000000000;
     verbose = 0;
     scan_state = 1;
     statement_count = 0;
