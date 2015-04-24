@@ -19,6 +19,7 @@
 #include "cm.h"
 
 using namespace std;
+using namespace thrust::placeholders;
 
 /// Static string type
 template<unsigned int N, typename T = char>
@@ -118,7 +119,7 @@ struct T_unroll_functor<0, T_functor> {
 template<unsigned int len>
 struct T_str_gather_host {
     inline void operator()(unsigned int* d_int, const unsigned int real_count, void* d, void* d_char) {
-        thrust::gather_if(d_int, d_int + real_count, d_int, (Str<len> *)d, (Str<len> *)d_char, is_positive());
+        thrust::gather_if(d_int, d_int + real_count, d_int, (Str<len> *)d, (Str<len> *)d_char, _1 >= 0);
     }
 };
 
@@ -128,7 +129,7 @@ void str_gather_host(unsigned int* d_int, const unsigned int real_count, void* d
     T_unroll_functor<UNROLL_COUNT, T_str_gather_host> str_gather_host_functor;
     if (str_gather_host_functor(d_int, real_count, d, d_char, len)) {}
     else if(len == 101) {
-        thrust::gather(d_int, d_int + real_count, d_int, (Str<101> *)d, (Str<101> *)d_char, is_positive());
+        thrust::gather(d_int, d_int + real_count, d_int, (Str<101> *)d, (Str<101> *)d_char, _1 >= 0);
     }
 }
 // ---------------------------------------------------------------------------
@@ -139,7 +140,7 @@ struct T_str_gather {
     inline void operator()(thrust::device_ptr<unsigned int> &res, const unsigned int real_count, void* d, void* d_char) {
         thrust::device_ptr<Str<len> > dev_ptr_char((Str<len>*)d_char);
         thrust::device_ptr<Str<len> > dev_ptr((Str<len>*)d);
-        thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, is_positive());
+        thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, _1 >= 0);
     }
 };
 
@@ -153,7 +154,7 @@ void str_gather(void* d_int, const unsigned int real_count, void* d, void* d_cha
     else if(len == 101) {
         thrust::device_ptr<Str<101> > dev_ptr_char((Str<101> *)d_char);
         thrust::device_ptr<Str<101> > dev_ptr((Str<101> *)d);
-        thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, is_positive());
+        thrust::gather_if(res, res + real_count, res, dev_ptr, dev_ptr_char, _1 >= 0);
     }
 }
 // ---------------------------------------------------------------------------

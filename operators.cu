@@ -3,6 +3,7 @@
 
 using namespace mgpu;
 using namespace std;
+using namespace thrust::placeholders;
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
@@ -1175,7 +1176,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 if(res_count) {
                     p_tmp.resize(res_count);
                     thrust::sequence(p_tmp.begin(), p_tmp.end(),-1);
-                    thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), is_positive<int>());					
+                    thrust::gather_if(d_res1, d_res1+res_count, d_res1, v_l.begin(), p_tmp.begin(), _1 >= 0);					
                 };
 
                 // check if the join is a multicolumn join
@@ -1272,12 +1273,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                             //gather
                             if(left->type[op_sel1.front()] != 1 ) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[op_sel1.front()].begin(), d_tmp, is_positive<int>());
+                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[op_sel1.front()].begin(), d_tmp, _1 >= 0);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);
                             }
                             else {
                                 thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[op_sel1.front()].begin(), d_tmp, is_positive<int>());
+                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[op_sel1.front()].begin(), d_tmp, _1 >= 0);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
                             };
 
@@ -1289,12 +1290,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                             //gather
                             if(right->type[op_sel1.front()] != 1) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[op_sel1.front()].begin(), d_tmp, is_positive<int>());
+                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[op_sel1.front()].begin(), d_tmp, _1 >= 0);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);								
                             }
                             else {
                                 thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_float[op_sel1.front()].begin(), d_tmp, is_positive<int>());
+                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_float[op_sel1.front()].begin(), d_tmp, _1 >= 0);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
                             }
                         }
@@ -2243,7 +2244,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     if(verbose)
         printf("BINARY LOAD: %s %s \n", s, f);
 
-	std::clock_t start1 = std::clock();	
+	//std::clock_t start1 = std::clock();	
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
@@ -2266,9 +2267,8 @@ void emit_load_binary(const char *s, const char *f, const int d)
     a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
 
     a->segCount = segCount;
-    a->keep = 1;
+    a->keep = true;
     a->name = s;
-    a->hostRecCount = totRecs;
     varNames[s] = a;
 
     if(stat[s] == statement_count )  {
@@ -2292,14 +2292,10 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
     CudaSet *a;
 
     a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
-    a->mRecCount = 0;
-    //a->resize(process_count);
     a->keep = true;
     a->not_compressed = 1;
     a->load_file_name = f;
     a->separator = sep;
-    //a->maxRecs = a->mRecCount;
-    a->segCount = 0;
     varNames[s] = a;
     fact_file_loaded = 0;
 

@@ -129,15 +129,6 @@ struct uninitialized_allocator
     }
 };
 
-template<typename T>
-struct is_positive
-{
-    __host__ __device__
-    bool operator()(const T x)
-    {
-        return (x >= 0);
-    }
-};
 
 struct set_minus : public binary_function<int,bool,int>
 {
@@ -417,15 +408,6 @@ struct parse_functor
 };
 
 
-template<typename T>
-  struct not_identity : public unary_function<T,T>
-{
-  /*! Function call operator. The return value is <tt>x</tt>.
-   */
-  __host__ __device__ const T &operator()(const T &x) const {return !x;}
-}; 
-
-
 #ifdef _WIN64
 typedef unsigned __int64 uint64_t;
 #endif
@@ -568,7 +550,6 @@ void apply_permutation_char_host(char* key, unsigned int* permutation, size_t Re
 size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
                   queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg);		
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
-uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();
 void delete_records(const char* f);

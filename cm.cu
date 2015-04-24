@@ -34,6 +34,7 @@
 #endif
 
 using namespace std;
+using namespace thrust::placeholders;
 
 size_t total_count = 0, total_max;
 clock_t tot;
@@ -182,7 +183,6 @@ char *mystrtok(char **m,char *s,const char c)
     return p;
 }
 
-
 void allocColumns(CudaSet* a, queue<string> fields);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt);
 void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, size_t count, size_t g_size);
@@ -197,7 +197,6 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
     : mColumnCount(0), mRecCount(0)
 {
     initialize(nameRef, typeRef, sizeRef, colsRef, Recs);
-    keep = false;
     source = 1;
     text_source = 1;
     fil_f = nullptr;
@@ -209,7 +208,6 @@ CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &siz
 {
     maxRecs = max;
     initialize(nameRef, typeRef, sizeRef, colsRef, Recs, file_name);
-    keep = false;
     source = 1;
     text_source = 0;
     fil_f = nullptr;
@@ -1882,7 +1880,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			dev_pos.resize(curr_cnt+1);	//avoiding the unnecessary allocs	
 		dev_pos[0] = -1;			
 		thrust::copy_if(thrust::make_counting_iterator((unsigned long long int)0), thrust::make_counting_iterator((unsigned long long int)rb-1),
-						d_readbuff.begin(), dev_pos.begin()+1, is_break());						
+						d_readbuff.begin(), dev_pos.begin()+1, _1 == '\n');						
 		
 		if(!finished) {		
 			if(curr_cnt < rec_sz) {					
@@ -2591,9 +2589,9 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     mColumnCount = (unsigned int)nameRef.size();
     tmp_table = 0;
     filtered = 0;
-    mRecCount = Recs;
+    mRecCount = 0;
     hostRecCount = Recs;
-    segCount = 1;
+    segCount = 0;
 
     for(unsigned int i=0; i < mColumnCount; i++) {
 
@@ -2630,12 +2628,6 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             d_columns_char[nameRef.front()] = nullptr;
             char_size[nameRef.front()] = sizeRef.front();
         };
-
-        /*if(!references.front().empty()) {
-            ref_sets[nameRef.front()] = references.front();
-            ref_cols[nameRef.front()] = references_names.front();
-        };
-		*/
         nameRef.pop();
         typeRef.pop();
         sizeRef.pop();
@@ -2989,7 +2981,6 @@ void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_si
 		}
 		else {
 			thrust::device_ptr<int_type> d_col((int_type*)alloced_tmp);
-			cout << endl << "mygather " << g_size << " " << a->d_columns_int[colname].size() << " " << a->prm_d.size() << endl;		
 			thrust::gather(a->prm_d.begin(), a->prm_d.begin() + g_size, d_col, a->d_columns_int[colname].begin() + offset);						
 		};
 
@@ -3550,7 +3541,7 @@ void delete_records(const char* f) {
                     bool* res = filter(op_type,op_value,op_nums, op_nums_f, a, i);
                     thrust::device_ptr<bool> bp((bool*)res);
                     thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
-                                    bp, a->prm_d.begin(), not_identity<bool>());
+                                    bp, a->prm_d.begin(), thrust::logical_not<bool>());
 
                     a->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 0);
                     cudaFree(res);
