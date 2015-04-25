@@ -1900,8 +1900,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		}
 		else {
 			mRecCount = curr_cnt + 1;	
-		};				
-		
+		};			
 		
 				
 		thrust::counting_iterator<unsigned int> begin(0);
@@ -3013,6 +3012,7 @@ void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_si
 		};	
     }
 };
+
 
 void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size)
 {

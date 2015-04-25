@@ -28,7 +28,7 @@ void yyerror(char *s, ...);
 #define YY_NO_UNISTD_H
 
 %}
-%option noyywrap nodefault yylineno case-insensitive
+%option noyywrap nodefault yylineno case-insensitive never-interactive
 
 %x COMMENT
 %s BTWMODE
@@ -122,7 +122,6 @@ yylval.strval[yyleng-2] = 0; return FILENAME; }
 
 [A-Za-z][A-Za-z0-9_]* { yylval.strval = strdup(yytext);return NAME; }
 '[^'/\\.\n]+' { yylval.strval = strdup(yytext+1);yylval.strval[yyleng-2] = 0; return FILENAME; }
-'[^'\n]*$ { printf("unterminated quoted name %s", yytext); break;}
 
 
 [ \t\n] 

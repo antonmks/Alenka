@@ -36,6 +36,68 @@ struct int64_to_char
     }
 };
 
+
+struct char_to_int64_1
+{
+	const unsigned char *source;
+    long long int *dest;
+	long long int *ad;
+		
+	char_to_int64_1(const unsigned char *_source, long long int *_dest, long long int *_ad):
+			  source(_source), dest(_dest), ad(_ad) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {			
+		dest[i] = (int_type)source[i] + ad[0];	
+	}
+};
+
+struct int16_to_int64_1
+{
+	const unsigned short int *source;
+    long long int *dest;
+	long long int *ad;
+		
+	int16_to_int64_1(const unsigned short int *_source, long long int *_dest, long long int *_ad):
+			  source(_source), dest(_dest), ad(_ad) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {			
+		dest[i] = (int_type)source[i] + ad[0];	
+	}
+};
+
+struct int32_to_int64_1
+{
+	const unsigned int *source;
+    long long int *dest;
+	long long int *ad;
+		
+	int32_to_int64_1(const unsigned int *_source, long long *_dest, long long int *_ad):
+			  source(_source), dest(_dest), ad(_ad) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {			
+		dest[i] = (int_type)source[i] + ad[0];	
+	}
+};
+
+struct int64_to_int64_1
+{
+	const int_type *source;
+    long long int *dest;
+	long long int *ad;
+		
+	int64_to_int64_1(const int_type *_source, long long int *_dest, long long int *_ad):
+			  source(_source), dest(_dest), ad(_ad) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {			
+		dest[i] = source[i] + ad[0];	
+	}
+};
+
+
 struct char_to_int64
 {
     __host__ __device__
@@ -259,24 +321,35 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     }
     else {
 		if(!phase_copy) {
+			thrust::device_vector<int_type> ad(1);
+			ad[0] = orig_lower_val;
+			thrust::counting_iterator<unsigned int> begin(0);
 			if(bits == 8) {
-				thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(scratch.data()));
-				thrust::transform(src, src+orig_recCount, d_int, char_to_int64());
+				//thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(scratch.data()));
+				//thrust::transform(src, src+orig_recCount, d_int, char_to_int64());				
+				char_to_int64_1 ff1((const unsigned char *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
+				thrust::for_each(begin, begin + orig_recCount, ff1);				
 			}
 			else if(bits == 16) {
-				thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(scratch.data()));
-				thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
+				//thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(scratch.data()));
+				//thrust::transform(src, src+orig_recCount, d_int, int16_to_int64());
+				int16_to_int64_1 ff1((const unsigned short int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
+				thrust::for_each(begin, begin + orig_recCount, ff1);				
 			}
 			else if(bits == 32) {
-				thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(scratch.data()));
-				thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
+				//thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(scratch.data()));
+				//thrust::transform(src, src+orig_recCount, d_int, int32_to_int64());
+				int32_to_int64_1 ff1((const unsigned int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
+				thrust::for_each(begin, begin + orig_recCount, ff1);				
 			}
 			else {
-				thrust::device_ptr<int_type> src((int_type*)thrust::raw_pointer_cast(scratch.data()));
-				thrust::copy(src, src+orig_recCount, d_int);
+				//thrust::device_ptr<int_type> src((int_type*)thrust::raw_pointer_cast(scratch.data()));
+				//thrust::copy(src, src+orig_recCount, d_int);
+				int64_to_int64_1 ff1((const long long int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
+				thrust::for_each(begin, begin + orig_recCount, ff1);				
 			};
-			thrust::constant_iterator<int_type> iter(orig_lower_val);
-			thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
+			//thrust::constant_iterator<int_type> iter(orig_lower_val);
+			//thrust::transform(d_int, d_int+orig_recCount, iter, d_int, thrust::plus<int_type>());
 		}
 		else {
 			cpy_bits[colname] = bits;
