@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-#define EPSILON    (1.0E-8)
+#define EPSILON std::numeric_limits<double>::epsilon()
 
 #ifndef ADD_H_GUARD
 #define ADD_H_GUARD
@@ -101,6 +101,7 @@ extern map<string, map<string, bool> > used_vars;
 extern map<string, unsigned int> cpy_bits;
 extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
+extern map<string,bool> min_max_eq;
 extern vector<void*> alloced_mem;
 
 template<typename T>
@@ -357,6 +358,7 @@ struct gpu_atoll
 		dest[i] = acc;	
 	}
 };
+
    
 struct parse_functor
 {
@@ -420,6 +422,7 @@ struct col_data {
 extern map<string, map<string, col_data> > data_dict;
 
 
+
 class CudaSet
 {
 public:
@@ -431,7 +434,7 @@ public:
     map<string, char*> d_columns_char;			
     map<string, size_t> char_size;
     thrust::device_vector<unsigned int> prm_d;
-	map<string, string> string_map; //maps char column names to string files, only select operator changes the original mapping
+	map<string, string> string_map; //maps char column names to string files, only a select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
 	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
@@ -447,7 +450,6 @@ public:
 	map<string,bool> compTypes; // pfor delta or not
     map<string, FILE*> filePointers;
     thrust::device_vector<bool> grp;
-    queue<string> columnGroups;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;
     string name, load_file_name, separator, source_name;

@@ -61,7 +61,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     thrust::device_ptr<bool> d_di(thrust::raw_pointer_cast(a->grp.data()));
     std::auto_ptr<ReduceByKeyPreprocessData> ppData;
 	
-    if (!a->columnGroups.empty() && (a->mRecCount != 0))
+    if (a->grp_count && (a->mRecCount != 0))
         res_size = a->grp_count;
 		
 	std::clock_t start1 = std::clock();	
@@ -75,8 +75,8 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             grp_type = "NULL";
 
             if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0) {
-
-                if(!prep && !a->columnGroups.empty()) {
+			
+                if(!prep && a->grp_count) {
                     mgpu::ReduceByKeyPreprocess<float_type>((int)a->mRecCount, thrust::raw_pointer_cast(d_di),
                                                             (bool*)0, head_flag_predicate<bool>(), (int*)0, (int*)0,
                                                             &ppData, *context);
@@ -84,7 +84,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 };
 
 
-                if(a->columnGroups.empty())
+                if(!a->grp_count)
                     one_line = 1;
 
                 if (ss.compare("DISTINCT") == 0) {
@@ -124,7 +124,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exe_value.pop();
 
 
-                        if (!a->columnGroups.empty()) {
+                        if (a->grp_count) {
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
 							if(alloced_mem.empty()) {		
 								alloc_pool(a->maxRecs);
@@ -176,7 +176,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         float_type* s3 = exe_vectors_f.top();
                         exe_vectors_f.pop();
 
-                        if (!a->columnGroups.empty()) {
+                        if (a->grp_count) {
                             thrust::device_ptr<float_type> source((float_type*)(s3));
                             thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                             ReduceByKeyApply(*ppData, s3, (float_type)0,
@@ -203,7 +203,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
 
-                        if (!a->columnGroups.empty()) {
+                        if (a->grp_count) {
                             thrust::device_ptr<int_type> source((int_type*)(s3));
                             thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                             ReduceByKeyApply(*ppData, thrust::raw_pointer_cast(source), (int_type)0,
@@ -225,7 +225,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         s1_val = exe_value.top();
                         exe_value.pop();
 
-                        if (!a->columnGroups.empty()) {
+                        if (a->grp_count) {
 
                             if(a->type[s1_val] == 0) {
                                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
@@ -837,7 +837,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 
         if(col_type.top() == 0) {
             // create a vector
-            if (!a->columnGroups.empty()) {
+            if (a->grp_count) {
                 thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                 thrust::copy_if(thrust::make_constant_iterator((int)exe_nums1.top()), thrust::make_constant_iterator((int)exe_nums1.top()) + a->mRecCount, d_di, count_diff, thrust::identity<bool>());
                 b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , col_val.top(), res_size);
@@ -855,7 +855,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             if(a->type[exe_value1.top()] == 0 || a->type[exe_value1.top()] == 2) {
 
                 //modify what we push there in case of a grouping
-                if (!a->columnGroups.empty()) {
+                if (a->grp_count) {
                     thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
                     //thrust::device_ptr<bool> d_grp(a->grp);
                     thrust::copy_if(a->d_columns_int[exe_value1.top()].begin(),a->d_columns_int[exe_value1.top()].begin() + a->mRecCount,
@@ -873,7 +873,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
             }
             else if(a->type[exe_value1.top()] == 1) {
                 //modify what we push there in case of a grouping
-                if (!a->columnGroups.empty()) {
+                if (a->grp_count) {
                     thrust::device_ptr<float_type> count_diff = thrust::device_malloc<float_type>(res_size);
                     //thrust::device_ptr<bool> d_grp(a->grp);
                     thrust::copy_if(a->d_columns_float[exe_value1.top()].begin(), a->d_columns_float[exe_value1.top()].begin() + a->mRecCount,
@@ -888,7 +888,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         }
         else if(col_type.top() == 2) {	    // int
 
-            if (!a->columnGroups.empty())
+            if (a->grp_count)
                 b->addDeviceColumn(exe_vectors1.top() , col_val.top(), res_size);
             else {
                 if(!one_line)
@@ -901,7 +901,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         }
         else if(col_type.top() == 3) {        //float
 
-            if (!a->columnGroups.empty()) {
+            if (a->grp_count) {
                 b->addDeviceColumn(exe_vectors1_d.top() , col_val.top(), res_size, 1);
             }
             else {
@@ -921,7 +921,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     };
 	
 	
-    if (a->columnGroups.empty()) {
+    if (!a->grp_count) {
         if(!one_line)
             b->mRecCount = a->mRecCount;
         else

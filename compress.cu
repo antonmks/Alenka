@@ -24,8 +24,9 @@ using namespace std;
 
 thrust::device_vector<unsigned char> scratch;
 bool phase_copy = 0;
-std::map<string, unsigned int> cnt_counts;
+map<string, unsigned int> cnt_counts;
 string curr_file;
+map<string,bool> min_max_eq;
 
 struct int64_to_char
 {
@@ -288,6 +289,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 {
     unsigned int bit_count = 64;
     auto cnt = ((unsigned int*)host)[0];
+	auto orig_upper_val = ((long long int*)((char*)host +12))[0]; 
     auto orig_recCount = ((unsigned int*)((char*)host + cnt))[7];
     auto bits = ((unsigned int*)((char*)host + cnt))[8];
     auto orig_lower_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 9))[0];
@@ -296,6 +298,11 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     auto comp_type = ((unsigned int*)host)[5];
 
     //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
+	//cout << colname << " " << orig_lower_val << " " << orig_upper_val << endl;
+	if(orig_lower_val == orig_upper_val)
+		min_max_eq[colname] = 1;
+	else	
+		min_max_eq[colname] = 0;
 	
     if(scratch.size() < cnt) 
 		scratch.resize(cnt);

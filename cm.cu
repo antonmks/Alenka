@@ -692,7 +692,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
         }
         else {
             f1 = load_file_name + "." + colname + "." + to_string(segment);
-        };
+        };				
 
         if(type[colname] != 1) {
             if(!alloced_switch) {
@@ -872,8 +872,6 @@ void CudaSet::GroupBy(stack<string> columnRef)
 	unsigned int bits;	
 
     for(int i = 0; i < columnRef.size(); columnRef.pop()) {
-        columnGroups.push(columnRef.top()); // save for future references
-
 		
 		if(cpy_bits.empty())
 			bits = 0;
@@ -919,11 +917,10 @@ void CudaSet::GroupBy(stack<string> columnRef)
 				thrust::transform(d_columns_float[columnRef.top()].begin(), d_columns_float[columnRef.top()].begin() + mRecCount - 1,
                               d_columns_float[columnRef.top()].begin()+1, d_group, f_not_equal_to());
 			};					
-		}					
-
+		}
         thrust::transform(d_group, d_group+mRecCount, grp.begin(), grp.begin(), thrust::logical_or<bool>());
     };
-    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);
+    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);	
 };
 
 
@@ -1888,7 +1885,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 				//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
 				fseek(file_p, offset, SEEK_CUR);		
 				total_processed = total_processed + rb + offset;
-				mRecCount = curr_cnt;	
+				mRecCount = 3;	
 			}
 			else {			
 				offset = (dev_pos[rec_sz] - rb)+1;
