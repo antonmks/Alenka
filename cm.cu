@@ -1885,7 +1885,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 				//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
 				fseek(file_p, offset, SEEK_CUR);		
 				total_processed = total_processed + rb + offset;
-				mRecCount = 3;	
+				mRecCount = curr_cnt;	
 			}
 			else {			
 				offset = (dev_pos[rec_sz] - rb)+1;
