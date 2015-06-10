@@ -1733,17 +1733,30 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
 
         if(a->mRecCount) {
-            if (grp_cnt != 0) {
-				start3 = std::clock();
-                order_inplace(a, op_v2, field_names, 1);																
-				//std::cout<< "order time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
-				start3 = std::clock();
-                a->GroupBy(op_v2);				
+            if (grp_cnt != 0) {			
+				bool srt = 0;
+				stack<string> op_vv(op_v2);
+				while(!op_vv.empty()) {
+					if(!min_max_eq[op_vv.top()])
+						srt = 1;
+					op_vv.pop();	
+				};
+				if(srt) {
+					order_inplace(a, op_v2, field_names, 1);																
+					a->GroupBy(op_v2);				
+				}
+				else {
+					if(a->grp.size() < a->mRecCount)
+						a->grp.resize(a->mRecCount);	
+					thrust::fill(a->grp.begin(),a->grp.begin()+a->mRecCount,0);
+					a->grp[a->mRecCount-1] = 1;
+					a->grp_count = 1;	
+				};	
             };			
 			copyFinalize(a, op_vx);
 			//std::cout<< "grp time1 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
 
-			start3 = std::clock();
+			//start3 = std::clock();
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);			
 			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
