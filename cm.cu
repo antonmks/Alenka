@@ -12,7 +12,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */  
-
  
 #include <cctype>
 #include <algorithm>
@@ -2854,31 +2853,31 @@ void copyFinalize(CudaSet* a, queue<string> fields)
 			if(cpy_bits[fields.front()] == 8) {				
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<char> src((char*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));					
-					thrust::transform(src, src+a->mRecCount, tmp, char_to_int64());					
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<char>());					
 				}
 				else {
 					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, tmp, char_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned char>());
 				};	
 			}
 			else if(cpy_bits[fields.front()] == 16) {
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, tmp, int16_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned short>());
 				}
 				else {
 					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, tmp, int16_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned short>());
 				};	
 			}
 			else if(cpy_bits[fields.front()] == 32) {
 				if(a->type[fields.front()] != 1) {
 					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, tmp, int32_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned int>());
 				}	
 				else {
 					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
-					thrust::transform(src, src+a->mRecCount, tmp, int32_to_int64());
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned int>());
 				};
 			}
 			else {
