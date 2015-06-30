@@ -684,7 +684,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
     */
 
-    //cout << "comp Header " <<  recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
+ //cout << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val <<  endl;
     fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&orig_lower_val, 8);

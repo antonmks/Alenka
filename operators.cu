@@ -2318,6 +2318,33 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
     };
 }
 
+void emit_stream(const char *s, const char *f, const int d, const char* sep)
+{
+    statement_count++;
+    if (scan_state == 0) {
+        stat[s] = statement_count;
+        return;
+    };
+
+    printf("LOAD: %s %s %d  %s \n", s, f, d, sep);
+
+    CudaSet *a;
+
+    a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
+    a->keep = true;
+    a->not_compressed = 1;
+    a->load_file_name = f;
+    a->separator = sep;
+    varNames[s] = a;
+    fact_file_loaded = 0;
+
+    if(stat[s] == statement_count)  {
+        a->free();
+        varNames.erase(s);
+    };
+}
+
+
 void emit_show_tables()
 {
     if (scan_state == 1) {

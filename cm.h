@@ -12,7 +12,8 @@
  *  limitations under the License.
  */
 
-#define EPSILON std::numeric_limits<double>::epsilon()
+//#define EPSILON std::numeric_limits<double>::epsilon()
+#define EPSILON    (1.0E-8)
 
 #ifndef ADD_H_GUARD
 #define ADD_H_GUARD

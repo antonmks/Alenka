@@ -2812,7 +2812,6 @@ void allocColumns(CudaSet* a, queue<string> fields)
             };
             cudaMalloc((void **) &alloced_tmp, int_size*t->maxRecs);
             alloced_sz = int_size*t->maxRecs;
-			cout << "ALLOCED " << int_size*t->maxRecs << endl;
         }
     }
     else {
