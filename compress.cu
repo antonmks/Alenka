@@ -480,7 +480,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         else if(bits < 64)
             bits = 64;
     };
-    //cout << "We will really need " << bits << endl;
+    //cout << "We will really need " << bits << " for " << file_name << endl;
 
     unsigned int cnt;
     thrust::device_ptr<int_type> s((int_type*)source);

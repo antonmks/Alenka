@@ -12,7 +12,6 @@
  *  limitations under the License.
  */
 
-//#define EPSILON std::numeric_limits<double>::epsilon()
 #define EPSILON    (1.0E-8)
 
 #ifndef ADD_H_GUARD
@@ -157,36 +156,18 @@ struct head_flag_predicate
 
 struct float_to_long
 {
-    __host__ __device__
+    __device__
     long long int operator()(const float_type x)
     {
-		if(x > 0) {
-			if ((long long int)((x+EPSILON)*100.0) > (long long int)(x*100.0))
-				return (long long int)((x+EPSILON)*100.0);
-			else return (long long int)(x*100.0);
-		}
-		else {	
-			if ((long long int)((x-EPSILON)*100.0) < (long long int)(x*100.0))
-				return (long long int)((x-EPSILON)*100.0);	
-			else return (long long int)(x*100.0);
-		};
+		return __double2ll_rn(x*100);
     }
 };
 
 struct float_equal_to
 {
-    /*! Function call operator. The return value is <tt>lhs == rhs</tt>.
-     */
-    __host__ __device__ bool operator()(const float_type &lhs, const float_type &rhs) const {
-        int_type l,r;
-        if ((long long int)((lhs+EPSILON)*100.0) > (long long int)(lhs*100.0))
-            l = (long long int)((lhs+EPSILON)*100.0);
-        else l = (long long int)(lhs*100.0);
-        if ((long long int)((rhs+EPSILON)*100.0) > (long long int)(rhs*100.0))
-            r = (long long int)((rhs+EPSILON)*100.0);
-        else r = (long long int)(rhs*100.0);
-
-        return (l == r);
+    __device__ 
+	bool operator()(const float_type &lhs, const float_type &rhs) const {
+		return (__double2ll_rn(lhs*100) == __double2ll_rn(rhs*100));
     }
 };
 
@@ -550,8 +531,7 @@ size_t max_char(CudaSet* a, queue<string> field_names);
 void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 void apply_permutation_char(char* key, unsigned int* permutation, size_t RecCount, char* tmp, unsigned int len);
 void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
-size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
-                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg);		
+size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg);		
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 int_type reverse_op(int_type op_type);
 size_t getFreeMem();

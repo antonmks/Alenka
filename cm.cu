@@ -70,16 +70,6 @@ map<string, long long int> cpy_init_val;
 char* readbuff = nullptr;
 
 
-struct is_match
-{
-    __host__ __device__
-    bool operator()(unsigned int x)
-    {
-        return x != 4294967295;
-    }
-};
-
-
 struct f_equal_to
 {
     __host__ __device__
@@ -145,42 +135,6 @@ struct long_to_float_type
     }
 };
 
-
-struct to_zero
-{
-    __host__ __device__
-    bool operator()(const int_type x)
-    {
-        if(x == -1)
-            return 0;
-        else
-            return 1;
-    }
-};
-
-
-
-struct div_long_to_float_type
-{
-    __host__ __device__
-    float_type operator()(const int_type x, const float_type y)
-    {
-        return (float_type)x/y;
-    }
-};
-
-char *mystrtok(char **m,char *s,const char c)
-{
-    char *p=s?s:*m;
-    if( !*p )
-        return 0;
-    *m=strchr(p,c);
-    if( *m )
-        *(*m)++=0;
-    else
-        *m=p+strlen(p);
-    return p;
-}
 
 void allocColumns(CudaSet* a, queue<string> fields);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt);
@@ -2106,6 +2060,7 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
 }
 
 
+
 bool* CudaSet::compare(int_type* column1, int_type* column2, int_type op_type)
 {
     thrust::device_ptr<int_type> dev_ptr1(column1);
@@ -3255,8 +3210,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
 
 
-size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g, queue<string> op_sel,
-                  queue<string> op_alt, bool decimal_join, size_t& rcount, unsigned int start_seg, unsigned int end_seg) {
+size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg) {
 
     size_t cnt_r = 0;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
@@ -3266,36 +3220,23 @@ size_t load_right(CudaSet* right, string colname, string f2, queue<string> op_g,
         queue<string> op_alt1;
         op_alt1.push(f2);
         cnt_r = load_queue(op_alt1, right, "", rcount, start_seg, end_seg, 1, 1);
+		
+        queue<string> op_alt2;
+        while(!op_alt.empty()) {
+            if(f2.compare(op_alt.front())) {
+                if (std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
+                    op_alt2.push(op_alt.front());
+                };
+            };
+            op_alt.pop();
+        };
+        if(!op_alt2.empty())
+            cnt_r = load_queue(op_alt2, right, "", rcount, start_seg, end_seg, 0, 0);		
     }
     else {
         cnt_r = load_queue(op_alt, right, f2, rcount, start_seg, end_seg, 1, 1);
     };
 
-
-    /*    if (right->type[colname]  == 2) {
-            str_join = 1;
-            right->d_columns_int[f2] = thrust::device_vector<int_type>();
-            for(unsigned int i = start_seg; i < end_seg; i++) {
-                right->add_hashed_strings(f2, i);
-            };
-            cnt_r = right->d_columns_int[f2].size();
-        };
-    */
-	
-	
-    if(right->not_compressed) {
-        queue<string> op_alt1;
-        while(!op_alt.empty()) {
-            if(f2.compare(op_alt.front())) {
-                if (std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
-                    op_alt1.push(op_alt.front());
-                };
-            };
-            op_alt.pop();
-        };
-        if(!op_alt1.empty())
-            cnt_r = load_queue(op_alt1, right, "", rcount, start_seg, end_seg, 0, 0);
-    };
     return cnt_r;
 };
 
