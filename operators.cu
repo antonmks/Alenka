@@ -836,6 +836,15 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
     };
 }
 
+template<typename T, typename P>
+void p_gather(thrust::host_vector<int>& h_tmp, T* h, P* dest)
+{
+	for(int i = 0; i < h_tmp.size(); i++) {
+		dest[i] = h[h_tmp[i]];
+	};	
+};	
+
+
 
 void emit_multijoin(const string s, const string j1, const string j2, const unsigned int tab, const char* res_name, const int start_segment, const int end_segment)
 {
@@ -933,9 +942,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     };
 
 
-    bool decimal_join = 0;
-    if (left->type[colname1] == 1 && right->type[colname2]  == 1)
-        decimal_join = 1;
+    //bool decimal_join = 0;
+    //if (left->type[colname1] == 1 && right->type[colname2]  == 1)
+    //    decimal_join = 1;
 
     queue<string> op_vd(op_g);
     queue<string> op_g1(op_g);
@@ -977,6 +986,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     };
 
     thrust::device_vector<int> p_tmp;    
+	thrust::host_vector<int> h_tmp;
     unsigned int start_part = 0;
 	MGPU_MEM(int) intersectionDevice;
 	bool prejoin = 0;
@@ -986,11 +996,11 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         right->deAllocOnDevice();
 		std::clock_t start12 = std::clock();
         if(right->not_compressed || (!right->filtered && getFreeMem() < right->columnNames.size()*right->hostRecCount*8*2)) {
-            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, start_part+1);
+            cnt_r = load_right(right, f2, op_g1, op_alt, rcount, start_part, start_part+1);
             start_part = start_part+1;			
         }
         else {
-            cnt_r = load_right(right, colname2, f2, op_g1, op_sel, op_alt, decimal_join, rcount, start_part, right->segCount);			
+            cnt_r = load_right(right, f2, op_g1, op_alt, rcount, start_part, right->segCount);			
             start_part = right->segCount;
 			
 			for(unsigned int i=0; i < right->columnNames.size(); i++) {
@@ -1058,7 +1068,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         };
 
-	//std::cout<< "join right load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+	std::cout<< "join right load time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
         int e_segment;
         if(end_segment == -1) {
@@ -1080,14 +1090,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             if (cnt_l) {							
 				
 				if(prejoin) {
-					std::clock_t start15 = std::clock();
 					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
 															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
 															&intersectionDevice, *context, false);	
-															
-					if(verbose)	
-						std::cout<< "inter time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
-														
 					if(!res_count)
 						continue;     
 				};		
@@ -1245,13 +1250,14 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 if(res_count) {          		
 					
                     offset = c->mRecCount;
-                    queue<string> op_sel1(op_sel_s);
-                    c->resize_join(res_count);
-					
+                    queue<string> op_sel1(op_sel_s);					
+					c->resize_join(res_count);					
 					if(scratch.size() < res_count*int_size)
 						scratch.resize(res_count*int_size);
 					thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
                     std::map<string,bool> processed;
+					
+					h_tmp = p_tmp;    
 
                     while(!op_sel1.empty()) {
 
@@ -1268,34 +1274,141 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         cc.push(op_sel1.front());
 
                         if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {						
-                            allocColumns(left, cc);
-                            copyColumns(left, cc, i, k, 0, 0);						
-                            //gather
-                            if(left->type[op_sel1.front()] != 1 ) {
-                                thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_int[op_sel1.front()].begin(), d_tmp, _1 >= 0);
-                                thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);
-                            }
-                            else {
-                                thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(p_tmp.begin(), p_tmp.begin() + res_count, p_tmp.begin(), left->d_columns_float[op_sel1.front()].begin(), d_tmp, _1 >= 0);
-                                thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
-                            };
+							/*if(op_sel1.front() == "price1" || op_sel1.front() == "discount1") {					
+							
+					            left->readSegmentsFromFile(i, op_sel1.front(), 0);
+                                void* h;
+                                if(!interactive) {
+									if(left->type[op_sel1.front()] == 0 ) {
+										h = left->h_columns_int[op_sel1.front()].data();
+									}
+									else 	
+										h = left->h_columns_float[op_sel1.front()].data();
+                                }
+                                else {
+                                    string ff = left->load_file_name + "." + op_sel1.front() + "." + to_string(i);
+                                    h = buffers[ff];
+                                };
+                                auto cnt1 = ((unsigned int*)h)[0];
+                                auto lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
+                                auto bits = ((unsigned int*)((char*)h + cnt1))[8];
+                                cout << "vals " << cnt1 << " " << lower_val << " " << bits << endl;
+								
+								//void *dest;
+								if(left->type[op_sel1.front()] == 0 ) {
+									//dest = c->h_columns_int[op_sel1.front()].data();
+									//if(c->h_columns_int[op_sel1.front()].size() == 0)
+									//	c->h_columns_int[op_sel1.front()].resize((res_count/64)*bits);
+								}	
+								else {
+									//dest = c->h_columns_float[op_sel1.front()].data();
+									//if(c->h_columns_float[op_sel1.front()].size() == 0)
+									//	c->h_columns_float[op_sel1.front()].resize((res_count/64)*bits);
+								};	
 
-                            if(op_sel1.front() != colname1)
-                                left->deAllocColumnOnDevice(op_sel1.front());
+								std::clock_t start1 = std::clock();
+                                if(bits == 8) {
+                                    //thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+									//thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(), 
+									//				  (char*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
+									if(left->type[op_sel1.front()] == 0 ) {
+										//p_gather(h_tmp, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+									}
+									else {
+										//p_gather(h_tmp, (char*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
+									}
+                                }
+                                else if(bits == 16) {
+                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),
+									//				  (unsigned short int*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
+									if(left->type[op_sel1.front()] == 0 ) {
+										//p_gather(h_tmp, (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													  (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+									}
+									else {
+										//p_gather(h_tmp, (unsigned short int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													  (unsigned short int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
+									};	
+                                }
+                                else if(bits == 32) {
+                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),
+									//				 (unsigned int*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
+									if(left->type[op_sel1.front()] == 0 ) {
+										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													 (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+									}
+									else {
+										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());	
+											thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													 (unsigned int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);										
+									};	
+                                }
+                                else if(bits == 64) {
+                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),  
+									//				 (int_type*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
+									if(left->type[op_sel1.front()] == 0 ) {
+										//p_gather(h_tmp, (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													 (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+									}
+									else {
+										//p_gather(h_tmp, (int_type*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
+										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
+													 (int_type*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
+									};	
+                                };
+								if(left->type[op_sel1.front()] == 0 ) {
+									thrust::transform(c->h_columns_int[op_sel1.front()].begin() + offset, c->h_columns_int[op_sel1.front()].begin() + offset + res_count, thrust::make_constant_iterator(lower_val-1), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
+								}
+								else {
+									thrust::device_ptr<int_type> dest((int_type*)thrust::raw_pointer_cast(c->h_columns_float[op_sel1.front()].data() + offset));
+									thrust::transform(dest, dest + res_count, thrust::make_constant_iterator(lower_val-1), dest, thrust::plus<int_type>());										
+									thrust::transform(c->h_columns_float[op_sel1.front()].begin() + offset, c->h_columns_float[op_sel1.front()].begin() + offset + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());									
+									for(int z = 0; z < 10; z++)
+										cout << "VAL " << c->h_columns_float[op_sel1.front()][z] << endl;
+								};	
+								std::cout<< "host gather time " <<   ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;										
+							}
+							
+							else {	
+							*/
+								allocColumns(left, cc);
+								copyColumns(left, cc, i, k, 0, 0);						
+								//gather
+								if(left->type[op_sel1.front()] != 1 ) {
+									thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
+									thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->d_columns_int[op_sel1.front()].begin(), d_tmp);
+									thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);
+								}
+								else {
+									thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
+									thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->d_columns_float[op_sel1.front()].begin(), d_tmp);
+									thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
+										//for(int z = 0; z < 10; z++)
+										//cout << "VAL1 " << c->h_columns_float[op_sel1.front()][offset + z] << endl;
+
+								};
+
+								if(op_sel1.front() != colname1)
+									left->deAllocColumnOnDevice(op_sel1.front());
+							//};
                         }
                         else if(std::find(right->columnNames.begin(), right->columnNames.end(), op_sel1.front()) !=  right->columnNames.end()) {
 
                             //gather
                             if(right->type[op_sel1.front()] != 1) {
                                 thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_int[op_sel1.front()].begin(), d_tmp, _1 >= 0);
+                                thrust::gather(d_res2, d_res2 + res_count, right->d_columns_int[op_sel1.front()].begin(), d_tmp);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin() + offset);								
                             }
                             else {
                                 thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
-                                thrust::gather_if(d_res2, d_res2 + res_count, d_res2, right->d_columns_float[op_sel1.front()].begin(), d_tmp, _1 >= 0);
+                                thrust::gather(d_res2, d_res2 + res_count, right->d_columns_float[op_sel1.front()].begin(), d_tmp);
                                 thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
                             }
                         }
@@ -1752,10 +1865,12 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 					a->grp[a->mRecCount-1] = 1;
 					a->grp_count = 1;	
 				};	
-            };			
+            }
+			else
+				a->grp_count = 0;			
+			
 			copyFinalize(a, op_vx);
-			//std::cout<< "grp time1 " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
-
+			
 			//start3 = std::clock();
             select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);			
 			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				

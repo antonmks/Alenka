@@ -108,7 +108,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         exit(0);
                     }
                     else {
-                        cout << "DISTINCT on float is not supported" << endl;
+                        cout << "DISTINCT on float is not supported yet" << endl;
                         exit(0);
                     };
                 }
@@ -815,10 +815,10 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         };
     };
 	
-	
+		
     for(unsigned int j=0; j < colCount; j++) {
-
-        if ((grp_type1.top()).compare("COUNT") == 0 )
+	
+	    if ((grp_type1.top()).compare("COUNT") == 0 )
             b->grp_type[col_val.top()] = 0;
         else if ((grp_type1.top()).compare("AVG") == 0 )
             b->grp_type[col_val.top()] = 1;
@@ -865,7 +865,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 }
                 else
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_int[exe_value1.top()].data()) , col_val.top(), a->mRecCount);
-
+					
                 if(a->type[exe_value1.top()] == 2 || (a->type[exe_value1.top()] == 0 && a->string_map.find(exe_value1.top()) != a->string_map.end())) {
                     b->string_map[col_val.top()] = a->string_map[exe_value1.top()];
                     //cout << "SETTING " << col_val.top() << " to " << exe_value1.top() << " " << a->string_map[exe_value1.top()] << endl;
@@ -881,8 +881,9 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) , col_val.top(), res_size, a->decimal[exe_value1.top()]);
                     thrust::device_free(count_diff);
                 }
-                else
+                else {
                     b->addDeviceColumn(thrust::raw_pointer_cast(a->d_columns_float[exe_value1.top()].data()), col_val.top(), a->mRecCount, a->decimal[exe_value1.top()]);
+				};	
             }
             exe_value1.pop();
         }
