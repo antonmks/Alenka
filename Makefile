@@ -1,7 +1,7 @@
 .DEFAULT:
 	cd src && $(MAKE)
 
-install:
+all:
 	cd src && $(MAKE)
 
-.PHONY: install
+.PHONY: all
