@@ -31,6 +31,7 @@ ContextPtr context;
 void* p_tmp1 = nullptr;
 bool set_p = 0;
 int p_sz = 0;
+thrust::device_vector<unsigned char> scratch;
 
 void check_used_vars()
 {
@@ -502,7 +503,7 @@ void star_join(const char *s, const string j1)
                             //std::cout<<  "SSD L SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
                         }
                         else {
-                            t->readSegmentsFromFile(i, op_sel1.front(), 0);
+                            t->readSegmentsFromFile(i, op_sel1.front());
                             void* h;
 
                             if(!interactive) {
@@ -515,7 +516,7 @@ void star_join(const char *s, const string j1)
                                 string ff = t->load_file_name + "." + op_sel1.front()+ "." + to_string(i);
                                 h = buffers[ff];
                             };
-                            cnt1 = ((unsigned int*)h)[0];
+                            cnt1 = ((unsigned int*)h)[0];//bytes
                             lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
                             bits = ((unsigned int*)((char*)h + cnt1))[8];
                             //cout << cnt1 << " " << lower_val << " " << bits << " " << left->type[op_sel1.front()] << endl;
@@ -598,7 +599,7 @@ void star_join(const char *s, const string j1)
                                 //std::cout<<  "SSD R SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
                             }
                             else {
-                                t->readSegmentsFromFile(i, key_map[it->first], 0);
+                                t->readSegmentsFromFile(i, key_map[it->first]);
                                 void* h;
                                 if(!interactive) {
                                     h = t->h_columns_int[key_map[it->first]].data();
@@ -1274,9 +1275,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         cc.push(op_sel1.front());
 
                         if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {						
-							/*if(op_sel1.front() == "price1" || op_sel1.front() == "discount1") {					
+							/*if(op_sel1.front() == "price" || op_sel1.front() == "discount") {					
 							
-					            left->readSegmentsFromFile(i, op_sel1.front(), 0);
+					            left->readSegmentsFromFile(i, op_sel1.front());
                                 void* h;
                                 if(!interactive) {
 									if(left->type[op_sel1.front()] == 0 ) {
@@ -1289,9 +1290,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                     string ff = left->load_file_name + "." + op_sel1.front() + "." + to_string(i);
                                     h = buffers[ff];
                                 };
-                                auto cnt1 = ((unsigned int*)h)[0];
-                                auto lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
-                                auto bits = ((unsigned int*)((char*)h + cnt1))[8];
+                                unsigned int cnt1 = ((unsigned int*)h)[0];
+                                int_type lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
+                                unsigned int bits = ((unsigned int*)((char*)h + cnt1))[8];
                                 cout << "vals " << cnt1 << " " << lower_val << " " << bits << endl;
 								
 								//void *dest;
@@ -1307,6 +1308,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 								};	
 
 								std::clock_t start1 = std::clock();
+								
                                 if(bits == 8) {
                                     //thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									//thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(), 
@@ -1338,14 +1340,15 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                     //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),
 									//				 (unsigned int*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
 									if(left->type[op_sel1.front()] == 0 ) {
-										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
+										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());	
 										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													 (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
+													 ((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
 									}
 									else {
 										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());	
 											thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													 (unsigned int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);										
+													((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);										
+													int_type* dest = (int_type*)(c->h_columns_float[op_sel1.front()].data() + offset); 		 
 									};	
                                 }
                                 else if(bits == 64) {
@@ -1366,11 +1369,11 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 									thrust::transform(c->h_columns_int[op_sel1.front()].begin() + offset, c->h_columns_int[op_sel1.front()].begin() + offset + res_count, thrust::make_constant_iterator(lower_val-1), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
 								}
 								else {
-									thrust::device_ptr<int_type> dest((int_type*)thrust::raw_pointer_cast(c->h_columns_float[op_sel1.front()].data() + offset));
-									thrust::transform(dest, dest + res_count, thrust::make_constant_iterator(lower_val-1), dest, thrust::plus<int_type>());										
-									thrust::transform(c->h_columns_float[op_sel1.front()].begin() + offset, c->h_columns_float[op_sel1.front()].begin() + offset + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());									
-									for(int z = 0; z < 10; z++)
-										cout << "VAL " << c->h_columns_float[op_sel1.front()][z] << endl;
+									//thrust::device_ptr<int_type> dest((int_type*)thrust::raw_pointer_cast(c->h_columns_float[op_sel1.front()].data() + offset));
+									int_type* dest = (int_type*)(c->h_columns_float[op_sel1.front()].data() + offset);
+									
+									//thrust::transform(dest, dest + res_count, thrust::make_constant_iterator(lower_val-1), dest, thrust::plus<int_type>());																
+									//thrust::transform(dest, dest + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());									
 								};	
 								std::cout<< "host gather time " <<   ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;										
 							}
@@ -1389,9 +1392,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 									thrust::device_ptr<float_type> d_tmp((float_type*)thrust::raw_pointer_cast(scratch.data()));
 									thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, left->d_columns_float[op_sel1.front()].begin(), d_tmp);
 									thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_float[op_sel1.front()].begin() + offset);
-										//for(int z = 0; z < 10; z++)
-										//cout << "VAL1 " << c->h_columns_float[op_sel1.front()][offset + z] << endl;
-
 								};
 
 								if(op_sel1.front() != colname1)
@@ -2628,7 +2628,6 @@ void alenkaInit(char ** av)
     statement_count = 0;
     clean_queues();
     context = CreateCudaDevice(0, nullptr, true);
-    printf("Alenka initialised\n");
 }
 
 
@@ -2640,7 +2639,6 @@ void alenkaClose()
         cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
-    printf("Alenka closed\n");
 }
 
 

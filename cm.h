@@ -461,7 +461,7 @@ public:
     void resizeDevice(size_t RecCount);
     bool onDevice(string colname);
     CudaSet* copyDeviceStruct();
-    void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
+    void readSegmentsFromFile(unsigned int segNum, string colname);
 	int_type readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest);
 	int_type readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);

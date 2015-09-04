@@ -22,7 +22,7 @@
 
 using namespace std;
 
-thrust::device_vector<unsigned char> scratch;
+//thrust::device_vector<unsigned char> scratch;
 bool phase_copy = 0;
 map<string, unsigned int> cnt_counts;
 string curr_file;
@@ -62,15 +62,6 @@ struct to_int64
     int_type operator()(const T x)
     {
         return (int_type)x;
-    }
-};
-
-struct bool_to_int
-{
-    __host__ __device__
-    unsigned int operator()(const bool x)
-    {
-        return (unsigned int)x;
     }
 };
 

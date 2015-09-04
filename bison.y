@@ -408,6 +408,8 @@ int execute_file(int ac, char **av)
         cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
+	scratch.resize(0);
+	scratch.shrink_to_fit();
     return 0;
 }
 

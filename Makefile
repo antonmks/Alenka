@@ -1,21 +1,25 @@
 # Makefile
 #
 # The -D below may have to change to /D on some dos compilers
-CFLAGS=--machine 64 -O3 -arch=sm_35 -std=c++11 -I moderngpu-master/include/
+CFLAGS=--machine 64 -O3 -std=c++11 -I moderngpu/include/
+
+GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
+GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
+GENCODE_SM35	:= -gencode arch=compute_50,code=sm_50
+GENCODE_FLAGS	:= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM50)
 
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o mgpucontext.o callbacks.o main.o operators.o
-	#nvcc -O3 -arch=sm_20 -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o 
+
 	nvcc $(CFLAGS) -L . mgpucontext.o mgpuutil.o -o alenka bison.o merge.o \
 		 MurmurHash2_64.o filter.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 select.o zone_map.o atof.o cm.o \
 		 callbacks.o main.o	operators.o	 
 
-#nvcc = nvcc --machine 64 -O3 -arch=sm_20  -c
-nvcc = nvcc $(CFLAGS)  -c
+nvcc = nvcc $(CFLAGS) $(GENCODE_FLAGS) -c
 
 operators.o : operators.cu operators.h 
 	$(nvcc) operators.cu
@@ -45,11 +49,8 @@ zone_map.o : zone_map.cu cm.h zone_map.h
 	$(nvcc) zone_map.cu
 atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
-mgpucontext.o : moderngpu-master/src/mgpucontext.cu 	
-	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
+mgpucontext.o : moderngpu/src/mgpucontext.cu 	
+	$(nvcc) -I moderngpu/include/ moderngpu/src/mgpucontext.cu moderngpu/src/mgpuutil.cpp
 	
-clean : del bison.o merge.o \
-         MurmurHash2_64.o filter.o \
-		 strings_join.o strings_sort_host.o strings_sort_device.o \
-		 select.o zone_map.o itoa.o \
-		 atof.o cm.o mgpucontext.o 
+clean : 
+	$(RM) alenka *.o
