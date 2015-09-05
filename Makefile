@@ -1,7 +1,7 @@
 # Makefile
 #
 # The -D below may have to change to /D on some dos compilers
-CFLAGS=--machine 64 -O3 -std=c++11 -I moderngpu/include/
+CFLAGS=--machine 64 -O3 -std=c++11 -I moderngpu-master/include/
 
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
 GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
