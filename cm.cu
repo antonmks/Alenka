@@ -509,7 +509,7 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
 
 std::clock_t tot_disk;
 
-void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t offset)
+void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname)
 {
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
     if(type[colname] == 2)
@@ -565,7 +565,6 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname, size_t o
             cout << "Error opening " << f1 << " file " << endl;
             exit(0);
         };
-
 
         if(type[colname] != 1) {
             if(1 > h_columns_int[colname].size())
@@ -633,7 +632,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
     }
     else {
 
-        readSegmentsFromFile(segment,colname, offset);
+        readSegmentsFromFile(segment,colname);
         if(!d_v)
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
         if(!s_v)
@@ -703,7 +702,6 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
 }
 
 
-
 void CudaSet::CopyColumnToGpu(string colname) // copy all segments
 {
     if(not_compressed) {
@@ -723,7 +721,7 @@ void CudaSet::CopyColumnToGpu(string colname) // copy all segments
 
         for(unsigned int i = 0; i < segCount; i++) {
 
-            readSegmentsFromFile(i,colname, cnt);
+            readSegmentsFromFile(i,colname);
 
             if(type[colname] == 2) {
                 f1 = load_file_name + "." + colname + "." + to_string(i) + ".idx";
