@@ -30,7 +30,7 @@ main.o : main.cu
 cm.o : cm.cu cm.h	
 	$(nvcc) cm.cu
 bison.o : bison.cu cm.h sorts.cu
-	$(nvcc) -I moderngpu/include/ bison.cu
+	$(nvcc) -I moderngpu-master/include/ bison.cu
 merge.o : merge.cu cm.h merge.h
 	$(nvcc) merge.cu
 MurmurHash2_64.o : MurmurHash2_64.cu cm.h 
