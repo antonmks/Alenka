@@ -50,7 +50,7 @@ zone_map.o : zone_map.cu cm.h zone_map.h
 atof.o : atof.cu cm.h atof.h
 	$(nvcc) atof.cu 
 mgpucontext.o : moderngpu-master/src/mgpucontext.cu 	
-	$(nvcc) -I moderngpu-master/include/ moderngpu/src/mgpucontext.cu moderngpu/src/mgpuutil.cpp
+	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
 	
 clean : 
 	$(RM) alenka *.o
