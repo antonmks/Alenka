@@ -75,11 +75,11 @@ void emit_fieldname(const char* name1, const char* name2)
     op_value.push(s1 + "." + s2);
 };
 
-
 void emit_number(const int_type val)
 {
     op_type.push("NUMBER");
     op_nums.push(val);
+	op_nums_precision.push(0);
 }
 
 void emit_float(const float_type val)
@@ -88,13 +88,22 @@ void emit_float(const float_type val)
     op_nums_f.push(val);
 }
 
-void emit_decimal(const float_type val)
+void emit_decimal(const char* str)
 {
-    op_type.push("DECIMAL");
-    op_nums_f.push(val);
+    op_type.push("NUMBER");
+    string s1(str);
+	unsigned int precision;
+	auto pos = s1.find(".");
+	if(pos == std::string::npos)
+		precision = 0;
+	else {
+		precision = (s1.length() - pos) -1;
+		s1.erase(pos,1);
+	};	
+	op_nums.push(stoi(s1));
+    op_nums_precision.push(precision);
+	//cout << "Decimal " << stoi(s1) << " " << precision << endl; 
 }
-
-
 
 void emit_mul()
 {
@@ -138,6 +147,12 @@ void emit_distinct()
     op_type.push("DISTINCT");
     distinct_cnt++;
 }
+
+void emit_year()
+{
+    op_type.push("YEAR");
+}
+
 
 void emit_or()
 {
@@ -198,6 +213,14 @@ void emit_varchar(const char *s, const int c, const char *f, const int d, const 
     typevars.push(f);
     sizevars.push(d);
     cols.push(c);
+}
+
+void emit_vardecimal(const char *s, const int c, const char *f, const int scale, const int precision)
+{
+    namevars.push(s);
+    typevars.push(f);
+    sizevars.push(precision);
+    cols.push(c);	
 }
 
 void emit_sel_name(const char *s)
@@ -454,7 +477,7 @@ void star_join(const char *s, const string j1)
         size_t cnt_c = 0;
         allocColumns(left, left->fil_value);
         copyColumns(left, left->fil_value, i, cnt_c);
-        bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left, i);
+        bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left->fil_nums_precision, left, i);
         thrust::device_ptr<bool> star((bool*)res);
         size_t cnt = thrust::count(star, star + (unsigned int)left->mRecCount, 1);
         cout << "join res " << cnt << " out of " << left->mRecCount << endl;
@@ -1035,6 +1058,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 else {
                     right->sort_check = '0';
                 };
+				cout << "pre " << right->sort_check << endl;
             }
             else {
 				//cout << "sorting " << endl;
@@ -1045,6 +1069,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				else {
    				    //for(unsigned int i = 0; i < right->columnNames.size(); i++) {
 					for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
+						cout << "sorting " << *it << endl;
 						if(right->type[*it] != 1) {
 							if(right->h_columns_int[*it].size() < right->mRecCount)
 								right->h_columns_int[*it].resize(right->mRecCount);
@@ -1200,7 +1225,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                     queue<string> rc;
                     rc.push(f3);
-
+					
                     allocColumns(left, rc);
                     size_t offset = 0;
                     copyColumns(left, rc, i, offset, 0, 0);
@@ -1208,28 +1233,24 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                     if (res_count) {
                         thrust::device_ptr<bool> d_add = thrust::device_malloc<bool>(res_count);
+						
+						if(right->d_columns_int[f4].size() == 0)
+							load_queue(rc, right, f4, rcount, 0, right->segCount, 0, 0);                   
 
-                        if (left->type[f3] == 1 && right->type[f4]  == 1) {
 
-                            if(right->d_columns_float[f4].size() == 0)
-                                load_queue(rc, right, f4, rcount, 0, right->segCount, 0, 0);
-                   
+                        if (left->type[f3] == 1 && right->type[f4]  == 1) {                        	
 							thrust::transform(make_permutation_iterator(left->d_columns_float[f3].begin(), p_tmp.begin()),
 											  make_permutation_iterator(left->d_columns_float[f3].begin(), p_tmp.end()),
 											  make_permutation_iterator(right->d_columns_float[f4].begin(), d_res2),
 											  d_add, float_equal_to());
                         }
                         else {
-                            if(right->d_columns_int[f4].size() == 0) {
-                                load_queue(rc, right, f4, rcount, 0, right->segCount, 0, 0);
-                            };
-							
+                        	
+							//cout << "PREC " << left->decimal_zeroes[f3] << " " << right->decimal_zeroes[f4] << " " <<  left->decimal[f3] <<  endl;
 							thrust::transform(make_permutation_iterator(left->d_columns_int[f3].begin(), p_tmp.begin()),
 											  make_permutation_iterator(left->d_columns_int[f3].begin(), p_tmp.end()),
 											  make_permutation_iterator(right->d_columns_int[f4].begin(), d_res2),
 											  d_add, thrust::equal_to<int_type>());
-							
-
                         };
 
                         if (join_kind == 'I') {  // result count changes only in case of an inner join
@@ -1274,112 +1295,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                         cc.push(op_sel1.front());
 
-                        if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {						
-							/*if(op_sel1.front() == "price" || op_sel1.front() == "discount") {					
-							
-					            left->readSegmentsFromFile(i, op_sel1.front());
-                                void* h;
-                                if(!interactive) {
-									if(left->type[op_sel1.front()] == 0 ) {
-										h = left->h_columns_int[op_sel1.front()].data();
-									}
-									else 	
-										h = left->h_columns_float[op_sel1.front()].data();
-                                }
-                                else {
-                                    string ff = left->load_file_name + "." + op_sel1.front() + "." + to_string(i);
-                                    h = buffers[ff];
-                                };
-                                unsigned int cnt1 = ((unsigned int*)h)[0];
-                                int_type lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
-                                unsigned int bits = ((unsigned int*)((char*)h + cnt1))[8];
-                                cout << "vals " << cnt1 << " " << lower_val << " " << bits << endl;
-								
-								//void *dest;
-								if(left->type[op_sel1.front()] == 0 ) {
-									//dest = c->h_columns_int[op_sel1.front()].data();
-									//if(c->h_columns_int[op_sel1.front()].size() == 0)
-									//	c->h_columns_int[op_sel1.front()].resize((res_count/64)*bits);
-								}	
-								else {
-									//dest = c->h_columns_float[op_sel1.front()].data();
-									//if(c->h_columns_float[op_sel1.front()].size() == 0)
-									//	c->h_columns_float[op_sel1.front()].resize((res_count/64)*bits);
-								};	
-
-								std::clock_t start1 = std::clock();
-								
-                                if(bits == 8) {
-                                    //thrust::gather(p_tmp.begin(), p_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-									//thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(), 
-									//				  (char*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
-									if(left->type[op_sel1.front()] == 0 ) {
-										//p_gather(h_tmp, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-									}
-									else {
-										//p_gather(h_tmp, (char*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, (char*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
-									}
-                                }
-                                else if(bits == 16) {
-                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),
-									//				  (unsigned short int*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
-									if(left->type[op_sel1.front()] == 0 ) {
-										//p_gather(h_tmp, (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													  (unsigned short int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-									}
-									else {
-										//p_gather(h_tmp, (unsigned short int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													  (unsigned short int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
-									};	
-                                }
-                                else if(bits == 32) {
-                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),
-									//				 (unsigned int*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
-									if(left->type[op_sel1.front()] == 0 ) {
-										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());	
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													 ((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-									}
-									else {
-										//p_gather(h_tmp, (unsigned int*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());	
-											thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);										
-													int_type* dest = (int_type*)(c->h_columns_float[op_sel1.front()].data() + offset); 		 
-									};	
-                                }
-                                else if(bits == 64) {
-                                    //thrust::gather_if(h_tmp.begin(), h_tmp.begin() + res_count, h_tmp.begin(),  
-									//				 (int_type*)((unsigned int*)h + 6), (int_type*)dest + offset, _1 >= 0);
-									if(left->type[op_sel1.front()] == 0 ) {
-										//p_gather(h_tmp, (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													 (int_type*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
-									}
-									else {
-										//p_gather(h_tmp, (int_type*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].data());				  
-										thrust::gather(h_tmp.begin(), h_tmp.begin() + res_count, 
-													 (int_type*)((unsigned int*)h + 6), c->h_columns_float[op_sel1.front()].begin() + offset);
-									};	
-                                };
-								if(left->type[op_sel1.front()] == 0 ) {
-									thrust::transform(c->h_columns_int[op_sel1.front()].begin() + offset, c->h_columns_int[op_sel1.front()].begin() + offset + res_count, thrust::make_constant_iterator(lower_val-1), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
-								}
-								else {
-									//thrust::device_ptr<int_type> dest((int_type*)thrust::raw_pointer_cast(c->h_columns_float[op_sel1.front()].data() + offset));
-									int_type* dest = (int_type*)(c->h_columns_float[op_sel1.front()].data() + offset);
-									
-									//thrust::transform(dest, dest + res_count, thrust::make_constant_iterator(lower_val-1), dest, thrust::plus<int_type>());																
-									//thrust::transform(dest, dest + res_count, c->h_columns_float[op_sel1.front()].begin() + offset, long_to_float());									
-								};	
-								std::cout<< "host gather time " <<   ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;										
-							}
-							
-							else {	
-							*/
+                        if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {												
 								allocColumns(left, cc);
 								copyColumns(left, cc, i, k, 0, 0);						
 								//gather
@@ -1872,7 +1788,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 			copyFinalize(a, op_vx);
 			
 			//start3 = std::clock();
-            select(op_type,op_value,op_nums, op_nums_f,a,b, distinct_tmp, one_liner);			
+            select(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a,b, distinct_tmp, one_liner);			
 			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
             if(i == 0)
@@ -2207,7 +2123,8 @@ void emit_filter(char *s, char *f)
 
         b->fil_value = op_value;
         b->fil_nums = op_nums;
-        b->fil_nums_f = op_nums_f;
+        b->fil_nums_f = op_nums_f;		
+		b->fil_nums_precision = op_nums_precision;
         b->filtered = 1;
         b->tmp_table = a->tmp_table;
         b->string_map = a->string_map;
@@ -2548,6 +2465,7 @@ void clean_queues()
     while(!op_join.empty()) op_join.pop();
     while(!op_nums.empty()) op_nums.pop();
     while(!op_nums_f.empty()) op_nums_f.pop();
+	while(!op_nums_precision.empty()) op_nums_precision.pop();
     while(!j_col_count.empty()) j_col_count.pop();
     while(!namevars.empty()) namevars.pop();
     while(!typevars.empty()) typevars.pop();
@@ -2585,12 +2503,16 @@ void load_vars()
                 for (auto sit=c.begin() ; sit != c.end(); ++sit ) {
                     //cout << "name " << (*sit).first << " " << data_dict[(*it).first][(*sit).first].col_length << endl;
                     namevars.push((*sit).first);
-                    if(data_dict[(*it).first][(*sit).first].col_type == 0)
-                        typevars.push("int");
+                    if(data_dict[(*it).first][(*sit).first].col_type == 0) {
+						if(data_dict[(*it).first][(*sit).first].col_length == 0) {
+							typevars.push("int");
+						}	
+						else {
+							typevars.push("decimal");
+						}	
+					}	
                     else if(data_dict[(*it).first][(*sit).first].col_type == 1)
                         typevars.push("float");
-                    else if(data_dict[(*it).first][(*sit).first].col_type == 3)
-                        typevars.push("decimal");
                     else typevars.push("char");
                     sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
                     cols.push(0);

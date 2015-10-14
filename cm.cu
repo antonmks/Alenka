@@ -23,6 +23,7 @@
 #include "sorts.cu"
 #include "filter.h"
 #include "callbacks.h"
+#include "zone_map.h"
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
@@ -52,6 +53,7 @@ bool op_case = 0;
 queue<string> op_value;
 queue<int_type> op_nums;
 queue<float_type> op_nums_f;
+queue<unsigned int> op_nums_precision;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
 map<unsigned int, map<unsigned long long int, size_t> > char_hash;
@@ -135,6 +137,36 @@ struct long_to_float_type
     }
 };
 
+template <typename T>
+struct power_functor : public thrust::unary_function<T,T>
+{
+    unsigned int a;
+
+    __host__ __device__
+    power_functor(unsigned int a_) { a = a_; }
+
+    __host__ __device__
+    T operator()(T x)
+    {
+		return x*(unsigned int)pow((double)10,(double)a);    
+	}
+};
+
+/*class power_functor {
+
+    unsigned int a;
+
+    public:
+
+        power_functor(unsigned int a_) { a = a_; }
+
+        __host__ __device__ int_type operator()(int_type x) const 
+        {
+            return x*(unsigned int)pow((double)10,(double)a);
+        }
+};
+*/
+
 
 void allocColumns(CudaSet* a, queue<string> fields);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt);
@@ -142,7 +174,6 @@ void mygather(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, siz
 void mycopy(unsigned int tindex, unsigned int idx, CudaSet* a, CudaSet* t, size_t count, size_t g_size);
 void write_compressed_char(string file_name, unsigned int index, size_t mCount);
 size_t getFreeMem();
-char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment);
 size_t getTotalSystemMemory();
 void process_error(int severity, string err);
 
@@ -330,6 +361,7 @@ CudaSet* CudaSet::copyDeviceStruct()
     a->type = type;
     a->char_size = char_size;
     a->decimal = decimal;
+	a->decimal_zeroes = decimal_zeroes;
 
     for(unsigned int i=0; i < columnNames.size(); i++) {
         if(a->type[columnNames[i]] == 0) {
@@ -612,15 +644,16 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
             mRecCount = hostRecCount - maxRecs*(segCount-1);
         };
 
-        if(type[colname] != 1) {
-            if(!alloced_switch)
+        if(type[colname] != 1) {		
+            if(!alloced_switch) {
                 thrust::copy(h_columns_int[colname].begin() + maxRecs*segment, h_columns_int[colname].begin() + maxRecs*segment + mRecCount, d_columns_int[colname].begin() + offset);
+			}
             else {
                 thrust::device_ptr<int_type> d_col((int_type*)alloced_tmp);
                 thrust::copy(h_columns_int[colname].begin() + maxRecs*segment, h_columns_int[colname].begin() + maxRecs*segment + mRecCount, d_col);
             };
         }
-        else {
+        else {			
             if(!alloced_switch) {
                 thrust::copy(h_columns_float[colname].begin() + maxRecs*segment, h_columns_float[colname].begin() + maxRecs*segment + mRecCount, d_columns_float[colname].begin() + offset);
             }
@@ -1217,7 +1250,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
     const   char *dcolumns[MAXCOLS];
     size_t  mCount;         // num records in play
     bool    print_all = 0;
-    string  ss;
+    string  ss, str;
     int rows = 0;
 
     if(limit != 0 && limit < mRecCount)
@@ -1255,7 +1288,17 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
             for(unsigned int j=0; j < columnNames.size(); j++) {                // for each col
                 if (type[columnNames[j]] != 1) {
                     if(string_map.find(columnNames[j]) == string_map.end())
-                        sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
+						
+						if(decimal_zeroes[columnNames[j]]) {
+							str = std::to_string(h_columns_int[columnNames[j]][i]);
+							//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+							while(str.length() <= decimal_zeroes[columnNames[j]])
+								str = '0' + str;
+							str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
+							sprintf(fields[j], "%s", str.c_str());
+						}	
+						else
+							sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
                     else {
                         fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
                         fread(fields[j], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
@@ -1335,6 +1378,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 
     size_t mCount;
     bool print_all = 0;
+	string str;
 
     if(limit != 0 && limit < mRecCount)
         mCount = limit;
@@ -1377,8 +1421,18 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
             for(unsigned int i=0; i < mCount; i++) {
                 for(unsigned int j=0; j < columnNames.size(); j++) {
                     if (type[columnNames[j]] != 1 ) {
-                        if(string_map.find(columnNames[j]) == string_map.end()) {
-                            fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+                        if(string_map.find(columnNames[j]) == string_map.end()) {		
+							if(decimal_zeroes[columnNames[j]]) {
+								str = std::to_string(h_columns_int[columnNames[j]][i]);
+								//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+								while(str.length() <= decimal_zeroes[columnNames[j]])
+									str = '0' + str;
+								str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
+								fprintf(file_pr, "%s", str.c_str());
+							}	
+							else
+								fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+							
 						}									
                         else {
                             //fprintf(file_pr, "%.*s", string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str());
@@ -1487,12 +1541,12 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
         //lets update the data dictionary
         for(unsigned int j=0; j < columnNames.size(); j++) {
 
-            if(decimal[columnNames[j]] == 1)
-                data_dict[file_name][columnNames[j]].col_type = 3;
-            else
-                data_dict[file_name][columnNames[j]].col_type = type[columnNames[j]];
+            data_dict[file_name][columnNames[j]].col_type = type[columnNames[j]];
             if(type[columnNames[j]] != 2)
-                data_dict[file_name][columnNames[j]].col_length = 0;
+				if(decimal[columnNames[j]])
+					data_dict[file_name][columnNames[j]].col_length = decimal_zeroes[columnNames[j]];
+				else
+					data_dict[file_name][columnNames[j]].col_length = 0;
             else
                 data_dict[file_name][columnNames[j]].col_length = char_size[columnNames[j]];
         };
@@ -1772,14 +1826,10 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			for(unsigned int i=0; i < columnNames.size(); i++) {
 				auto colname = columnNames[i];				
 				if (type[colname] == 0) {		
-					//if(d_columns_int[colname].size() < rec_sz) {
-					//	d_columns_int[colname].resize(rec_sz);	
 					d_columns_int[colname].resize(d_columns_int[colname].size() + rec_sz);	
 					h_columns_int[colname].resize(h_columns_int[colname].size() + rec_sz);					
 				}
 				else if (type[colname] == 1) {
-					//if(d_columns_float[colname].size() < rec_sz)
-					//	d_columns_float[colname].resize(rec_sz);
 					d_columns_float[colname].resize(d_columns_float[colname].size() + rec_sz);	
 					h_columns_float[colname].resize(h_columns_float[colname].size() + rec_sz);
 				}
@@ -1867,13 +1917,21 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 					gpu_date date_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed);
 					thrust::for_each(begin, begin + mRecCount, date_ff);
 				}
-				else { //int				
-					gpu_atoll atoll_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed, 
-										thrust::raw_pointer_cast(ind_cnt.data()));				
-					thrust::for_each(begin, begin + mRecCount, atoll_ff);					
-				};	
-				
-				thrust::copy(d_columns_int[columnNames[i]].begin() + recs_processed, d_columns_int[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_int[columnNames[i]].begin() + recs_processed);
+				else { //int		
+					if(decimal[columnNames[i]]) {
+						thrust::device_vector<unsigned int> scale(1);
+						scale[0] =  decimal_zeroes[columnNames[i]];
+						gpu_atold atold((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed, 
+											thrust::raw_pointer_cast(ind_cnt.data()), thrust::raw_pointer_cast(scale.data()));				
+						thrust::for_each(begin, begin + mRecCount, atold);						
+					}
+					else {	
+						gpu_atoll atoll_ff((const char*)dest[i],(long long int*)thrust::raw_pointer_cast(d_columns_int[columnNames[i]].data()) + recs_processed, 
+											thrust::raw_pointer_cast(ind_cnt.data()));				
+						thrust::for_each(begin, begin + mRecCount, atoll_ff);					
+					};	
+				};					
+				thrust::copy(d_columns_int[columnNames[i]].begin() + recs_processed, d_columns_int[columnNames[i]].begin()+recs_processed+mRecCount, h_columns_int[columnNames[i]].begin() + recs_processed);	
 			}
 			else if(type[columnNames[i]] == 1) {
 				gpu_atof atof_ff((const char*)dest[i],(double*)thrust::raw_pointer_cast(d_columns_float[columnNames[i]].data()) + recs_processed, 
@@ -2014,27 +2072,6 @@ bool* CudaSet::compare(float_type s, float_type d, int_type op_type)
 }
 
 
-bool* CudaSet::compare(int_type* column1, int_type d, int_type op_type)
-{
-    thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
-    thrust::device_ptr<int_type> dev_ptr(column1);
-
-    if (op_type == 2) // >
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::greater<int_type>());
-    else if (op_type == 1)  // <
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::less<int_type>());
-    else if (op_type == 6) // >=
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::greater_equal<int_type>());
-    else if (op_type == 5)  // <=
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::less_equal<int_type>());
-    else if (op_type == 4)// =
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::equal_to<int_type>());
-    else // !=
-        thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::not_equal_to<int_type>());
-
-    return thrust::raw_pointer_cast(temp);
-
-}
 
 bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
 {
@@ -2057,26 +2094,113 @@ bool* CudaSet::compare(float_type* column1, float_type d, int_type op_type)
     return thrust::raw_pointer_cast(res);
 }
 
+bool* CudaSet::compare(int_type* column1, int_type d, int_type op_type, unsigned int p1, unsigned int p2)
+{
+    thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
+    thrust::device_ptr<int_type> dev_ptr(column1);
+	
+	if(p2)
+		d = d*(unsigned int)pow(10, p2);
+
+    if (op_type == 2) // >
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::greater<int_type>());		
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::greater<int_type>());		
+    else if (op_type == 1)  // <
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::less<int_type>());
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::less<int_type>());
+    else if (op_type == 6) // >=
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::greater_equal<int_type>());
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::greater_equal<int_type>());
+    else if (op_type == 5)  // <=
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::less_equal<int_type>());
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::less_equal<int_type>());
+    else if (op_type == 4)// =
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::equal_to<int_type>());
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::equal_to<int_type>());
+    else // !=
+		if(!p1)
+			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::not_equal_to<int_type>());
+		else
+			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::not_equal_to<int_type>());
 
 
-bool* CudaSet::compare(int_type* column1, int_type* column2, int_type op_type)
+    return thrust::raw_pointer_cast(temp);
+
+}
+
+
+
+bool* CudaSet::compare(int_type* column1, int_type* column2, int_type op_type, unsigned int p1, unsigned int p2)
 {
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
     thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
 
     if (op_type == 2) // >
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::greater<int_type>());
+		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::greater<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::greater<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater<int_type>());
     else if (op_type == 1)  // <
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less<int_type>());
+   		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::less<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::less<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::less<int_type>());
     else if (op_type == 6) // >=
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::greater_equal<int_type>());
+   		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::greater_equal<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater_equal<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::greater_equal<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater_equal<int_type>());
     else if (op_type == 5)  // <=
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less_equal<int_type>());
+   		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less_equal<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::less_equal<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::less_equal<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::less_equal<int_type>());
     else if (op_type == 4)// =
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::equal_to<int_type>());
+   		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::equal_to<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::equal_to<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::equal_to<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::equal_to<int_type>());
     else // !=
-        thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::not_equal_to<int_type>());
+   		if(!p1 && !p2)
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::not_equal_to<int_type>());
+		else if(p1 && p2)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::not_equal_to<int_type>());
+		else if(p1)
+			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::not_equal_to<int_type>());
+		else 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::not_equal_to<int_type>());
+
 
     return thrust::raw_pointer_cast(temp);
 }
@@ -2132,13 +2256,12 @@ bool* CudaSet::compare(float_type* column1, int_type* column2, int_type op_type)
 }
 
 
-float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, int reverse)
+float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, bool reverse)
 {
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
 	};
 	thrust::device_ptr<float_type> temp((float_type*)alloced_mem.back());								
-    //thrust::device_ptr<float_type> temp = thrust::device_malloc<float_type>(mRecCount);
     thrust::device_ptr<int_type> dev_ptr(column1);
 
     thrust::transform(dev_ptr, dev_ptr + mRecCount, temp, long_to_float_type()); // in-place transformation
@@ -2167,48 +2290,166 @@ float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, 
     };
 	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
+}
 
+int_type* CudaSet::op(int_type* column1, int_type d, string op_type, bool reverse, unsigned int p1, unsigned int p2)
+{
+	if(alloced_mem.empty()) {								
+		alloc_pool(maxRecs);
+	};
+	//cout << "OP " << d << " " << op_type << " " << p1 << " " << p2 << endl;
+	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());								    
+    thrust::device_ptr<int_type> dev_ptr1(column1);
+	unsigned int d1 = d;
+	if(p2)
+		d = d*(unsigned int)pow(10, p2);	
+
+    if(reverse == 0) {
+		
+        if (op_type.compare("MUL") == 0) {
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount,  thrust::make_constant_iterator(d1), temp, thrust::multiplies<int_type>());
+		}
+        else if (op_type.compare("ADD") == 0) {
+			if(!p1)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_constant_iterator(d*(unsigned int)pow(10, p2)), temp, thrust::plus<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)),  thrust::make_constant_iterator(d), temp, thrust::plus<int_type>());
+		}	
+        else if (op_type.compare("MINUS") == 0) {
+			if(!p1)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_constant_iterator(d*(unsigned int)pow(10, p2)), temp, thrust::minus<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)),  thrust::make_constant_iterator(d), temp, thrust::minus<int_type>());
+		}	
+        else {
+			if(!p1)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_constant_iterator(d*(unsigned int)pow(10, p2)), temp, thrust::divides<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)),  thrust::make_constant_iterator(d), temp, thrust::divides<int_type>());
+		}	
+    }
+    else {
+
+        if (op_type.compare("MUL") == 0) {
+			if(!p1)
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, dev_ptr1, temp, thrust::multiplies<int_type>());
+			else
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::multiplies<int_type>());
+		}	
+        else if (op_type.compare("ADD") == 0) {         
+			if(!p1)
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, dev_ptr1, temp, thrust::plus<int_type>());
+			else
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::plus<int_type>());
+		}
+        else if (op_type.compare("MINUS") == 0) {
+			if(!p1)
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, dev_ptr1, temp, thrust::minus<int_type>());
+			else
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::minus<int_type>());
+		}	
+        else {
+			if(!p1)
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, dev_ptr1, temp, thrust::divides<int_type>());
+			else
+				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::divides<int_type>());
+		};
+    };
+	alloced_mem.pop_back();
+    return thrust::raw_pointer_cast(temp);
 }
 
 
-
-
-int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, int reverse)
+int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, bool reverse, unsigned int p1, unsigned int p2)
 {
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
 	};
 	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());								
-    //thrust::device_ptr<int_type> temp = thrust::device_malloc<int_type>(mRecCount);
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
+	
+	//cout << "OP " <<  op_type << " " << p1 << " " << p2 << " " << reverse << endl;
 
     if(reverse == 0) {
-        if (op_type.compare("MUL") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::multiplies<int_type>());
-        else if (op_type.compare("ADD") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::plus<int_type>());
-        else if (op_type.compare("MINUS") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::minus<int_type>());
-        else
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::divides<int_type>());
+        if (op_type.compare("MUL") == 0) {
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::multiplies<int_type>());
+		}	
+        else if (op_type.compare("ADD") == 0) {
+   			if(!p1 && !p2)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::plus<int_type>());
+			else if(p1 && p2) {
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::plus<int_type>());
+			}	
+			else if (p1)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::plus<int_type>());
+			else
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::plus<int_type>());				
+
+		}	
+        else if (op_type.compare("MINUS") == 0) {
+   			if(!p1 && !p2)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::minus<int_type>());
+			else if(p1 && p2)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::minus<int_type>());
+			else if (p1)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::minus<int_type>());
+			else
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::minus<int_type>());				
+
+		}	
+        else {
+			if(!p1 && !p2)
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::divides<int_type>());
+			else if(p1 && p2)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::divides<int_type>());
+			else if (p1)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), dev_ptr2, temp, thrust::divides<int_type>());
+			else
+				thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), temp, thrust::divides<int_type>());				
+		}	
     }
     else  {
-        if (op_type.compare("MUL") == 0)
-            thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::multiplies<int_type>());
-        else if (op_type.compare("ADD") == 0)
-            thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::plus<int_type>());
-        else if (op_type.compare("MINUS") == 0)
-            thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::minus<int_type>());
-        else
-            thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::divides<int_type>());
+        if (op_type.compare("MUL") == 0) {
+			thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::multiplies<int_type>());
+		}	
+        else if (op_type.compare("ADD") == 0) {
+			if(!p1 && !p2)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::plus<int_type>());
+			else if(p1 && p2)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::plus<int_type>());
+			else if (p1)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::plus<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), dev_ptr1, temp, thrust::plus<int_type>());				
+
+		}	
+        else if (op_type.compare("MINUS") == 0) {
+			if(!p1 && !p2)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::minus<int_type>());
+			else if(p1 && p2)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::minus<int_type>());
+			else if (p1)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::minus<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), dev_ptr1, temp, thrust::minus<int_type>());				
+		}	
+        else {
+			if(!p1 && !p2)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::divides<int_type>());
+			else if(p1 && p2)
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::divides<int_type>());
+			else if (p1)
+				thrust::transform(dev_ptr2, dev_ptr2+mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::divides<int_type>());
+			else
+				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), dev_ptr1, temp, thrust::divides<int_type>());				
+		}
     }
 	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
-
 }
 
-float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type, int reverse)
+float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type, bool reverse)
 {
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
@@ -2241,41 +2482,10 @@ float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type
     return thrust::raw_pointer_cast(temp);
 }
 
-int_type* CudaSet::op(int_type* column1, int_type d, string op_type, int reverse)
-{
-	if(alloced_mem.empty()) {								
-		alloc_pool(maxRecs);
-	};
-	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());								
-    //thrust::device_ptr<int_type> temp = thrust::device_malloc<int_type>(mRecCount);
-    thrust::fill(temp, temp+mRecCount, d);
-    thrust::device_ptr<int_type> dev_ptr1(column1);
+	
 
-    if(reverse == 0) {
-        if (op_type.compare("MUL") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, temp, temp, thrust::multiplies<int_type>());
-        else if (op_type.compare("ADD") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, temp, temp, thrust::plus<int_type>());
-        else if (op_type.compare("MINUS") == 0)
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, temp, temp, thrust::minus<int_type>());
-        else
-            thrust::transform(dev_ptr1, dev_ptr1+mRecCount, temp, temp, thrust::divides<int_type>());
-    }
-    else {
-        if (op_type.compare("MUL") == 0)
-            thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::multiplies<int_type>());
-        else if (op_type.compare("ADD") == 0)
-            thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::plus<int_type>());
-        else if (op_type.compare("MINUS") == 0)
-            thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::minus<int_type>());
-        else
-            thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::divides<int_type>());
-    };
-	alloced_mem.pop_back();
-    return thrust::raw_pointer_cast(temp);
-}
 
-float_type* CudaSet::op(int_type* column1, float_type d, string op_type, int reverse)
+float_type* CudaSet::op(int_type* column1, float_type d, string op_type, bool reverse)
 {
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
@@ -2313,7 +2523,7 @@ float_type* CudaSet::op(int_type* column1, float_type d, string op_type, int rev
     return thrust::raw_pointer_cast(temp);
 }
 
-float_type* CudaSet::op(float_type* column1, float_type d, string op_type,int reverse)
+float_type* CudaSet::op(float_type* column1, float_type d, string op_type,bool reverse)
 {
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
@@ -2495,23 +2705,22 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 0;
+			decimal_zeroes[nameRef.front()] = 0;
             h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type >();
             d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
         }
         else if ((typeRef.front()).compare("float") == 0) {
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 0;
             h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type >();
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
-            type[nameRef.front()] = 1;
+            type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 1;
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
-            d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
+			decimal_zeroes[nameRef.front()] = sizeRef.front();
+            h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+            d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
         }
         else {
             type[nameRef.front()] = 2;
@@ -2549,8 +2758,8 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
         if ((typeRef.front()).compare("int") == 0) {
             type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 0;
+			decimal_zeroes[nameRef.front()] = 0;
             h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-            //h_columns_int[nameRef.front()] = thrust::host_vector<int_type>();
             d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
 			
         }
@@ -2558,15 +2767,14 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             type[nameRef.front()] = 1;
             decimal[nameRef.front()] = 0;
             h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
             d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
         }
         else if ((typeRef.front()).compare("decimal") == 0) {
-            type[nameRef.front()] = 1;
+            type[nameRef.front()] = 0;
             decimal[nameRef.front()] = 1;
-            h_columns_float[nameRef.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-            //h_columns_float[nameRef.front()] = thrust::host_vector<float_type>();
-            d_columns_float[nameRef.front()] = thrust::device_vector<float_type>();
+			decimal_zeroes[nameRef.front()] = sizeRef.front();
+            h_columns_int[nameRef.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
+            d_columns_int[nameRef.front()] = thrust::device_vector<int_type>();
         }
 
         else {
@@ -2612,6 +2820,7 @@ void CudaSet::initialize(queue<string> op_sel, const queue<string> op_sel_as)
         type[op_sel.front()] = a->type[op_sel.front()];
         cols[i] = op_sel.front();
         decimal[op_sel.front()] = a->decimal[op_sel.front()];
+		decimal_zeroes[op_sel.front()] = a->decimal_zeroes[op_sel.front()];
         columnNames.push_back(op_sel.front());
 
         if (a->type[op_sel.front()] == 0)  {
@@ -2669,23 +2878,21 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 if (a->type[op_sel.front()] == 0)  {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
                     h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
                     if(a->string_map.find(op_sel.front()) != a->string_map.end()) {
                         string_map[op_sel.front()] = a->string_map[op_sel.front()];
-                        //cout << "SETTING J " << op_sel.front() << " " << a->string_map[op_sel.front()] << endl;
                     };
+					decimal[op_sel.front()] = a->decimal[op_sel.front()];
+					decimal_zeroes[op_sel.front()] = a->decimal_zeroes[op_sel.front()];
                 }
                 else if (a->type[op_sel.front()] == 1) {
                     d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
                     h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
                 }
                 else {
                     h_columns_char[op_sel.front()] = nullptr;
                     d_columns_char[op_sel.front()] = nullptr;
                     char_size[op_sel.front()] = a->char_size[op_sel.front()];
                     string_map[op_sel.front()] = a->string_map[op_sel.front()];
-                    //cout << "SETTING J " << op_sel.front() << " " << a->string_map[op_sel.front()] << endl;
                 };
                 i++;
             }
@@ -2698,24 +2905,21 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 if (b->type[op_sel.front()] == 0) {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
                     h_columns_int[op_sel.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >();
-                    //h_columns_int[op_sel.front()] = thrust::host_vector<int_type>();
                     if(b->string_map.find(op_sel.front()) != b->string_map.end()) {
                         string_map[op_sel.front()] = b->string_map[op_sel.front()];
-                        //cout << "SETTING J " << op_sel.front() << " " << b->string_map[op_sel.front()] << endl;
                     };
-
+					decimal[op_sel.front()] = b->decimal[op_sel.front()];
+					decimal_zeroes[op_sel.front()] = b->decimal_zeroes[op_sel.front()];
                 }
                 else if (b->type[op_sel.front()] == 1) {
                     d_columns_float[op_sel.front()] = thrust::device_vector<float_type>();
                     h_columns_float[op_sel.front()] = thrust::host_vector<float_type, pinned_allocator<float_type> >();
-                    //h_columns_float[op_sel.front()] = thrust::host_vector<float_type>();
                 }
                 else {
                     h_columns_char[op_sel.front()] = nullptr;
                     d_columns_char[op_sel.front()] = nullptr;
                     char_size[op_sel.front()] = b->char_size[op_sel.front()];
                     string_map[op_sel.front()] = b->string_map[op_sel.front()];
-                    //cout << "SETTING J " << op_sel.front() << " " << b->string_map[op_sel.front()] << endl;
                 };
                 i++;
             }
@@ -3174,7 +3378,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 		};	
 
         //cout << endl << "MAP CHECK start " << segment <<  endl;
-        char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
+        char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
         //cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
         if(map_check == 'R') {
@@ -3182,7 +3386,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 			phase_copy = 0;
             copyColumns(a, b->fil_value, segment, cnt);
 			phase_copy = old_ph;			
-            bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, a, segment);
+            bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
             thrust::device_ptr<bool> bp((bool*)res);
             b->prm_index = 'R';
             b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
@@ -3202,7 +3406,6 @@ void filter_op(const char *s, const char *f, unsigned int segment)
     }
     if(verbose)
         cout << endl << "filter res " << b->mRecCount << " " << phase_copy << endl;
-    //std::cout<< "filter time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 
@@ -3462,7 +3665,7 @@ void delete_records(const char* f) {
 
         for(unsigned int i = 0; i < a->segCount; i++) {
 
-            map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, a, i);
+            map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a, i);
             if(verbose)
                 cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
             if(map_check != 'N') {
@@ -3472,7 +3675,7 @@ void delete_records(const char* f) {
                 tmp = a->mRecCount;
 
                 if(a->mRecCount) {
-                    bool* res = filter(op_type,op_value,op_nums, op_nums_f, a, i);
+                    bool* res = filter(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a, i);
                     thrust::device_ptr<bool> bp((bool*)res);
                     thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
                                     bp, a->prm_d.begin(), thrust::logical_not<bool>());

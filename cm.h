@@ -70,6 +70,7 @@ extern queue<string> op_presort;
 extern queue<string> op_value;
 extern queue<int_type> op_nums;
 extern queue<float_type> op_nums_f;
+extern queue<unsigned int> op_nums_precision; //decimals' precision
 extern queue<string> col_aliases;
 extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
 extern unsigned int total_segments;
@@ -200,6 +201,7 @@ struct long_to_float
     }
 };
 
+
 struct is_break
 {
  __host__ __device__
@@ -288,6 +290,122 @@ struct gpu_atof
 		dest[i] = sign * (frac ? (value / scale) : (value * scale));		
 	}
 };	
+
+
+
+struct gpu_atod
+{
+	const char *source;
+    int_type *dest;
+	const unsigned int *len;
+	const unsigned int *sc;
+	
+	gpu_atod(const char *_source, int_type *_dest, const unsigned int *_len, const unsigned int *_sc):
+			  source(_source), dest(_dest), len(_len), sc(_sc) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		const char *p;
+		int frac;
+		double sign, value, scale;	
+		
+		p = source + len[0]*i;		
+		
+    	while (*p == ' ') {
+			p += 1;
+		}
+    
+		sign = 1.0;
+		if (*p == '-') {
+			sign = -1.0;
+			p += 1;
+		} else if (*p == '+') {
+			p += 1;
+		}
+		
+		for (value = 0.0; *p >= '0' && *p <= '9'; p += 1) {
+			value = value * 10.0 + (*p - '0');
+		}
+
+        if (*p == '.') {
+			double pow10 = 10.0;
+			p += 1;
+			while (*p >= '0' && *p <= '9') {
+				value += (*p - '0') / pow10;
+				pow10 *= 10.0;
+				p += 1;
+			}
+		}
+		
+		frac = 0;
+		scale = 1.0;
+		
+		dest[i] = (sign * (frac ? (value / scale) : (value * scale)))*sc[0];		
+	}
+};	
+
+
+struct gpu_atold
+{
+	const char *source;
+    long long int *dest;
+	const unsigned int *len;
+	const unsigned int *sc;
+	
+	gpu_atold(const char *_source, long long int *_dest, const unsigned int *_len, const unsigned int *_sc):
+			  source(_source), dest(_dest), len(_len), sc(_sc) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		const char *s;
+		long long int acc;
+		int c;
+		int neg;
+		int point = 0;	
+		bool cnt = 0;
+		
+		s = source + len[0]*i;		
+	
+		do {
+			c = (unsigned char) *s++;
+		} while (c == ' ');				
+		
+		if (c == '-') {
+			neg = 1;
+			c = *s++;
+		} else {
+			neg = 0;
+			if (c == '+')
+				c = *s++;
+		}		
+		
+		for (acc = 0;; c = (unsigned char) *s++) {
+			if (c >= '0' && c <= '9')
+				c -= '0';
+			else {
+				if(c != '.')
+					break;
+				cnt = 1;
+				continue;
+			};	
+			if (c >= 10)
+				break;	
+			if (neg) {
+				acc *= 10;
+				acc -= c;
+			} 
+			else {
+				acc *= 10;
+				acc += c;
+			}		
+			if(cnt)
+				point++;
+			if(point == sc[0])
+				break;
+		}		
+		dest[i] = acc * (unsigned int)pow(10, sc[0]- point);	
+	}
+};
 
 
 struct gpu_atoll
@@ -426,6 +544,7 @@ public:
     queue<string> fil_type,fil_value;
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
+	queue<unsigned int> fil_nums_precision;
 	
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, totalRecs;
     vector<string> columnNames;
@@ -440,6 +559,7 @@ public:
     queue<string> presorted_fields; //globally sorted by fields
     map<string, unsigned int> type; // 0 - integer, 1-float_type, 2-char
     map<string, bool> decimal; // column is decimal - affects only compression
+	map<string, unsigned int> decimal_zeroes; // number of zeroes in decimals
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
     map<unsigned int, string> cols; // column positions in a file
 	map<string, bool> map_like; //for LIKE processing
@@ -491,17 +611,17 @@ public:
     bool* logical_or(bool* column1, bool* column2);
     bool* compare(int_type s, int_type d, int_type op_type);
     bool* compare(float_type s, float_type d, int_type op_type);
-    bool* compare(int_type* column1, int_type d, int_type op_type);
+    bool* compare(int_type* column1, int_type d, int_type op_type, unsigned int p1, unsigned int p2);
     bool* compare(float_type* column1, float_type d, int_type op_type);
-    bool* compare(int_type* column1, int_type* column2, int_type op_type);
+    bool* compare(int_type* column1, int_type* column2, int_type op_type, unsigned int p1, unsigned int p2);
     bool* compare(float_type* column1, float_type* column2, int_type op_type);
     bool* compare(float_type* column1, int_type* column2, int_type op_type);
-    float_type* op(int_type* column1, float_type* column2, string op_type, int reverse);
-    int_type* op(int_type* column1, int_type* column2, string op_type, int reverse);
-    float_type* op(float_type* column1, float_type* column2, string op_type, int reverse);
-    int_type* op(int_type* column1, int_type d, string op_type, int reverse);
-    float_type* op(int_type* column1, float_type d, string op_type, int reverse);
-    float_type* op(float_type* column1, float_type d, string op_type,int reverse);
+    float_type* op(int_type* column1, float_type* column2, string op_type, bool reverse);
+    int_type* op(int_type* column1, int_type* column2, string op_type, bool reverse, unsigned int p1, unsigned int p2);
+    float_type* op(float_type* column1, float_type* column2, string op_type, bool reverse);
+    int_type* op(int_type* column1, int_type d, string op_type, bool reverse, unsigned int p1, unsigned int p2);
+    float_type* op(int_type* column1, float_type d, string op_type, bool reverse);
+    float_type* op(float_type* column1, float_type d, string op_type, bool reverse);
 	char loadIndex(const string index_name, const unsigned int segment);
 
 protected:

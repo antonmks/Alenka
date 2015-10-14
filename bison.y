@@ -33,7 +33,7 @@
 %token <strval> NAME
 %token <strval> STRING
 %token <intval> INTNUM
-%token <intval> DECIMAL1
+%token <strval> DECIMAL1
 %token <intval> BOOL1
 %token <floatval> APPROXNUM
 /* user @abc names */
@@ -45,6 +45,7 @@
 %left XOR
 %left AND
 %left DISTINCT
+%left YEAR
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
@@ -82,6 +83,7 @@
 %token ON
 %token BINARY
 %token DISTINCT
+%token YEAR
 %token LEFT
 %token RIGHT
 %token OUTER
@@ -98,7 +100,6 @@
 %token THEN
 %token ELSE
 %token END
-%token REFERENCES
 %token SHOW
 %token TABLES
 %token TABLE
@@ -160,12 +161,11 @@ NAME { emit_name($1); }
 | USERVAR { emit("USERVAR %s", $1); }
 | STRING { emit_string($1); }
 | INTNUM { emit_number($1); }
-| APPROXNUM { emit_float($1); }
 | DECIMAL1 { emit_decimal($1); }
+| APPROXNUM { emit_float($1); }
 | BOOL1 { emit("BOOL %d", $1); }
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' REFERENCES NAME '(' NAME ')' { emit_varchar($1, $3, $6, $8, $11, $13);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ',' INTNUM ')' { emit_vardecimal($1, $3, $6,  $8, $10);}
 | NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", "");}
-| NAME '{' INTNUM '}' ':' NAME REFERENCES NAME '(' NAME ')' { emit_var($1, $3, $6, $8, $10);}
 | NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", "");}
 | NAME ASC { emit_var_asc($1);}
 | NAME DESC { emit_var_desc($1);}
@@ -175,6 +175,7 @@ NAME { emit_name($1); }
 | MIN '(' expr ')' { emit_min(); }
 | MAX '(' expr ')' { emit_max(); }
 | DISTINCT expr { emit_distinct(); }
+| YEAR '(' expr ')' { emit_year(); }
 ;
 
 expr:

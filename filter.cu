@@ -13,6 +13,7 @@
  */
 
 #include "cm.h"
+#include "zone_map.h"
 
 struct cmp_functor_dict
 {
@@ -123,13 +124,7 @@ starCheck:
 
 
 
-
-
-
-
-
-
-bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
              unsigned int segment)
 {
 
@@ -137,6 +132,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     stack<string> exe_value;
     stack<int_type*> exe_vectors;
     stack<float_type*> exe_vectors_f;
+	stack<unsigned int> exe_precision;
     stack<int_type> exe_nums;
     stack<bool*> bool_vectors;
     stack<float_type> exe_nums_f;
@@ -158,6 +154,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 exe_nums.push(op_nums.front());
                 op_nums.pop();
                 exe_type.push(ss);
+				exe_precision.push(op_nums_precision.front());
+				op_nums_precision.pop();
+
             }
             else if (ss.compare("NAME") == 0 || ss.compare("STRING") == 0) {
                 exe_value.push(op_value.front());
@@ -205,6 +204,17 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     n2 = exe_nums.top();
                     exe_nums.pop();
+					
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();					
+					auto pres = precision_func(p1, p2, ss);	
+					exe_precision.push(pres);
+					if(p1) 
+						n1 = n1*(unsigned int)pow(10,p1);
+					if(p2) 
+						n2 = n2*(unsigned int)pow(10,p2);
 
                     if (ss.compare("ADD") == 0 )
                         res = n1+n2;
@@ -283,6 +293,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = a->decimal_zeroes[s1_val];					
 
                     if (a->type[s1_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s1_val);
@@ -292,8 +305,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     }
                     else {
                         int_type* t = a->get_int_by_name(s1_val);
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);
                         exe_type.push("VECTOR");
-                        exe_vectors.push(a->op(t,n1,ss,1));
+                        exe_vectors.push(a->op(t,n1,ss,1, p1, p2));
                     };
                 }
                 else if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
@@ -301,6 +316,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = a->decimal_zeroes[s2_val];					
+
 
                     if (a->type[s2_val] == 1) {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -309,8 +328,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     }
                     else {
                         int_type* t = a->get_int_by_name(s2_val);
+						auto pres = precision_func(p2, p1, ss);	
+						exe_precision.push(pres);
                         exe_type.push("VECTOR");
-                        exe_vectors.push(a->op(t,n1,ss,0));
+                        exe_vectors.push(a->op(t,n1,ss,0, p2, p1));
                     };
                 }
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
@@ -323,8 +344,12 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         int_type* t1 = a->get_int_by_name(s1_val);
                         if (a->type[s2_val] == 0) {
                             int_type* t = a->get_int_by_name(s2_val);
+							auto p1 = a->decimal_zeroes[s1_val];					
+							auto p2 = a->decimal_zeroes[s2_val];												
+							auto pres = precision_func(p1, p2, ss);	
+							exe_precision.push(pres);
                             exe_type.push("VECTOR");
-                            exe_vectors.push(a->op(t,t1,ss,0));
+                            exe_vectors.push(a->op(t,t1,ss,0,p2,p1));
                         }
                         else {
                             float_type* t = a->get_float_type_by_name(s2_val);
@@ -358,7 +383,12 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                             int_type* s3 = exe_vectors.top();
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
-                            exe_vectors.push(a->op(t,s3,ss,0));
+							auto p1 = exe_precision.top();
+							exe_precision.pop();
+							auto p2 = a->decimal_zeroes[s2_val];					
+							auto pres = precision_func(p1, p2, ss);	
+							exe_precision.push(pres);
+                            exe_vectors.push(a->op(t,s3,ss,0,p1,p2));
                             //free s3
                             cudaFree(s3);
 
@@ -401,7 +431,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                             int_type* s3 = exe_vectors.top();
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
-                            exe_vectors.push(a->op(t,s3,ss,1));
+							auto p1 = exe_precision.top();
+							exe_precision.pop();
+							auto p2 = a->decimal_zeroes[s1_val];					
+							auto pres = precision_func(p2, p1, ss);	
+							exe_precision.push(pres);
+
+                            exe_vectors.push(a->op(t,s3,ss,1,p2,p1));
                             cudaFree(s3);
                         }
                         else {
@@ -438,7 +474,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
                         exe_type.push("VECTOR");
-                        exe_vectors.push(a->op(s3,n1, ss,1));
+						auto p1 = exe_precision.top();
+						exe_precision.pop();
+						auto p2 = exe_precision.top();
+						exe_precision.pop();
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);						
+                        exe_vectors.push(a->op(s3,n1, ss,1,p1,p2));
                         cudaFree(s3);
                     }
                     else {
@@ -457,7 +499,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
                         exe_type.push("VECTOR");
-                        exe_vectors.push(a->op(s3,n1, ss,0));
+						auto p1 = exe_precision.top();
+						exe_precision.pop();
+						auto p2 = exe_precision.top();
+						exe_precision.pop();
+						auto pres = precision_func(p2, p1, ss);	
+						exe_precision.push(pres);												
+                        exe_vectors.push(a->op(s3,n1, ss,0, p2, p1));
                         cudaFree(s3);
                     }
                     else {
@@ -514,7 +562,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     int_type* s4 = exe_vectors.top();
                     exe_vectors.pop();
                     exe_type.push("VECTOR");
-                    exe_vectors.push(a->op(s3, s4,ss,1));
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = precision_func(p1, p2, ss);	
+					exe_precision.push(pres);						
+					
+                    exe_vectors.push(a->op(s3, s4,ss,1,p1,p2));
                     cudaFree(s3);
                     cudaFree(s4);
                 }
@@ -567,6 +622,17 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n2 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();					
+					auto pres = precision_func(p1, p2, ss);	
+					exe_precision.push(pres);				
+					if(p1) 
+						n1 = n1*(unsigned int)pow(10,p1);
+					if(p2) 
+						n2 = n2*(unsigned int)pow(10,p2);
+					
                     bool_vectors.push(a->compare(n1,n2,cmp_type));
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("FLOAT") == 0) {
@@ -673,8 +739,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                                 thrust::transform(vals.begin(), vals.end(), thrust::make_constant_iterator(vv[0]), dd_res, thrust::not_equal_to<unsigned long long int>());
                             delete [] buff;
 
-                            //auto cnt = thrust::count(dd_res, dd_res + a->mRecCount, 1);
-                            //cout << endl << "R" << endl;
                         }
                         else {
                             if(a->map_like.find(s2_val) == a->map_like.end()) {
@@ -767,8 +831,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     else {
                         if (a->type[s1_val] == 0) {
                             int_type* t = a->get_int_by_name(s1_val);
+							auto p2 = exe_precision.top();
+							exe_precision.pop();
+							auto p1 = a->decimal_zeroes[s1_val];					
+							auto pres = std::max(p1, p2);	
+							exe_precision.push(pres);
+							
                             exe_type.push("VECTOR");
-                            bool_vectors.push(a->compare(t,n1,cmp_type));
+                            bool_vectors.push(a->compare(t,n1,cmp_type, pres-p1, pres-p2));
                         }
                         else {
                             float_type* t = a->get_float_type_by_name(s1_val);
@@ -809,8 +879,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     else {
                         if (a->type[s2_val] == 0) {
                             int_type* t = a->get_int_by_name(s2_val);
+							auto p2 = exe_precision.top();
+							exe_precision.pop();
+							auto p1 = a->decimal_zeroes[s2_val];					
+							auto pres = std::max(p1, p2);	
+							exe_precision.push(pres);							
                             exe_type.push("VECTOR");
-                            bool_vectors.push(a->compare(t,n1,cmp_type));
+                            bool_vectors.push(a->compare(t,n1,cmp_type, p1, p2));
                         }
                         else {
                             float_type* t = a->get_float_type_by_name(s2_val);
@@ -829,7 +904,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     if (a->type[s1_val] == 0) {
                         int_type* t = a->get_int_by_name(s1_val);
                         exe_type.push("VECTOR");
-                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
+                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type,0,0));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s1_val);
@@ -847,7 +922,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
                         exe_type.push("VECTOR");
-                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type));
+                        bool_vectors.push(a->compare(t,(int_type)n1_f,cmp_type,0,0));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -874,7 +949,15 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1,cmp_type));
+					
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = std::max(p1, p2);	
+					exe_precision.push(pres);
+
+                    bool_vectors.push(a->compare(s3,n1,cmp_type, p1, p2));
                     cudaFree(s3);
                 }
                 else if (s1.compare("NUMBER") == 0 && s2.compare("VECTOR F") == 0) {
@@ -895,7 +978,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,n1,cmp_type));
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = std::max(p1, p2);	
+					exe_precision.push(pres);
+					
+                    bool_vectors.push(a->compare(s3,n1,cmp_type, p2, p1));
                     cudaFree(s3);
                 }
 
@@ -916,7 +1006,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type));
+                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type,0,0));
                     cudaFree(s3);
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("VECTOR F") == 0) {
@@ -935,7 +1025,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     n1_f = exe_nums_f.top();
                     exe_nums_f.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type));
+                    bool_vectors.push(a->compare(s3,(int_type)n1_f,cmp_type,0,0));
                     cudaFree(s3);
                 }
 
@@ -967,7 +1057,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
-                        bool_vectors.push(a->compare(t,s3,cmp_type));
+						
+						auto p1 = exe_precision.top();
+						exe_precision.pop();
+						auto p2 = a->decimal_zeroes[s2_val];					
+						auto pres = max(p1, p2);	
+						exe_precision.push(pres);
+
+                        bool_vectors.push(a->compare(t,s3,cmp_type,p2,p1));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -1005,7 +1102,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_int_by_name(s2_val);
-                        bool_vectors.push(a->compare(t,s3,cmp_type));
+						auto p1 = exe_precision.top();
+						exe_precision.pop();
+						auto p2 = a->decimal_zeroes[s2_val];					
+						auto pres = std::max(p2, p1);	
+						exe_precision.push(pres);
+
+                        bool_vectors.push(a->compare(t,s3,cmp_type,p1,p2));
                     }
                     else {
                         float_type* t = a->get_float_type_by_name(s2_val);
@@ -1020,7 +1123,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     int_type* s2 = exe_vectors.top();
                     exe_vectors.pop();
                     exe_type.push("VECTOR");
-                    bool_vectors.push(a->compare(s2,s3,cmp_type));
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = max(p1, p2);	
+					exe_precision.push(pres);
+					
+                    bool_vectors.push(a->compare(s2,s3,cmp_type, p2, p1));
                     cudaFree(s3);
                     cudaFree(s2);
                 }
@@ -1071,7 +1181,11 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         int_type* t = a->get_int_by_name(s1_val);
                         if (a->type[s2_val] == 0) {
                             int_type* t1 = a->get_int_by_name(s2_val);
-                            bool_vectors.push(a->compare(t1,t,cmp_type));
+							auto p1 = a->decimal_zeroes[s1_val];					
+							auto p2 = a->decimal_zeroes[s2_val];					
+							auto pres = max(p1, p2);	
+							exe_precision.push(pres);
+                            bool_vectors.push(a->compare(t1,t,cmp_type, p2, p1));
                         }
                         else {
                             float_type* t1 = a->get_float_type_by_name(s2_val);

@@ -74,7 +74,6 @@ WHEN {return WHEN; }
 THEN {return THEN; }
 ELSE {return ELSE; }
 END {return END; }
-REFERENCES {return REFERENCES; }
 SHOW {return SHOW; }
 TABLES {return TABLES; }
 TABLE {return TABLE; }
@@ -85,11 +84,13 @@ FROM {return FROM; }
 LIKE {return LIKE; }
 CREATE {return CREATE; }
 INDEX {return INDEX; }
+YEAR {return YEAR; }
 
 
 [0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
 -?[0-9]+"."[0-9]* |
--?"."[0-9]+ |
+-?[0-9]+"."[0-9]* |
+-?"."[0-9]+ { yylval.strval = strdup(yytext); return DECIMAL1; }
 -?[0-9]+E[-+]?[0-9]+ |
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
 -?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atoff(yytext) ;return APPROXNUM; }

@@ -588,12 +588,59 @@ float_type* host_op(float_type* column1, float_type d, string op_type,int revers
 }
 
 
+unsigned int precision_func(unsigned int& p1, unsigned int& p2, string op) {
+
+	if (op.compare("DIV") != 0 ) {
+		unsigned int res;
+		if (op.compare("MUL") != 0 ) {			
+			if(p1 > p2) {
+				res = p1;				
+				p2 = p1-p2;				
+				p1 = 0;
+			}	
+			else {
+				res = p1;				
+				p1 = p2-p1;				
+				p2 = 0; 
+			};				
+			return res;
+		}	
+		else {
+			//std::swap(p1,p2);
+			res = p1+p2;
+			p1 = 0;
+			p2 = 0;
+			return res;
+		};	
+	}
+	else {
+		if(p1 == p2) {
+			p1 = p1+4;			
+			p2 = 0;
+			return p1;				
+		}
+		else {
+			if(p1 > p2) {
+				p1 = p1 + (p1-p2) + 4;
+				p2 = 0;
+				return p1;
+			}
+			else {
+				p2 = p2 + (p2-p1) + 4;
+				p1 = 0;
+				return p2;
+			}						
+		}		
+	};
+}
+
+
 
 //CudaSet a contains two records - with all minimum and maximum values of the segment
 //We need to determine if this segment needs to be processed
 //The check takes place in host's memory
 
-char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a, unsigned int segment)
+char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a, unsigned int segment)
 {
 
     stack<string> exe_type;
@@ -603,6 +650,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     stack<int_type> exe_nums;
     stack<char> bool_vectors;
     stack<float_type> exe_nums_f;
+	stack<unsigned int> exe_precision;
     string  s1, s2, s1_val, s2_val;
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
@@ -676,6 +724,8 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             if (ss.compare("NUMBER") == 0) {
                 exe_nums.push(op_nums.front());
                 op_nums.pop();
+				exe_precision.push(op_nums_precision.front());
+				op_nums_precision.pop();
             }
             else if (ss.compare("NAME") == 0)  {
                 if(var_exists(a, op_value.front())) {
@@ -712,6 +762,17 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     n2 = exe_nums.top();
                     exe_nums.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();					
+					auto pres = precision_func(p1, p2, ss);	
+					exe_precision.push(pres);
+					
+					if(p1) 
+						n1 = n1*(unsigned int)pow(10,p1);
+					if(p2) 
+						n2 = n2*(unsigned int)pow(10,p2);
 
                     if (ss.compare("ADD") == 0 )
                         res = n1+n2;
@@ -785,15 +846,27 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s1_val];					
 
                     if (a->type[s1_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s1_val);
                         exe_type.push("VECTOR F");
                         exe_vectors_f.push(host_op(t,(float_type)n1,ss,1));
-
                     }
                     else {
                         int_type* t = a->get_host_int_by_name(s1_val);
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,p1);
+							t[1] = t[1]*(unsigned int)pow(10,p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,p2);
+						};	
+							
                         exe_type.push("VECTOR");
                         exe_vectors.push(host_op(t,n1,ss,1));
                     };
@@ -803,7 +876,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
 
                     if (a->type[s2_val] == 1) {
                         float_type* t = a->get_host_float_by_name(s2_val);
@@ -812,6 +887,16 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     }
                     else {
                         int_type* t = a->get_host_int_by_name(s2_val);
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,p1);
+							t[1] = t[1]*(unsigned int)pow(10,p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,p2);
+						};	
+
                         exe_type.push("VECTOR");
                         exe_vectors.push(host_op(t,n1,ss,0));
                     };
@@ -819,43 +904,14 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
 
                     return 'R';
-                    /*s1_val = exe_value.top();
-                    exe_value.pop();
-                    s2_val = exe_value.top();
-                    exe_value.pop();
-
-                    if (a->type[s1_val] == 0) {
-                        int_type* t1 = a->get_host_int_by_name(s1_val);
-                        if (a->type[s2_val] == 0) {
-                            int_type* t = a->get_host_int_by_name(s2_val);
-                            exe_type.push("VECTOR");
-                            exe_vectors.push(host_op(t,t1,ss,0));
-                        }
-                        else {
-                            float_type* t = a->get_host_float_by_name(s2_val);
-                            exe_type.push("VECTOR F");
-                            exe_vectors_f.push(host_op(t1,t,ss,0));
-                        };
-                    }
-                    else {
-                        float_type* t = a->get_host_float_by_name(s1_val);
-                        if (a->type[s2_val] == 0) {
-                            int_type* t1 = a->get_host_int_by_name(s2_val);
-                            exe_type.push("VECTOR F");
-                            exe_vectors_f.push(host_op(t1,t,ss,0));
-                        }
-                        else {
-                            float_type* t1 = a->get_host_float_by_name(s2_val);
-                            exe_type.push("VECTOR F");
-                            exe_vectors_f.push(host_op(t,t1,ss,0));
-                        };
-                    }
-                    */
                 }
                 else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0 ) && s2.compare("NAME") == 0) {
 
                     s2_val = exe_value.top();
                     exe_value.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
@@ -864,10 +920,20 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             int_type* s3 = exe_vectors.top();
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
+							auto pres = precision_func(p1, p2,ss);	
+							exe_precision.push(pres);
+							
+							if(p1) {
+								t[0] = t[0]*(unsigned int)pow(10,p1);
+								t[1] = t[1]*(unsigned int)pow(10,p1);
+							};	
+							if(p2) {
+								s3[0] = s3[0]*(unsigned int)pow(10,p2);
+								s3[1] = s3[1]*(unsigned int)pow(10,p2);
+							};	
+							
                             exe_vectors.push(host_op(t,s3,ss,0));
-                            //free s3
                             cudaFree(s3);
-
                         }
                         else {
                             float_type* s3 = exe_vectors_f.top();
@@ -899,6 +965,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                     s1_val = exe_value.top();
                     exe_value.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s1_val];					
 
                     if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
@@ -907,6 +976,17 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                             int_type* s3 = exe_vectors.top();
                             exe_vectors.pop();
                             exe_type.push("VECTOR");
+							auto pres = precision_func(p1, p2, ss);	
+							exe_precision.push(pres);
+							if(p1) {
+								t[0] = t[0]*(unsigned int)pow(10,p1);
+								t[1] = t[1]*(unsigned int)pow(10,p1);
+							};	
+							if(p2) {
+								s3[0] = s3[0]*(unsigned int)pow(10,p2);
+								s3[1] = s3[1]*(unsigned int)pow(10,p2);
+							};	
+							
                             exe_vectors.push(host_op(t,s3,ss,1));
                             cudaFree(s3);
                         }
@@ -939,11 +1019,26 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0)  && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
 
                     if (s1.compare("VECTOR") == 0 ) {
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
                         exe_type.push("VECTOR");
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);
+						
+						if(p1) {
+							s3[0] = s3[0]*(unsigned int)pow(10,p1);
+							s3[1] = s3[1]*(unsigned int)pow(10,p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,p2);
+						};	
+						
                         exe_vectors.push(host_op(s3,n1, ss,1));
                         cudaFree(s3);
                     }
@@ -955,14 +1050,28 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         cudaFree(s3);
                     }
                 }
-                else if (s1.compare("NUMBER") == 0 && s2.compare("VECTOR") || s2.compare("VECTOR F") == 0) {
+                else if (s1.compare("NUMBER") == 0 &&( s2.compare("VECTOR") || s2.compare("VECTOR F") == 0)) {
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
 
                     if (s2.compare("VECTOR") == 0 ) {
                         int_type* s3 = exe_vectors.top();
                         exe_vectors.pop();
                         exe_type.push("VECTOR");
+						auto pres = precision_func(p1, p2, ss);	
+						exe_precision.push(pres);
+						if(p1) {
+							s3[0] = s3[0]*(unsigned int)pow(10,p1);
+							s3[1] = s3[1]*(unsigned int)pow(10,p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,p2);
+						};	
+
                         exe_vectors.push(host_op(s3,n1, ss,0));
                         cudaFree(s3);
                     }
@@ -1019,7 +1128,23 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_vectors.pop();
                     int_type* s4 = exe_vectors.top();
                     exe_vectors.pop();
-                    exe_type.push("VECTOR");
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = precision_func(p1, p2, ss);	
+					exe_precision.push(pres);
+					
+					if(p1) {
+						s3[0] = s3[0]*(unsigned int)pow(10,p1);
+						s3[1] = s3[1]*(unsigned int)pow(10,p1);
+					};	
+					if(p2) {
+						s4[0] = s4[0]*(unsigned int)pow(10,p2);
+						s4[1] = s4[1]*(unsigned int)pow(10,p2);
+					};						
+					
+					exe_type.push("VECTOR");
                     exe_vectors.push(host_op(s3, s4,ss,1));
                     cudaFree(s3);
                     cudaFree(s4);
@@ -1058,7 +1183,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
             else if (ss.compare("CMP") == 0) {
 
-
                 int_type cmp_type = op_nums.front();
                 op_nums.pop();
 
@@ -1068,13 +1192,22 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 exe_type.pop();
 
 
-
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     n2 = exe_nums.top();
                     exe_nums.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();					
+					auto pres = std::max(p1, p2);	
+					exe_precision.push(pres);					
                     exe_type.push("VECTOR");
+					if(p1) 
+						n1 = n1*(unsigned int)pow(10,pres-p1);
+					if(p2) 
+						n2 = n2*(unsigned int)pow(10,pres-p2);
                     bool_vectors.push(host_compare(n1,n2,cmp_type));
                 }
                 else if (s1.compare("FLOAT") == 0 && s2.compare("FLOAT") == 0) {
@@ -1117,10 +1250,24 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
 
                     if (a->type[s1_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s1_val);
                         exe_type.push("VECTOR");
+						auto pres = std::max(p1, p2);	
+						exe_precision.push(pres);
+						
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,pres-p1);
+							t[1] = t[1]*(unsigned int)pow(10,pres-p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,pres-p2);
+						};							
+						
                         bool_vectors.push(host_compare(t,n1,cmp_type));
                     }
                     else {
@@ -1135,10 +1282,23 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_nums.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
                         exe_type.push("VECTOR");
+						auto pres = std::max(p1, p2);	
+						exe_precision.push(pres);
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,pres-p1);
+							t[1] = t[1]*(unsigned int)pow(10,pres-p1);
+						};	
+						if(p2) {
+							n1 = n1*(unsigned int)pow(10,pres-p2);
+						};							
+
                         bool_vectors.push(host_compare(t,n1,cmp_type));
                     }
                     else {
@@ -1202,6 +1362,21 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_vectors.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = std::max(p1, p2);	
+					exe_precision.push(pres);
+					
+					if(p1) {
+						s3[0] = s3[0]*(unsigned int)pow(10,pres-p1);
+						s3[1] = s3[1]*(unsigned int)pow(10,pres-p1);
+					};	
+					if(p2) {
+						n1 = n1*(unsigned int)pow(10,pres-p2);
+					};							
+					
                     exe_type.push("VECTOR");
                     bool_vectors.push(host_compare(s3,n1,cmp_type));
                     cudaFree(s3);
@@ -1223,6 +1398,20 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_vectors.pop();
                     n1 = exe_nums.top();
                     exe_nums.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = std::max(p1, p2);	
+					exe_precision.push(pres);
+					if(p1) {
+						s3[0] = s3[0]*(unsigned int)pow(10,pres-p1);
+						s3[1] = s3[1]*(unsigned int)pow(10,pres-p1);
+					};	
+					if(p2) {
+						n1 = n1*(unsigned int)pow(10,pres-p2);
+					};							
+					
                     exe_type.push("VECTOR");
                     bool_vectors.push(host_compare(s3,n1,cmp_type));
                     cudaFree(s3);
@@ -1293,9 +1482,24 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
                     exe_type.push("VECTOR");
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
+
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
+						auto pres = std::max(p1, p2);	
+						exe_precision.push(pres);
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,pres-p1);
+							t[1] = t[1]*(unsigned int)pow(10,pres-p1);
+						};	
+						if(p2) {
+							s3[0] = s3[0]*(unsigned int)pow(10,pres-p2);
+							s3[1] = s3[1]*(unsigned int)pow(10,pres-p2);
+						};							
+
                         bool_vectors.push(host_compare(t,s3,cmp_type));
                     }
                     else {
@@ -1331,9 +1535,23 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     s2_val = exe_value.top();
                     exe_value.pop();
                     exe_type.push("VECTOR");
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto p1 = a->decimal_zeroes[s2_val];					
 
                     if (a->type[s2_val] == 0) {
                         int_type* t = a->get_host_int_by_name(s2_val);
+						auto pres = std::max(p1, p2);	
+						exe_precision.push(pres);
+						if(p1) {
+							t[0] = t[0]*(unsigned int)pow(10,pres-p1);
+							t[1] = t[1]*(unsigned int)pow(10,pres-p1);
+						};	
+						if(p2) {
+							s3[0] = s3[0]*(unsigned int)pow(10,pres-p2);
+							s3[1] = s3[1]*(unsigned int)pow(10,pres-p2);
+						};							
+
                         bool_vectors.push(host_compare(t,s3,cmp_type));
                     }
                     else {
@@ -1349,6 +1567,21 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     int_type* s2 = exe_vectors.top();
                     exe_vectors.pop();
                     exe_type.push("VECTOR");
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					auto p2 = exe_precision.top();
+					exe_precision.pop();
+					auto pres = std::max(p2, p1);	
+					exe_precision.push(pres);
+					if(p1) {
+						s3[0] = s3[0]*(unsigned int)pow(10,pres-p1);
+						s3[1] = s3[1]*(unsigned int)pow(10,pres-p1);
+					};	
+					if(p2) {
+						s2[0] = s2[0]*(unsigned int)pow(10,pres-p2);
+						s2[1] = s2[1]*(unsigned int)pow(10,pres-p2);
+					};							
+					
                     bool_vectors.push(host_compare(s2,s3,cmp_type));
                     cudaFree(s3);
                     cudaFree(s2);
@@ -1391,37 +1624,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 
                 else if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
                     return 'R';
-                    /*
-                    s1_val = exe_value.top();
-                    exe_value.pop();
-                    s2_val = exe_value.top();
-                    exe_value.pop();
-                    exe_type.push("VECTOR");
-
-                    if (a->type[s1_val] == 0) {
-                        int_type* t = a->get_host_int_by_name(s1_val);
-                        if (a->type[s2_val] == 0) {
-                            int_type* t1 = a->get_host_int_by_name(s2_val);
-                            bool_vectors.push(host_compare(t1,t,cmp_type));
-                        }
-                        else {
-                            float_type* t1 = a->get_host_float_by_name(s2_val);
-                            bool_vectors.push(host_compare(t1,t,cmp_type));
-                        };
-                    }
-                    else {
-                        cmp_type = reverse_op(cmp_type);
-                        float_type* t = a->get_host_float_by_name(s1_val);
-                        if (a->type[s2_val] == 0) {
-                            int_type* t1 = a->get_host_int_by_name(s2_val);
-                            bool_vectors.push(host_compare(t,t1,cmp_type));
-                        }
-                        else {
-                            float_type* t1 = a->get_host_float_by_name(s2_val);
-                            bool_vectors.push(host_compare(t,t1,cmp_type));
-                        };
-                    }
-                    */
                 }
             }
 
