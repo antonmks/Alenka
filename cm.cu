@@ -274,8 +274,8 @@ void CudaSet::resize(size_t addRecs)
 
 void CudaSet::deAllocColumnOnDevice(string colname)
 {
-    if (type[colname] != 1 && !d_columns_int.empty()) {
-        if(d_columns_int[colname].size() > 0) {
+    if (type[colname] != 1 && !d_columns_int.empty() && d_columns_int.find(colname) != d_columns_int.end()) {		
+        if(d_columns_int[colname].size() > 0) {			
             d_columns_int[colname].resize(0);
             d_columns_int[colname].shrink_to_fit();
         };
@@ -296,8 +296,14 @@ void CudaSet::allocOnDevice(size_t RecordCount)
 
 void CudaSet::deAllocOnDevice()
 {
-    for(unsigned int i=0; i < columnNames.size(); i++)
+    for(unsigned int i=0; i < columnNames.size(); i++) {
         deAllocColumnOnDevice(columnNames[i]);
+	};	
+	
+	if(prm_d.size()) {
+		prm_d.resize(0);
+		prm_d.shrink_to_fit();
+	};		
 
     for (auto it=d_columns_int.begin(); it != d_columns_int.end(); ++it ) {
         if(it->second.size() > 0) {
@@ -313,7 +319,7 @@ void CudaSet::deAllocOnDevice()
         };
     };
 
-    if(filtered) { // free the sources
+    if(filtered) { // dealloc the source
         if(varNames.find(source_name) != varNames.end()) {
             varNames[source_name]->deAllocOnDevice();
         };
@@ -664,7 +670,6 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
         }
     }
     else {
-
         readSegmentsFromFile(segment,colname);
         if(!d_v)
             CUDA_SAFE_CALL(cudaMalloc((void **) &d_v, 12));
@@ -1798,8 +1803,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 	while(!done) {		
 		
 		auto rb = fread(readbuff, 1, process_piece, file_p);	
-		//cout << "read " << rb << endl;
-		
+				
 		if(rb < process_piece) {
 			done = 1;
 			finished = 1;
@@ -1820,7 +1824,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			total_max = curr_cnt;
 		};			
 		
-		//cout << "curr_cnt " << curr_cnt << " " << getFreeMem() << endl;
+		//cout << "curr_cnt " << curr_cnt << " Memory: " << getFreeMem() << endl;
 
 		if(first_time)	{
 			for(unsigned int i=0; i < columnNames.size(); i++) {
@@ -1864,6 +1868,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			};	
 		};
 		
+		
 		for(unsigned int i=0; i < columnNames.size(); i++) {
 			if(type[columnNames[i]] != 2) {						
 				cudaMemset(dest[i],0,max_len*rec_sz);						
@@ -1879,6 +1884,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		dev_pos[0] = -1;			
 		thrust::copy_if(thrust::make_counting_iterator((unsigned long long int)0), thrust::make_counting_iterator((unsigned long long int)rb-1),
 						d_readbuff.begin(), dev_pos.begin()+1, _1 == '\n');						
+						
 		
 		if(!finished) {		
 			if(curr_cnt < rec_sz) {					
@@ -1900,13 +1906,12 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			mRecCount = curr_cnt + 1;	
 		};			
 		
-				
+			
 		thrust::counting_iterator<unsigned int> begin(0);
 		ind_cnt[0] = mColumnCount;	
 		parse_functor ff((const char*)thrust::raw_pointer_cast(d_readbuff.data()),(char**)thrust::raw_pointer_cast(dest.data()), thrust::raw_pointer_cast(ind.data()),
 						thrust::raw_pointer_cast(ind_cnt.data()), thrust::raw_pointer_cast(sepp.data()), thrust::raw_pointer_cast(dev_pos.data()), thrust::raw_pointer_cast(dest_len.data()));
 		thrust::for_each(begin, begin + mRecCount, ff);
-		
 	
 			
 		ind_cnt[0] = max_len;			
@@ -1967,7 +1972,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 
 void CudaSet::free()  {
     for(unsigned int i = 0; i < columnNames.size(); i++ ) {
-		if(type[columnNames[i]] == 0 ) {
+		if(type[columnNames[i]] == 0 && h_columns_int[columnNames[i]].size() ) {
 			h_columns_int[columnNames[i]].resize(0);
 			h_columns_int[columnNames[i]].shrink_to_fit();
 		}
@@ -1976,8 +1981,10 @@ void CudaSet::free()  {
 			h_columns_float[columnNames[i]].shrink_to_fit();
 		};
     };
-    prm_d.resize(0);
-    prm_d.shrink_to_fit();
+	if(prm_d.size()) {
+		prm_d.resize(0);
+		prm_d.shrink_to_fit();
+	};	
     deAllocOnDevice();
 };
 

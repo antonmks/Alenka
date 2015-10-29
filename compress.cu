@@ -198,7 +198,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 	
     if(scratch.size() < cnt) 
 		scratch.resize(cnt);
-
+		
     cudaMemcpy(thrust::raw_pointer_cast(scratch.data()), (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
     thrust::device_ptr<int_type> d_int((int_type*)destination);
 

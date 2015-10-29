@@ -104,6 +104,7 @@ extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
 extern map<string,bool> min_max_eq;
 extern vector<void*> alloced_mem;
+extern map<string, string> filter_var; 
 
 template<typename T>
 struct uninitialized_host_allocator
@@ -403,7 +404,7 @@ struct gpu_atold
 			if(point == sc[0])
 				break;
 		}		
-		dest[i] = acc * (unsigned int)pow(10, sc[0]- point);	
+		dest[i] = acc * (unsigned int)exp10((double)sc[0]- point);	
 	}
 };
 

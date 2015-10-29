@@ -41,6 +41,7 @@
 /* operators and precedence levels */
 %right ASSIGN
 %right EQUAL
+%right NONEQUAL
 %left OR
 %left XOR
 %left AND
@@ -87,6 +88,8 @@
 %token LEFT
 %token RIGHT
 %token OUTER
+%token SEMI
+%token ANTI
 %token AND
 %token SORT
 %token SEGMENTS
@@ -188,6 +191,7 @@ expr '+' expr { emit_add(); }
 /*| '-' expr %prec UMINUS { emit("NEG"); }*/
 | expr AND expr { emit_and(); }
 | expr EQUAL expr { emit_eq(); }
+| expr NONEQUAL expr { emit_neq(); }
 | expr OR expr { emit_or(); }
 | expr XOR expr { emit("XOR"); }
 | expr SHIFT expr { emit("SHIFT %s", $2==1?"left":"right"); }
@@ -238,12 +242,20 @@ BY expr { emit("FILTER BY"); };
 
 join_list:
 JOIN NAME ON expr { $$ = 1; emit_join_tab($2, 'I');}
-| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'L');}
+| LEFT ANTI JOIN  NAME ON expr { $$ = 1; emit_join_tab($4, '3');}
+| RIGHT ANTI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '4');}
+| LEFT SEMI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '1');}
+| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'S');}
 | RIGHT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'R');}
+| RIGHT SEMI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '2');}
 | OUTER JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'O');}
 | JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($2, 'I'); };
+| LEFT ANTI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '3'); };
+| RIGHT ANTI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '4'); };
 | LEFT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'L'); };
+| LEFT SEMI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '1'); };
 | RIGHT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'R'); };
+| RIGHT SEMI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, 'R'); };
 | OUTER JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'O'); };
 
 opt_limit: { /* nil */
@@ -319,6 +331,7 @@ int execute_file(int ac, char **av)
 		
         statement_count = 0;
         clean_queues();
+		filter_var.clear();
 
         yyin = fopen(av[ac-1], "r");
         PROC_FLUSH_BUF ( yyin );
@@ -368,6 +381,7 @@ int execute_file(int ac, char **av)
 
             statement_count = 0;
             clean_queues();
+			filter_var.clear();
             yy_scan_string(script.c_str());
             std::clock_t start1 = std::clock();
 
@@ -411,6 +425,7 @@ int execute_file(int ac, char **av)
     };
 	scratch.resize(0);
 	scratch.shrink_to_fit();
+	ranj.shrink_to_fit();
     return 0;
 }
 

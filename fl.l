@@ -62,6 +62,8 @@ DISTINCT { return DISTINCT; }
 LEFT { return LEFT; }
 RIGHT { return RIGHT; }
 OUTER { return OUTER; }
+SEMI { return SEMI; }
+ANTI { return ANTI; }
 SORT {return SORT; }
 SEGMENTS {return SEGMENTS; }
 PRESORTED {return PRESORTED; }
@@ -109,14 +111,14 @@ FALSE { yylval.intval = 0; return BOOL1; }
 "||" { return OR; }
 ":=" { return ASSIGN; }
 "=" { return EQUAL; }
+"<>" { return NONEQUAL; }
 "==" { yylval.subtok = 4; return COMPARISON; }
 "<=>" { yylval.subtok = 12; return COMPARISON; }
 ">=" { yylval.subtok = 6; return COMPARISON; }
 ">" { yylval.subtok = 2; return COMPARISON; }
 "<=" { yylval.subtok = 5; return COMPARISON; }
 "<" { yylval.subtok = 1; return COMPARISON; }
-"!=" |
-"<>" { yylval.subtok = 3; return COMPARISON; }
+"!=" { yylval.subtok = 3; return COMPARISON; }
 
 '[A-Za-z0-9_:\\\.|;]*' { yylval.strval = strdup(yytext+1);
 yylval.strval[yyleng-2] = 0; return FILENAME; }

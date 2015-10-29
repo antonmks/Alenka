@@ -19,6 +19,7 @@ void emit_year();
 void emit_div();
 void emit_and();
 void emit_eq();
+void emit_neq();
 void emit_or();
 void emit_cmp(const int val);
 void emit_var(const char *s, const int c, const char *f, const char* ref, const char* ref_name);
