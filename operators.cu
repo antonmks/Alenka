@@ -1025,7 +1025,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     size_t cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
     queue<string> lc(cc);
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
-    MGPU_MEM(int) aIndicesDevice, bIndicesDevice;
+    MGPU_MEM(int) aIndicesDevice, bIndicesDevice, intersectionDevice;
 
     stack<string> exe_type;
     set<string> field_names;
@@ -1038,7 +1038,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
     thrust::device_vector<int> p_tmp;    
     unsigned int start_part = 0;
-	MGPU_MEM(int) intersectionDevice;
 	bool prejoin = 0;
 
     while(start_part < right->segCount) {
@@ -1140,14 +1139,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
             if (cnt_l) {							
 				
-				if(prejoin) {
-					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
-															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
-															&intersectionDevice, *context, false);	
-					if(!res_count)
-						continue;     
-				};		
-			
+		
                 // sort the left index column, save the permutation vector, it might be needed later				
                 thrust::device_ptr<int_type> d_col((int_type*)thrust::raw_pointer_cast(left->d_columns_int[colname1].data()));
                 thrust::sequence(v_l.begin(), v_l.begin() + cnt_l,0,1);
@@ -1168,6 +1160,15 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
                 else if(verbose)
                     cout << "No need of sorting " << endl;
+				
+				if(prejoin) {
+					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
+															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
+															&intersectionDevice, *context, false);	
+					if(!res_count)
+						continue;     
+				};		
+				
                 if(verbose)
                     cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() <<  endl;
 					

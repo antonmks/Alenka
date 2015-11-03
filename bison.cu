@@ -2744,6 +2744,8 @@ int execute_file(int ac, char **av)
     };
 	scratch.resize(0);
 	scratch.shrink_to_fit();
+	ranj.resize(0);
+	ranj.shrink_to_fit();
     return 0;
 }
 
