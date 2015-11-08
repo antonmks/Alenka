@@ -1067,7 +1067,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 		
         if(!right->presorted_fields.empty() && right->presorted_fields.front() == f2) {
             order = 0;
-            cout << "No need to sort " << endl;
+            //cout << "No need to sort " << endl;
             if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
                 right->sort_check = '1';
             else {
@@ -1093,7 +1093,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				else {
    				    //for(unsigned int i = 0; i < right->columnNames.size(); i++) {
 					for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
-						cout << "sorting " << *it << endl;
+						//cout << "sorting " << *it << endl;
 						if(right->type[*it] != 1) {
 							if(right->h_columns_int[*it].size() < right->mRecCount)
 								right->h_columns_int[*it].resize(right->mRecCount);
@@ -1156,8 +1156,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     };
                 };
 
-                if(do_sort)
+                if(do_sort) {
                     thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
+				}	
                 else if(verbose)
                     cout << "No need of sorting " << endl;
 				
@@ -1305,7 +1306,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				while(!join_eq_type1.empty())
 					join_eq_type1.pop();
 				
-				cout << "MUL res_count " << res_count << endl;			
+				//cout << "MUL res_count " << res_count << endl;			
 				
 				
 				if(join_kind == '1') { //LEFT SEMI
@@ -1317,6 +1318,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 					thrust::sort(d_res2, d_res2 + res_count);
 					auto new_end = thrust::unique(d_res2, d_res2 + res_count);
 					res_count = new_end - d_res2;
+					auto old_sz = ranj.size();
+					ranj.resize(ranj.size() + res_count);
+					thrust::copy(d_res2, d_res2 + res_count, ranj.begin() + old_sz);
+					thrust::sort(ranj.begin(), ranj.end());
+					auto ra_cnt = thrust::unique(ranj.begin(), ranj.end());
+					ranj.resize(ra_cnt-ranj.begin());						
 				}
 				else if(join_kind == '3'){ // ANTI JOIN LEFT
 					thrust::counting_iterator<int> iter(0);
@@ -1350,8 +1357,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 tot_count = tot_count + res_count;
 				//cout << "tot " << tot_count << endl;
 
-				std::clock_t start12 = std::clock();
-                if(res_count && join_kind != '4') {          		
+				//std::clock_t start12 = std::clock();
+                if(res_count && join_kind != '4' && join_kind != '2') {          		
 					
                     offset = c->mRecCount;
                     queue<string> op_sel1(op_sel_s);					
@@ -1423,7 +1430,8 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 		thrust::device_vector<int> st(cnt_r);
 		thrust::sequence(st.begin(), st.end(),0,1);
 		thrust::device_vector<int> r(cnt_r);
-		auto new_end = thrust::set_difference(st.begin(), st.end(), ranj.begin(), ranj.end(), r.begin());					
+		auto new_end = thrust::set_difference(st.begin(), st.end(), ranj.begin(), ranj.end(), r.begin());	
+		ranj.resize(0);	
 		res_count = new_end - r.begin();
 		tot_count = res_count;
 		
@@ -1450,9 +1458,36 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			thrust::gather(r.begin(), r.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
 			thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
 			op_sel1.pop();
-		};	
-
+		};		
+	}
+	else if(join_type.front() == '2') {
+		res_count = ranj.size();
+		tot_count = res_count;		
+        queue<string> op_sel1(op_sel_s);					
+		c->resize_join(res_count);					
+		if(scratch.size() < res_count*int_size)
+			scratch.resize(res_count*int_size);
+		thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
+        std::map<string,bool> processed;
 		
+		while(!op_sel1.empty()) {
+			if (processed.find(op_sel1.front()) != processed.end()) {
+				op_sel1.pop();
+				continue;
+			}
+			else
+				processed[op_sel1.front()] = 1;
+
+			while(!cc.empty())
+				cc.pop();
+
+			cc.push(op_sel1.front());			
+			thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
+			thrust::gather(ranj.begin(), ranj.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
+			thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
+			op_sel1.pop();
+		};	
+		ranj.resize(0);			
 	};
 	
     if(set_p) {
@@ -1575,8 +1610,6 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
     if(ll == 0)
         statement_count++;
 	
-	cout << "order " << endl;
-
     if (scan_state == 0 && ll == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
             process_error(2, "Order : couldn't find variable " + string(f));
