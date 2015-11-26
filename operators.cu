@@ -2,6 +2,15 @@
 #include <thrust/iterator/permutation_iterator.h>
 #include <thrust/set_operations.h>
 
+struct is_even
+   {
+     __host__ __device__
+     bool operator()(const int &x)
+     {
+       return (x % 2) == 0;
+     }
+   };
+
 using namespace mgpu;
 using namespace std;
 using namespace thrust::placeholders;
@@ -1133,6 +1142,39 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 //cout << "segment " << i <<  '\xd';
                 cout << "segment " << i <<  endl;
             cnt_l = 0;
+			
+			
+            /*left->readSegmentsFromFile(i, colname1);
+            void* h;
+            h = left->h_columns_int[colname1].data();
+            auto cnt1 = ((unsigned int*)h)[0];
+            auto lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
+            auto bits = ((unsigned int*)((char*)h + cnt1))[8];
+            cout << "Partition " << cnt1 << " " << lower_val << " " << bits << endl;
+			std::clock_t start15 = std::clock();
+			
+
+            if(bits == 8) {
+			   thrust::stable_partition((char*)((unsigned int*)h + 6), (char*)((unsigned int*)h + 6) + cnt1, is_even());
+			}
+			else if(bits == 16) {
+				thrust::stable_partition((unsigned short int*)((unsigned int*)h + 6), (unsigned short int*)((unsigned int*)h + 6) + cnt1/2, is_even());
+			}
+			else if(bits == 32) {
+				thrust::stable_partition(((unsigned int*)h + 6), ((unsigned int*)h + 6) + cnt1/4, is_even());
+			}
+			else if(bits == 64) {
+				thrust::stable_partition((int_type*)((unsigned int*)h + 6), (int_type*)((unsigned int*)h + 6) + cnt1/8, is_even());
+			};
+			auto new_cnt =
+		
+			cudaDeviceSynchronize();
+		    std::cout<< "partition time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
+			exit(0);
+			*/
+			
+			
+			
             copyColumns(left, lc, i, cnt_l);	
             cnt_l = left->mRecCount;
 			auto join_eq_type1(join_eq_type);
@@ -1420,75 +1462,75 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                         op_sel1.pop();
                     };
                 };
-				//std::cout<< endl << "process cpy time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
             };
-            //std::cout<< endl << "seg time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
         };
+		
+		if(join_type.front() == '4') {
+			thrust::device_vector<int> st(cnt_r);
+			thrust::sequence(st.begin(), st.end(),0,1);
+			thrust::device_vector<int> r(cnt_r);
+			auto new_end = thrust::set_difference(st.begin(), st.end(), ranj.begin(), ranj.end(), r.begin());	
+			ranj.resize(0);	
+			res_count = new_end - r.begin();
+			tot_count = res_count;
+			
+			queue<string> op_sel1(op_sel_s);					
+			c->resize_join(res_count);					
+			if(scratch.size() < res_count*int_size)
+				scratch.resize(res_count*int_size);
+			thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
+			std::map<string,bool> processed;
+			
+			while(!op_sel1.empty()) {
+				if (processed.find(op_sel1.front()) != processed.end()) {
+					op_sel1.pop();
+					continue;
+				}
+				else
+					processed[op_sel1.front()] = 1;
+
+				while(!cc.empty())
+					cc.pop();
+
+				cc.push(op_sel1.front());			
+				thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
+				thrust::gather(r.begin(), r.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
+				thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
+				op_sel1.pop();
+			};		
+		}
+		else if(join_type.front() == '2') {
+			res_count = ranj.size();
+			tot_count = res_count;		
+			queue<string> op_sel1(op_sel_s);					
+			c->resize_join(res_count);					
+			if(scratch.size() < res_count*int_size)
+				scratch.resize(res_count*int_size);
+			thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
+			std::map<string,bool> processed;
+			
+			while(!op_sel1.empty()) {
+				if (processed.find(op_sel1.front()) != processed.end()) {
+					op_sel1.pop();
+					continue;
+				}
+				else
+					processed[op_sel1.front()] = 1;
+
+				while(!cc.empty())
+					cc.pop();
+
+				cc.push(op_sel1.front());			
+				thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
+				thrust::gather(ranj.begin(), ranj.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
+				thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
+				op_sel1.pop();
+			};	
+			ranj.resize(0);			
+		};
+		
     };
 	
-	if(join_type.front() == '4') {
-		thrust::device_vector<int> st(cnt_r);
-		thrust::sequence(st.begin(), st.end(),0,1);
-		thrust::device_vector<int> r(cnt_r);
-		auto new_end = thrust::set_difference(st.begin(), st.end(), ranj.begin(), ranj.end(), r.begin());	
-		ranj.resize(0);	
-		res_count = new_end - r.begin();
-		tot_count = res_count;
-		
-        queue<string> op_sel1(op_sel_s);					
-		c->resize_join(res_count);					
-		if(scratch.size() < res_count*int_size)
-			scratch.resize(res_count*int_size);
-		thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
-        std::map<string,bool> processed;
-		
-		while(!op_sel1.empty()) {
-			if (processed.find(op_sel1.front()) != processed.end()) {
-				op_sel1.pop();
-				continue;
-			}
-			else
-				processed[op_sel1.front()] = 1;
-
-			while(!cc.empty())
-				cc.pop();
-
-			cc.push(op_sel1.front());			
-			thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-			thrust::gather(r.begin(), r.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
-			thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
-			op_sel1.pop();
-		};		
-	}
-	else if(join_type.front() == '2') {
-		res_count = ranj.size();
-		tot_count = res_count;		
-        queue<string> op_sel1(op_sel_s);					
-		c->resize_join(res_count);					
-		if(scratch.size() < res_count*int_size)
-			scratch.resize(res_count*int_size);
-		thrust::fill(scratch.begin(), scratch.begin() + res_count*int_size, 0);										
-        std::map<string,bool> processed;
-		
-		while(!op_sel1.empty()) {
-			if (processed.find(op_sel1.front()) != processed.end()) {
-				op_sel1.pop();
-				continue;
-			}
-			else
-				processed[op_sel1.front()] = 1;
-
-			while(!cc.empty())
-				cc.pop();
-
-			cc.push(op_sel1.front());			
-			thrust::device_ptr<int_type> d_tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));
-			thrust::gather(ranj.begin(), ranj.end(), right->d_columns_int[op_sel1.front()].begin(), d_tmp);
-			thrust::copy(d_tmp, d_tmp + res_count, c->h_columns_int[op_sel1.front()].begin());				
-			op_sel1.pop();
-		};	
-		ranj.resize(0);			
-	};
 	
     if(set_p) {
         if(p_tmp1)
@@ -2124,6 +2166,37 @@ void emit_case()
     */
 }
 
+
+
+void emit_create_index(const char *index_name, const char *table, const char *column)
+{
+	if (scan_state != 0) {
+		FILE *f;
+		string s1(table);
+		string s3 = s1 + ".key";
+		f = fopen(s3.c_str(), "w");
+		fputs(column,f);
+		fclose(f);
+   };
+}
+
+
+void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn)
+{
+	if (scan_state != 0) {
+		FILE *f;
+		string s1(table);
+		string s3 = s1 + ".interval";
+		f = fopen(s3.c_str(), "w");
+		fputs(lcolumn,f);
+		fputc('|',f);
+		fputs(rcolumn,f);
+		fclose(f);
+   };
+}
+
+
+
 void emit_create_bitmap_index(const char *index_name, const char *ltable, const char *rtable, const char *rcolumn, const char *lid, const char *rid)
 {
     statement_count++;
@@ -2224,11 +2297,7 @@ void emit_display(const char *f, const char* sep)
         op_nums.pop();
     };
 
-    //a->Store("",sep, limit, 0, 1);
     a->Display(limit, 0, 1);
-    if(verbose)
-        cout << "DISPLAY " << f << endl;
-
     clean_queues();
     if(stat[f] == statement_count  && a->keep == 0) {
         a->free();
@@ -2365,7 +2434,7 @@ void emit_store(const char *s, const char *f, const char* sep)
         op_nums.pop();
     };
 
-    a->Store(f,sep, limit, 0);
+    a->Store(f,sep, limit, 0, 0);
 
     if(stat[s] == statement_count  && a->keep == 0) {
         a->free();
@@ -2374,7 +2443,7 @@ void emit_store(const char *s, const char *f, const char* sep)
 };
 
 
-void emit_store_binary(const char *s, const char *f)
+void emit_store_binary(const char *s, const char *f, const bool append)
 {
     statement_count++;
     if (scan_state == 0) {
@@ -2387,6 +2456,8 @@ void emit_store_binary(const char *s, const char *f)
         clean_queues();
         return;
     };
+	
+	cout << "Append " << append << endl;
 
     if(varNames.find(s) == varNames.end())
         return;
@@ -2408,7 +2479,7 @@ void emit_store_binary(const char *s, const char *f)
 	a->maxRecs = 0;
 	
     if(fact_file_loaded) {
-        a->Store(f,"", limit, 1);
+        a->Store(f,"", limit, 1, append);
     }
     else {
         FILE* file_p;
@@ -2431,7 +2502,7 @@ void emit_store_binary(const char *s, const char *f)
                 fact_file_loaded = a->LoadBigFile(file_p, d_readbuff, dest, ind, dest_len);
 			if(a->maxRecs < a->mRecCount)
 				a->maxRecs = a->mRecCount;
-            a->Store(f,"", limit, 1);
+            a->Store(f,"", limit, 1, append);
         };
     };
     a->writeSortHeader(f);
@@ -2505,33 +2576,7 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
     a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
     a->keep = true;
     a->not_compressed = 1;
-    a->load_file_name = f;
-    a->separator = sep;
-    varNames[s] = a;
-    fact_file_loaded = 0;
-
-    if(stat[s] == statement_count)  {
-        a->free();
-        varNames.erase(s);
-    };
-}
-
-void emit_stream(const char *s, const char *f, const int d, const char* sep)
-{
-    statement_count++;
-    if (scan_state == 0) {
-        stat[s] = statement_count;
-        return;
-    };
-
-    printf("LOAD: %s %s %d  %s \n", s, f, d, sep);
-
-    CudaSet *a;
-
-    a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
-    a->keep = true;
-    a->not_compressed = 1;
-    a->load_file_name = f;
+    a->load_file_name = f;	
     a->separator = sep;
     varNames[s] = a;
     fact_file_loaded = 0;
@@ -2678,7 +2723,10 @@ void load_vars()
 							typevars.push("int");
 						}	
 						else {
-							typevars.push("decimal");
+							if(data_dict[(*it).first][(*sit).first].col_length == UINT_MAX)
+								typevars.push("timestamp");
+							else
+								typevars.push("decimal");
 						}	
 					}	
                     else if(data_dict[(*it).first][(*sit).first].col_type == 1)

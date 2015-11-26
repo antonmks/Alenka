@@ -59,7 +59,6 @@
 %left '^'
 
 %token FROM
-%token MULITE
 %token DELETE
 %token OR
 %token LOAD
@@ -110,6 +109,8 @@
 %token DROP
 %token CREATE
 %token INDEX
+%token INTERVAL
+%token APPEND
 
 %type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -141,7 +142,9 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | STORE NAME INTO FILENAME USING '(' FILENAME ')' opt_limit
 {  emit_store($2,$4,$7); }
 | STORE NAME INTO FILENAME opt_limit BINARY sort_def
-{  emit_store_binary($2,$4); }
+{  emit_store_binary($2,$4,0); }
+| STORE NAME INTO FILENAME APPEND opt_limit BINARY sort_def
+{  emit_store_binary($2,$4,1); }
 | DESCRIBE NAME
 {  emit_describe_table($2);}
 | INSERT INTO NAME SELECT expr_list FROM NAME
@@ -155,7 +158,12 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | DROP TABLE NAME
 {  emit_drop_table($3);}
 | CREATE INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
-{  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);};
+{  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);}
+| CREATE INDEX NAME ON NAME '(' NAME ')'
+{  emit_create_index($3, $5, $7);}
+| CREATE INTERVAL NAME ON NAME '(' NAME ',' NAME ')'
+{  emit_create_interval($3, $5, $7, $9);};
+
 
 
 expr:
@@ -188,7 +196,6 @@ expr '+' expr { emit_add(); }
 | expr '/' expr { emit_div(); }
 | expr '%' expr { emit("MOD"); }
 | expr MOD expr { emit("MOD"); }
-/*| '-' expr %prec UMINUS { emit("NEG"); }*/
 | expr AND expr { emit_and(); }
 | expr EQUAL expr { emit_eq(); }
 | expr NONEQUAL expr { emit_neq(); }
@@ -423,10 +430,14 @@ int execute_file(int ac, char **av)
         cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
-	scratch.resize(0);
-	scratch.shrink_to_fit();
-	ranj.resize(0);
-	ranj.shrink_to_fit();
+	if(scratch.size()) {
+		scratch.resize(0);
+		scratch.shrink_to_fit();
+	};	
+	if(ranj.size()) {
+		ranj.resize(0);
+		ranj.shrink_to_fit();
+	};	
     return 0;
 }
 

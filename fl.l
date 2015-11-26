@@ -67,7 +67,6 @@ ANTI { return ANTI; }
 SORT {return SORT; }
 SEGMENTS {return SEGMENTS; }
 PRESORTED {return PRESORTED; }
-PARTITION {return PARTITION; }
 INSERT {return INSERT; }
 WHERE {return WHERE; }
 DISPLAY {return DISPLAY; }
@@ -86,8 +85,9 @@ FROM {return FROM; }
 LIKE {return LIKE; }
 CREATE {return CREATE; }
 INDEX {return INDEX; }
+INTERVAL {return INTERVAL; }
 YEAR {return YEAR; }
-
+APPEND {return APPEND; }
 
 [0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
 -?[0-9]+"."[0-9]* |

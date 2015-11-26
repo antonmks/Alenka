@@ -43,8 +43,7 @@ void emit_vardecimal(const char *s, const int c, const char *f, const int scale,
 void emit_load(const char *s, const char *f, const int d, const char* sep);
 void emit_load_binary(const char *s, const char *f, const int d);
 void emit_store(const char *s, const char *f, const char* sep);
-void emit_store_binary(const char *s, const char *f, const char* sep);
-void emit_store_binary(const char *s, const char *f);
+void emit_store_binary(const char *s, const char *f, const bool append);
 void emit_filter(char *s, char *f);
 void emit_delete(const char *f);
 void emit_insert(const char *f, const char* s);
@@ -63,5 +62,7 @@ void emit_describe_table(const char* table_name);
 void emit_drop_table(const char* table_name);
 void process_error(const int severity, const string err);
 void emit_create_bitmap_index(const char *index_name, const char *ltable, const char *rtable, const char *rcolumn, const char *lid, const char *rid);
+void emit_create_index(const char *index_name, const char *table, const char *column);
+void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn);
 void emit_fieldname(const char* name1, const char* name2);
 void load_vars();

@@ -66,6 +66,7 @@ void create_c(CudaSet* c, CudaSet* b)
     c->decimal = b->decimal;
 	c->decimal_zeroes = b->decimal_zeroes;
     c->grp_type = b->grp_type;
+	c->ts_cols = b->ts_cols;
 
     for(unsigned int i=0; i < b->columnNames.size(); i++) {
 
@@ -101,14 +102,12 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     size_t cycle_sz = op_v3.size();
 
     vector<string> opv;
-    queue<string> ss;
     for(unsigned int z = 0; z < cycle_sz; z++) {
         if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { //sanity check
             cout << "Syntax error: alias " << op_v3.front() << endl;
             exit(0);
         };
         opv.push_back(aliases[op_v3.front()]);
-        ss.push(aliases[op_v3.front()]);
         op_v3.pop();
     };
 	
