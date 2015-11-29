@@ -374,6 +374,7 @@ CudaSet* CudaSet::copyDeviceStruct()
     a->segCount = segCount;
     a->maxRecs = maxRecs;
     a->columnNames = columnNames;
+	a->ts_cols = ts_cols;
     a->cols = cols;
     a->type = type;
     a->char_size = char_size;
@@ -3066,6 +3067,7 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 decimal[op_sel.front()] = a->decimal[op_sel.front()];
                 columnNames.push_back(op_sel.front());
                 type[op_sel.front()] = a->type[op_sel.front()];
+				ts_cols[op_sel.front()] = a->ts_cols[op_sel.front()];
 
                 if (a->type[op_sel.front()] == 0)  {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
@@ -3093,6 +3095,8 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 cols[i] = op_sel.front();
                 decimal[op_sel.front()] = b->decimal[op_sel.front()];
                 type[op_sel.front()] = b->type[op_sel.front()];
+				ts_cols[op_sel.front()] = b->ts_cols[op_sel.front()];				
+				cout << "setting " << op_sel.front() << " " << b->ts_cols[op_sel.front()];
 
                 if (b->type[op_sel.front()] == 0) {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();
@@ -3564,6 +3568,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
         b->string_map = a->string_map;
         size_t cnt = 0;
 		b->sorted_fields = a->sorted_fields;
+		b->ts_cols = a->ts_cols;
         allocColumns(a, b->fil_value);
 
         if (b->prm_d.size() == 0) {

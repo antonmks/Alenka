@@ -935,6 +935,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 					b->decimal_zeroes[col_val.top()] = exe_precision1.top();
 					exe_precision1.pop();		
 					b->ts_cols[col_val.top()] = exe_ts.top();
+					cout << "setting " << col_val.top() << " to " << exe_ts.top() << endl;
 					exe_ts.pop();					
 				};
 					
