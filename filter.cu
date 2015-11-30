@@ -18,6 +18,12 @@
 #include <iostream> 
 #include <sstream>  
 
+#ifdef _WIN64
+#else
+#include "strptime.cu"
+#endif
+
+
 struct cmp_functor_dict
 {
     const unsigned long long* source;
@@ -681,16 +687,20 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 						struct std::tm tm;
 						auto pos = s1_val.find_last_of('.');
 						string ss1 = s1_val.substr(0,pos);	
+						
+						#ifdef _WIN64
 						std::istringstream ss(ss1);
 						ss >> std::get_time(&tm, "%Y-%m-%d %H.%M.%S"); 
 						std::time_t time = mktime(&tm);
+						#else						
+						strptime(ss1.c_str(), "%Y-%m-%d %H.%M.%S", &tm);
+						#endif	
 						ss1 = s1_val.substr(pos+1);
 						time = time*1000 + std::stoi(ss1);					
 						int_type* t = a->get_int_by_name(s2_val);
 						exe_precision.push(0);						
 						exe_type.push("VECTOR");
-						bool_vectors.push(a->compare(t,(int_type)time,cmp_type, 0, 0));
-						
+						bool_vectors.push(a->compare(t,(int_type)time,cmp_type, 0, 0));						
 
 					}
 					else {	
