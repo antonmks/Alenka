@@ -3096,7 +3096,6 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
                 decimal[op_sel.front()] = b->decimal[op_sel.front()];
                 type[op_sel.front()] = b->type[op_sel.front()];
 				ts_cols[op_sel.front()] = b->ts_cols[op_sel.front()];				
-				cout << "setting " << op_sel.front() << " " << b->ts_cols[op_sel.front()];
 
                 if (b->type[op_sel.front()] == 0) {
                     d_columns_int[op_sel.front()] = thrust::device_vector<int_type>();

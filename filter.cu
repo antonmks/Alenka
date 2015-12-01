@@ -18,12 +18,6 @@
 #include <iostream> 
 #include <sstream>  
 
-#ifdef _WIN64
-#else
-#include "strptime.cu"
-#endif
-
-
 struct cmp_functor_dict
 {
     const unsigned long long* source;
@@ -684,19 +678,25 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     };
 					
 					if (a->type[s2_val] == 0 && a->ts_cols[s2_val] ) {
-						struct std::tm tm;
-						auto pos = s1_val.find_last_of('.');
-						string ss1 = s1_val.substr(0,pos);	
+						struct std::tm tm;						
+						auto year = s1_val.substr(0,4);
+						auto month = s1_val.substr(5,2);
+						auto day = s1_val.substr(8,2);
+						auto hour = s1_val.substr(11,2);
+						auto min = s1_val.substr(14,2);
+						auto sec = s1_val.substr(17,2);
+						auto usec = s1_val.substr(20,3);
+						//cout << "VL " << year << " " << month << " " << day << " " << hour << " " << min << " " << sec << " " << usec << "   " << endl;
 						
-						#ifdef _WIN64
-						std::istringstream ss(ss1);
-						ss >> std::get_time(&tm, "%Y-%m-%d %H.%M.%S"); 
-						std::time_t time = mktime(&tm);
-						#else						
-						strptime(ss1.c_str(), "%Y-%m-%d %H.%M.%S", &tm);
-						#endif	
-						ss1 = s1_val.substr(pos+1);
-						time = time*1000 + std::stoi(ss1);					
+						tm.tm_year = std::stoi(year)-1900;
+						tm.tm_mon = std::stoi(month)-1;
+						tm.tm_mday = std::stoi(day);
+						tm.tm_hour = std::stoi(hour);
+						tm.tm_min = std::stoi(min);
+						tm.tm_sec = std::stoi(sec);
+						time_t time = mktime (&tm);
+						
+						time = time*1000 + std::stoi(usec);					
 						int_type* t = a->get_int_by_name(s2_val);
 						exe_precision.push(0);						
 						exe_type.push("VECTOR");
