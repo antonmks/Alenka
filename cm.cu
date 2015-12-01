@@ -1447,7 +1447,8 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
 							if(!ts_cols[columnNames[j]])
 								sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
 							else {
-								auto ti = localtime(&(h_columns_int[columnNames[j]])[i]);
+								time_t tt = h_columns_int[columnNames[j]][i];
+								auto ti = localtime(&tt);
 								char buffer[10];
 								strftime(buffer,80,"%Y-%m-%d", ti);
 								sprintf(fields[j], "%s", buffer);
@@ -1593,7 +1594,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 									fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
 								}	
 								else {							
-									int_type ts = (h_columns_int[columnNames[j]][i])/1000;
+									time_t ts = (h_columns_int[columnNames[j]][i])/1000;
 									auto ti = gmtime(&ts);
 									char buffer[30];
 									auto rem = (h_columns_int[columnNames[j]][i])%1000;
