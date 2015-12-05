@@ -68,8 +68,7 @@ void create_c(CudaSet* c, CudaSet* b)
     c->grp_type = b->grp_type;
 	c->ts_cols = b->ts_cols;
 
-    for(unsigned int i=0; i < b->columnNames.size(); i++) {
-
+    for(unsigned int i=0; i < b->columnNames.size(); i++) {		
         if (b->type[b->columnNames[i]] == 0) {
             c->h_columns_int[b->columnNames[i]] = thrust::host_vector<int_type, uninitialized_host_allocator<int_type> >();
             c->d_columns_int[b->columnNames[i]] = thrust::device_vector<int_type>();

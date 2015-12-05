@@ -267,7 +267,7 @@ struct gpu_date
 		long long int acc;
 		int z = 0, c;
 		
-		s = source + 15*i;		
+		s = source + 23*i;		
 		c = (unsigned char) *s++;
 
 		for (acc = 0; z < 10; c = (unsigned char) *s++) {

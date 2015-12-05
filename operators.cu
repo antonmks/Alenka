@@ -2640,8 +2640,12 @@ void emit_describe_table(const char* table_name)
             auto s = (*iter).second;
             for (auto it=s.begin() ; it != s.end(); ++it ) {
                 if ((*it).second.col_type == 0) {
-					if((*it).second.col_length)
-						cout << (*it).first << " decimal with precision of " << (*it).second.col_length << endl;
+					if((*it).second.col_length) {
+						if((*it).second.col_length != UINT_MAX)
+							cout << (*it).first << " decimal with precision of " << (*it).second.col_length << endl;
+						else
+							cout << (*it).first << " timestamp" << endl;
+					}	
 					else	
 						cout << (*it).first << " integer" << endl;
                 }

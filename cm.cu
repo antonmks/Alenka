@@ -1012,7 +1012,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
     };
 	
 
-	if(!total_segments) {
+	if(!total_segments && append) {
 		string s= file_name + "." + columnNames[0] + ".header";
 		ifstream binary_file(s.c_str(),ios::binary);
 		if(binary_file) {
@@ -1446,12 +1446,24 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
 						else {
 							if(!ts_cols[columnNames[j]])
 								sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
-							else {
-								time_t tt = h_columns_int[columnNames[j]][i];
+							else {								
+								
+								time_t ts = (h_columns_int[columnNames[j]][i])/1000;
+								auto ti = gmtime(&ts);
+								char buffer[30];
+								auto rem = (h_columns_int[columnNames[j]][i])%1000;
+								strftime(buffer,30,"%Y-%m-%d %H.%M.%S", ti);
+								//fprintf(file_pr, "%s", buffer);
+								//fprintf(file_pr, ".%d", rem);
+								sprintf(fields[j], "%s.%d", buffer,rem);
+
+									
+								/*time_t tt = h_columns_int[columnNames[j]][i];
 								auto ti = localtime(&tt);
 								char buffer[10];
 								strftime(buffer,80,"%Y-%m-%d", ti);
 								sprintf(fields[j], "%s", buffer);
+								*/
 							};
 						};	
 					}
@@ -1625,7 +1637,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 fclose(file_pr);
         }
         else {
-
+		
 		    queue<string> op_vx;
             string ss;
             for(unsigned int j=0; j < columnNames.size(); j++)
@@ -1674,13 +1686,38 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 };
 
                 sum_printed = sum_printed + mRecCount;
-                //cout << "sum printed " << sum_printed << " " << curr_count << " " << curr_seg << endl;
-
+                //cout << "sum printed " << sum_printed << " " << curr_count << " " << curr_seg << endl;				
+				
                 for(unsigned int i=0; i < curr_count; i++) {
                     for(unsigned int j=0; j < columnNames.size(); j++) {
                         if (type[columnNames[j]] != 1) {
-                            if(string_map.find(columnNames[j]) == string_map.end()) {								
-                                fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+                            if(string_map.find(columnNames[j]) == string_map.end()) {
+								
+								cout << "here3 " << endl;
+
+								if(decimal_zeroes[columnNames[j]]) {
+									str = std::to_string(h_columns_int[columnNames[j]][i]);
+									//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+									while(str.length() <= decimal_zeroes[columnNames[j]])
+										str = '0' + str;
+									str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
+									fprintf(file_pr, "%s", str.c_str());
+								}	
+								else {
+									if(!ts_cols[columnNames[j]]) {
+										fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+									}	
+									else {							
+										time_t ts = (h_columns_int[columnNames[j]][i])/1000;
+										auto ti = gmtime(&ts);
+										char buffer[30];
+										auto rem = (h_columns_int[columnNames[j]][i])%1000;
+										strftime(buffer,30,"%Y-%m-%d %H.%M.%S", ti);
+										fprintf(file_pr, "%s", buffer);
+										fprintf(file_pr, ".%d", rem);
+									};	
+								};		
+
 							}	
                             else {
                                 fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
@@ -3584,12 +3621,13 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 			phase_copy = 0;
             copyColumns(a, b->fil_value, segment, cnt);
 			phase_copy = old_ph;			
-            bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
-            thrust::device_ptr<bool> bp((bool*)res);
+            bool* res = filter(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);			
+            thrust::device_ptr<bool> bp((bool*)res);			
             b->prm_index = 'R';
             b->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 1);
             thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)a->mRecCount),
                             bp, b->prm_d.begin(), thrust::identity<bool>());
+							
             cudaFree(res);
         }
         else  {
@@ -3603,7 +3641,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
             a->deAllocOnDevice();
     }
     if(verbose)
-        cout << endl << "filter res " << b->mRecCount << " " << phase_copy << endl;
+        cout << endl << "filter result " << b->mRecCount << endl;
 }
 
 

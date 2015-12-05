@@ -142,8 +142,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     string  s1, s2, s1_val, s2_val;
     int_type n1, n2, res;
     float_type n1_f, n2_f, res_f;
-
-
+	
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
@@ -863,9 +862,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     else {
                         if (a->type[s1_val] == 0) {
                             int_type* t = a->get_int_by_name(s1_val);
+							thrust::device_ptr<int_type> bp((int_type*)t);
 							auto p2 = exe_precision.top();
 							exe_precision.pop();
-							auto p1 = a->decimal_zeroes[s1_val];					
+							auto p1 = a->decimal_zeroes[s1_val];			
 							auto pres = std::max(p1, p2);	
 							exe_precision.push(pres);
 							
