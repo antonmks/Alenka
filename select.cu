@@ -934,13 +934,13 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
 				if(a->type[exe_value1.top()] == 0) {
 					b->decimal_zeroes[col_val.top()] = exe_precision1.top();
 					b->ts_cols[col_val.top()] = exe_ts.top();
-					exe_ts.pop();					
 				};
 					
                 if(a->type[exe_value1.top()] == 2 || (a->type[exe_value1.top()] == 0 && a->string_map.find(exe_value1.top()) != a->string_map.end())) {
                     b->string_map[col_val.top()] = a->string_map[exe_value1.top()];
                 };
 				exe_precision1.pop();		
+				exe_ts.pop();					
             }
             else if(a->type[exe_value1.top()] == 1) {
                 //modify what we push there in case of a grouping
