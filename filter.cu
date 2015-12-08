@@ -693,7 +693,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 						tm.tm_hour = std::stoi(hour);
 						tm.tm_min = std::stoi(min);
 						tm.tm_sec = std::stoi(sec);
-						time_t time = mktime (&tm);
+						
+						#ifdef _WIN64
+						time_t time = _mkgmtime (&tm);
+						#else
+						time_t time = timegm (&tm);
+						#endif
+						
 						
 						time = time*1000 + std::stoi(usec);					
 						int_type* t = a->get_int_by_name(s2_val);
