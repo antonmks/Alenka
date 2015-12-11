@@ -151,12 +151,16 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 {  emit_insert($3, $7);}
 | DELETE FROM NAME WHERE expr
 {  emit_delete($3);}
+| DISPLAY NAME opt_limit
+{  emit_display($2, "|");}
 | DISPLAY NAME USING '(' FILENAME ')' opt_limit
 {  emit_display($2, $5);}
 | SHOW TABLES
 {  emit_show_tables();}
 | DROP TABLE NAME
 {  emit_drop_table($3);}
+| CREATE TABLE NAME AS '(' load_list ')'
+{  emit_create_table($3, $3);}                  /// << --- 3,3 is wrong!  FIX ME
 | CREATE INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
 {  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);}
 | CREATE INDEX NAME ON NAME '(' NAME ')'

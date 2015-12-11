@@ -61,6 +61,7 @@ void emit_show_tables();
 void emit_describe_table(const char* table_name);
 void emit_drop_table(const char* table_name);
 void process_error(const int severity, const string err);
+void emit_create_table(const char *s, const char *f);
 void emit_create_bitmap_index(const char *index_name, const char *ltable, const char *rtable, const char *rcolumn, const char *lid, const char *rid);
 void emit_create_index(const char *index_name, const char *table, const char *column);
 void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn);

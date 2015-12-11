@@ -2665,6 +2665,56 @@ void emit_describe_table(const char* table_name)
 }
 
 
+void emit_create_table(const char *s, const char *f)
+{
+    statement_count++;
+    //cout << "create table #1 [" + string(f) +"] from [" << string(f) << "]\n";;
+    if (scan_state == 0) {
+        stat[s] = statement_count;
+        return;
+    }
+    if( (varNames.find(f) != varNames.end())  || (data_dict.count(f) != 0) )
+    {
+         process_error(1, "Table aleady exists");
+         return;
+    }
+
+    s = "tempV";        // temp var name for null data
+    CudaSet *a;
+
+    a = new CudaSet(namevars, typevars, sizevars, cols, process_count);
+    a->keep = true;
+    a->not_compressed = 1;
+    a->load_file_name = f;
+    a->separator = "|";
+
+    a->totalRecs =0;
+    a->mRecCount =0;
+    a->segCount =0;
+    a->name = s;
+    varNames[s] = a;
+    fact_file_loaded = 0;
+
+    for(unsigned int j=0; j < a->columnNames.size(); j++) {
+        data_dict[f][a->columnNames[j]].col_length = a->char_size[a->columnNames[j]];
+        data_dict[f][a->columnNames[j]].col_type = a->type[a->columnNames[j]];
+        if(a->type[a->columnNames[j]] != 2)
+            if(a->decimal[a->columnNames[j]])
+                    data_dict[f][a->columnNames[j]].col_length = a->decimal_zeroes[a->columnNames[j]];
+            else
+                    data_dict[f][a->columnNames[j]].col_length = 0;
+        else
+            data_dict[f][a->columnNames[j]].col_length = a->char_size[a->columnNames[j]];
+    }
+
+    if(stat[s] == statement_count )  {
+        a->free();
+        varNames.erase(s);
+    };
+    save_dict = 1;
+}
+
+
 void yyerror(char *s, ...)
 {
     extern int yylineno;
