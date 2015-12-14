@@ -183,6 +183,18 @@ void emit_year()
     op_type.push("YEAR");
 }
 
+void emit_month()
+{
+    op_type.push("MONTH");
+}
+
+
+void emit_day()
+{
+    op_type.push("DAY");
+}
+
+
 
 void emit_or()
 {
@@ -2048,7 +2060,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         clean_queues();
         return;
     };
-
+	
     if (grp_cnt) {
         count_avg(c, distinct_hash);
     }
@@ -2057,7 +2069,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             count_simple(c);
         };
     };
-
+	
     c->maxRecs = c->mRecCount;
     c->hostRecCount = c->mRecCount;
     c->string_map = b->string_map;
@@ -2070,21 +2082,17 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     if (getFreeMem() < tot_size*3) {	
         c->segCount = ((tot_size*3)/getFreeMem() + 1);
         c->maxRecs = c->hostRecCount - (c->hostRecCount/c->segCount)*(c->segCount-1);
-	};
-		
+	};		
 
     clean_queues();
-
     varNames[s] = c;
     b->free();
     varNames[s]->keep = 1;
-
 
     if(stat[s] == statement_count) {
         varNames[s]->free();
         varNames.erase(s);
     };
-
 
     if(stat[f] == statement_count && a->keep == 0) {
         a->free();

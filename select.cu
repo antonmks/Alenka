@@ -29,6 +29,227 @@ struct distinct : public binary_function<T,T,T>
 };
 
 
+struct gpu_getyear
+{
+	const int_type *source;
+    int_type *dest;
+		
+	gpu_getyear(const int_type *_source, int_type *_dest):
+			  source(_source), dest(_dest) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		
+		uint64 sec;
+		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
+		uint year, leap;
+		uint yday, hour, min;
+		uint month, mday, wday;
+		const uint daysSinceJan1st[2][13]=
+		{
+			{0,31,59,90,120,151,181,212,243,273,304,334,365}, // 365 days, non-leap
+			{0,31,60,91,121,152,182,213,244,274,305,335,366}  // 366 days, leap
+		};
+		uint64 SecondsSinceEpoch = source[i]/1000;
+		sec = SecondsSinceEpoch + 11644473600;
+
+		wday = (uint)((sec / 86400 + 1) % 7); // day of week
+		quadricentennials = (uint)(sec / 12622780800ULL); // 400*365.2425*24*3600
+		sec %= 12622780800ULL;
+
+		centennials = (uint)(sec / 3155673600ULL); // 100*(365+24/100)*24*3600
+		if (centennials > 3)
+		{
+			centennials = 3;
+		}
+		sec -= centennials * 3155673600ULL;
+
+		quadrennials = (uint)(sec / 126230400); // 4*(365+1/4)*24*3600
+		if (quadrennials > 24)
+		{
+			quadrennials = 24;
+		}
+		sec -= quadrennials * 126230400ULL;
+
+		annuals = (uint)(sec / 31536000); // 365*24*3600
+		if (annuals > 3)
+		{
+			annuals = 3;
+		}
+		sec -= annuals * 31536000ULL;
+
+		year = 1601 + quadricentennials * 400 + centennials * 100 + quadrennials * 4 + annuals;
+		leap = !(year % 4) && (year % 100 || !(year % 400));
+
+		// Calculate the day of the year and the time
+		yday = sec / 86400;
+		sec %= 86400;
+		hour = sec / 3600;
+		sec %= 3600;
+		min = sec / 60;
+		sec %= 60;
+
+	// Calculate the month
+		for (mday = month = 1; month < 13; month++)
+		{
+			if (yday < daysSinceJan1st[leap][month])
+			{
+			mday += yday - daysSinceJan1st[leap][month - 1];
+			break;
+			}
+		}
+		dest[i] = year;		
+	}
+};	
+
+struct gpu_getmonth
+{
+	const int_type *source;
+    int_type *dest;
+		
+	gpu_getmonth(const int_type *_source, int_type *_dest):
+			  source(_source), dest(_dest) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		
+		uint64 sec;
+		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
+		uint year, leap;
+		uint yday, hour, min;
+		uint month, mday, wday;
+		const uint daysSinceJan1st[2][13]=
+		{
+			{0,31,59,90,120,151,181,212,243,273,304,334,365}, // 365 days, non-leap
+			{0,31,60,91,121,152,182,213,244,274,305,335,366}  // 366 days, leap
+		};
+		uint64 SecondsSinceEpoch = source[i]/1000;
+		sec = SecondsSinceEpoch + 11644473600;
+
+		wday = (uint)((sec / 86400 + 1) % 7); // day of week
+		quadricentennials = (uint)(sec / 12622780800ULL); // 400*365.2425*24*3600
+		sec %= 12622780800ULL;
+
+		centennials = (uint)(sec / 3155673600ULL); // 100*(365+24/100)*24*3600
+		if (centennials > 3)
+		{
+			centennials = 3;
+		}
+		sec -= centennials * 3155673600ULL;
+
+		quadrennials = (uint)(sec / 126230400); // 4*(365+1/4)*24*3600
+		if (quadrennials > 24)
+		{
+			quadrennials = 24;
+		}
+		sec -= quadrennials * 126230400ULL;
+
+		annuals = (uint)(sec / 31536000); // 365*24*3600
+		if (annuals > 3)
+		{
+			annuals = 3;
+		}
+		sec -= annuals * 31536000ULL;
+
+		year = 1601 + quadricentennials * 400 + centennials * 100 + quadrennials * 4 + annuals;
+		leap = !(year % 4) && (year % 100 || !(year % 400));
+
+		// Calculate the day of the year and the time
+		yday = sec / 86400;
+		sec %= 86400;
+		hour = sec / 3600;
+		sec %= 3600;
+		min = sec / 60;
+		sec %= 60;
+
+	// Calculate the month
+		for (mday = month = 1; month < 13; month++)
+		{
+			if (yday < daysSinceJan1st[leap][month])
+			{
+			mday += yday - daysSinceJan1st[leap][month - 1];
+			break;
+			}
+		}
+		dest[i] = year*100+month;		
+	}
+};	
+
+
+struct gpu_getday
+{
+	const int_type *source;
+    int_type *dest;
+		
+	gpu_getday(const int_type *_source, int_type *_dest):
+			  source(_source), dest(_dest) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		
+		uint64 sec;
+		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
+		uint year, leap;
+		uint yday, hour, min;
+		uint month, mday, wday;
+		const uint daysSinceJan1st[2][13]=
+		{
+			{0,31,59,90,120,151,181,212,243,273,304,334,365}, // 365 days, non-leap
+			{0,31,60,91,121,152,182,213,244,274,305,335,366}  // 366 days, leap
+		};
+		uint64 SecondsSinceEpoch = source[i]/1000;
+		sec = SecondsSinceEpoch + 11644473600;
+
+		wday = (uint)((sec / 86400 + 1) % 7); // day of week
+		quadricentennials = (uint)(sec / 12622780800ULL); // 400*365.2425*24*3600
+		sec %= 12622780800ULL;
+
+		centennials = (uint)(sec / 3155673600ULL); // 100*(365+24/100)*24*3600
+		if (centennials > 3)
+		{
+			centennials = 3;
+		}
+		sec -= centennials * 3155673600ULL;
+
+		quadrennials = (uint)(sec / 126230400); // 4*(365+1/4)*24*3600
+		if (quadrennials > 24)
+		{
+			quadrennials = 24;
+		}
+		sec -= quadrennials * 126230400ULL;
+
+		annuals = (uint)(sec / 31536000); // 365*24*3600
+		if (annuals > 3)
+		{
+			annuals = 3;
+		}
+		sec -= annuals * 31536000ULL;
+
+		year = 1601 + quadricentennials * 400 + centennials * 100 + quadrennials * 4 + annuals;
+		leap = !(year % 4) && (year % 100 || !(year % 400));
+
+		// Calculate the day of the year and the time
+		yday = sec / 86400;
+		sec %= 86400;
+		hour = sec / 3600;
+		sec %= 3600;
+		min = sec / 60;
+		sec %= 60;
+
+	// Calculate the month
+		for (mday = month = 1; month < 13; month++)
+		{
+			if (yday < daysSinceJan1st[leap][month])
+			{
+			mday += yday - daysSinceJan1st[leap][month - 1];
+			break;
+			}
+		}
+		dest[i] = year*10000+month*100+mday;		
+	}
+};	
+
+
 
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
             CudaSet* b, vector<thrust::device_vector<int_type> >& distinct_tmp, bool& one_liner)
@@ -79,7 +300,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
 
-            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0 || ss.compare("YEAR") == 0) {
+            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0 || ss.compare("YEAR") == 0 || ss.compare("MONTH") == 0 || ss.compare("DAY") == 0) {
 			
                 if(!prep && a->grp_count) {
                     mgpu::ReduceByKeyPreprocess<float_type>((int)a->mRecCount, thrust::raw_pointer_cast(d_di),
@@ -89,25 +310,57 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 };
 
 
-                if(!a->grp_count && ss.compare("YEAR"))
+                if(!a->grp_count && ss.compare("YEAR") && ss.compare("MONTH") && ss.compare("DAY")) {
                     one_line = 1;
-					
+				};	
+				
+				
 				if (ss.compare("YEAR") == 0) {	
 					s1_val = exe_value.top();
                     exe_value.pop();
 					exe_type.pop();
 					thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(a->mRecCount);
-					thrust::transform(a->d_columns_int[s1_val].begin(), a->d_columns_int[s1_val].begin() + a->mRecCount, thrust::make_constant_iterator(10000), res, thrust::divides<int_type>());
+					if(a->ts_cols[s1_val]) {						
+						thrust::counting_iterator<unsigned int> begin(0);
+						gpu_getyear ff((const int_type*)thrust::raw_pointer_cast(a->d_columns_int[s1_val].data()),	thrust::raw_pointer_cast(res));
+						thrust::for_each(begin, begin + a->mRecCount, ff);						
+						exe_precision.push(0);			
+					}
+					else {
+						thrust::transform(a->d_columns_int[s1_val].begin(), a->d_columns_int[s1_val].begin() + a->mRecCount, thrust::make_constant_iterator(10000), res, thrust::divides<int_type>());
+						exe_precision.push(a->decimal_zeroes[s1_val]);			
+					};	
                     exe_vectors.push(thrust::raw_pointer_cast(res));
-                    exe_type.push("VECTOR");
-					exe_precision.push(a->decimal_zeroes[s1_val]);			
-				};
-
-                if (ss.compare("DISTINCT") == 0) {
+                    exe_type.push("VECTOR");					
+				}
+				else if (ss.compare("MONTH") == 0) {	
+					s1_val = exe_value.top();
+                    exe_value.pop();
+					exe_type.pop();
+					thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(a->mRecCount);
+					thrust::counting_iterator<unsigned int> begin(0);
+					gpu_getmonth ff((const int_type*)thrust::raw_pointer_cast(a->d_columns_int[s1_val].data()),	thrust::raw_pointer_cast(res));
+					thrust::for_each(begin, begin + a->mRecCount, ff);						
+					exe_precision.push(0);			
+                    exe_vectors.push(thrust::raw_pointer_cast(res));
+                    exe_type.push("VECTOR");					
+				}				
+				else if (ss.compare("DAY") == 0) {	
+					s1_val = exe_value.top();
+                    exe_value.pop();
+					exe_type.pop();
+					thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(a->mRecCount);
+					thrust::counting_iterator<unsigned int> begin(0);
+					gpu_getday ff((const int_type*)thrust::raw_pointer_cast(a->d_columns_int[s1_val].data()),	thrust::raw_pointer_cast(res));
+					thrust::for_each(begin, begin + a->mRecCount, ff);						
+					exe_precision.push(0);			
+                    exe_vectors.push(thrust::raw_pointer_cast(res));
+                    exe_type.push("VECTOR");					
+				}
+				else if (ss.compare("DISTINCT") == 0) {
                     s1_val = exe_value.top();
                     exe_type.pop();
                     exe_value.pop();
-
 
                     if(a->type[s1_val] == 0) {
 

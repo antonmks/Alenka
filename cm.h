@@ -213,6 +213,33 @@ struct is_break
  }
 };
 
+struct gpu_interval_char
+{
+	const long long int *dt1;
+    long long int *dt2;
+	const char *index;
+	const unsigned int* len;
+		
+	gpu_interval_char(const long long int *_dt1, long long int *_dt2, const char* _index, const unsigned int* _len):
+			  dt1(_dt1), dt2(_dt2), index(_index), len(_len) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		bool test = 1;
+		if(dt2[i] == 0) {
+			for(int z = 0; z < *len; z++) {
+			   if(index[i*(*len) + z] != index[(i+1)*(*len) + z]) {
+				  test = 0;
+				  break;
+			   };				
+			};	
+		};		
+		if(test)
+			dt2[i] = dt1[i+1];
+	}
+};	
+
+
 struct gpu_interval
 {
 	const long long int *dt1;

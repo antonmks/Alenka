@@ -47,6 +47,8 @@
 %left AND
 %left DISTINCT
 %left YEAR
+%left MONTH
+%left DAY
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
@@ -84,6 +86,8 @@
 %token BINARY
 %token DISTINCT
 %token YEAR
+%token MONTH
+%token DAY
 %token LEFT
 %token RIGHT
 %token OUTER
@@ -187,6 +191,8 @@ NAME { emit_name($1); }
 | MAX '(' expr ')' { emit_max(); }
 | DISTINCT expr { emit_distinct(); }
 | YEAR '(' expr ')' { emit_year(); }
+| MONTH '(' expr ')' { emit_month(); }
+| DAY '(' expr ')' { emit_day(); }
 ;
 
 expr:
