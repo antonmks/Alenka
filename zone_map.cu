@@ -877,9 +877,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 								val = stoi(s2_val.substr(0, pos)) * 60*1000;								
 							}											
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
-									val = stoi(s2_val.substr(0, pos))*1000;
+									val = stoi(s2_val.substr(0, pos));
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -907,9 +907,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 														val = stoi(s1_val.substr(0, pos)) * 60*1000;								
 													}											
 													else {
-														pos = s1_val.find("SECOND");
+														pos = s1_val.find("MSECOND");
 														if(pos != string::npos) {
-															val = stoi(s1_val.substr(0, pos))*1000;
+															val = stoi(s1_val.substr(0, pos));
 														}											
 														else {
 															pos = s1_val.find("MONTH");
@@ -924,14 +924,14 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 																	val = (add_interval(tt/1000, val, 0, 0, 0, 0, 0) - tt/1000)*1000;
 																}	
 																else {
-																	pos = s2_val.find("MSECOND");
+																	pos = s2_val.find("SECOND");
 																	if(pos != string::npos) {
-																		val = stoi(s2_val.substr(0, pos));
+																		val = stoi(s2_val.substr(0, pos))*1000;
 																	}	
 																	else {
-																		pos = s1_val.find("MSECOND");
+																		pos = s1_val.find("SECOND");
 																		if(pos != string::npos) {
-																			val = stoi(s1_val.substr(0, pos));
+																			val = stoi(s1_val.substr(0, pos))*1000;
 																		}	
 																	}		
 																}																		
@@ -1074,10 +1074,10 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 								exe_vectors.push(host_op(t,val*60*1000,ss,1));						
 							}											
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
 									val = stoi(s2_val.substr(0, pos));
-									exe_vectors.push(host_op(t,val*1000,ss,1));						
+									exe_vectors.push(host_op(t,val,ss,1));						
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -1101,6 +1101,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 											temp[1] = add_interval(t[1], val, 0, 0, 0, 0, 0);
 											exe_vectors.push(temp);
 										}							
+										else {
+											pos = s2_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												exe_vectors.push(host_op(t,val*1000,ss,1));						
+											}	
+										}	
 									};									
 								};
 							};
@@ -1137,10 +1144,10 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 								exe_vectors.push(host_op(t,val*60*1000,ss,0));						
 							}		
 							else {
-								pos = s1_val.find("SECOND");
+								pos = s1_val.find("MSECOND");
 								if(pos != string::npos) {
 									val = stoi(s1_val.substr(0, pos));
-									exe_vectors.push(host_op(t,val*1000,ss,1));						
+									exe_vectors.push(host_op(t,val,ss,1));						
 								}											
 								else {
 									pos = s1_val.find("MONTH");
@@ -1163,7 +1170,15 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 											temp[0] = add_interval(t[0], val, 0, 0, 0, 0, 0);
 											temp[1] = add_interval(t[1], val, 0, 0, 0, 0, 0);
 											exe_vectors.push(temp);
-										}							
+										}		
+										else {
+											pos = s1_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s1_val.substr(0, pos));
+												exe_vectors.push(host_op(t,val*1000,ss,1));						
+											}	
+										}	
+										
 									};									
 								};
 							};
@@ -1524,40 +1539,45 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 									val = curr_time;							
 									exe_vectors.push(host_op(s4,val,ss,1));									
 								}
-							else {
-								pos = s2_val.find("SECOND");
-								if(pos != string::npos) {
-									val = stoi(s2_val.substr(0, pos));
-									exe_vectors.push(host_op(s4,val*1000,ss,1));						
-								}											
 								else {
-									pos = s2_val.find("MONTH");
+									pos = s2_val.find("MSECOND");
 									if(pos != string::npos) {
 										val = stoi(s2_val.substr(0, pos));
-									    int_type* temp = (int_type*)malloc(2*int_size);
-										if (ss.compare("ADD") != 0 )
-											val = -val;
-										temp[0] = add_interval(s4[0], 0, val, 0, 0, 0, 0);
-										temp[1] = add_interval(s4[1], 0, val, 0, 0, 0, 0);
-										exe_vectors.push(temp);
-									}						
+										exe_vectors.push(host_op(s4,val,ss,1));						
+									}											
 									else {
-										pos = s2_val.find("YEAR");
+										pos = s2_val.find("MONTH");
 										if(pos != string::npos) {
 											val = stoi(s2_val.substr(0, pos));
 											int_type* temp = (int_type*)malloc(2*int_size);
 											if (ss.compare("ADD") != 0 )
-												val = -val;											
-											temp[0] = add_interval(s4[0], val, 0, 0, 0, 0, 0);
-											temp[1] = add_interval(s4[1], val, 0, 0, 0, 0, 0);
+												val = -val;
+											temp[0] = add_interval(s4[0], 0, val, 0, 0, 0, 0);
+											temp[1] = add_interval(s4[1], 0, val, 0, 0, 0, 0);
 											exe_vectors.push(temp);
-										}							
+										}						
+										else {
+											pos = s2_val.find("YEAR");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												int_type* temp = (int_type*)malloc(2*int_size);
+												if (ss.compare("ADD") != 0 )
+													val = -val;											
+												temp[0] = add_interval(s4[0], val, 0, 0, 0, 0, 0);
+												temp[1] = add_interval(s4[1], val, 0, 0, 0, 0, 0);
+												exe_vectors.push(temp);
+											}							
+											else {
+												pos = s2_val.find("SECOND");
+												if(pos != string::npos) {
+													val = stoi(s2_val.substr(0, pos));
+													exe_vectors.push(host_op(s4,val*1000,ss,1));						
+												}											
+											};
+										}	
 									};									
-								};
-							};
-								
-							}																		
-
+								};								
+							}		
 						};
 					}
 					exe_type.push("VECTOR");
@@ -1597,10 +1617,10 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 									exe_vectors.push(host_op(s4,val,ss,0));									
 								}	
 								else {
-									pos = s2_val.find("SECOND");
+									pos = s2_val.find("MSECOND");
 									if(pos != string::npos) {
 										val = stoi(s2_val.substr(0, pos));
-										exe_vectors.push(host_op(s4,val*1000,ss,1));						
+										exe_vectors.push(host_op(s4,val,ss,1));						
 									}											
 									else {
 										pos = s2_val.find("MONTH");
@@ -1624,6 +1644,13 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 												temp[1] = add_interval(s4[1], val, 0, 0, 0, 0, 0);
 												exe_vectors.push(temp);
 											}							
+											else {
+												pos = s2_val.find("SECOND");
+												if(pos != string::npos) {
+													val = stoi(s2_val.substr(0, pos));
+													exe_vectors.push(host_op(s4,val*1000,ss,1));						
+												}											
+											}
 										};									
 									};
 								};

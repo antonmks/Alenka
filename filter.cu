@@ -228,10 +228,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								exe_vectors.push(a->op(t,val*60*1000,ss,1,0,0));						
 							}											
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
 									val = stoi(s2_val.substr(0, pos));
-									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+									exe_vectors.push(a->op(t,val,ss,1,0,0));						
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -265,7 +265,15 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 											};	
 											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 											exe_vectors.push(t);																
-										}							
+										}	
+										else {
+											pos = s2_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+											}
+										}		
+										
 									};									
 								};
 							};
@@ -303,10 +311,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								exe_vectors.push(a->op(t,val*60*1000,ss,0,0,0));						
 							}		
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
 									val = stoi(s2_val.substr(0, pos));
-									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+									exe_vectors.push(a->op(t,val,ss,0,0,0));						
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -340,7 +348,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 											};	
 											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 											exe_vectors.push(t);																
-										}							
+										}		
+										else {
+											pos = s2_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												exe_vectors.push(a->op(t,val*1000,ss,0,0,0));						
+											}											
+										}		
 									};									
 								};
 							};
@@ -425,9 +440,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								val = stoi(s2_val.substr(0, pos)) * 60*1000;								
 							}											
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
-									val = stoi(s2_val.substr(0, pos))*1000;
+									val = stoi(s2_val.substr(0, pos));
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -455,9 +470,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 														val = stoi(s1_val.substr(0, pos)) * 60*1000;								
 													}											
 													else {
-														pos = s1_val.find("SECOND");
+														pos = s1_val.find("MSECOND");
 														if(pos != string::npos) {
-															val = stoi(s1_val.substr(0, pos))*1000;
+															val = stoi(s1_val.substr(0, pos));
 														}											
 														else {
 															pos = s1_val.find("MONTH");
@@ -472,14 +487,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 																	val = (add_interval(tt/1000, val, 0, 0, 0, 0, 0)- tt/1000)*1000;
 																}	
 																else {
-																	pos = s2_val.find("MSECOND");
+																	pos = s2_val.find("SECOND");
 																	if(pos != string::npos) {
-																		val = stoi(s2_val.substr(0, pos));
+																		val = stoi(s2_val.substr(0, pos))*1000;
 																	}	
 																	else {
-																		pos = s1_val.find("MSECOND");
+																		pos = s1_val.find("SECOND");
 																		if(pos != string::npos) {
-																			val = stoi(s1_val.substr(0, pos));
+																			val = stoi(s1_val.substr(0, pos))*1000;
 																		}	
 																	}		
 																}			
@@ -498,12 +513,12 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 				
 					int_type res;
                     if (ss.compare("ADD") == 0 )
-                        res = val*1000+tt;
+                        res = val+tt;
                     else {
 						if(!reverse)
-							res = val*1000-tt;
+							res = val-tt;
 						else
-							res = tt- val*1000;
+							res = tt- val;
 					};	
 
                     exe_type.push("NUMBER");
@@ -621,10 +636,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								exe_vectors.push(a->op(t,val*60*1000,ss,1,0,0));						
 							}				
 							else {
-								pos = s2_val.find("SECOND");
+								pos = s2_val.find("MSECOND");
 								if(pos != string::npos) {
 									val = stoi(s2_val.substr(0, pos));
-									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+									exe_vectors.push(a->op(t,val,ss,1,0,0));						
 								}											
 								else {
 									pos = s2_val.find("MONTH");
@@ -659,6 +674,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 											exe_vectors.push(t);																
 										}							
+										else {
+											pos = s2_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+											}											
+										}
 									};									
 								};
 							};
@@ -697,7 +719,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								pos = s1_val.find("SECOND");
 								if(pos != string::npos) {
 									val = stoi(s1_val.substr(0, pos));
-									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+									exe_vectors.push(a->op(t,val*1000,ss,0,0,0));						
 								}											
 								else {
 									pos = s1_val.find("MONTH");
@@ -732,10 +754,16 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 											exe_vectors.push(t);																
 										}							
+										else {
+											pos = s1_val.find("SECOND");
+											if(pos != string::npos) {
+												val = stoi(s1_val.substr(0, pos));
+												exe_vectors.push(a->op(t,val,ss,0,0,0));						
+											}											
+										}
 									};									
 								};
-							};
-							
+							};							
 						};						
 					}
 					
@@ -1094,10 +1122,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									exe_vectors.push(a->op(s4,val,ss,1,0,0));									
 								}	
 								else {
-									pos = s1_val.find("SECOND");
+									pos = s1_val.find("MSECOND");
 									if(pos != string::npos) {
 										val = stoi(s1_val.substr(0, pos));
-										exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+										exe_vectors.push(a->op(s4,val,ss,1,0,0));						
 									}											
 									else {
 										pos = s1_val.find("MONTH");
@@ -1132,7 +1160,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 												thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 												exe_vectors.push(s4);																
 											}							
-										};									
+											else {
+												pos = s1_val.find("SECOND");
+												if(pos != string::npos) {
+													val = stoi(s1_val.substr(0, pos));
+													exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+												}											
+											}	
+										}			
 									};
 								};
 								
@@ -1177,10 +1212,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									exe_vectors.push(a->op(s4,val,ss,0,0,0));									
 								}	
 								else {
-									pos = s2_val.find("SECOND");
+									pos = s2_val.find("MSECOND");
 									if(pos != string::npos) {
 										val = stoi(s2_val.substr(0, pos));
-										exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+										exe_vectors.push(a->op(s4,val,ss,1,0,0));						
 									}											
 									else {
 										pos = s2_val.find("MONTH");
@@ -1215,7 +1250,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 												thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
 												exe_vectors.push(s4);																
 											}							
-										};									
+											else {
+												pos = s2_val.find("SECOND");
+												if(pos != string::npos) {
+													val = stoi(s2_val.substr(0, pos));
+													exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+												}											
+											}
+										}									
 									};
 								};
 								

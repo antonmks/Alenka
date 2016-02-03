@@ -3828,7 +3828,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
         //cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
 		//char map_check = 'R';
-        //cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+        cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
         if(map_check == 'R') {
 			auto old_ph = phase_copy;
