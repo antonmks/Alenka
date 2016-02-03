@@ -68,3 +68,4 @@ void emit_create_index(const char *index_name, const char *table, const char *co
 void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn);
 void emit_fieldname(const char* name1, const char* name2);
 void load_vars();
+void emit_string_grp(const char *str, const char *str_grp); 

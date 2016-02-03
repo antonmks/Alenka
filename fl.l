@@ -98,6 +98,8 @@ APPEND {return APPEND; }
 -?[0-9]+E[-+]?[0-9]+ |
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
 -?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atoff(yytext) ;return APPROXNUM; }
+[0-9]+(HOUR|MINUTE|SECOND|MSECOND|DAY|MONTH|YEAR) { yylval.strval = strdup(yytext); return STRING; }
+date\(\) { yylval.strval = strdup(yytext); return STRING;}
 
 TRUE { yylval.intval = 1; return BOOL1; }
 UNKNOWN { yylval.intval = -1; return BOOL1; }

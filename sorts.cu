@@ -23,7 +23,6 @@ void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permu
 	if (phase_copy) {
 		if(bits == 8) {
 			thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(key.data()));
-			
 			thrust::device_ptr<unsigned char> temp((unsigned char*)tmp);
 			thrust::gather(dev_per, dev_per+RecCount, src, temp);
 			if (SortType.compare("DESC") == 0 )

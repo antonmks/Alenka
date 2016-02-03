@@ -43,8 +43,8 @@ struct gpu_getyear
 		uint64 sec;
 		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
 		uint year, leap;
-		uint yday, hour, min;
-		uint month, mday, wday;
+		uint yday;
+		uint month, mday;
 		const uint daysSinceJan1st[2][13]=
 		{
 			{0,31,59,90,120,151,181,212,243,273,304,334,365}, // 365 days, non-leap
@@ -53,7 +53,7 @@ struct gpu_getyear
 		uint64 SecondsSinceEpoch = source[i]/1000;
 		sec = SecondsSinceEpoch + 11644473600;
 
-		wday = (uint)((sec / 86400 + 1) % 7); // day of week
+		//wday = (uint)((sec / 86400 + 1) % 7); // day of week
 		quadricentennials = (uint)(sec / 12622780800ULL); // 400*365.2425*24*3600
 		sec %= 12622780800ULL;
 
@@ -84,9 +84,9 @@ struct gpu_getyear
 		// Calculate the day of the year and the time
 		yday = sec / 86400;
 		sec %= 86400;
-		hour = sec / 3600;
+		//hour = sec / 3600;
 		sec %= 3600;
-		min = sec / 60;
+		//min = sec / 60;
 		sec %= 60;
 
 	// Calculate the month
@@ -116,8 +116,8 @@ struct gpu_getmonth
 		uint64 sec;
 		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
 		uint year, leap;
-		uint yday, hour, min;
-		uint month, mday, wday;
+		uint yday;
+		uint month, mday;
 		const uint daysSinceJan1st[2][13]=
 		{
 			{0,31,59,90,120,151,181,212,243,273,304,334,365}, // 365 days, non-leap
@@ -126,7 +126,7 @@ struct gpu_getmonth
 		uint64 SecondsSinceEpoch = source[i]/1000;
 		sec = SecondsSinceEpoch + 11644473600;
 
-		wday = (uint)((sec / 86400 + 1) % 7); // day of week
+		//wday = (uint)((sec / 86400 + 1) % 7); // day of week
 		quadricentennials = (uint)(sec / 12622780800ULL); // 400*365.2425*24*3600
 		sec %= 12622780800ULL;
 
@@ -157,9 +157,9 @@ struct gpu_getmonth
 		// Calculate the day of the year and the time
 		yday = sec / 86400;
 		sec %= 86400;
-		hour = sec / 3600;
+		//hour = sec / 3600;
 		sec %= 3600;
-		min = sec / 60;
+		//min = sec / 60;
 		sec %= 60;
 
 	// Calculate the month
@@ -1175,9 +1175,17 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 //modify what we push there in case of a grouping
                 if (a->grp_count) {
                     thrust::device_ptr<int_type> count_diff = thrust::device_malloc<int_type>(res_size);
-                    //thrust::device_ptr<bool> d_grp(a->grp);
-                    thrust::copy_if(a->d_columns_int[exe_value1.top()].begin(),a->d_columns_int[exe_value1.top()].begin() + a->mRecCount,
-                                    d_di, count_diff, thrust::identity<bool>());
+                    if(!exe_ts.top()) {
+						thrust::copy_if(a->d_columns_int[exe_value1.top()].begin(),a->d_columns_int[exe_value1.top()].begin() + a->mRecCount,
+										d_di, count_diff, thrust::identity<bool>());
+					}					
+					else {				
+						
+						thrust::device_vector<unsigned int> dd_tmp(res_size);
+						thrust::copy_if(rcol_matches.begin(), rcol_matches.end(), d_di, dd_tmp.begin(), thrust::identity<bool>());
+						thrust::gather(dd_tmp.begin(), dd_tmp.end(), rcol_dev.begin(), count_diff);														
+										
+					};
                     b->addDeviceColumn(thrust::raw_pointer_cast(count_diff) ,  col_val.top(), res_size);
                     thrust::device_free(count_diff);
                 }

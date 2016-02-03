@@ -199,7 +199,551 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 s1 = exe_type.top();
                 exe_type.pop();
                 s2 = exe_type.top();
-                exe_type.pop();
+                exe_type.pop();				
+				
+								
+				if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
+                    s1_val = exe_value.top();
+                    exe_value.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+					int_type* t = a->get_int_by_name(s1_val);
+										
+					auto pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos));
+						exe_vectors.push(a->op(t,val*24*60*60*1000,ss,1,0,0));
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos));
+							exe_vectors.push(a->op(t,val*60*60*1000,ss,1,0,0));						
+						}											
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));					
+								exe_vectors.push(a->op(t,val*60*1000,ss,1,0,0));						
+							}											
+							else {
+								pos = s2_val.find("SECOND");
+								if(pos != string::npos) {
+									val = stoi(s2_val.substr(0, pos));
+									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+								}											
+								else {
+									pos = s2_val.find("MONTH");
+									if(pos != string::npos) {
+										val = stoi(s2_val.substr(0, pos));
+										if (ss.compare("ADD") != 0 )
+											val = -val;
+										thrust::device_ptr<int_type> dev_ptr(t);
+										thrust::host_vector<int_type> tt(a->mRecCount);
+										thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+										
+										for(int z = 0; z < a->mRecCount; z++) {
+											tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+										};	
+										thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+										exe_vectors.push(t);																
+									}						
+									else {
+										pos = s2_val.find("YEAR");
+										if(pos != string::npos) {
+											val = stoi(s2_val.substr(0, pos));
+											int_type* temp = (int_type*)malloc(2*int_size);
+											if (ss.compare("ADD") != 0 )
+												val = -val;											
+											thrust::device_ptr<int_type> dev_ptr(t);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(t);																
+										}							
+									};									
+								};
+							};
+
+						};
+					}
+					
+					exe_type.push("VECTOR");
+					exe_precision.push(0);
+
+				}
+				else if (s2.compare("NAME") == 0 && s1.compare("STRING") == 0) {
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+                    s1_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+					int_type* t = a->get_int_by_name(s1_val);
+					
+					auto pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos));
+						exe_vectors.push(a->op(t,val*24*60*60*1000,ss,0,0,0));
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos));
+							exe_vectors.push(a->op(t,val*60*60*1000,ss,0,0,0));						
+						}											
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));
+								exe_vectors.push(a->op(t,val*60*1000,ss,0,0,0));						
+							}		
+							else {
+								pos = s2_val.find("SECOND");
+								if(pos != string::npos) {
+									val = stoi(s2_val.substr(0, pos));
+									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+								}											
+								else {
+									pos = s2_val.find("MONTH");
+									if(pos != string::npos) {
+										val = stoi(s2_val.substr(0, pos));
+										if (ss.compare("ADD") != 0 )
+											val = -val;
+										thrust::device_ptr<int_type> dev_ptr(t);
+										thrust::host_vector<int_type> tt(a->mRecCount);
+										thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+										
+										for(int z = 0; z < a->mRecCount; z++) {
+											tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+										};	
+										thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+										exe_vectors.push(t);																
+									}						
+									else {
+										pos = s2_val.find("YEAR");
+										if(pos != string::npos) {
+											val = stoi(s2_val.substr(0, pos));
+											int_type* temp = (int_type*)malloc(2*int_size);
+											if (ss.compare("ADD") != 0 )
+												val = -val;											
+											thrust::device_ptr<int_type> dev_ptr(t);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(t);																
+										}							
+									};									
+								};
+							};
+							
+						};
+					}
+					exe_type.push("VECTOR");
+					exe_precision.push(0);				
+				}
+				
+				else if (s1.compare("STRING") == 0 && s2.compare("STRING") == 0) {
+				    s1_val = exe_value.top();
+                    exe_value.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val, tt;
+					bool reverse = 1;
+					
+					auto pos = s2_val.find("date()");
+					if(pos != string::npos) {
+						tt = curr_time;								
+					}
+					else {
+						pos = s2_val.find("-"); //"1970-
+						if(pos != string::npos) {
+							struct std::tm tm;														
+							tm.tm_year = std::stoi(s2_val.substr(0,4))-1900;
+							tm.tm_mon = std::stoi(s2_val.substr(5,2))-1;
+							tm.tm_mday = std::stoi(s2_val.substr(8,2));
+							tm.tm_hour = std::stoi(s2_val.substr(11,2));
+							tm.tm_min = std::stoi(s2_val.substr(14,2));
+							tm.tm_sec = std::stoi(s2_val.substr(17,2));								
+							#ifdef _WIN64
+							tt = _mkgmtime (&tm);
+							#else
+							tt = timegm (&tm);
+							#endif								
+							tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
+						}
+						else {
+							reverse = 0;
+							pos = s1_val.find("date()");
+							if(pos != string::npos) {
+								tt = curr_time;								
+							}
+							else {
+								pos = s1_val.find("-"); //"1970-
+								if(pos != string::npos) {
+									struct std::tm tm;														
+									tm.tm_year = std::stoi(s1_val.substr(0,4))-1900;
+									tm.tm_mon = std::stoi(s1_val.substr(5,2))-1;
+									tm.tm_mday = std::stoi(s1_val.substr(8,2));
+									tm.tm_hour = std::stoi(s1_val.substr(11,2));
+									tm.tm_min = std::stoi(s1_val.substr(14,2));
+									tm.tm_sec = std::stoi(s1_val.substr(17,2));								
+									#ifdef _WIN64
+									tt = _mkgmtime (&tm);
+									#else
+									tt = timegm (&tm);
+									#endif								
+									tt = tt*1000 + std::stoi(s1_val.substr(20,3));					
+								}
+							};							
+						}	
+					};
+
+
+					
+					
+					pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos)) * 24*60*60*1000;
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos)) * 60*60*1000;
+						}											
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos)) * 60*1000;								
+							}											
+							else {
+								pos = s2_val.find("SECOND");
+								if(pos != string::npos) {
+									val = stoi(s2_val.substr(0, pos))*1000;
+								}											
+								else {
+									pos = s2_val.find("MONTH");
+									if(pos != string::npos) {
+										val = (add_interval(tt/1000, 0, stoi(s2_val.substr(0, pos)), 0, 0, 0, 0) - tt/1000)*1000;
+									}						
+									else {
+										pos = s2_val.find("YEAR");
+										if(pos != string::npos) {
+											val = (add_interval(tt/1000, stoi(s2_val.substr(0, pos)), 0, 0, 0, 0, 0) - tt/1000)*1000;
+										}		
+										else {
+											pos = s1_val.find("DAY");
+											if(pos != string::npos) {
+												val = stoi(s1_val.substr(0, pos)) * 24*60*60*1000;
+											}					
+											else {
+												pos = s1_val.find("HOUR");
+												if(pos != string::npos) {
+													val = stoi(s1_val.substr(0, pos)) * 60*60*1000;
+												}											
+												else {
+													pos = s1_val.find("MINUTE");
+													if(pos != string::npos) {
+														val = stoi(s1_val.substr(0, pos)) * 60*1000;								
+													}											
+													else {
+														pos = s1_val.find("SECOND");
+														if(pos != string::npos) {
+															val = stoi(s1_val.substr(0, pos))*1000;
+														}											
+														else {
+															pos = s1_val.find("MONTH");
+															if(pos != string::npos) {
+																val = stoi(s1_val.substr(0, pos));
+																val = (add_interval(tt/1000, 0, val, 0, 0, 0, 0) - tt/1000)*1000;
+															}						
+															else {
+																pos = s1_val.find("YEAR");
+																if(pos != string::npos) {
+																	val = stoi(s1_val.substr(0, pos));
+																	val = (add_interval(tt/1000, val, 0, 0, 0, 0, 0)- tt/1000)*1000;
+																}	
+																else {
+																	pos = s2_val.find("MSECOND");
+																	if(pos != string::npos) {
+																		val = stoi(s2_val.substr(0, pos));
+																	}	
+																	else {
+																		pos = s1_val.find("MSECOND");
+																		if(pos != string::npos) {
+																			val = stoi(s1_val.substr(0, pos));
+																		}	
+																	}		
+																}			
+															};									
+														};
+													};							
+												};
+											}
+										}	
+									};									
+								};
+							};
+						}	
+					};				
+
+				
+					int_type res;
+                    if (ss.compare("ADD") == 0 )
+                        res = val*1000+tt;
+                    else {
+						if(!reverse)
+							res = val*1000-tt;
+						else
+							res = tt- val*1000;
+					};	
+
+                    exe_type.push("NUMBER");
+                    exe_nums.push(res);		
+					exe_precision.push(0);					
+				}				
+				
+				else if (s1.compare("STRING") == 0 && s2.compare("NUMBER") == 0) {
+				    s1_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+                    n1 = exe_nums.top();
+                    exe_nums.pop();
+
+					
+					auto pos = s1_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s1_val.substr(0, pos)) * 24*60*60*1000;
+					}					
+					else {
+						pos = s1_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s1_val.substr(0, pos)) * 60*60*1000;
+						}											
+						else {
+							pos = s1_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s1_val.substr(0, pos)) * 60*1000;								
+							}											
+							else {
+								pos = s1_val.find("date()");
+								if(pos != string::npos) {
+									val = curr_time;								
+								}																		
+							}
+						};
+					};
+					
+					int_type res;
+                    if (ss.compare("ADD") == 0 )
+                        res = val+n1;
+                    else
+                        res = val-n1;
+
+                    exe_type.push("NUMBER");
+                    exe_nums.push(res);						
+					exe_precision.push(0);					
+				}
+				
+				else if (s2.compare("STRING") == 0 && s1.compare("NUMBER") == 0) {
+				    s1_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+                    n1 = exe_nums.top();
+                    exe_nums.pop();
+
+					
+					auto pos = s1_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s1_val.substr(0, pos)) * 24*60*60*1000;
+					}					
+					else {
+						pos = s1_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s1_val.substr(0, pos)) * 60*60*1000;
+						}											
+						else {
+							pos = s1_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s1_val.substr(0, pos)) * 60*1000;								
+							}											
+							else {
+								pos = s1_val.find("date()");
+								if(pos != string::npos) {
+									val = curr_time;								
+								}																		
+							}
+						};
+					};
+					
+					int_type res;
+                    if (ss.compare("ADD") == 0 )
+                        res = val+n1;
+                    else
+                        res = n1-val;
+
+                    exe_type.push("NUMBER");
+                    exe_nums.push(res);						
+					exe_precision.push(0);					
+				}
+				
+				else if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
+                    s1_val = exe_value.top();
+                    exe_value.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+					int_type* t = a->get_int_by_name(s1_val);
+					
+					auto pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos));
+						exe_vectors.push(a->op(t,val*24*60*60*1000,ss,1,0,0));
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos));
+							exe_vectors.push(a->op(t,val*60*60*1000,ss,1,0,0));						
+						}											
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));
+								exe_vectors.push(a->op(t,val*60*1000,ss,1,0,0));						
+							}				
+							else {
+								pos = s2_val.find("SECOND");
+								if(pos != string::npos) {
+									val = stoi(s2_val.substr(0, pos));
+									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+								}											
+								else {
+									pos = s2_val.find("MONTH");
+									if(pos != string::npos) {
+										val = stoi(s2_val.substr(0, pos));
+										if (ss.compare("ADD") != 0 )
+											val = -val;
+										thrust::device_ptr<int_type> dev_ptr(t);
+										thrust::host_vector<int_type> tt(a->mRecCount);
+										thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+										
+										for(int z = 0; z < a->mRecCount; z++) {
+											tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+										};	
+										thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+										exe_vectors.push(t);																
+									}						
+									else {
+										pos = s2_val.find("YEAR");
+										if(pos != string::npos) {
+											val = stoi(s2_val.substr(0, pos));
+											int_type* temp = (int_type*)malloc(2*int_size);
+											if (ss.compare("ADD") != 0 )
+												val = -val;											
+											thrust::device_ptr<int_type> dev_ptr(t);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(t);																
+										}							
+									};									
+								};
+							};
+	
+						};
+					}
+					exe_type.push("VECTOR");
+					exe_precision.push(0);
+				}
+				else if (s2.compare("NAME") == 0 && s1.compare("STRING") == 0) {
+                    s1_val = exe_value.top();
+                    exe_value.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+					int_type* t = a->get_int_by_name(s2_val);
+					
+					auto pos = s1_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s1_val.substr(0, pos));
+						exe_vectors.push(a->op(t,val*24*60*60*1000,ss,0,0,0));
+					}
+					else {
+						pos = s1_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s1_val.substr(0, pos));
+							exe_vectors.push(a->op(t,val*60*60*1000,ss,0,0,0));						
+						}											
+						else {
+							pos = s1_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s1_val.substr(0, pos));
+								exe_vectors.push(a->op(t,val*60*1000,ss,0,0,0));						
+							}	
+							else {
+								pos = s1_val.find("SECOND");
+								if(pos != string::npos) {
+									val = stoi(s1_val.substr(0, pos));
+									exe_vectors.push(a->op(t,val*1000,ss,1,0,0));						
+								}											
+								else {
+									pos = s1_val.find("MONTH");
+									if(pos != string::npos) {
+										val = stoi(s1_val.substr(0, pos));
+										if (ss.compare("ADD") != 0 )
+											val = -val;
+										thrust::device_ptr<int_type> dev_ptr(t);
+										thrust::host_vector<int_type> tt(a->mRecCount);
+										thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+										
+										for(int z = 0; z < a->mRecCount; z++) {
+											tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+										};	
+										thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+										exe_vectors.push(t);																
+									}						
+									else {
+										pos = s1_val.find("YEAR");
+										if(pos != string::npos) {
+											val = stoi(s1_val.substr(0, pos));
+											int_type* temp = (int_type*)malloc(2*int_size);
+											if (ss.compare("ADD") != 0 )
+												val = -val;											
+											thrust::device_ptr<int_type> dev_ptr(t);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(t);																
+										}							
+									};									
+								};
+							};
+							
+						};						
+					}
+					
+					exe_type.push("VECTOR");
+					exe_precision.push(0);
+				}				
+				
+				
 
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
@@ -391,7 +935,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							auto pres = precision_func(p1, p2, ss);	
 							exe_precision.push(pres);
                             exe_vectors.push(a->op(t,s3,ss,0,p1,p2));
-                            //free s3
                             cudaFree(s3);
 
                         }
@@ -438,7 +981,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							auto p2 = a->decimal_zeroes[s1_val];					
 							auto pres = precision_func(p2, p1, ss);	
 							exe_precision.push(pres);
-
                             exe_vectors.push(a->op(t,s3,ss,1,p2,p1));
                             cudaFree(s3);
                         }
@@ -518,6 +1060,174 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         cudaFree(s3);
                     }
                 }
+				
+				else if (s1.compare("VECTOR") == 0 && s2.compare("STRING") == 0) {
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+                    int_type* s4 = exe_vectors.top();
+					exe_vectors.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					
+					auto pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos));
+						exe_vectors.push(a->op(s4,val*24*60*60*1000,ss,1,0,0));
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos));
+							exe_vectors.push(a->op(s4,val*60*60*1000,ss,1,0,0));
+						}
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));
+								exe_vectors.push(a->op(s4,val*60*1000,ss,1,0,0));
+							}
+							else {
+								pos = s2_val.find("date()");
+								if(pos != string::npos) {
+									val = curr_time;							
+									exe_vectors.push(a->op(s4,val,ss,1,0,0));									
+								}	
+								else {
+									pos = s1_val.find("SECOND");
+									if(pos != string::npos) {
+										val = stoi(s1_val.substr(0, pos));
+										exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+									}											
+									else {
+										pos = s1_val.find("MONTH");
+										if(pos != string::npos) {
+											val = stoi(s1_val.substr(0, pos));
+											if (ss.compare("ADD") != 0 )
+												val = -val;
+											thrust::device_ptr<int_type> dev_ptr(s4);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(s4);																
+										}						
+										else {
+											pos = s1_val.find("YEAR");
+											if(pos != string::npos) {
+												val = stoi(s1_val.substr(0, pos));
+												int_type* temp = (int_type*)malloc(2*int_size);
+												if (ss.compare("ADD") != 0 )
+													val = -val;											
+												thrust::device_ptr<int_type> dev_ptr(s4);
+												thrust::host_vector<int_type> tt(a->mRecCount);
+												thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+												
+												for(int z = 0; z < a->mRecCount; z++) {
+													tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+												};	
+												thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+												exe_vectors.push(s4);																
+											}							
+										};									
+									};
+								};
+								
+							}																		
+
+						};
+					}
+					exe_type.push("VECTOR");
+					exe_precision.push(0);
+				}
+				
+				else if (s2.compare("VECTOR") == 0 && s1.compare("STRING") == 0) {
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+					int_type val;
+					int_type* s4 = exe_vectors.top();
+					exe_vectors.pop();
+					auto p1 = exe_precision.top();
+					exe_precision.pop();
+					
+					auto pos = s2_val.find("DAY");
+					if(pos != string::npos) {
+						val = stoi(s2_val.substr(0, pos));
+						exe_vectors.push(a->op(s4,val*24*60*60*1000,ss,0,0,0));
+					}					
+					else {
+						pos = s2_val.find("HOUR");
+						if(pos != string::npos) {
+							val = stoi(s2_val.substr(0, pos));
+							exe_vectors.push(a->op(s4,val*60*60*1000,ss,0,0,0));
+						}
+						else {
+							pos = s2_val.find("MINUTE");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));
+								exe_vectors.push(a->op(s4,val*60*1000,ss,0,0,0));
+							}
+							else {
+								pos = s2_val.find("date()");
+								if(pos != string::npos) {
+									val = curr_time;							
+									exe_vectors.push(a->op(s4,val,ss,0,0,0));									
+								}	
+								else {
+									pos = s2_val.find("SECOND");
+									if(pos != string::npos) {
+										val = stoi(s2_val.substr(0, pos));
+										exe_vectors.push(a->op(s4,val*1000,ss,1,0,0));						
+									}											
+									else {
+										pos = s2_val.find("MONTH");
+										if(pos != string::npos) {
+											val = stoi(s2_val.substr(0, pos));
+											if (ss.compare("ADD") != 0 )
+												val = -val;
+											thrust::device_ptr<int_type> dev_ptr(s4);
+											thrust::host_vector<int_type> tt(a->mRecCount);
+											thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+											
+											for(int z = 0; z < a->mRecCount; z++) {
+												tt[z] = add_interval(tt[z], 0, val, 0, 0, 0, 0);																					
+											};	
+											thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+											exe_vectors.push(s4);																
+										}						
+										else {
+											pos = s2_val.find("YEAR");
+											if(pos != string::npos) {
+												val = stoi(s2_val.substr(0, pos));
+												int_type* temp = (int_type*)malloc(2*int_size);
+												if (ss.compare("ADD") != 0 )
+													val = -val;											
+												thrust::device_ptr<int_type> dev_ptr(s4);
+												thrust::host_vector<int_type> tt(a->mRecCount);
+												thrust::copy(dev_ptr, dev_ptr+a->mRecCount, tt.begin());									
+												
+												for(int z = 0; z < a->mRecCount; z++) {
+													tt[z] = add_interval(tt[z], val, 0, 0, 0, 0, 0);																					
+												};	
+												thrust::copy(tt.begin(), tt.end(), dev_ptr);																				
+												exe_vectors.push(s4);																
+											}							
+										};									
+									};
+								};
+								
+							}
+						};
+					}
+
+					
+					exe_type.push("VECTOR");
+					exe_precision.push(0);
+				}
+				
 
                 else if ((s1.compare("VECTOR") == 0 || s1.compare("VECTOR F") == 0)  && s2.compare("FLOAT") == 0) {
                     n1_f = exe_nums_f.top();
@@ -665,176 +1375,252 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 else if ((s1.compare("STRING") == 0 && s2.compare("NAME") == 0) ||
                          (s1.compare("NAME") == 0 && s2.compare("STRING") == 0))
                 {
-
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
-
-                    if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
-                        s1.swap(s2);
-                        s1_val.swap(s2_val);
-                    };
 					
-					if (a->type[s2_val] == 0 && a->ts_cols[s2_val] ) {
-						struct std::tm tm;						
-						auto year = s1_val.substr(0,4);
-						auto month = s1_val.substr(5,2);
-						auto day = s1_val.substr(8,2);
-						auto hour = s1_val.substr(11,2);
-						auto min = s1_val.substr(14,2);
-						auto sec = s1_val.substr(17,2);
-						auto usec = s1_val.substr(20,3);
-						//cout << "VL " << year << " " << month << " " << day << " " << hour << " " << min << " " << sec << " " << usec << "   " << endl;
-						
-						tm.tm_year = std::stoi(year)-1900;
-						tm.tm_mon = std::stoi(month)-1;
-						tm.tm_mday = std::stoi(day);
-						tm.tm_hour = std::stoi(hour);
-						tm.tm_min = std::stoi(min);
-						tm.tm_sec = std::stoi(sec);
-						
-						#ifdef _WIN64
-						time_t time = _mkgmtime (&tm);
-						#else
-						time_t time = timegm (&tm);
-						#endif
-						
-						
-						time = time*1000 + std::stoi(usec);					
-						int_type* t = a->get_int_by_name(s2_val);
-						exe_precision.push(0);						
-						exe_type.push("VECTOR");
-						bool_vectors.push(a->compare(t,(int_type)time,cmp_type, 0, 0));						
-
-					}
-					else {	
-					
-						void* d_res, *d_v;
-						if(cmp_type != 7)
-							cudaMalloc((void **) &d_res, a->mRecCount);
-						else
-							cudaMalloc((void **) &d_res, a->hostRecCount);
-						thrust::device_ptr<bool> dd_res((bool*)d_res);
-
-						cudaMalloc((void **) &d_v, 8);
-						thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
-						thrust::counting_iterator<unsigned int> begin(0);
-
-						if(s2_val.find(".") != string::npos) { //bitmap index
-							auto pos1 = s2_val.find_first_of(".");
-							auto pos2 = s2_val.find_last_of(".");
-							auto set = s2_val.substr(pos1+1, (pos2-pos1)-1);
-							auto col = s2_val.substr(pos2+1);
-							auto len = data_dict[set][col].col_length;
-
-							while(s1_val.length() < len)
-								s1_val = s1_val + '\0';
-
-							auto s1_hash = MurmurHash64A(&s1_val, len, hash_seed)/2;
-
-							if(a->idx_dictionary_int[s2_val].find(s1_hash) != a->idx_dictionary_int[s2_val].end()) {
-								dd_v[0] = a->idx_dictionary_int[s2_val][s1_hash];
-								dd_v[1] = (unsigned int)cmp_type;
-								cmp_functor_dict ff(a->idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
-								thrust::for_each(begin, begin + a->mRecCount, ff);
-							}
+					if(s1_val == "date()" || s2_val == "date()") {
+						if(s1.compare("STRING") == 0) {
+							s1_val = exe_value.top();
+							exe_value.pop();
+							s2_val = exe_value.top();
+							exe_value.pop();
+							int_type val;
+							int_type* t = a->get_int_by_name(s1_val);
+							
+							auto pos = s2_val.find("date()");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));								
+								bool_vectors.push(a->compare(t,val,cmp_type,0,0));
+							}		
 							else {
-								cudaMemset(d_res,0,a->mRecCount);
-							}
+								pos = s2_val.find("-"); //"1970-
+								if(pos != string::npos) {
+									struct std::tm tm;														
+									tm.tm_year = std::stoi(s2_val.substr(0,4))-1900;
+									tm.tm_mon = std::stoi(s2_val.substr(5,2))-1;
+									tm.tm_mday = std::stoi(s2_val.substr(8,2));
+									tm.tm_hour = std::stoi(s2_val.substr(11,2));
+									tm.tm_min = std::stoi(s2_val.substr(14,2));
+									tm.tm_sec = std::stoi(s2_val.substr(17,2));								
+									#ifdef _WIN64
+									auto tt = _mkgmtime (&tm);
+									#else
+									tt = timegm (&tm);
+									#endif								
+									tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
+									bool_vectors.push(a->compare(t,tt, cmp_type,0,0));
+								}
+							};
+							
+							exe_type.push("VECTOR");
+							exe_precision.push(0);												
 						}
 						else {
+							s2_val = exe_value.top();
+							exe_value.pop();
+							s1_val = exe_value.top();
+							exe_value.pop();
+							int_type val;
+							int_type* t = a->get_int_by_name(s1_val);
+							
+							auto pos = s2_val.find("date()");
+							if(pos != string::npos) {
+								val = stoi(s2_val.substr(0, pos));
+								bool_vectors.push(a->compare(t,val, cmp_type,0,0));
+							}					
+							else {
+								pos = s2_val.find("-"); //"1970-
+								if(pos != string::npos) {
+									struct std::tm tm;														
+									tm.tm_year = std::stoi(s2_val.substr(0,4))-1900;
+									tm.tm_mon = std::stoi(s2_val.substr(5,2))-1;
+									tm.tm_mday = std::stoi(s2_val.substr(8,2));
+									tm.tm_hour = std::stoi(s2_val.substr(11,2));
+									tm.tm_min = std::stoi(s2_val.substr(14,2));
+									tm.tm_sec = std::stoi(s2_val.substr(17,2));								
+									#ifdef _WIN64
+									auto tt = _mkgmtime (&tm);
+									#else
+									tt = timegm (&tm);
+									#endif								
+									tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
+									bool_vectors.push(a->compare(t,tt, cmp_type,0,0));
+								}
+							};
 
-							auto s = a->string_map[s2_val];
-							auto pos = s.find_first_of(".");
-							auto len = data_dict[s.substr(0, pos)][s.substr(pos+1)].col_length;
+							exe_type.push("VECTOR");
+							exe_precision.push(0);					
+						}						
+					}
+					else {	
 
-							dd_v[0] = len;
-							dd_v[1] = (unsigned int)s1_val.length() + 1;
+						if (s1.compare("NAME") == 0 && s2.compare("STRING") == 0) {
+							s1.swap(s2);
+							s1_val.swap(s2_val);
+						};
+						
+						if (a->type[s2_val] == 0 && a->ts_cols[s2_val] ) {
+							struct std::tm tm;						
+							auto year = s1_val.substr(0,4);
+							auto month = s1_val.substr(5,2);
+							auto day = s1_val.substr(8,2);
+							auto hour = s1_val.substr(11,2);
+							auto min = s1_val.substr(14,2);
+							auto sec = s1_val.substr(17,2);
+							auto usec = s1_val.substr(20,3);
+							//cout << "VL " << year << " " << month << " " << day << " " << hour << " " << min << " " << sec << " " << usec << "   " << endl;
+							
+							tm.tm_year = std::stoi(year)-1900;
+							tm.tm_mon = std::stoi(month)-1;
+							tm.tm_mday = std::stoi(day);
+							tm.tm_hour = std::stoi(hour);
+							tm.tm_min = std::stoi(min);
+							tm.tm_sec = std::stoi(sec);
+							
+							#ifdef _WIN64
+							time_t time = _mkgmtime (&tm);
+							#else
+							time_t time = timegm (&tm);
+							#endif
+							
+							
+							time = time*1000 + std::stoi(usec);					
+							int_type* t = a->get_int_by_name(s2_val);
+							exe_precision.push(0);						
+							exe_type.push("VECTOR");
+							bool_vectors.push(a->compare(t,(int_type)time,cmp_type, 0, 0));						
 
-							if(cmp_type != 7) {
-								thrust::device_vector<unsigned long long int> vv(1);
-								while(s1_val.length() < len) {
+						}
+						else {	
+						
+							void* d_res, *d_v;
+							if(cmp_type != 7)
+								cudaMalloc((void **) &d_res, a->mRecCount);
+							else
+								cudaMalloc((void **) &d_res, a->hostRecCount);
+							thrust::device_ptr<bool> dd_res((bool*)d_res);
+
+							cudaMalloc((void **) &d_v, 8);
+							thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
+							thrust::counting_iterator<unsigned int> begin(0);
+
+							if(s2_val.find(".") != string::npos) { //bitmap index
+								auto pos1 = s2_val.find_first_of(".");
+								auto pos2 = s2_val.find_last_of(".");
+								auto set = s2_val.substr(pos1+1, (pos2-pos1)-1);
+								auto col = s2_val.substr(pos2+1);
+								auto len = data_dict[set][col].col_length;
+
+								while(s1_val.length() < len)
 									s1_val = s1_val + '\0';
-								};
 
-								vv[0] = MurmurHash64A(&s1_val[0], s1_val.length(), hash_seed)/2;
+								auto s1_hash = MurmurHash64A(&s1_val, len, hash_seed)/2;
 
-								string f1 = a->load_file_name + "." + s2_val + "." + to_string(segment) + ".hash";
-								FILE* f = fopen(f1.c_str(), "rb" );
-								unsigned long long int* buff = new unsigned long long int[a->mRecCount];
-								unsigned int cnt;
-								fread(&cnt, 4, 1, f);
-								fread(buff, a->mRecCount*8, 1, f);
-								fclose(f);
-								thrust::device_vector<unsigned long long int> vals(a->mRecCount);
-								thrust::copy(buff, buff+a->mRecCount, vals.begin());
-								if(cmp_type == 4) //==
-									thrust::transform(vals.begin(), vals.end(), thrust::make_constant_iterator(vv[0]), dd_res, thrust::equal_to<unsigned long long int>());
-								else if(cmp_type == 3) //!=
-									thrust::transform(vals.begin(), vals.end(), thrust::make_constant_iterator(vv[0]), dd_res, thrust::not_equal_to<unsigned long long int>());
-								delete [] buff;
-
+								if(a->idx_dictionary_int[s2_val].find(s1_hash) != a->idx_dictionary_int[s2_val].end()) {
+									dd_v[0] = a->idx_dictionary_int[s2_val][s1_hash];
+									dd_v[1] = (unsigned int)cmp_type;
+									cmp_functor_dict ff(a->idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
+									thrust::for_each(begin, begin + a->mRecCount, ff);
+								}
+								else {
+									cudaMemset(d_res,0,a->mRecCount);
+								}
 							}
 							else {
-								if(a->map_like.find(s2_val) == a->map_like.end()) {
-							
-									void* d_str;
-									cudaMalloc((void **) &d_str, len);
-									cudaMemset(d_str,0,len);
-									cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
-									
-									string f1 = a->load_file_name + "." + s2_val;
+
+								auto s = a->string_map[s2_val];
+								auto pos = s.find_first_of(".");
+								auto len = data_dict[s.substr(0, pos)][s.substr(pos+1)].col_length;
+
+								dd_v[0] = len;
+								dd_v[1] = (unsigned int)s1_val.length() + 1;
+
+								if(cmp_type != 7) {
+									thrust::device_vector<unsigned long long int> vv(1);
+									while(s1_val.length() < len) {
+										s1_val = s1_val + '\0';
+									};
+
+									vv[0] = MurmurHash64A(&s1_val[0], s1_val.length(), hash_seed)/2;
+
+									string f1 = a->load_file_name + "." + s2_val + "." + to_string(segment) + ".hash";
 									FILE* f = fopen(f1.c_str(), "rb" );
-									fseek(f, 0, SEEK_END);
-									long fileSize = ftell(f);
-									fseek(f, 0, SEEK_SET);																
-																	
-									unsigned int pieces = 1;
-									if(fileSize > getFreeMem()/2)
-										pieces = fileSize /(getFreeMem()/2) + 1;
-									auto piece_sz = fileSize/pieces;
-									ldiv_t ldivresult = ldiv(fileSize/pieces, len);		
-									if(ldivresult.rem != 0)
-										piece_sz = fileSize/pieces + (len - ldivresult.rem);										
-									thrust::device_vector<char> dev(piece_sz);	
-									char* buff = new char[piece_sz];
-									a->map_res[s2_val] = thrust::device_vector<unsigned int>();
-									for(auto i = 0; i < pieces; i++) {	
-										
-										if(i == pieces-1)
-											piece_sz = fileSize - piece_sz*i;											
-										fread(buff, piece_sz, 1, f);	
-										cudaMemcpy( thrust::raw_pointer_cast(dev.data()), (void*)buff, piece_sz, cudaMemcpyHostToDevice);
-
-										gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
-										thrust::for_each(begin, begin + piece_sz/len, ff);
-										
-										auto cnt = thrust::count(dd_res, dd_res + piece_sz/len, 1);
-										auto offset = a->map_res[s2_val].size();
-										a->map_res[s2_val].resize(a->map_res[s2_val].size() + cnt);
-										thrust::copy_if(thrust::make_counting_iterator((unsigned int)(i*(piece_sz/len))), thrust::make_counting_iterator((unsigned int)((i+1)*(piece_sz/len))),
-														dd_res, a->map_res[s2_val].begin() + offset, thrust::identity<bool>());
-									};				
-									
+									unsigned long long int* buff = new unsigned long long int[a->mRecCount];
+									unsigned int cnt;
+									fread(&cnt, 4, 1, f);
+									fread(buff, a->mRecCount*8, 1, f);
 									fclose(f);
-									delete [] buff;												
-									cudaFree(d_str);
-									thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());
-									a->map_like[s2_val] = 1;
+									thrust::device_vector<unsigned long long int> vals(a->mRecCount);
+									thrust::copy(buff, buff+a->mRecCount, vals.begin());
+									if(cmp_type == 4) //==
+										thrust::transform(vals.begin(), vals.end(), thrust::make_constant_iterator(vv[0]), dd_res, thrust::equal_to<unsigned long long int>());
+									else if(cmp_type == 3) //!=
+										thrust::transform(vals.begin(), vals.end(), thrust::make_constant_iterator(vv[0]), dd_res, thrust::not_equal_to<unsigned long long int>());
+									delete [] buff;
+
+								}
+								else {
+									if(a->map_like.find(s2_val) == a->map_like.end()) {
+								
+										void* d_str;
+										cudaMalloc((void **) &d_str, len);
+										cudaMemset(d_str,0,len);
+										cudaMemcpy( d_str, (void *) s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
+										
+										string f1 = a->load_file_name + "." + s2_val;
+										FILE* f = fopen(f1.c_str(), "rb" );
+										fseek(f, 0, SEEK_END);
+										long fileSize = ftell(f);
+										fseek(f, 0, SEEK_SET);																
+																		
+										unsigned int pieces = 1;
+										if(fileSize > getFreeMem()/2)
+											pieces = fileSize /(getFreeMem()/2) + 1;
+										auto piece_sz = fileSize/pieces;
+										ldiv_t ldivresult = ldiv(fileSize/pieces, len);		
+										if(ldivresult.rem != 0)
+											piece_sz = fileSize/pieces + (len - ldivresult.rem);										
+										thrust::device_vector<char> dev(piece_sz);	
+										char* buff = new char[piece_sz];
+										a->map_res[s2_val] = thrust::device_vector<unsigned int>();
+										for(auto i = 0; i < pieces; i++) {	
+											
+											if(i == pieces-1)
+												piece_sz = fileSize - piece_sz*i;											
+											fread(buff, piece_sz, 1, f);	
+											cudaMemcpy( thrust::raw_pointer_cast(dev.data()), (void*)buff, piece_sz, cudaMemcpyHostToDevice);
+
+											gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
+											thrust::for_each(begin, begin + piece_sz/len, ff);
+											
+											auto cnt = thrust::count(dd_res, dd_res + piece_sz/len, 1);
+											auto offset = a->map_res[s2_val].size();
+											a->map_res[s2_val].resize(a->map_res[s2_val].size() + cnt);
+											thrust::copy_if(thrust::make_counting_iterator((unsigned int)(i*(piece_sz/len))), thrust::make_counting_iterator((unsigned int)((i+1)*(piece_sz/len))),
+															dd_res, a->map_res[s2_val].begin() + offset, thrust::identity<bool>());
+										};				
+										
+										fclose(f);
+										delete [] buff;												
+										cudaFree(d_str);
+										thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());
+										a->map_like[s2_val] = 1;
 
 
+									};
+									// now lets calc the current segments's matches
+									cudaMemset(d_res, 0, a->hostRecCount);
+									binary_search(a->map_res[s2_val].begin(),a->map_res[s2_val].end(), a->d_columns_int[s2_val].begin(), a->d_columns_int[s2_val].end(), dd_res);
 								};
-								// now lets calc the current segments's matches
-								cudaMemset(d_res, 0, a->hostRecCount);
-								binary_search(a->map_res[s2_val].begin(),a->map_res[s2_val].end(), a->d_columns_int[s2_val].begin(), a->d_columns_int[s2_val].end(), dd_res);
 							};
-						};
 
-						cudaFree(d_v);
-						exe_type.push("VECTOR");
-						bool_vectors.push((bool*)d_res);
-					}	
+							cudaFree(d_v);
+							exe_type.push("VECTOR");
+							bool_vectors.push((bool*)d_res);
+						}	
+					}
                 }
 
                 else if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
@@ -842,8 +1628,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     exe_nums.pop();
                     s1_val = exe_value.top();
                     exe_value.pop();
-
-                    //cout << "CMP " << s1_val << " " << n1 << " " << a->name << endl;
 
                     if(s1_val.find(".") != string::npos) { //bitmap index
                         void* d_v, *d_res;
@@ -1008,6 +1792,31 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                     bool_vectors.push(a->compare(s3,(float_type)n1,cmp_type));
                     cudaFree(s3);
                 }
+				
+				else if (s1.compare("VECTOR") == 0 && s2.compare("STRING") == 0) {
+                    int_type* s3 = exe_vectors.top();
+                    exe_vectors.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+                    exe_type.push("VECTOR");
+					exe_precision.pop();
+                    bool_vectors.push(a->compare(s3,curr_time,cmp_type,0,0));
+                    cudaFree(s3);
+					exe_precision.push(0);					
+				}
+				
+				else if (s2.compare("VECTOR") == 0 && s1.compare("STRING") == 0) {
+                    int_type* s3 = exe_vectors.top();
+                    exe_vectors.pop();
+                    s2_val = exe_value.top();
+                    exe_value.pop();
+                    exe_type.push("VECTOR");
+					exe_precision.pop();
+                    bool_vectors.push(a->compare(s3,curr_time,cmp_type,0,0));
+                    cudaFree(s3);
+					exe_precision.push(0);						
+				}
+				
 
                 else if (s1.compare("NUMBER") == 0 && s2.compare("VECTOR") == 0) {
 
@@ -1100,8 +1909,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 						exe_precision.pop();
 						auto p2 = a->decimal_zeroes[s2_val];					
 						auto pres = max(p1, p2);	
-						exe_precision.push(pres);
-
                         bool_vectors.push(a->compare(t,s3,cmp_type,p2,p1));
                     }
                     else {
@@ -1142,10 +1949,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         int_type* t = a->get_int_by_name(s2_val);
 						auto p1 = exe_precision.top();
 						exe_precision.pop();
-						auto p2 = a->decimal_zeroes[s2_val];					
-						auto pres = std::max(p2, p1);	
-						exe_precision.push(pres);
-
+						auto p2 = a->decimal_zeroes[s2_val];				
                         bool_vectors.push(a->compare(t,s3,cmp_type,p1,p2));
                     }
                     else {

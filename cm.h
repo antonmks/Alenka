@@ -68,6 +68,7 @@ extern bool op_case;
 extern queue<string> op_sort;
 extern queue<string> op_presort;
 extern queue<string> op_value;
+extern string grp_val;
 extern queue<int_type> op_nums;
 extern queue<float_type> op_nums_f;
 extern queue<unsigned int> op_nums_precision; //decimals' precision
@@ -93,6 +94,8 @@ extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
 extern size_t total_buffer_size;
 extern thrust::device_vector<unsigned char> scratch;
+extern thrust::device_vector<unsigned int> rcol_matches;
+extern thrust::device_vector<int_type> rcol_dev;
 extern thrust::device_vector<int> ranj;
 extern size_t alloced_sz;
 extern ContextPtr context;
@@ -163,6 +166,18 @@ struct float_to_long
     long long int operator()(const float_type x)
     {
 		return __double2ll_rn(x*100);
+    }
+};
+
+struct decrease
+{
+    __device__
+    unsigned int operator()(const unsigned int x)
+    {
+		if(x > 0)
+			return x-1;
+		else
+			return x;
     }
 };
 
@@ -671,7 +686,7 @@ struct col_data {
 	unsigned int col_length;
 };
 extern map<string, map<string, col_data> > data_dict;
-
+extern time_t curr_time;
 
 
 class CudaSet
@@ -793,7 +808,7 @@ void allocColumns(CudaSet* a, queue<string> fields);
 void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, size_t& count);
 size_t getSegmentRecCount(CudaSet* a, unsigned int segment);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
-void copyFinalize(CudaSet* a, queue<string> fields);
+void copyFinalize(CudaSet* a, queue<string> fields, bool ts);
 void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment);
 void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
 void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
@@ -821,6 +836,7 @@ void check_sort(const string str, const char* rtable, const char* rid);
 void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void alloc_pool(unsigned int maxRecs);
+time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 
 #endif
 

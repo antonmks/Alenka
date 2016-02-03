@@ -45,6 +45,7 @@ int p_sz = 0;
 thrust::device_vector<unsigned char> scratch;
 map<string, string> filter_var; 
 thrust::device_vector<int> ranj;
+unsigned long long int currtime;
 
 void check_used_vars()
 {
@@ -75,10 +76,22 @@ void emit_limit(const int val)
 
 void emit_string(const char *str)
 {   // remove the float_type quotes
-    string sss(str,1, strlen(str)-2);
-    op_type.push("STRING");
-    op_value.push(sss);
+	if(str[0] == '"') {
+		string sss(str,1, strlen(str)-2);		
+		op_value.push(sss);
+	}
+	else {	
+		string sss(str);		
+		op_value.push(sss);		
+	};
+	op_type.push("STRING");
 }
+
+void emit_string_grp(const char *str, const char *str_grp) 
+{
+	emit_string(str);
+	grp_val = str_grp;	
+};
 
 void emit_fieldname(const char* name1, const char* name2)
 {
@@ -357,17 +370,19 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
  	unsigned int bits;
 	
     for(; !exe_type.empty(); exe_type.pop()) {	
+	
 		if(cpy_bits.empty())
 			bits = 0;
 		else	
 			bits = cpy_bits[exe_type.top()];			
-        if (a->type[exe_type.top()] != 1)
+
+        if (a->type[exe_type.top()] != 1) {
             update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, "ASC", (int_type*)thrust::raw_pointer_cast(a->grp.data()), bits);
+		}	
         else
             update_permutation(a->d_columns_float[exe_type.top()], raw_ptr, a->mRecCount,"ASC", (float_type*)thrust::raw_pointer_cast(a->grp.data()), bits);			
     };	
 	
-
     for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
 		if(cpy_bits.empty())
 			bits = 0;
@@ -1975,7 +1990,6 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-		//std::cout<< "cpy time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
 
         if(a->mRecCount) {
             if (grp_cnt != 0) {			
@@ -1988,7 +2002,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 				};
 				if(srt) {
 					order_inplace(a, op_v2, field_names, 1);																
-					a->GroupBy(op_v2);		
+					a->GroupBy(op_v2);				
 				}
 				else {
 					if(a->grp.size() < a->mRecCount)
@@ -2001,11 +2015,10 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 			else
 				a->grp_count = 0;			
 			
-			copyFinalize(a, op_vx);
+			copyFinalize(a, op_vx,0);
 			
-			//start3 = std::clock();
+					
             select(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a,b, distinct_tmp, one_liner);	
-			//std::cout<< "s time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
 
             if(i == 0)
                 std::reverse(b->columnNames.begin(), b->columnNames.end());
@@ -2037,7 +2050,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             };
 			//std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
         };
-        //std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+        std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
     };
 	phase_copy = 0;
 

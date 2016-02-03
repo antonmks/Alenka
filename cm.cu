@@ -53,6 +53,7 @@ queue<string> op_sort;
 queue<string> op_presort;
 queue<string> op_type;
 bool op_case = 0;
+string grp_val;
 queue<string> op_value;
 queue<int_type> op_nums;
 queue<float_type> op_nums_f;
@@ -73,6 +74,8 @@ map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 map<string, unsigned int> cpy_bits;
 map<string, long long int> cpy_init_val;
 char* readbuff = nullptr;
+thrust::device_vector<unsigned int> rcol_matches;
+thrust::device_vector<int_type> rcol_dev;
 
 struct f_equal_to
 {
@@ -162,6 +165,39 @@ struct power_functor : public thrust::unary_function<T,T>
        return x == 0;
      }
    };
+   
+   
+int get_utc_offset() {
+
+  time_t zero = 24*60*60L;
+  struct tm * timeptr;
+  int gmtime_hours;
+
+  /* get the local time for Jan 2, 1900 00:00 UTC */
+  timeptr = localtime( &zero );
+  gmtime_hours = timeptr->tm_hour;
+
+  /* if the local time is the "day before" the UTC, subtract 24 hours
+    from the hours to get the UTC offset */
+  if( timeptr->tm_mday < 2 )
+    gmtime_hours -= 24;
+
+  return gmtime_hours;
+
+}
+
+/*
+  the utc analogue of mktime,
+  (much like timegm on some systems)
+*/
+time_t tm_to_time_t_utc( struct tm * timeptr ) {
+
+  /* gets the epoch time relative to the local time zone,
+  and then adds the appropriate number of seconds to make it UTC */
+  return mktime( timeptr ) + get_utc_offset() * 3600;
+
+}
+   
 
 /*class power_functor {
 
@@ -870,59 +906,194 @@ void CudaSet::GroupBy(stack<string> columnRef)
 	thrust::device_ptr<bool> d_group((bool*)thrust::raw_pointer_cast(scratch.data()));	
 
     d_group[mRecCount-1] = 1;	
-	unsigned int bits;	
+	
 
     for(int i = 0; i < columnRef.size(); columnRef.pop()) {
 		
-		if(cpy_bits.empty())
-			bits = 0;
-		else
-			bits = cpy_bits[columnRef.top()];			
 		
-		if(bits == 8) {			
-			if (type[columnRef.top()] != 1) {  // int_type
-				thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned char>());			
-			}
-			else {
-				thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned char>());			
-			};			
-		}
-		else if(bits == 16) {			
-			if (type[columnRef.top()] != 1) {  // int_type
-				thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned short int>());			
-			}
-			else {
-				thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned short int>());			
-			};					
-		}
-		else if(bits == 32) {			
-			if (type[columnRef.top()] != 1) {  // int_type
-				thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned int>());			
-			}
-			else {
-				thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
-				thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned int>());			
-			};					
+		if(ts_cols[columnRef.top()]) {			
+			queue<string> fields;
+			fields.push(columnRef.top());
+			copyFinalize(this, fields,1);						
+			time_t start_t;
+			std::vector<time_t> rcol;
+			
+			thrust::device_vector<int_type> unq(mRecCount);
+			thrust::copy(d_columns_int[columnRef.top()].begin(), d_columns_int[columnRef.top()].begin() + mRecCount, unq.begin());
+			auto result_end = thrust::unique(unq.begin(), unq.end());
+			
+			if(unq[0] != 0 || mRecCount == 1)
+				start_t = unq[0]/1000;
+			else {				
+				start_t = unq[1]/1000;				
+			};				
+			time_t end_t = unq[(result_end-unq.begin())-1]/1000;	
+
+			//cout << "start end " << start_t << " " << end_t << endl;	
+			//int year_start, year_end, month_start, month_end, day_start, day_end, hour_start, hour_end, minute_start, minute_end, second_start, second_end;									
+			//struct tm my_tm, my_tm1;
+			auto my_tm = *gmtime (&start_t);
+			auto my_tm1 = *gmtime (&end_t );
+			
+			//cout << my_tm.tm_year << " " << my_tm1.tm_year << " " << my_tm.tm_min << " " << my_tm1.tm_min << " " << my_tm.tm_hour << " " << my_tm1.tm_hour << endl;			
+			rcol.push_back(0);//1970/01/01
+			
+			auto pos = grp_val.find("YEAR");
+			int grp_num;
+			if(pos != string::npos) {
+				grp_num = stoi(grp_val.substr(0, pos));
+				my_tm.tm_mon = 0;
+				my_tm.tm_mday = 1;
+				my_tm.tm_hour = 0;
+				my_tm.tm_min = 0;
+				my_tm.tm_sec = 0;
+				start_t = tm_to_time_t_utc(&my_tm);
+				rcol.push_back(start_t*1000);
+				while(start_t <= end_t) {
+					start_t = add_interval(start_t, grp_num, 0, 0, 0, 0, 0);
+					rcol.push_back(start_t*1000);				
+				};	
+			}		
+			else {				
+				pos = grp_val.find("MONTH");
+				int grp_num;
+				if(pos != string::npos) {
+					grp_num = stoi(grp_val.substr(0, pos));
+					my_tm.tm_mday = 1;
+					my_tm.tm_hour = 0;
+					my_tm.tm_min = 0;
+					my_tm.tm_sec = 0;
+					start_t = tm_to_time_t_utc(&my_tm);
+					rcol.push_back(start_t*1000);
+					while(start_t <= end_t) {
+						start_t = add_interval(start_t, 0, grp_num, 0, 0, 0, 0);
+						rcol.push_back(start_t*1000);				
+					};	
+				}		
+				else {
+					pos = grp_val.find("DAY");
+					int grp_num;
+					if(pos != string::npos) {
+						grp_num = stoi(grp_val.substr(0, pos));
+						my_tm.tm_hour = 0;
+						my_tm.tm_min = 0;
+						my_tm.tm_sec = 0;
+						start_t = tm_to_time_t_utc(&my_tm);
+						rcol.push_back(start_t*1000);				
+						while(start_t <= end_t) {
+							start_t = add_interval(start_t, 0, 0, grp_num, 0, 0, 0);
+							rcol.push_back(start_t*1000);	
+						};	
+					}			
+					else {
+						pos = grp_val.find("HOUR");
+						int grp_num;
+						if(pos != string::npos) {
+							grp_num = stoi(grp_val.substr(0, pos));
+							my_tm.tm_min = 0;
+							my_tm.tm_sec = 0;
+							start_t = tm_to_time_t_utc(&my_tm);
+							rcol.push_back(start_t*1000);											
+							while(start_t <= end_t) {
+								start_t = add_interval(start_t, 0, 0, 0, grp_num, 0, 0);
+								rcol.push_back(start_t*1000);												
+							};	
+						}									
+						else {
+							pos = grp_val.find("MINUTE");
+							int grp_num;
+							if(pos != string::npos) {
+								grp_num = stoi(grp_val.substr(0, pos));								
+								my_tm.tm_sec = 0;
+								start_t = tm_to_time_t_utc(&my_tm);
+								rcol.push_back(start_t*1000);				
+								while(start_t <= end_t) {
+									start_t = add_interval(start_t, 0, 0, 0, 0, grp_num, 0);
+									rcol.push_back(start_t*1000);				
+								};	
+							}						
+							else {
+								pos = grp_val.find("SECOND");
+								int grp_num;
+								if(pos != string::npos) {
+									grp_num = stoi(grp_val.substr(0, pos));								
+									start_t = tm_to_time_t_utc(&my_tm);
+									rcol.push_back(start_t*1000);				
+									while(start_t <= end_t) {
+										start_t = add_interval(start_t, 0, 0, 0, 0, 0, grp_num);
+										rcol.push_back(start_t*1000);				
+									};	
+								}	
+							}	
+						}	
+					}					
+				}					
+			};	
+			
+			//thrust::device_vector<unsigned int> output(mRecCount);
+			rcol_matches.resize(mRecCount);			
+			rcol_dev.resize(rcol.size());
+			thrust::copy(rcol.data(), rcol.data() + rcol.size(), rcol_dev.begin());						
+			thrust::lower_bound(rcol_dev.begin(), rcol_dev.end(), d_columns_int[columnRef.top()].begin(), d_columns_int[columnRef.top()].begin() + mRecCount, rcol_matches.begin());
+			
+			thrust::transform(rcol_matches.begin(), rcol_matches.begin() + mRecCount - 1, rcol_matches.begin()+1, d_group, thrust::not_equal_to<unsigned int>());	
+			thrust::transform(rcol_matches.begin(), rcol_matches.begin() + mRecCount, rcol_matches.begin(), decrease());
 		}
 		else {
-			if (type[columnRef.top()] != 1) {  // int_type
-				thrust::transform(d_columns_int[columnRef.top()].begin(), d_columns_int[columnRef.top()].begin() + mRecCount - 1,
-					d_columns_int[columnRef.top()].begin()+1, d_group, thrust::not_equal_to<int_type>());
+	
+			unsigned int bits;	
+			if(cpy_bits.empty())
+				bits = 0;
+			else
+				bits = cpy_bits[columnRef.top()];			
+			
+			if(bits == 8) {			
+				if (type[columnRef.top()] != 1) {  // int_type
+					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned char>());			
+				}
+				else {
+					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned char>());			
+				};			
+			}
+			else if(bits == 16) {			
+				if (type[columnRef.top()] != 1) {  // int_type
+					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned short int>());			
+				}
+				else {
+					thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned short int>());			
+				};					
+			}
+			else if(bits == 32) {			
+				if (type[columnRef.top()] != 1) {  // int_type
+					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(d_columns_int[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned int>());			
+				}
+				else {
+					thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(d_columns_float[columnRef.top()].data()));
+					thrust::transform(src, src + mRecCount - 1,	src+1, d_group, thrust::not_equal_to<unsigned int>());			
+				};					
 			}
 			else {
-				thrust::transform(d_columns_float[columnRef.top()].begin(), d_columns_float[columnRef.top()].begin() + mRecCount - 1,
-                              d_columns_float[columnRef.top()].begin()+1, d_group, f_not_equal_to());
-			};					
-		}
+				if (type[columnRef.top()] != 1) {  // int_type
+					thrust::transform(d_columns_int[columnRef.top()].begin(), d_columns_int[columnRef.top()].begin() + mRecCount - 1,
+						d_columns_int[columnRef.top()].begin()+1, d_group, thrust::not_equal_to<int_type>());
+				}
+				else {
+					thrust::transform(d_columns_float[columnRef.top()].begin(), d_columns_float[columnRef.top()].begin() + mRecCount - 1,
+								  d_columns_float[columnRef.top()].begin()+1, d_group, f_not_equal_to());
+				};					
+			}
+		};	
         thrust::transform(d_group, d_group+mRecCount, grp.begin(), grp.begin(), thrust::logical_or<bool>());
     };
-    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);	
+    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);
 };
+
+
 
 
 void CudaSet::addDeviceColumn(int_type* col, string colname, size_t recCount)
@@ -2409,10 +2580,11 @@ bool* CudaSet::compare(int_type* column1, int_type* column2, int_type op_type, u
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
     thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
-
+	
     if (op_type == 2) // >
-		if(!p1 && !p2)
+		if(!p1 && !p2) {
 			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::greater<int_type>());
+		}	
 		else if(p1 && p2)
 			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater<int_type>());
 		else if(p1)
@@ -2438,8 +2610,8 @@ bool* CudaSet::compare(int_type* column1, int_type* column2, int_type op_type, u
 		else 
 			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::greater_equal<int_type>());
     else if (op_type == 5)  // <=
-   		if(!p1 && !p2)
-			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less_equal<int_type>());
+   		if(!p1 && !p2) 
+			thrust::transform(dev_ptr1, dev_ptr1+mRecCount, dev_ptr2, temp, thrust::less_equal<int_type>());			
 		else if(p1 && p2)
 			thrust::transform(thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr1+mRecCount, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), temp, thrust::less_equal<int_type>());
 		else if(p1)
@@ -3205,13 +3377,13 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
 int_type reverse_op(int_type op_type)
 {
     if (op_type == 2) // >
-        return 5;
-    else if (op_type == 1)  // <
-        return 6;
-    else if (op_type == 6) // >=
         return 1;
-    else if (op_type == 5)  // <=
+    else if (op_type == 1)  // <
         return 2;
+    else if (op_type == 6) // >=
+        return 5;
+    else if (op_type == 5)  // <=
+        return 6;
     else return op_type;
 }
 
@@ -3269,7 +3441,7 @@ void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, s
 }
 
 
-void copyFinalize(CudaSet* a, queue<string> fields)
+void copyFinalize(CudaSet* a, queue<string> fields, bool ts)
 {
 	set<string> uniques;   
 	if(scratch.size() < a->mRecCount*8)
@@ -3277,12 +3449,12 @@ void copyFinalize(CudaSet* a, queue<string> fields)
 	thrust::device_ptr<int_type> tmp((int_type*)thrust::raw_pointer_cast(scratch.data()));		
    
 	while(!fields.empty()) {
-        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()) && cpy_bits.find(fields.front()) != cpy_bits.end())	{
-						
+        if (uniques.count(fields.front()) == 0 && var_exists(a, fields.front()) && cpy_bits.find(fields.front()) != cpy_bits.end() && (!a->ts_cols[fields.front()] || ts))	{
+				
 			if(cpy_bits[fields.front()] == 8) {				
 				if(a->type[fields.front()] != 1) {
-					thrust::device_ptr<char> src((char*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));					
-					thrust::transform(src, src+a->mRecCount, tmp, to_int64<char>());					
+					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[fields.front()].data()));					
+					thrust::transform(src, src+a->mRecCount, tmp, to_int64<unsigned char>());										
 				}
 				else {
 					thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_float[fields.front()].data()));
@@ -3337,6 +3509,7 @@ void copyFinalize(CudaSet* a, queue<string> fields)
 
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt)
 {
+	//std::clock_t start1 = std::clock();	
     set<string> uniques;
     if(a->filtered) { //filter the segment
         if(flt) {
@@ -3375,6 +3548,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
         };
         fields.pop();
     };
+	//std::cout<< "copy time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
 }
 
 
@@ -3653,6 +3827,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
 
         //cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
+		//char map_check = 'R';
         //cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
         if(map_check == 'R') {
@@ -4272,6 +4447,38 @@ void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, 
 		else
 			str_sort_host(a->h_columns_char[colname], a->mRecCount, raw_ptr, 0, len);
     };
+}
+
+time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second)
+{
+	if(year) {
+		struct tm tt = *gmtime (&t);
+		tt.tm_year = tt.tm_year + year;
+		return tm_to_time_t_utc(&tt);
+	}	
+	else if(month) {
+		struct tm tt = *gmtime (&t);
+		if(tt.tm_mon + month > 11) {
+			tt.tm_year++;
+			tt.tm_mon = ((tt.tm_mon + month) - 11)-1;
+		}
+		else	
+			tt.tm_mon = tt.tm_mon + month;
+		return tm_to_time_t_utc(&tt);
+	}	
+	else if(day) {
+		return t + day*24*60*60;
+	}	
+	else if(hour) {
+		return t + hour*60*60;
+	}	
+	else if(minute) {
+		return t + minute*60;
+	}	
+	else {
+		return t + second;
+	}	
+	
 }
 
 

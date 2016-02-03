@@ -193,6 +193,7 @@ NAME { emit_name($1); }
 | YEAR '(' expr ')' { emit_year(); }
 | MONTH '(' expr ')' { emit_month(); }
 | DAY '(' expr ')' { emit_day(); }
+| NAME '(' STRING ')' { emit_string_grp($1, $3); } 
 ;
 
 expr:
@@ -287,6 +288,7 @@ sort_def: { /* nil */
 
 bool scan_state;
 unsigned int statement_count;
+time_t curr_time;
 
 int execute_file(int ac, char **av)
 {
@@ -353,6 +355,7 @@ int execute_file(int ac, char **av)
         extern FILE *yyin;
         context = CreateCudaDevice(0, nullptr, verbose);
 
+		curr_time = time(0)*1000;
         if(!yyparse()) {
             if(verbose)
                 cout << "SQL scan parse worked " << endl;
@@ -397,7 +400,8 @@ int execute_file(int ac, char **av)
 			filter_var.clear();
             yy_scan_string(script.c_str());
             std::clock_t start1 = std::clock();
-
+			curr_time = time(0)*1000;
+			
             if(!yyparse()) {
                 if(verbose)
                     cout << "SQL scan parse worked " <<  endl;
@@ -440,6 +444,10 @@ int execute_file(int ac, char **av)
 		scratch.resize(0);
 		scratch.shrink_to_fit();
 	};	
+	if(rcol_dev.size()) {
+		rcol_dev.resize(0);
+		rcol_dev.shrink_to_fit();
+	};
 	if(ranj.size()) {
 		ranj.resize(0);
 		ranj.shrink_to_fit();
