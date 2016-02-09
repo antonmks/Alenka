@@ -1780,36 +1780,36 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 else if (s1.compare("STRING") == 0 && s2.compare("NAME") == 0) {
                     //exe_type.push("VECTOR");
                     //bool_vectors.push('R'); // later I plan to change implementation of char type so I will leave indexing of char off for now
-					//only date() can be in STRING
+					//only date() can be in STRING					
 					time_t tt;
                     s1_val = exe_value.top();
                     exe_value.pop();
                     s2_val = exe_value.top();
                     exe_value.pop();
 					int_type val;
-					int_type* t = a->get_host_int_by_name(s1_val);
+					int_type* t = a->get_host_int_by_name(s2_val);
 					
-					auto pos = s2_val.find("date()");
+					auto pos = s1_val.find("date()");
 					if(pos != string::npos) {
-						val = stoi(s2_val.substr(0, pos));
+						val = curr_time;
 						bool_vectors.push(host_compare(t,val, cmp_type));
 					}	
 					else {
-						pos = s2_val.find("-"); //"1970-
+						pos = s1_val.find("-"); //"1970-
 						if(pos != string::npos) {
 							struct std::tm tm;														
-							tm.tm_year = std::stoi(s2_val.substr(0,4))-1900;
-							tm.tm_mon = std::stoi(s2_val.substr(5,2))-1;
-							tm.tm_mday = std::stoi(s2_val.substr(8,2));
-							tm.tm_hour = std::stoi(s2_val.substr(11,2));
-							tm.tm_min = std::stoi(s2_val.substr(14,2));
-							tm.tm_sec = std::stoi(s2_val.substr(17,2));								
+							tm.tm_year = std::stoi(s1_val.substr(0,4))-1900;
+							tm.tm_mon = std::stoi(s1_val.substr(5,2))-1;
+							tm.tm_mday = std::stoi(s1_val.substr(8,2));
+							tm.tm_hour = std::stoi(s1_val.substr(11,2));
+							tm.tm_min = std::stoi(s1_val.substr(14,2));
+							tm.tm_sec = std::stoi(s1_val.substr(17,2));								
 							#ifdef _WIN64
 							tt = _mkgmtime (&tm);
 							#else
 							tt = timegm (&tm);
 							#endif								
-							tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
+							tt = tt*1000 + std::stoi(s1_val.substr(20,3));					
 							bool_vectors.push(host_compare(t,tt, cmp_type));
 						}
 						else
@@ -1833,7 +1833,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 					
 					auto pos = s2_val.find("date()");
 					if(pos != string::npos) {
-						val = stoi(s2_val.substr(0, pos));
+						val = curr_time;
 						bool_vectors.push(host_compare(t,val, cmp_type));
 					}	
 					else {

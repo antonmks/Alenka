@@ -929,7 +929,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
 			};				
 			time_t end_t = unq[(result_end-unq.begin())-1]/1000;	
 
-			//cout << "start end " << start_t << " " << end_t << endl;	
+			cout << "start end " << start_t << " " << end_t << endl;	
 			//int year_start, year_end, month_start, month_end, day_start, day_end, hour_start, hour_end, minute_start, minute_end, second_start, second_end;									
 			//struct tm my_tm, my_tm1;
 			auto my_tm = *gmtime (&start_t);
@@ -964,9 +964,11 @@ void CudaSet::GroupBy(stack<string> columnRef)
 					my_tm.tm_min = 0;
 					my_tm.tm_sec = 0;
 					start_t = tm_to_time_t_utc(&my_tm);
+					cout << "interval " << start_t << endl;
 					rcol.push_back(start_t*1000);
 					while(start_t <= end_t) {
 						start_t = add_interval(start_t, 0, grp_num, 0, 0, 0, 0);
+						cout << "interval " << start_t << endl;
 						rcol.push_back(start_t*1000);				
 					};	
 				}		
@@ -1037,7 +1039,8 @@ void CudaSet::GroupBy(stack<string> columnRef)
 			thrust::lower_bound(rcol_dev.begin(), rcol_dev.end(), d_columns_int[columnRef.top()].begin(), d_columns_int[columnRef.top()].begin() + mRecCount, rcol_matches.begin());
 			
 			thrust::transform(rcol_matches.begin(), rcol_matches.begin() + mRecCount - 1, rcol_matches.begin()+1, d_group, thrust::not_equal_to<unsigned int>());	
-			thrust::transform(rcol_matches.begin(), rcol_matches.begin() + mRecCount, rcol_matches.begin(), decrease());
+			thrust::transform(rcol_matches.begin(), rcol_matches.begin() + mRecCount, rcol_matches.begin(), decrease());	
+			d_group[mRecCount-1] = 1;				
 		}
 		else {
 	
@@ -1091,6 +1094,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
         thrust::transform(d_group, d_group+mRecCount, grp.begin(), grp.begin(), thrust::logical_or<bool>());
     };
     grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);
+	cout << "grp count " << grp_count << endl;
 };
 
 

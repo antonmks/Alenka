@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-#include "cm.h"
+#include "filter.h"
 #include "zone_map.h"
 #include <iomanip>
 #include <iostream> 
@@ -1433,7 +1433,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							
 							auto pos = s2_val.find("date()");
 							if(pos != string::npos) {
-								val = stoi(s2_val.substr(0, pos));								
+								val = curr_time;
 								bool_vectors.push(a->compare(t,val,cmp_type,0,0));
 							}		
 							else {
@@ -1449,7 +1449,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									#ifdef _WIN64
 									auto tt = _mkgmtime (&tm);
 									#else
-									tt = timegm (&tm);
+									auto tt = timegm (&tm);
 									#endif								
 									tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
 									bool_vectors.push(a->compare(t,tt, cmp_type,0,0));
@@ -1469,7 +1469,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							
 							auto pos = s2_val.find("date()");
 							if(pos != string::npos) {
-								val = stoi(s2_val.substr(0, pos));
+								val = curr_time;
 								bool_vectors.push(a->compare(t,val, cmp_type,0,0));
 							}					
 							else {
@@ -1485,7 +1485,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									#ifdef _WIN64
 									auto tt = _mkgmtime (&tm);
 									#else
-									tt = timegm (&tm);
+									auto tt = timegm (&tm);
 									#endif								
 									tt = tt*1000 + std::stoi(s2_val.substr(20,3));					
 									bool_vectors.push(a->compare(t,tt, cmp_type,0,0));
