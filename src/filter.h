@@ -13,5 +13,7 @@
  */
 #include "cm.h"
 
-bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, CudaSet* a,
+unsigned int precision_vec2(unsigned int p1, unsigned int p2, int_type* n1, int_type& n2, string op, size_t cnt);
+unsigned int precision_vec3(unsigned int p1, unsigned int p2, int_type* n1, int_type* n2, string op, size_t cnt);
+bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums,queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
              unsigned int segment);

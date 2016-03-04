@@ -1,0 +1,51 @@
+alenka : cm.obj merge.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_join.obj strings_sort_host.obj strings_sort_device.obj \
+		 zone_map.obj \
+		 select.obj atof.obj bison.obj mgpucontext.obj callbacks.obj main.obj operators.obj
+	nvcc.exe --compiler-options /MD -O3 --cudart=shared -arch=sm_35 -lcuda mgpucontext.obj mgpuutil.obj -o alenka merge.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_join.obj strings_sort_host.obj strings_sort_device.obj \
+		 select.obj zone_map.obj \
+		 atof.obj cm.obj bison.obj callbacks.obj main.obj operators.obj
+
+
+nvcc = nvcc.exe --compiler-options /bigobj --compiler-options /MD --machine 64 -O3 -arch=sm_35 -c
+
+operators.obj : operators.cu operators.h 
+	$(nvcc) operators.cu
+callbacks.obj : callbacks.c callbacks.h
+	$(nvcc) callbacks.c
+main.obj : main.cu
+	$(nvcc) main.cu
+cm.obj : cm.cu cm.h	
+	$(nvcc) cm.cu 
+bison.obj : bison.cu cm.h sorts.cu 
+	$(nvcc) bison.cu
+merge.obj : merge.cu cm.h merge.h
+	$(nvcc) merge.cu
+MurmurHash2_64.obj : MurmurHash2_64.cu cm.h 
+	$(nvcc) MurmurHash2_64.cu
+filter.obj : filter.cu cm.h filter.h
+	$(nvcc) filter.cu
+strings_join.obj : strings_join.cu strings.h strings_type.h
+	$(nvcc) strings_join.cu
+strings_sort_host.obj : strings_sort_host.cu strings.h strings_type.h
+	$(nvcc) strings_sort_host.cu
+strings_sort_device.obj : strings_sort_device.cu strings.h strings_type.h
+	$(nvcc) strings_sort_device.cu
+select.obj : select.cu cm.h select.h
+	$(nvcc) select.cu
+zone_map.obj : zone_map.cu cm.h zone_map.h
+	$(nvcc) zone_map.cu
+atof.obj : atof.cu cm.h atof.h
+	$(nvcc) atof.cu 
+mgpucontext.obj : moderngpu-master/src/mgpucontext.cu 	
+	$(nvcc) -I moderngpu-master/include/ moderngpu-master/src/mgpucontext.cu moderngpu-master/src/mgpuutil.cpp
+
+	
+clean : del bison.obj merge.obj \
+         MurmurHash2_64.obj filter.obj \
+		 strings_join.obj strings_sort_host.obj strings_sort_device.obj \
+		 select.obj zone_map.obj itoa.obj \
+		 atof.obj cm.obj mgpucontext.obj mgpuutil.obj

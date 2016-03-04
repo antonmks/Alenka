@@ -62,10 +62,11 @@ DISTINCT { return DISTINCT; }
 LEFT { return LEFT; }
 RIGHT { return RIGHT; }
 OUTER { return OUTER; }
+SEMI { return SEMI; }
+ANTI { return ANTI; }
 SORT {return SORT; }
 SEGMENTS {return SEGMENTS; }
 PRESORTED {return PRESORTED; }
-PARTITION {return PARTITION; }
 INSERT {return INSERT; }
 WHERE {return WHERE; }
 DISPLAY {return DISPLAY; }
@@ -74,7 +75,6 @@ WHEN {return WHEN; }
 THEN {return THEN; }
 ELSE {return ELSE; }
 END {return END; }
-REFERENCES {return REFERENCES; }
 SHOW {return SHOW; }
 TABLES {return TABLES; }
 TABLE {return TABLE; }
@@ -85,14 +85,21 @@ FROM {return FROM; }
 LIKE {return LIKE; }
 CREATE {return CREATE; }
 INDEX {return INDEX; }
-
+INTERVAL {return INTERVAL; }
+YEAR {return YEAR; }
+MONTH {return MONTH; }
+DAY {return DAY; }
+APPEND {return APPEND; }
 
 [0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
 -?[0-9]+"."[0-9]* |
--?"."[0-9]+ |
+-?[0-9]+"."[0-9]* |
+-?"."[0-9]+ { yylval.strval = strdup(yytext); return DECIMAL1; }
 -?[0-9]+E[-+]?[0-9]+ |
 -?[0-9]+"."[0-9]*E[-+]?[0-9]+ |
 -?"."[0-9]+E[-+]?[0-9]+ { yylval.floatval = atoff(yytext) ;return APPROXNUM; }
+[0-9]+(HOUR|MINUTE|SECOND|MSECOND|DAY|MONTH|YEAR) { yylval.strval = strdup(yytext); return STRING; }
+date\(\) { yylval.strval = strdup(yytext); return STRING;}
 
 TRUE { yylval.intval = 1; return BOOL1; }
 UNKNOWN { yylval.intval = -1; return BOOL1; }
@@ -108,14 +115,14 @@ FALSE { yylval.intval = 0; return BOOL1; }
 "||" { return OR; }
 ":=" { return ASSIGN; }
 "=" { return EQUAL; }
+"<>" { return NONEQUAL; }
 "==" { yylval.subtok = 4; return COMPARISON; }
 "<=>" { yylval.subtok = 12; return COMPARISON; }
 ">=" { yylval.subtok = 6; return COMPARISON; }
 ">" { yylval.subtok = 2; return COMPARISON; }
 "<=" { yylval.subtok = 5; return COMPARISON; }
 "<" { yylval.subtok = 1; return COMPARISON; }
-"!=" |
-"<>" { yylval.subtok = 3; return COMPARISON; }
+"!=" { yylval.subtok = 3; return COMPARISON; }
 
 '[A-Za-z0-9_:\\\.|;]*' { yylval.strval = strdup(yytext+1);
 yylval.strval[yyleng-2] = 0; return FILENAME; }

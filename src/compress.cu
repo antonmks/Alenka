@@ -22,7 +22,7 @@
 
 using namespace std;
 
-thrust::device_vector<unsigned char> scratch;
+//thrust::device_vector<unsigned char> scratch;
 bool phase_copy = 0;
 map<string, unsigned int> cnt_counts;
 string curr_file;
@@ -62,15 +62,6 @@ struct to_int64
     int_type operator()(const T x)
     {
         return (int_type)x;
-    }
-};
-
-struct bool_to_int
-{
-    __host__ __device__
-    unsigned int operator()(const bool x)
-    {
-        return (unsigned int)x;
     }
 };
 
@@ -207,9 +198,9 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 	
     if(scratch.size() < cnt) 
 		scratch.resize(cnt);
-
+		
     cudaMemcpy(thrust::raw_pointer_cast(scratch.data()), (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
-    thrust::device_ptr<int_type> d_int((int_type*)destination);
+    thrust::device_ptr<int_type> d_int((int_type*)destination);	
 
     if(comp_type == 1) {
         thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);

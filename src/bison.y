@@ -33,7 +33,7 @@
 %token <strval> NAME
 %token <strval> STRING
 %token <intval> INTNUM
-%token <intval> DECIMAL1
+%token <strval> DECIMAL1
 %token <intval> BOOL1
 %token <floatval> APPROXNUM
 /* user @abc names */
@@ -41,10 +41,14 @@
 /* operators and precedence levels */
 %right ASSIGN
 %right EQUAL
+%right NONEQUAL
 %left OR
 %left XOR
 %left AND
 %left DISTINCT
+%left YEAR
+%left MONTH
+%left DAY
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
@@ -57,7 +61,6 @@
 %left '^'
 
 %token FROM
-%token MULITE
 %token DELETE
 %token OR
 %token LOAD
@@ -82,9 +85,14 @@
 %token ON
 %token BINARY
 %token DISTINCT
+%token YEAR
+%token MONTH
+%token DAY
 %token LEFT
 %token RIGHT
 %token OUTER
+%token SEMI
+%token ANTI
 %token AND
 %token SORT
 %token SEGMENTS
@@ -98,7 +106,6 @@
 %token THEN
 %token ELSE
 %token END
-%token REFERENCES
 %token SHOW
 %token TABLES
 %token TABLE
@@ -106,6 +113,8 @@
 %token DROP
 %token CREATE
 %token INDEX
+%token INTERVAL
+%token APPEND
 
 %type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -137,7 +146,9 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | STORE NAME INTO FILENAME USING '(' FILENAME ')' opt_limit
 {  emit_store($2,$4,$7); }
 | STORE NAME INTO FILENAME opt_limit BINARY sort_def
-{  emit_store_binary($2,$4); }
+{  emit_store_binary($2,$4,0); }
+| STORE NAME INTO FILENAME APPEND opt_limit BINARY sort_def
+{  emit_store_binary($2,$4,1); }
 | DESCRIBE NAME
 {  emit_describe_table($2);}
 | INSERT INTO NAME SELECT expr_list FROM NAME
@@ -151,7 +162,12 @@ NAME ASSIGN SELECT expr_list FROM NAME opt_group_list
 | DROP TABLE NAME
 {  emit_drop_table($3);}
 | CREATE INDEX NAME ON NAME '(' NAME '.' NAME ')' FROM NAME ',' NAME WHERE NAME '.' NAME EQUAL NAME '.' NAME
-{  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);};
+{  emit_create_bitmap_index($3, $5, $7, $9, $18, $22);}
+| CREATE INDEX NAME ON NAME '(' NAME ')'
+{  emit_create_index($3, $5, $7);}
+| CREATE INTERVAL NAME ON NAME '(' NAME ',' NAME ')'
+{  emit_create_interval($3, $5, $7, $9);};
+
 
 
 expr:
@@ -160,12 +176,11 @@ NAME { emit_name($1); }
 | USERVAR { emit("USERVAR %s", $1); }
 | STRING { emit_string($1); }
 | INTNUM { emit_number($1); }
-| APPROXNUM { emit_float($1); }
 | DECIMAL1 { emit_decimal($1); }
+| APPROXNUM { emit_float($1); }
 | BOOL1 { emit("BOOL %d", $1); }
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' REFERENCES NAME '(' NAME ')' { emit_varchar($1, $3, $6, $8, $11, $13);}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ',' INTNUM ')' { emit_vardecimal($1, $3, $6,  $8, $10);}
 | NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", "");}
-| NAME '{' INTNUM '}' ':' NAME REFERENCES NAME '(' NAME ')' { emit_var($1, $3, $6, $8, $10);}
 | NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", "");}
 | NAME ASC { emit_var_asc($1);}
 | NAME DESC { emit_var_desc($1);}
@@ -175,6 +190,10 @@ NAME { emit_name($1); }
 | MIN '(' expr ')' { emit_min(); }
 | MAX '(' expr ')' { emit_max(); }
 | DISTINCT expr { emit_distinct(); }
+| YEAR '(' expr ')' { emit_year(); }
+| MONTH '(' expr ')' { emit_month(); }
+| DAY '(' expr ')' { emit_day(); }
+| NAME '(' STRING ')' { emit_string_grp($1, $3); } 
 ;
 
 expr:
@@ -184,9 +203,9 @@ expr '+' expr { emit_add(); }
 | expr '/' expr { emit_div(); }
 | expr '%' expr { emit("MOD"); }
 | expr MOD expr { emit("MOD"); }
-/*| '-' expr %prec UMINUS { emit("NEG"); }*/
 | expr AND expr { emit_and(); }
 | expr EQUAL expr { emit_eq(); }
+| expr NONEQUAL expr { emit_neq(); }
 | expr OR expr { emit_or(); }
 | expr XOR expr { emit("XOR"); }
 | expr SHIFT expr { emit("SHIFT %s", $2==1?"left":"right"); }
@@ -237,12 +256,20 @@ BY expr { emit("FILTER BY"); };
 
 join_list:
 JOIN NAME ON expr { $$ = 1; emit_join_tab($2, 'I');}
-| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'L');}
+| LEFT ANTI JOIN  NAME ON expr { $$ = 1; emit_join_tab($4, '3');}
+| RIGHT ANTI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '4');}
+| LEFT SEMI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '1');}
+| LEFT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'S');}
 | RIGHT JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'R');}
+| RIGHT SEMI JOIN NAME ON expr { $$ = 1; emit_join_tab($4, '2');}
 | OUTER JOIN NAME ON expr { $$ = 1; emit_join_tab($3, 'O');}
 | JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($2, 'I'); };
+| LEFT ANTI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '3'); };
+| RIGHT ANTI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '4'); };
 | LEFT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'L'); };
+| LEFT SEMI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, '1'); };
 | RIGHT JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'R'); };
+| RIGHT SEMI JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($4, 'R'); };
 | OUTER JOIN NAME ON expr join_list { $$ = 1; emit_join_tab($3, 'O'); };
 
 opt_limit: { /* nil */
@@ -261,6 +288,7 @@ sort_def: { /* nil */
 
 bool scan_state;
 unsigned int statement_count;
+time_t curr_time;
 
 int execute_file(int ac, char **av)
 {
@@ -318,6 +346,7 @@ int execute_file(int ac, char **av)
 		
         statement_count = 0;
         clean_queues();
+		filter_var.clear();
 
         yyin = fopen(av[ac-1], "r");
         PROC_FLUSH_BUF ( yyin );
@@ -326,6 +355,7 @@ int execute_file(int ac, char **av)
         extern FILE *yyin;
         context = CreateCudaDevice(0, nullptr, verbose);
 
+		curr_time = time(0)*1000;
         if(!yyparse()) {
             if(verbose)
                 cout << "SQL scan parse worked " << endl;
@@ -367,9 +397,11 @@ int execute_file(int ac, char **av)
 
             statement_count = 0;
             clean_queues();
+			filter_var.clear();
             yy_scan_string(script.c_str());
             std::clock_t start1 = std::clock();
-
+			curr_time = time(0)*1000;
+			
             if(!yyparse()) {
                 if(verbose)
                     cout << "SQL scan parse worked " <<  endl;
@@ -408,6 +440,18 @@ int execute_file(int ac, char **av)
         cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
+	if(scratch.size()) {
+		scratch.resize(0);
+		scratch.shrink_to_fit();
+	};	
+	if(rcol_dev.size()) {
+		rcol_dev.resize(0);
+		rcol_dev.shrink_to_fit();
+	};
+	if(ranj.size()) {
+		ranj.resize(0);
+		ranj.shrink_to_fit();
+	};	
     return 0;
 }
 

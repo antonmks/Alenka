@@ -48,7 +48,7 @@
 #include <ctime>
 #include <limits>
 #include <fstream>
-#include "moderngpu/include/moderngpu.cuh"
+#include "moderngpu-master/include/moderngpu.cuh"
 
 typedef long long int int_type;
 typedef unsigned int int32_type;
@@ -68,8 +68,10 @@ extern bool op_case;
 extern queue<string> op_sort;
 extern queue<string> op_presort;
 extern queue<string> op_value;
+extern string grp_val;
 extern queue<int_type> op_nums;
 extern queue<float_type> op_nums_f;
+extern queue<unsigned int> op_nums_precision; //decimals' precision
 extern queue<string> col_aliases;
 extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
 extern unsigned int total_segments;
@@ -92,6 +94,9 @@ extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
 extern size_t total_buffer_size;
 extern thrust::device_vector<unsigned char> scratch;
+extern thrust::device_vector<unsigned int> rcol_matches;
+extern thrust::device_vector<int_type> rcol_dev;
+extern thrust::device_vector<int> ranj;
 extern size_t alloced_sz;
 extern ContextPtr context;
 extern map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
@@ -103,6 +108,7 @@ extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
 extern map<string,bool> min_max_eq;
 extern vector<void*> alloced_mem;
+extern map<string, string> filter_var; 
 
 template<typename T>
 struct uninitialized_host_allocator
@@ -163,6 +169,18 @@ struct float_to_long
     }
 };
 
+struct decrease
+{
+    __device__
+    unsigned int operator()(const unsigned int x)
+    {
+		if(x > 0)
+			return x-1;
+		else
+			return x;
+    }
+};
+
 struct float_equal_to
 {
     __device__ 
@@ -200,6 +218,7 @@ struct long_to_float
     }
 };
 
+
 struct is_break
 {
  __host__ __device__
@@ -208,6 +227,73 @@ struct is_break
    return x == '\n';
  }
 };
+
+struct gpu_interval_char
+{
+	const long long int *dt1;
+    long long int *dt2;
+	const char *index;
+	const unsigned int* len;
+		
+	gpu_interval_char(const long long int *_dt1, long long int *_dt2, const char* _index, const unsigned int* _len):
+			  dt1(_dt1), dt2(_dt2), index(_index), len(_len) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		bool test = 1;
+		if(dt2[i] == 0) {
+			for(int z = 0; z < *len; z++) {
+			   if(index[i*(*len) + z] != index[(i+1)*(*len) + z]) {
+				  test = 0;
+				  break;
+			   };				
+			};	
+		};		
+		if(test)
+			dt2[i] = dt1[i+1];
+	}
+};	
+
+
+struct gpu_interval
+{
+	const long long int *dt1;
+    long long int *dt2;
+	const long long int *index;
+		
+	gpu_interval(const long long int *_dt1, long long int *_dt2, const long long int* _index):
+			  dt1(_dt1), dt2(_dt2), index(_index) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+	
+		if(dt2[i] == 0 && index[i+1] == index[i])
+			dt2[i] = dt1[i+1];
+	}
+};	
+
+struct gpu_interval_set
+{
+	const long long int *dt1;
+    long long int *dt2;
+	const long long int *index1;
+	const long long int *index2;
+	const unsigned int* bs;
+		
+	gpu_interval_set(const long long int *_dt1, long long int *_dt2, const long long int* _index1, const long long int* _index2, const unsigned int* _bs):
+			  dt1(_dt1), dt2(_dt2), index1(_index1), index2(_index2), bs(_bs) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+	
+		//printf("T %d %lld %lld %lld %lld %d %lld \n", i, dt1[i], dt2[i], index1[i], index2[bs[index1[i]]], bs[index1[i]], index2[i]);
+		if(dt2[i] == 0 && index1[i] == index2[bs[i]]) {
+			dt2[i] = dt1[bs[i]];
+		};	
+	}
+};	
+
+
 
 struct gpu_date
 {
@@ -223,7 +309,7 @@ struct gpu_date
 		long long int acc;
 		int z = 0, c;
 		
-		s = source + 15*i;		
+		s = source + 23*i;		
 		c = (unsigned char) *s++;
 
 		for (acc = 0; z < 10; c = (unsigned char) *s++) {
@@ -237,6 +323,88 @@ struct gpu_date
 		dest[i] = acc;	
 	}
 };	
+
+
+struct gpu_tdate
+{
+	const char *source;
+    long long int *dest;
+		
+	gpu_tdate(const char *_source, long long int *_dest):
+			  source(_source), dest(_dest) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		const char *s;
+		long long int acc;
+		int z = 0, c;
+		int y, m, d, h, min, sec, ms;
+		bool year_set = 0;
+		
+		s = source + 23*i;		
+		c = (unsigned char) *s++;
+
+		for (acc = 0; z < 10; c = (unsigned char) *s++) {
+			if(c != '-') {
+				c -= '0';
+				acc *= 10;
+				acc += c;
+			}
+			else {				
+				if(!year_set) {
+					y = acc;
+					year_set = 1;
+				}	
+				else
+					m = acc;
+				acc = 0;
+			};	
+			z++;			
+		}	
+		
+		d = acc;
+				
+		c = (unsigned char) s[0];
+		c -= '0';
+		h = c*10;
+		c = (unsigned char) s[1];
+		c -= '0';
+		h = h+c;
+				
+		c = (unsigned char) s[3];
+		c -= '0';
+		min = c*10;
+		c = (unsigned char) s[4];
+		c -= '0';
+		min = min+c;
+		
+		c = (unsigned char) s[6];
+		c -= '0';
+		sec = c*10;
+		c = (unsigned char) s[7];
+		c -= '0';
+		sec = sec+c;
+	
+		c = (unsigned char) s[9];
+		c -= '0';
+		ms = c*100;
+		c = (unsigned char) s[10];
+		c -= '0';
+		ms = ms+c*10;
+		c = (unsigned char) s[11];
+		c -= '0';
+		ms = ms+c;
+		
+		
+		y -= m <= 2;
+		const int era = (y >= 0 ? y : y-399) / 400;
+		const unsigned yoe = static_cast<unsigned>(y - era * 400);      // [0, 399]
+		const unsigned doy = (153*(m + (m > 2 ? -3 : 9)) + 2)/5 + d-1;  // [0, 365]
+		const unsigned doe = yoe * 365 + yoe/4 - yoe/100 + doy;         // [0, 146096]
+		dest[i] =  (long long int)(era * 146097 + static_cast<int>(doe) - 719468)*24*60*60*1000 + (long long int)h*60*60*1000 + (long long int)min*60*1000 + (long long int)sec*1000 + (long long int)ms;		
+	}
+};	
+
 
 
 struct gpu_atof
@@ -288,6 +456,122 @@ struct gpu_atof
 		dest[i] = sign * (frac ? (value / scale) : (value * scale));		
 	}
 };	
+
+
+
+struct gpu_atod
+{
+	const char *source;
+    int_type *dest;
+	const unsigned int *len;
+	const unsigned int *sc;
+	
+	gpu_atod(const char *_source, int_type *_dest, const unsigned int *_len, const unsigned int *_sc):
+			  source(_source), dest(_dest), len(_len), sc(_sc) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		const char *p;
+		int frac;
+		double sign, value, scale;	
+		
+		p = source + len[0]*i;		
+		
+    	while (*p == ' ') {
+			p += 1;
+		}
+    
+		sign = 1.0;
+		if (*p == '-') {
+			sign = -1.0;
+			p += 1;
+		} else if (*p == '+') {
+			p += 1;
+		}
+		
+		for (value = 0.0; *p >= '0' && *p <= '9'; p += 1) {
+			value = value * 10.0 + (*p - '0');
+		}
+
+        if (*p == '.') {
+			double pow10 = 10.0;
+			p += 1;
+			while (*p >= '0' && *p <= '9') {
+				value += (*p - '0') / pow10;
+				pow10 *= 10.0;
+				p += 1;
+			}
+		}
+		
+		frac = 0;
+		scale = 1.0;
+		
+		dest[i] = (sign * (frac ? (value / scale) : (value * scale)))*sc[0];		
+	}
+};	
+
+
+struct gpu_atold
+{
+	const char *source;
+    long long int *dest;
+	const unsigned int *len;
+	const unsigned int *sc;
+	
+	gpu_atold(const char *_source, long long int *_dest, const unsigned int *_len, const unsigned int *_sc):
+			  source(_source), dest(_dest), len(_len), sc(_sc) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+		const char *s;
+		long long int acc;
+		int c;
+		int neg;
+		int point = 0;	
+		bool cnt = 0;
+		
+		s = source + len[0]*i;		
+	
+		do {
+			c = (unsigned char) *s++;
+		} while (c == ' ');				
+		
+		if (c == '-') {
+			neg = 1;
+			c = *s++;
+		} else {
+			neg = 0;
+			if (c == '+')
+				c = *s++;
+		}		
+		
+		for (acc = 0;; c = (unsigned char) *s++) {
+			if (c >= '0' && c <= '9')
+				c -= '0';
+			else {
+				if(c != '.')
+					break;
+				cnt = 1;
+				continue;
+			};	
+			if (c >= 10)
+				break;	
+			if (neg) {
+				acc *= 10;
+				acc -= c;
+			} 
+			else {
+				acc *= 10;
+				acc += c;
+			}		
+			if(cnt)
+				point++;
+			if(point == sc[0])
+				break;
+		}		
+		dest[i] = acc * (unsigned int)exp10((double)sc[0]- point);	
+	}
+};
 
 
 struct gpu_atoll
@@ -402,7 +686,7 @@ struct col_data {
 	unsigned int col_length;
 };
 extern map<string, map<string, col_data> > data_dict;
-
+extern time_t curr_time;
 
 
 class CudaSet
@@ -426,6 +710,7 @@ public:
     queue<string> fil_type,fil_value;
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
+	queue<unsigned int> fil_nums_precision;
 	
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, totalRecs;
     vector<string> columnNames;
@@ -440,10 +725,12 @@ public:
     queue<string> presorted_fields; //globally sorted by fields
     map<string, unsigned int> type; // 0 - integer, 1-float_type, 2-char
     map<string, bool> decimal; // column is decimal - affects only compression
+	map<string, unsigned int> decimal_zeroes; // number of zeroes in decimals
     map<string, unsigned int> grp_type; // type of group : SUM, AVG, COUNT etc
     map<unsigned int, string> cols; // column positions in a file
 	map<string, bool> map_like; //for LIKE processing
 	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing	
+	map<string,bool> ts_cols; //timestamp columns
 	
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
@@ -461,7 +748,7 @@ public:
     void resizeDevice(size_t RecCount);
     bool onDevice(string colname);
     CudaSet* copyDeviceStruct();
-    void readSegmentsFromFile(unsigned int segNum, string colname, size_t offset);
+    void readSegmentsFromFile(unsigned int segNum, string colname);
 	int_type readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest);
 	int_type readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest);
     void CopyColumnToGpu(string colname,  unsigned int segment, size_t offset = 0);
@@ -476,12 +763,12 @@ public:
     void GroupBy(std::stack<string> columnRef);
     void addDeviceColumn(int_type* col, string colName, size_t recCount);
     void addDeviceColumn(float_type* col, string colName, size_t recCount, bool is_decimal);
-    void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, size_t mCount);
+    void compress(string file_name, size_t offset, unsigned int check_type, unsigned int check_val, size_t mCount, const bool compress);
     void writeHeader(string file_name, string colname, unsigned int tot_segs);
 	void reWriteHeader(string file_name, string colname, unsigned int tot_segs, size_t newRecs, size_t maxRecs1);
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
-    void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool term = 0);
+    void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool append, const bool term = 0);
     void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
 	void compress_int(const string file_name, const string colname, const size_t mCount);
     bool LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
@@ -491,18 +778,20 @@ public:
     bool* logical_or(bool* column1, bool* column2);
     bool* compare(int_type s, int_type d, int_type op_type);
     bool* compare(float_type s, float_type d, int_type op_type);
-    bool* compare(int_type* column1, int_type d, int_type op_type);
+    bool* compare(int_type* column1, int_type d, int_type op_type, unsigned int p1, unsigned int p2);
     bool* compare(float_type* column1, float_type d, int_type op_type);
-    bool* compare(int_type* column1, int_type* column2, int_type op_type);
+    bool* compare(int_type* column1, int_type* column2, int_type op_type, unsigned int p1, unsigned int p2);
     bool* compare(float_type* column1, float_type* column2, int_type op_type);
     bool* compare(float_type* column1, int_type* column2, int_type op_type);
-    float_type* op(int_type* column1, float_type* column2, string op_type, int reverse);
-    int_type* op(int_type* column1, int_type* column2, string op_type, int reverse);
-    float_type* op(float_type* column1, float_type* column2, string op_type, int reverse);
-    int_type* op(int_type* column1, int_type d, string op_type, int reverse);
-    float_type* op(int_type* column1, float_type d, string op_type, int reverse);
-    float_type* op(float_type* column1, float_type d, string op_type,int reverse);
+    float_type* op(int_type* column1, float_type* column2, string op_type, bool reverse);
+    int_type* op(int_type* column1, int_type* column2, string op_type, bool reverse, unsigned int p1, unsigned int p2);
+    float_type* op(float_type* column1, float_type* column2, string op_type, bool reverse);
+    int_type* op(int_type* column1, int_type d, string op_type, bool reverse, unsigned int p1, unsigned int p2);
+    float_type* op(int_type* column1, float_type d, string op_type, bool reverse);
+    float_type* op(float_type* column1, float_type d, string op_type, bool reverse);
 	char loadIndex(const string index_name, const unsigned int segment);
+	void calc_intervals(string dt1, string dt2, string index, unsigned int total_segs, bool append);
+	void gpu_perm(queue<string> sf, thrust::device_vector<unsigned int>& permutation);
 
 protected:
 
@@ -519,7 +808,7 @@ void allocColumns(CudaSet* a, queue<string> fields);
 void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, size_t& count);
 size_t getSegmentRecCount(CudaSet* a, unsigned int segment);
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
-void copyFinalize(CudaSet* a, queue<string> fields);
+void copyFinalize(CudaSet* a, queue<string> fields, bool ts);
 void setPrm(CudaSet* a, CudaSet* b, char val, unsigned int segment);
 void mygather(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
 void mycopy(string colname, CudaSet* a, CudaSet* t, size_t offset, size_t g_size);
@@ -547,6 +836,7 @@ void check_sort(const string str, const char* rtable, const char* rid);
 void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void alloc_pool(unsigned int maxRecs);
+time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 
 #endif
 
