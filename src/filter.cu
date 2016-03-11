@@ -146,7 +146,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-        //cout << endl << ss << endl;
+        //cout << endl << ss << " " <<  op_nums.size() << " " << op_nums_precision.size() << endl;
 
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
                 || ss.compare("STRING") == 0 || ss.compare("FIELD") == 0) {
@@ -158,7 +158,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 exe_type.push(ss);
 				exe_precision.push(op_nums_precision.front());
 				op_nums_precision.pop();
-
             }
             else if (ss.compare("NAME") == 0 || ss.compare("STRING") == 0) {
                 exe_value.push(op_value.front());
@@ -1553,13 +1552,12 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								auto pos2 = s2_val.find_last_of(".");
 								auto set = s2_val.substr(pos1+1, (pos2-pos1)-1);
 								auto col = s2_val.substr(pos2+1);
-								auto len = data_dict[set][col].col_length;
-
+								auto len = data_dict[set][col].col_length;								
+								
 								while(s1_val.length() < len)
 									s1_val = s1_val + '\0';
 
-								auto s1_hash = MurmurHash64A(&s1_val, len, hash_seed)/2;
-
+								auto s1_hash = MurmurHash64A(&s1_val[0], len, hash_seed)/2;								
 								if(a->idx_dictionary_int[s2_val].find(s1_hash) != a->idx_dictionary_int[s2_val].end()) {
 									dd_v[0] = a->idx_dictionary_int[s2_val][s1_hash];
 									dd_v[1] = (unsigned int)cmp_type;
@@ -1665,7 +1663,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 					}
                 }
 
-                else if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
+                else if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {					
                     n1 = exe_nums.top();
                     exe_nums.pop();
                     s1_val = exe_value.top();
@@ -1679,10 +1677,9 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                         if(a->idx_dictionary_int[s1_val].find(n1) != a->idx_dictionary_int[s1_val].end()) {
                             dd_v[0] = a->idx_dictionary_int[s1_val][n1];
                             dd_v[1] = (unsigned int)cmp_type;
-
                             thrust::counting_iterator<unsigned int> begin(0);
                             cmp_functor_dict ff(a->idx_vals[s1_val], (bool*)d_res, (unsigned int*)d_v);
-                            thrust::for_each(begin, begin + a->mRecCount, ff);
+                            thrust::for_each(begin, begin + a->mRecCount, ff);							
                         }
                         else {
                             cudaMemset(d_res,0,a->mRecCount);

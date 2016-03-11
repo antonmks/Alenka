@@ -48,7 +48,7 @@
 #include <ctime>
 #include <limits>
 #include <fstream>
-#include "moderngpu/include/moderngpu.cuh"
+#include "moderngpu-master/include/moderngpu.cuh"
 
 typedef long long int int_type;
 typedef unsigned int int32_type;
@@ -769,8 +769,7 @@ public:
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool append, const bool term = 0);
-    void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
-	void compress_int(const string file_name, const string colname, const size_t mCount);
+    void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);	
     bool LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
 						thrust::device_vector<unsigned int>& ind, thrust::device_vector<unsigned int>& dest_len);
     void free();
@@ -837,6 +836,7 @@ void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void alloc_pool(unsigned int maxRecs);
 time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
+void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
 
 #endif
 
