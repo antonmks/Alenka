@@ -2814,6 +2814,9 @@ int execute_file(int ac, char **av)
 		for(auto it = index_buffers.begin(); it != index_buffers.end();it++) {
 			cudaFreeHost(it->second);
         };
+		for(auto it = idx_vals.begin(); it != idx_vals.end();it++) {
+			cudaFreeHost(it->second);
+        };
 
     };
     if(save_dict) {

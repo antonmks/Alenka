@@ -533,7 +533,7 @@ void star_join(const char *s, const string j1)
         bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left->fil_nums_precision, left, i);
         thrust::device_ptr<bool> star((bool*)res);
         size_t cnt = thrust::count(star, star + (unsigned int)left->mRecCount, 1);
-        cout << "join res " << cnt << " out of " << left->mRecCount << endl;
+        //cout << "join res " << cnt << " out of " << left->mRecCount << endl;
         thrust::host_vector<unsigned int> prm_vh(cnt);
         thrust::device_vector<unsigned int> prm_v(cnt);
         thrust::host_vector<unsigned int> prm_tmp(cnt);
@@ -564,7 +564,6 @@ void star_join(const char *s, const string j1)
             while(!op_sel1.empty()) {
 
                 if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
-                    //cout << "Left " << op_sel1.front() << endl;
 
                     if(left->filtered)
                         t = varNames[left->source_name];
@@ -581,7 +580,7 @@ void star_join(const char *s, const string j1)
                         else {
                             t->readSegmentsFromFile(i, op_sel1.front());
                             void* h;
-
+							
                             if(!interactive) {
                                 if(left->type[op_sel1.front()] == 0)
                                     h = t->h_columns_int[op_sel1.front()].data();
@@ -616,7 +615,7 @@ void star_join(const char *s, const string j1)
                                 };
                             }
                             else if(bits == 32) {
-                                if(left->type[op_sel1.front()] == 0) {
+                                if(left->type[op_sel1.front()] == 0) {									
                                     thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
                                 }
                                 else {
@@ -635,7 +634,6 @@ void star_join(const char *s, const string j1)
                             };
                         };
 
-                        //cout << "lower_val bits " << lower_val << " " << bits << endl;
                         if(left->type[op_sel1.front()] != 1)
                             thrust::transform( c->h_columns_int[op_sel1.front()].begin() + offset,  c->h_columns_int[op_sel1.front()].begin() + offset + cnt,
                                                thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
@@ -2544,7 +2542,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     if(verbose)
         printf("BINARY LOAD: %s %s \n", s, f);
 
-	//std::clock_t start1 = std::clock();	
+	std::clock_t start1 = std::clock();	
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
@@ -2575,7 +2573,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
         a->free();
         varNames.erase(s);
     };
-	//std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+	std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 

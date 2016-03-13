@@ -687,6 +687,7 @@ struct col_data {
 };
 extern map<string, map<string, col_data> > data_dict;
 extern time_t curr_time;
+extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
 
 class CudaSet
@@ -703,8 +704,7 @@ public:
 	map<string, string> string_map; //maps char column names to string files, only a select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
-	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
-
+	
     // to do filters in-place (during joins, groupby etc ops) we need to save a state of several queues's and a few misc. variables:
     char* fil_s, * fil_f, sort_check;
     queue<string> fil_type,fil_value;

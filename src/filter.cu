@@ -1561,7 +1561,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								if(a->idx_dictionary_int[s2_val].find(s1_hash) != a->idx_dictionary_int[s2_val].end()) {
 									dd_v[0] = a->idx_dictionary_int[s2_val][s1_hash];
 									dd_v[1] = (unsigned int)cmp_type;
-									cmp_functor_dict ff(a->idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
+									cmp_functor_dict ff(idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
 									thrust::for_each(begin, begin + a->mRecCount, ff);
 								}
 								else {
@@ -1678,7 +1678,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                             dd_v[0] = a->idx_dictionary_int[s1_val][n1];
                             dd_v[1] = (unsigned int)cmp_type;
                             thrust::counting_iterator<unsigned int> begin(0);
-                            cmp_functor_dict ff(a->idx_vals[s1_val], (bool*)d_res, (unsigned int*)d_v);
+                            cmp_functor_dict ff(idx_vals[s1_val], (bool*)d_res, (unsigned int*)d_v);
                             thrust::for_each(begin, begin + a->mRecCount, ff);							
                         }
                         else {
@@ -1727,7 +1727,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                             dd_v[1] = (unsigned int)cmp_type;
 
                             thrust::counting_iterator<unsigned int> begin(0);
-                            cmp_functor_dict ff(a->idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
+                            cmp_functor_dict ff(idx_vals[s2_val], (bool*)d_res, (unsigned int*)d_v);
                             thrust::for_each(begin, begin + a->mRecCount, ff);
                         }
                         else {

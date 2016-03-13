@@ -63,6 +63,7 @@ map<string, map<string, col_data> > data_dict;
 map<unsigned int, map<unsigned long long int, size_t> > char_hash;
 
 map<string, char*> index_buffers;
+map<string, unsigned long long int*> idx_vals;
 map<string, char*> buffers;
 map<string, size_t> buffer_sizes;
 size_t total_buffer_size;
@@ -2935,6 +2936,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
     string f1 = index_name + "." + to_string(segment);
     char res;
 
+	//interactive = 0;
     if(interactive) {
         if(index_buffers.find(f1) == index_buffers.end()) {
             f = fopen (f1.c_str(), "rb" );
@@ -2956,26 +2958,23 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
         };
         vals_count = ((unsigned int*)(index_buffers[f1]+4 +8*sz))[2];
         real_count = ((unsigned int*)(index_buffers[f1]+4 +8*sz))[3];
-        mRecCount = real_count;
-        res = (index_buffers[f1]+4 +8*sz + (vals_count+2)*int_size)[0];
-        cudaMalloc((void **) &d_str, (vals_count+2)*int_size);
-        cudaMemcpy( d_str, (void *) &((index_buffers[f1]+4 +8*sz)[0]), (vals_count+2)*int_size, cudaMemcpyHostToDevice);
+        mRecCount = real_count;		
 
-        if(idx_vals.count(index_name))
-            cudaFree(idx_vals[index_name]);
-        idx_vals[index_name] = (unsigned long long int*)d_str;
-
+        if(idx_vals.count(index_name) == 0) {		
+	        cudaMalloc((void **) &d_str, (vals_count+2)*int_size);
+			cudaMemcpy( d_str, (void *) &((index_buffers[f1]+4 +8*sz)[0]), (vals_count+2)*int_size, cudaMemcpyHostToDevice);			
+			idx_vals[index_name] = (unsigned long long int*)d_str;
+		};	
+        
     }
     else {
         f = fopen (f1.c_str(), "rb" );
         fread(&sz, 4, 1, f);
-		cout << "size " << sz << endl;
         int_type* d_array = new int_type[sz];
         idx_dictionary_int[index_name].clear();
         fread((void*)d_array, sz*int_size, 1, f);		
         for(unsigned int i = 0; i < sz; i++) {
             idx_dictionary_int[index_name][d_array[i]] = i;
-            cout << index_name  << " " << d_array[i] << " " << i << endl;
         };
         delete [] d_array;
 
@@ -2983,6 +2982,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
         fread(&bits_encoded, 4, 1, f);
         fread(&vals_count, 4, 1, f);
         fread(&real_count, 4, 1, f);
+		
         mRecCount = real_count;
 
         unsigned long long int* int_array = new unsigned long long int[vals_count+2];
