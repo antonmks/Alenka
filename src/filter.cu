@@ -146,7 +146,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-        //cout << endl << ss << " " <<  op_nums.size() << " " << op_nums_precision.size() << endl;
+        LOG(logDEBUG) << ss << " " <<  op_nums.size() << " " << op_nums_precision.size();
 
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
                 || ss.compare("STRING") == 0 || ss.compare("FIELD") == 0) {
@@ -1511,7 +1511,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							auto min = s1_val.substr(14,2);
 							auto sec = s1_val.substr(17,2);
 							auto usec = s1_val.substr(20,3);
-							//cout << "VL " << year << " " << month << " " << day << " " << hour << " " << min << " " << sec << " " << usec << "   " << endl;
+							LOG(logDEBUG) << "VL " << year << " " << month << " " << day << " " << hour << " " << min << " " << sec << " " << usec;
 							
 							tm.tm_year = std::stoi(year)-1900;
 							tm.tm_mon = std::stoi(month)-1;
@@ -2105,7 +2105,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
                 bool_vectors.push(a->logical_or(s2,s3));
             }
             else {
-                cout << "found nothing " << endl;
+            	 LOG(logWARNING) << "found nothing ";
             }
         };
     };

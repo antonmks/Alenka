@@ -189,8 +189,8 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     auto start_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 12))[0];
     auto comp_type = ((unsigned int*)host)[5];
 
-    //cout << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << endl;
-	//cout << colname << " " << orig_lower_val << " " << orig_upper_val << endl;
+    LOG(logDEBUG) << "Decomp Header " <<  orig_recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type;
+    LOG(logDEBUG) << colname << " " << orig_lower_val << " " << orig_upper_val;
 	if(orig_lower_val == orig_upper_val)
 		min_max_eq[colname] = 1;
 	else	
@@ -298,8 +298,8 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
 
         real_lower = s[0];
         real_upper = s[recCount-1];
-        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " <<  orig_upper_val-orig_lower_val << " values " << endl;
+        LOG(logDEBUG) << "orig " << orig_upper_val << " " <<  orig_lower_val;
+        LOG(logDEBUG) << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " <<  orig_upper_val-orig_lower_val << " values ";
         bits = (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1)));
         if (bits == 0)
             bits = 1;
@@ -318,8 +318,8 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
         real_lower = s[0];
         real_upper = s[recCount-1];
 
-        //cout << "orig " << orig_upper_val << " " <<  orig_lower_val << endl;
-        //cout << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " << orig_upper_val-orig_lower_val << " values" << endl;
+        LOG(logDEBUG) << "orig " << orig_upper_val << " " <<  orig_lower_val;
+        LOG(logDEBUG) << "We need for delta " << file_name << " " << (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1))) << " bits to encode " << orig_upper_val-orig_lower_val << " values";
         bits = (unsigned int)ceil(log2((double)((orig_upper_val-orig_lower_val)+1)));
         if (bits == 0)
             bits = 1;
@@ -348,7 +348,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     thrust::device_ptr<char> dd((char*)source);
     thrust::fill(dd, dd+source_len,0);
 
-    //cout << "FF " << orig_lower_val << " " << bits << " " << fit_count << " " << bit_count << endl;
+    LOG(logDEBUG) << "FF " << orig_lower_val << " " << bits << " " << fit_count << " " << bit_count;
 
     if (tp == 0) {
         compress_functor_int ff((int_type*)ss,(unsigned long long int*)source, (long long int*)s_v1, (unsigned int*)d_v1);
@@ -381,7 +381,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     // copy fin_seq to host
     unsigned long long int * raw_src = thrust::raw_pointer_cast(fin_seq);
 
-    //cout << file_name << " CNT  " << cnt << " " << recCount << endl;
+    LOG(logDEBUG) << file_name << " CNT  " << cnt << " " << recCount;
     cnt = cnt*8;
 
     cudaMemcpy( host.data(), (void *)raw_src, cnt, cudaMemcpyDeviceToHost);
@@ -435,7 +435,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
             thrust::device_ptr<long long int> s((long long int*)source);
             sorted = thrust::is_sorted(s, s+recCount);
         };
-        //cout << "file " << file_name << " is sorted " << sorted << endl;
+        LOG(logDEBUG) << "file " << file_name << " is sorted " << sorted;
 
         if(sorted) {
             pfor_delta_compress(source, source_len, file_name, host, tp);
@@ -444,12 +444,12 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     };
 
 
-	//cout << "Recs " << recCount << endl;
+    LOG(logDEBUG) << "Recs " << recCount;
     if (tp == 0) {
         thrust::device_ptr<int_type> s((int_type*)source);
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
-        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        LOG(logDEBUG) << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     }
     else {
@@ -457,7 +457,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         thrust::device_ptr<long long int> s((long long int*)source);
         orig_lower_val = *(thrust::min_element(s, s + recCount));
         orig_upper_val = *(thrust::max_element(s, s + recCount));
-        //cout << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val << endl;
+        LOG(logDEBUG) << "We need " << (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1))) << " bits to encode original range of " << orig_lower_val << " to " << orig_upper_val;
         bits = (unsigned int)ceil(log2((double)((orig_upper_val - orig_lower_val) + 1)));
     };
 
@@ -471,7 +471,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         else if(bits < 64)
             bits = 64;
     };
-    //cout << "We will really need " << bits << " for " << file_name << endl;
+    LOG(logDEBUG) << "We will really need " << bits << " for " << file_name;
 
     unsigned int cnt;
     thrust::device_ptr<int_type> s((int_type*)source);
@@ -507,7 +507,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     fit_count = 64/bits;
 
     
- //cout << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val <<  endl;
+    LOG(logDEBUG) << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val;
     fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);
     binary_file.write((char *)&orig_lower_val, 8);

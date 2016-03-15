@@ -125,7 +125,7 @@ void emit_decimal(const char* str)
 	};	
 	op_nums.push(stoi(s1));
     op_nums_precision.push(precision);
-	cout << "Decimal " << stoi(s1) << " " << precision << endl; 
+    LOG(logDEBUG) << "Decimal " << stoi(s1) << " " << precision;
 }
 
 void emit_mul()
@@ -480,7 +480,7 @@ void star_join(const char *s, const string j1)
 
         CudaSet* right = varNames.find(op_jj.front())->second;
         if(!check_bitmaps_exist(left, right)) {
-            cout << "Required bitmap on table " << op_jj.front() << " doesn't exists" << endl;
+        	LOG(logERROR) << "Required bitmap on table " << op_jj.front() << " doesn't exists";
             exit(0);
         };
 		
@@ -488,7 +488,7 @@ void star_join(const char *s, const string j1)
         while(!op_alt.empty()) {
             if(f2.compare(op_alt.front()) != 0 && std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
                 second.push(op_alt.front());
-                //cout << "col " << op_alt.front() << " " << op_jj.front() <<  endl;
+                LOG(logDEBUG) << "col " << op_alt.front() << " " << op_jj.front();
                 op_left.push(f1);
             };
             op_alt.pop();
@@ -504,9 +504,9 @@ void star_join(const char *s, const string j1)
     set<string> already_loaded;
     bool right_cpy = 0;
     for (unsigned int i = 0; i < left->segCount; i++) {
-        std::clock_t start2 = std::clock();
+        std::clock_t start1 = std::clock();
         if(verbose)
-            cout << "segment " << i << " " << getFreeMem() <<  endl;
+        	 LOG(logDEBUG) << "segment " << i << " " << getFreeMem();
 
         idx = left->fil_value;
         already_loaded.clear();
@@ -519,7 +519,7 @@ void star_join(const char *s, const string j1)
                 size_t pos2 = idx.front().find_first_of(".", pos1+1);
                 CudaSet* r = varNames.find(idx.front().substr(pos1+1, pos2-pos1-1))->second;
                 char a;
-				//cout << "loading index " << idx.front() << endl;
+				LOG(logDEBUG) << "loading index " << idx.front();
                 a = left->loadIndex(idx.front(), i);
                 sort_map[idx.front().substr(pos1+1, pos2-pos1-1)] = a;
             };
@@ -533,16 +533,16 @@ void star_join(const char *s, const string j1)
         bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left->fil_nums_precision, left, i);
         thrust::device_ptr<bool> star((bool*)res);
         size_t cnt = thrust::count(star, star + (unsigned int)left->mRecCount, 1);
-        //cout << "join res " << cnt << " out of " << left->mRecCount << endl;
+        LOG(logDEBUG) << "join res " << cnt << " out of " << left->mRecCount;
         thrust::host_vector<unsigned int> prm_vh(cnt);
         thrust::device_vector<unsigned int> prm_v(cnt);
         thrust::host_vector<unsigned int> prm_tmp(cnt);
         thrust::device_vector<unsigned int> prm_tmp_d(cnt);
-        //std::cout<< "seg filter " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+        LOG(logDEBUG) << "seg filter " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
 
         if(cnt) { //gather
 
-            //start1 = std::clock();
+        	start1 = std::clock();
             left->prm_d.resize(cnt);
             thrust::copy_if(thrust::make_counting_iterator((unsigned int)0), thrust::make_counting_iterator((unsigned int)left->mRecCount-1),
                             star, left->prm_d.begin(), thrust::identity<bool>());
@@ -559,7 +559,7 @@ void star_join(const char *s, const string j1)
             unsigned int cnt1, bits;
             int_type lower_val;
             thrust::device_vector<unsigned int> output(cnt);
-            //std::cout<< "seg start " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+            LOG(logDEBUG) << "seg start " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
 
             while(!op_sel1.empty()) {
 
@@ -573,9 +573,9 @@ void star_join(const char *s, const string j1)
                     if(left->type[op_sel1.front()] <= 1) {
 
                         if(ssd && !interactive) {
-                            //start1 = std::clock();
+                            start1 = std::clock();
                             lower_val = t->readSsdSegmentsFromFile(i, op_sel1.front(), offset, prm_vh, c);
-                            //std::cout<<  "SSD L SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
+                            LOG(logDEBUG) <<  "SSD L SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
                         }
                         else {
                             t->readSegmentsFromFile(i, op_sel1.front());
@@ -594,7 +594,7 @@ void star_join(const char *s, const string j1)
                             cnt1 = ((unsigned int*)h)[0];//bytes
                             lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
                             bits = ((unsigned int*)((char*)h + cnt1))[8];
-                            //cout << cnt1 << " " << lower_val << " " << bits << " " << left->type[op_sel1.front()] << endl;
+                            LOG(logDEBUG) << cnt1 << " " << lower_val << " " << bits << " " << left->type[op_sel1.front()];
 
                             if(bits == 8) {
                                 if(left->type[op_sel1.front()] == 0) {
@@ -657,7 +657,7 @@ void star_join(const char *s, const string j1)
 
                             if(i == 0) {
                                 if(data_dict[varNames[it->first]->load_file_name][op_sel1.front()].col_type == 2) {
-                                    //cout << "SET " << op_sel1.front() << " to " << varNames[it->first]->load_file_name + "." + op_sel1.front() << endl;
+                                	LOG(logDEBUG) << "SET " << op_sel1.front() << " to " << varNames[it->first]->load_file_name + "." + op_sel1.front();
                                     c->string_map[op_sel1.front()] = varNames[it->first]->load_file_name + "." + op_sel1.front();
                                 };
                             }
@@ -668,9 +668,9 @@ void star_join(const char *s, const string j1)
                                 t = left;
 
                             if(ssd && !interactive) {
-                                //start1 = std::clock();
+                                start1 = std::clock();
                                 lower_val = t->readSsdSegmentsFromFileR(i, key_map[it->first], prm_vh, prm_tmp);
-                                //std::cout<<  "SSD R SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
+                                LOG(logDEBUG) <<  "SSD R SEEK READ " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
                             }
                             else {
                                 t->readSegmentsFromFile(i, key_map[it->first]);
@@ -685,7 +685,7 @@ void star_join(const char *s, const string j1)
                                 cnt1 = ((unsigned int*)h)[0];
                                 lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
                                 bits = ((unsigned int*)((char*)h + cnt1))[8];
-                                //cout << cnt1 << " " << lower_val << " " << bits << endl;
+                                LOG(logDEBUG) << cnt1 << " " << lower_val << " " << bits;
 
                                 if(bits == 8) {
                                     thrust::gather(prm_vh.begin(), prm_vh.end(), (char*)((unsigned int*)h + 6), prm_tmp.begin());
@@ -706,10 +706,10 @@ void star_join(const char *s, const string j1)
                                 thrust::transform(prm_tmp.begin(), prm_tmp.end(), thrust::make_constant_iterator(lower_val-1), prm_tmp.begin(), thrust::plus<unsigned int>());
                             if(sort_map[r->source_name] == '1') { // sorted consecutive starting with 1 dimension keys
                                 prm_tmp_d = prm_tmp;
-                                //cout << "PATH 1 " << endl;
+                                LOG(logDEBUG) << "PATH 1 ";
                             }
                             else {
-                                //cout << "PATH 2 " << r->source_name << endl;
+                            	LOG(logDEBUG) << "PATH 2 " << r->source_name;
                                 output = prm_tmp;
 
                                 if(r->d_columns_int[r_map[key_map[it->first]]].size() == 0) {
@@ -740,12 +740,12 @@ void star_join(const char *s, const string j1)
                     };
                 };
                 op_sel1.pop();
-                //std::cout<<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
+                LOG(logDEBUG) <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
             };
             cudaFree(temp);
             right_cpy = 1;
         };
-        //std::cout<< "SEG " << i << " "  <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+        //LOG(logDEBUG) << "SEG " << i << " "  <<  ( ( std::clock() - start2 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
         //unload the segment indexes :
         idx = left->fil_value;
         already_loaded.clear();
@@ -768,7 +768,7 @@ void star_join(const char *s, const string j1)
     };
 
     //if(verbose)
-    //    std::cout<< "star join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+    	//LOG(logDEBUG) << "star join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
 
 
     while(!op_join.empty()) {
@@ -780,13 +780,13 @@ void star_join(const char *s, const string j1)
     c->maxRecs = c->mRecCount;
 
     if(verbose)
-        cout << endl << "join count " << c->mRecCount << endl;
+    	 LOG(logDEBUG) << "join count " << c->mRecCount;
 };
 
 
 void emit_join(const char *s, const char *j1, const int grp, const int start_seg, const int end_seg)
 {
-    //cout << "emit_join " <<  s << " " << join_tab_cnt << " " << op_join.front() <<  endl;
+	LOG(logDEBUG) << "emit_join " <<  s << " " << join_tab_cnt << " " << op_join.front();
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
@@ -815,7 +815,7 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
 
     if(check_star_join(j1)) {
         if(verbose)
-            cout << "executing star join !! " << endl;
+        	LOG(logDEBUG) << "executing star join !! ";
         star_join(s, j1);
     }
     else {
@@ -864,7 +864,7 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
         op_m.pop();
     };
     while(!op_sel_as.empty()) {
-        //cout << "alias " << op_sel.front() << " : " << op_sel_as.front() << endl;
+    	LOG(logDEBUG) << "alias " << op_sel.front() << " : " << op_sel_as.front();
         if(op_sel.front() != op_sel_as.front()) {
             if(varNames[s]->type[op_sel.front()] == 0) {
                 varNames[s]->h_columns_int[op_sel_as.front()] = varNames[s]->h_columns_int[op_sel.front()];
@@ -933,9 +933,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     if(varNames.find(j1) == varNames.end() || varNames.find(j2) == varNames.end()) {
         clean_queues();
         if(varNames.find(j1) == varNames.end())
-            cout << "Couldn't find j1 " << j1 << endl;
+        	LOG(logWARNING) << "Couldn't find j1 " << j1;
         if(varNames.find(j2) == varNames.end())
-            cout << "Couldn't find j2 " << j2 << " here " << endl;
+        	LOG(logWARNING) << "Couldn't find j2 " << j2 << " here ";
 
         return;
     };
@@ -972,7 +972,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     op_g.pop();
 
     if (verbose)
-        cout << "JOIN " << s <<  " " <<  f1 << " " << f2 << " " << getFreeMem() <<  " " << phase_copy << endl;
+    	LOG(logDEBUG) << "JOIN " << s <<  " " <<  f1 << " " << f2 << " " << getFreeMem() <<  " " << phase_copy;
 
     std::clock_t start1 = std::clock();
     CudaSet* c = new CudaSet(right, left, op_sel_s, op_sel_s_as);
@@ -1097,7 +1097,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 		
         if(!right->presorted_fields.empty() && right->presorted_fields.front() == f2) {
             order = 0;
-            //cout << "No need to sort " << endl;
+            LOG(logDEBUG) << "No need to sort ";
             if (right->d_columns_int[f2][0] == 1 && right->d_columns_int[f2][right->d_columns_int[f2].size()-1] == right->d_columns_int[f2].size())
                 right->sort_check = '1';
             else {
@@ -1115,7 +1115,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 };
             }
             else {
-				//cout << "sorting " << endl;
+				LOG(logDEBUG) << "sorting ";
 				size_t tot_size = right->mRecCount*8*right->columnNames.size();
 				if (getFreeMem() > tot_size*1.5) {
 					order_inplace(right, exe_type, field_names, 0);					
@@ -1123,7 +1123,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				else {
    				    //for(unsigned int i = 0; i < right->columnNames.size(); i++) {
 					for (auto it=field_names.begin(); it!=field_names.end(); ++it) {
-						//cout << "sorting " << *it << endl;
+						LOG(logDEBUG) << "sorting " << *it;
 						if(right->type[*it] != 1) {
 							if(right->h_columns_int[*it].size() < right->mRecCount)
 								right->h_columns_int[*it].resize(right->mRecCount);
@@ -1148,7 +1148,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             };
         };
 
-	//std::cout<< "join right load time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
+        LOG(logDEBUG) << "join right load time " <<  ( ( std::clock() - start12 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem();
 
         int e_segment;
         if(end_segment == -1) {
@@ -1160,8 +1160,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         for (unsigned int i = start_segment; i < e_segment; i++) {
 		
             if(verbose)
-                //cout << "segment " << i <<  '\xd';
-                cout << "segment " << i <<  endl;
+            	 LOG(logDEBUG) << "segment " << i;
             cnt_l = 0;
 			
 			
@@ -1171,7 +1170,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
             auto cnt1 = ((unsigned int*)h)[0];
             auto lower_val = ((int_type*)(((unsigned int*)h)+1))[0];
             auto bits = ((unsigned int*)((char*)h + cnt1))[8];
-            cout << "Partition " << cnt1 << " " << lower_val << " " << bits << endl;
+            LOG(logDEBUG) << "Partition " << cnt1 << " " << lower_val << " " << bits << endl;
 			std::clock_t start15 = std::clock();
 			
 
@@ -1190,7 +1189,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 			auto new_cnt =
 		
 			cudaDeviceSynchronize();
-		    std::cout<< "partition time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem() << '\n';				
+		    LOG(logDEBUG) << "partition time " <<  ( ( std::clock() - start15 ) / (double)CLOCKS_PER_SEC ) <<  " " << getFreeMem()ssss;
 			exit(0);
 			*/
 			
@@ -1223,7 +1222,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     thrust::sort_by_key(d_col, d_col + cnt_l, v_l.begin());
 				}	
                 else if(verbose)
-                    cout << "No need of sorting " << endl;
+                	 LOG(logDEBUG) << "No need of sorting ";
 				
 				if(prejoin) {
 					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
@@ -1234,14 +1233,14 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				};		
 				
                 if(verbose)
-                    cout << "join " << cnt_l << ":" << cnt_r << " " << join_type.front() <<  endl;
+                	 LOG(logDEBUG) << "join " << cnt_l << ":" << cnt_r << " " << join_type.front();
 					
 				/*if(cnt_r > 10) {
                     for(int z = 0; z < 10 ; z++)
-                    	cout << " R " << right->d_columns_int[colname2][(cnt_r-1)-z] << endl;
+                    	LOG(logDEBUG) << " R " << right->d_columns_int[colname2][(cnt_r-1)-z];;
 
                     for(int z = 0; z < 10 ; z++)
-                    	cout << " L " << left->d_columns_int[colname1][(cnt_l-1)-z] << endl;
+                    	LOG(logDEBUG) << " L " << left->d_columns_int[colname1][(cnt_l-1)-z];
                 };
 				*/
 				
@@ -1249,13 +1248,13 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 if (left->d_columns_int[colname1][0] > right->d_columns_int[colname2][cnt_r-1] ||
                         left->d_columns_int[colname1][cnt_l-1] < right->d_columns_int[colname2][0]) {
                     if(verbose)
-                        cout << endl << "skipping after copying " << endl;
+                    	 LOG(logDEBUG) << "skipping after copying ";
                     continue;
                 };
                 //else
-                //    cout << "JOINING " << left->d_columns_int[colname1][0] << ":" << left->d_columns_int[colname1][cnt_l-1] << " AND " << right->d_columns_int[colname2][0] << ":" << right->d_columns_int[colname2][cnt_r-1] << endl;
+                //     LOG(logDEBUG) << "JOINING " << left->d_columns_int[colname1][0] << ":" << left->d_columns_int[colname1][cnt_l-1] << " AND " << right->d_columns_int[colname2][0] << ":" << right->d_columns_int[colname2][cnt_r-1];
 
-                //cout << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1] << endl;
+                // LOG(logDEBUG) << "joining " << left->d_columns_int[colname1][0] << " : " << left->d_columns_int[colname1][cnt_l-1] << " and " << right->d_columns_int[colname2][0] << " : " << right->d_columns_int[colname2][cnt_r-1];
 
                 char join_kind = join_type.front();
 				std::clock_t start11 = std::clock();
@@ -1282,10 +1281,10 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                                 mgpu::less<int_type>(), *context);
 				
 				if(verbose)	
-					std::cout<< "join time " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+					 LOG(logDEBUG) << "join time " <<  ( ( std::clock() - start11 ) / (double)CLOCKS_PER_SEC );
 
                 if(verbose)
-                    cout << "RES " << res_count << endl;
+                	 LOG(logDEBUG) << "RES " << res_count;
 				if(res_count == 0)
 					prejoin = 1; 				
 				
@@ -1313,7 +1312,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                     string f4 = mult.front();
                     mult.pop();
 
-                    //cout << "ADDITIONAL COL JOIN " << f3 << " " << f4 << " " << join_eq_type.front() << endl;
+                    LOG(logDEBUG) << "ADDITIONAL COL JOIN " << f3 << " " << f4 << " " << join_eq_type.front();
 
                     queue<string> rc;
                     rc.push(f3);
@@ -1369,7 +1368,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				while(!join_eq_type1.empty())
 					join_eq_type1.pop();
 				
-				//cout << "MUL res_count " << res_count << endl;			
+				LOG(logDEBUG) << "MUL res_count " << res_count ;
 				
 				
 				if(join_kind == '1') { //LEFT SEMI
@@ -1418,7 +1417,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				
 
                 tot_count = tot_count + res_count;
-				//cout << "tot " << tot_count << endl;
+				LOG(logDEBUG) << "tot " << tot_count;
 
 				//std::clock_t start12 = std::clock();
                 if(res_count && join_kind != '4' && join_kind != '2') {          		
@@ -1562,7 +1561,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
 
     if(verbose)
-        cout << "tot res " << tot_count << " " << getFreeMem() << endl;
+    	 LOG(logDEBUG) << "tot res " << tot_count << " " << getFreeMem();
 
     if(right->tmp_table == 1) {
         right->free();
@@ -1596,7 +1595,7 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 	
 
     if(verbose)
-        std::cout<< "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+    	 LOG(logDEBUG) << "join time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
 
 }
 
@@ -1688,7 +1687,7 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
     stack<string> exe_type, exe_value;
 
     if(verbose)
-        cout << "ORDER: " << s << " " << f << endl;
+    	 LOG(logDEBUG) << "ORDER: " << s << " " << f;
 
 
     for(int i=0; !op_type.empty(); ++i, op_type.pop(),op_value.pop()) {
@@ -1836,7 +1835,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
     if(varNames.find(f) == varNames.end()) {
         clean_queues();
-        cout << "Couldn't find1 " << f << endl;
+        LOG(logERROR) << "Couldn't find1 " << f;
         process_error(2, "Couldn't find(1) " + string(f) );
         return;
     };
@@ -1870,12 +1869,12 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         c->name = s;
         clean_queues();
         if(verbose)
-            cout << "SELECT " << s << " count : 0,  Mem " << getFreeMem() << endl;
+        	 LOG(logDEBUG) << "SELECT " << s << " count : 0,  Mem " << getFreeMem();
         return;
     };
 
     if(verbose)
-        cout << "SELECT " << s << " " << f << " " << getFreeMem() << endl;
+    	 LOG(logDEBUG) << "SELECT " << s << " " << f << " " << getFreeMem();
     std::clock_t start1 = std::clock();
 
     // here we need to determine the column count and composition
@@ -1967,7 +1966,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         if(verbose)
-            cout << "segment " << i << " select mem " << getFreeMem() << endl;
+        	LOG(logDEBUG) << "segment " << i << " select mem " << getFreeMem();
         std::clock_t start3 = std::clock();
 
         cnt = 0;
@@ -2030,9 +2029,9 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
                     };
                 };
             };
-			//std::cout<< "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) <<  '\n';				
+            LOG(logDEBUG) << "add time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC );
         };
-        std::cout<< "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+        LOG(logDEBUG) << "cycle sel time " <<  ( ( std::clock() - start3 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
     };
 	phase_copy = 0;
 
@@ -2071,7 +2070,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     c->name = s;
     c->keep = 1;
     if(verbose)
-        cout << "select res " << c->mRecCount << endl;
+    	LOG(logDEBUG) << "select res " << c->mRecCount;
 		
     size_t tot_size = c->maxRecs*8*c->columnNames.size();	
     if (getFreeMem() < tot_size*3) {	
@@ -2094,7 +2093,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
         varNames.erase(f);
     };
     if(verbose)
-        std::cout<< "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+    	LOG(logDEBUG) << "select time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
 
 }
 
@@ -2122,7 +2121,7 @@ void emit_insert(const char *f, const char* s) {
     };
 
     if(verbose)
-        cout << "INSERT " << f << " " << s << endl;
+    	LOG(logDEBUG) << "INSERT " << f << " " << s;
     insert_records(f,s);
     clean_queues();
 
@@ -2149,7 +2148,7 @@ void emit_delete(const char *f)
     };
 
     delete_records(f);
-    cout << "DELETE " << f <<  endl;
+    LOG(logDEBUG) << "DELETE " << f;
     clean_queues();
 
 }
@@ -2158,12 +2157,12 @@ void emit_case()
 {
     op_case = 1;
     if (scan_state == 1)
-        cout << "emit case " << endl;
+    	 LOG(logDEBUG) << "emit case ";
     //extract releveant values and pass to modified filter
     // get a bool vector back
     /*						while(!op_type.empty())
     						{
-    						cout << "CASE type " << op_type.front() << endl;
+    						LOG(logDEBUG) << "CASE type " << op_type.front();
     						op_type.pop();
     						}
     */
@@ -2213,7 +2212,7 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
         stat[ltable] = std::numeric_limits<unsigned int>::max();		
     }
     else {
-		cout << ltable << " " << rtable << " " << rid << " " << lid << endl;
+    	LOG(logDEBUG) << ltable << " " << rtable << " " << rid << " " << lid;
         emit_name(rcolumn);
         emit_sel_name(rcolumn);
         emit_name(lid);
@@ -2221,9 +2220,9 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
         check_used_vars();	
 		
         if(varNames.find(ltable) == varNames.end())
-            cout << "Couldn't find  " << ltable << endl;
+        	LOG(logWARNING) << "Couldn't find  " << ltable;
         if(varNames.find(rtable) == varNames.end())
-            cout << "Couldn't find  " << rtable << endl;
+        	LOG(logWARNING) << "Couldn't find  " << rtable;
 		
 				
         CudaSet* left = varNames.find(ltable)->second;
@@ -2354,7 +2353,7 @@ void emit_filter(char *s, char *f)
     }
     else {
         if(verbose)
-            cout << "INLINE FILTER " << f << endl;
+        	LOG(logDEBUG) << "INLINE FILTER " << f;
         b = a->copyDeviceStruct();
 
         b->name = s;
@@ -2441,7 +2440,7 @@ void emit_store(const char *s, const char *f, const char* sep)
 
     CudaSet* a = varNames.find(s)->second;
     if(verbose)
-        cout << "STORE: " << s << " " << f << " " << sep << endl;
+    	LOG(logDEBUG) << "STORE: " << s << " " << f << " " << sep;
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -2472,7 +2471,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
         return;
     };
 	
-	cout << "Append " << append << endl;
+    LOG(logDEBUG) << "Append " << append;
 
     if(varNames.find(s) == varNames.end())
         return;
@@ -2482,7 +2481,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
     if(stat[f] == statement_count)
         a->deAllocOnDevice();
 
-    printf("STORE: %s %s \n", s, f);
+    LOG(logDEBUG) << "STORE: " << s << " " << f;
 
     int limit = 0;
     if(!op_nums.empty()) {
@@ -2512,7 +2511,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
 		
         while(!fact_file_loaded) {
             if(verbose)
-                cout << "LOADING " << a->load_file_name << " mem: " << getFreeMem() << endl;
+            	LOG(logDEBUG) << "LOADING " << a->load_file_name << " mem: " << getFreeMem();
             if(a->text_source)
                 fact_file_loaded = a->LoadBigFile(file_p, d_readbuff, dest, ind, dest_len);
 			if(a->maxRecs < a->mRecCount)
@@ -2540,7 +2539,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     };
 
     if(verbose)
-        printf("BINARY LOAD: %s %s \n", s, f);
+    	LOG(logDEBUG) << "BINARY LOAD: " << s << " " << f;
 
 	std::clock_t start1 = std::clock();	
     CudaSet *a;
@@ -2560,7 +2559,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
 
 
     if(verbose)
-        cout << "Reading " << totRecs << " records" << endl;
+    	LOG(logDEBUG) << "Reading " << totRecs << " records";
 
     a = new CudaSet(namevars, typevars, sizevars, cols, totRecs, f, maxRecs);
 
@@ -2573,7 +2572,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
         a->free();
         varNames.erase(s);
     };
-	std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+    LOG(logDEBUG) << "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem();
 }
 
 
@@ -2585,7 +2584,7 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
         return;
     };
 
-    printf("LOAD: %s %s %d  %s \n", s, f, d, sep);
+    LOG(logDEBUG) << "BINARY LOAD: " << s << " " << f << " " << d << " " << sep;
 
     CudaSet *a;
 
@@ -2687,7 +2686,7 @@ void yyerror(char *s, ...)
     extern char *yytext;
 
     fprintf(stderr, "%d: error: ", yylineno);
-    cout << yytext << endl;
+    LOG(logERROR) << yytext << endl;
     error_cb(1, s);
 }
 
@@ -2723,7 +2722,7 @@ void clean_queues()
 void load_vars()
 {
     if(used_vars.size() == 0) {
-        //cout << "Error, no valid column names have been found " << endl;
+    	LOG(logERROR) << "Error, no valid column names have been found ";
         //exit(0);
     }
     else {
@@ -2736,7 +2735,7 @@ void load_vars()
             if(stat.count((*it).first) != 0) {
                 auto c = (*it).second;
                 for (auto sit=c.begin() ; sit != c.end(); ++sit ) {
-                    //cout << "name " << (*sit).first << " " << data_dict[(*it).first][(*sit).first].col_length << endl;
+                	LOG(logDEBUG) << "name " << (*sit).first << " " << data_dict[(*it).first][(*sit).first].col_length;
                     namevars.push((*sit).first);
                     if(data_dict[(*it).first][(*sit).first].col_type == 0) {
 						if(data_dict[(*it).first][(*sit).first].col_length == 0) {
