@@ -63,6 +63,7 @@ map<string, map<string, col_data> > data_dict;
 map<unsigned int, map<unsigned long long int, size_t> > char_hash;
 
 map<string, char*> index_buffers;
+map<string, unsigned long long int*> idx_vals;
 map<string, char*> buffers;
 map<string, size_t> buffer_sizes;
 size_t total_buffer_size;
@@ -929,7 +930,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
 			};				
 			time_t end_t = unq[(result_end-unq.begin())-1]/1000;	
 
-			cout << "start end " << start_t << " " << end_t << endl;	
+			//cout << "start end " << start_t << " " << end_t << endl;	
 			//int year_start, year_end, month_start, month_end, day_start, day_end, hour_start, hour_end, minute_start, minute_end, second_start, second_end;									
 			//struct tm my_tm, my_tm1;
 			auto my_tm = *gmtime (&start_t);
@@ -964,11 +965,11 @@ void CudaSet::GroupBy(stack<string> columnRef)
 					my_tm.tm_min = 0;
 					my_tm.tm_sec = 0;
 					start_t = tm_to_time_t_utc(&my_tm);
-					cout << "interval " << start_t << endl;
+					//cout << "interval " << start_t << endl;
 					rcol.push_back(start_t*1000);
 					while(start_t <= end_t) {
 						start_t = add_interval(start_t, 0, grp_num, 0, 0, 0, 0);
-						cout << "interval " << start_t << endl;
+						//cout << "interval " << start_t << endl;
 						rcol.push_back(start_t*1000);				
 					};	
 				}		
@@ -1093,8 +1094,7 @@ void CudaSet::GroupBy(stack<string> columnRef)
 		};	
         thrust::transform(d_group, d_group+mRecCount, grp.begin(), grp.begin(), thrust::logical_or<bool>());
     };
-    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);
-	cout << "grp count " << grp_count << endl;
+    grp_count = thrust::count(grp.begin(), grp.begin()+mRecCount, 1);	
 };
 
 
@@ -1900,8 +1900,6 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                         if (type[columnNames[j]] != 1) {
                             if(string_map.find(columnNames[j]) == string_map.end()) {
 								
-								cout << "here3 " << endl;
-
 								if(decimal_zeroes[columnNames[j]]) {
 									str = std::to_string(h_columns_int[columnNames[j]][i]);
 									//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
@@ -2064,6 +2062,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 		if(d_columns_int[colname].size() < mCount)
 			d_columns_int[colname].resize(mCount);
 	};	
+	
 
 	size_t  cnt;		
 	long long int* hash_array = new long long int[mCount];	
@@ -2094,72 +2093,6 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
     b_file_str.close();
 };
 
-void CudaSet::compress_int(const string file_name, const string colname, const size_t mCount)
-{
-    std::vector<unsigned int> dict_val;
-    unsigned int bits_encoded;
-    set<int_type> dict_s;
-    map<int_type, unsigned int> d_ordered;
-
-    for (unsigned int i = 0 ; i < mCount; i++) {
-        int_type f = h_columns_int[colname][i];
-        dict_s.insert(f);
-    };
-
-    unsigned int i = 0;
-    for (auto it = dict_s.begin(); it != dict_s.end(); it++) {
-        d_ordered[*it] = i++;
-    };
-
-    for (unsigned int i = 0 ; i < mCount; i++) {
-        int_type f = h_columns_int[colname][i];
-        dict_val.push_back(d_ordered[f]);
-    };
-
-    bits_encoded = (unsigned int)ceil(log2(double(d_ordered.size()+1)));
-    //cout << "bits " << bits_encoded << endl;
-
-    unsigned int sz = (unsigned int)d_ordered.size();
-    // write to a file
-    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&sz, 4);
-
-    for (auto it = d_ordered.begin(); it != d_ordered.end(); it++) {
-        binary_file.write((char*)(&(it->first)), int_size);
-    };
-
-    unsigned int fit_count = 64/bits_encoded;
-    unsigned long long int val = 0;
-    binary_file.write((char *)&fit_count, 4);
-    binary_file.write((char *)&bits_encoded, 4);
-    unsigned int curr_cnt = 1;
-    unsigned int vals_count = (unsigned int)dict_val.size()/fit_count;
-    if(!vals_count || dict_val.size()%fit_count)
-        vals_count++;
-    binary_file.write((char *)&vals_count, 4);
-    unsigned int real_count = (unsigned int)dict_val.size();
-    binary_file.write((char *)&real_count, 4);
-
-    for(unsigned int i = 0; i < dict_val.size(); i++) {
-
-        val = val | dict_val[i];
-
-        if(curr_cnt < fit_count)
-            val = val << bits_encoded;
-
-        if( (curr_cnt == fit_count) || (i == (dict_val.size() - 1)) ) {
-            if (curr_cnt < fit_count) {
-                val = val << ((fit_count-curr_cnt)-1)*bits_encoded;
-            };
-            curr_cnt = 1;
-            binary_file.write((char *)&val, int_size);
-            val = 0;
-        }
-        else
-            curr_cnt = curr_cnt + 1;
-    };
-    binary_file.close();
-};
 
 
 bool first_time = 1;
@@ -3003,6 +2936,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
     string f1 = index_name + "." + to_string(segment);
     char res;
 
+	//interactive = 0;
     if(interactive) {
         if(index_buffers.find(f1) == index_buffers.end()) {
             f = fopen (f1.c_str(), "rb" );
@@ -3024,25 +2958,23 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
         };
         vals_count = ((unsigned int*)(index_buffers[f1]+4 +8*sz))[2];
         real_count = ((unsigned int*)(index_buffers[f1]+4 +8*sz))[3];
-        mRecCount = real_count;
-        res = (index_buffers[f1]+4 +8*sz + (vals_count+2)*int_size)[0];
-        cudaMalloc((void **) &d_str, (vals_count+2)*int_size);
-        cudaMemcpy( d_str, (void *) &((index_buffers[f1]+4 +8*sz)[0]), (vals_count+2)*int_size, cudaMemcpyHostToDevice);
+        mRecCount = real_count;		
 
-        if(idx_vals.count(index_name))
-            cudaFree(idx_vals[index_name]);
-        idx_vals[index_name] = (unsigned long long int*)d_str;
-
+        if(idx_vals.count(index_name) == 0) {		
+	        cudaMalloc((void **) &d_str, (vals_count+2)*int_size);
+			cudaMemcpy( d_str, (void *) &((index_buffers[f1]+4 +8*sz)[0]), (vals_count+2)*int_size, cudaMemcpyHostToDevice);			
+			idx_vals[index_name] = (unsigned long long int*)d_str;
+		};	
+        
     }
     else {
         f = fopen (f1.c_str(), "rb" );
         fread(&sz, 4, 1, f);
         int_type* d_array = new int_type[sz];
         idx_dictionary_int[index_name].clear();
-        fread((void*)d_array, sz*int_size, 1, f);
+        fread((void*)d_array, sz*int_size, 1, f);		
         for(unsigned int i = 0; i < sz; i++) {
             idx_dictionary_int[index_name][d_array[i]] = i;
-            //cout << index_name  << " " << d_array[i] << " " << i << endl;
         };
         delete [] d_array;
 
@@ -3050,6 +2982,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
         fread(&bits_encoded, 4, 1, f);
         fread(&vals_count, 4, 1, f);
         fread(&real_count, 4, 1, f);
+		
         mRecCount = real_count;
 
         unsigned long long int* int_array = new unsigned long long int[vals_count+2];
@@ -3063,7 +2996,7 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment)
         if(idx_vals.count(index_name))
             cudaFree(idx_vals[index_name]);
         idx_vals[index_name] = (unsigned long long int*)d_str;
-    }
+    }	
     return res;
 }
 
@@ -3829,9 +3762,8 @@ void filter_op(const char *s, const char *f, unsigned int segment)
             b->prm_d.resize(a->maxRecs);
 		};	
 
-        //cout << endl << "MAP CHECK start " << segment <<  endl;
+        cout << endl << "MAP CHECK start " << segment <<  endl;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
-		//char map_check = 'R';
         cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
 
         if(map_check == 'R') {
@@ -4363,6 +4295,10 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right)
             left->fil_nums.push(right->fil_nums.front());
             right->fil_nums.pop();
         };
+		while(!right->fil_nums_precision.empty() ) {
+			left->fil_nums_precision.push(right->fil_nums_precision.front());
+			right->fil_nums_precision.pop();			
+		};	
         while(!right->fil_nums_f.empty() ) {
             left->fil_nums_f.push(right->fil_nums_f.front());
             right->fil_nums_f.pop();
@@ -4484,6 +4420,75 @@ time_t add_interval(time_t t, int year, int month, int day, int hour, int minute
 	}	
 	
 }
+
+
+void compress_int(const string file_name, const thrust::host_vector<int_type>& res)
+{
+    std::vector<unsigned int> dict_val;
+    unsigned int bits_encoded;
+    set<int_type> dict_s;
+    map<int_type, unsigned int> d_ordered;
+
+    for (unsigned int i = 0 ; i < res.size(); i++) {
+        int_type f = res[i];
+        dict_s.insert(f);
+    };
+
+    unsigned int i = 0;
+    for (auto it = dict_s.begin(); it != dict_s.end(); it++) {
+        d_ordered[*it] = i++;
+    };
+
+    for (unsigned int i = 0 ; i < res.size(); i++) {
+        int_type f = res[i];
+        dict_val.push_back(d_ordered[f]);
+    };
+
+    bits_encoded = (unsigned int)ceil(log2(double(d_ordered.size()+1)));
+    //cout << "bits " << bits_encoded << endl;
+
+    unsigned int sz = (unsigned int)d_ordered.size();
+    // write to a file
+    fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
+    binary_file.write((char *)&sz, 4);
+
+    for (auto it = d_ordered.begin(); it != d_ordered.end(); it++) {
+        binary_file.write((char*)(&(it->first)), int_size);
+    };
+
+    unsigned int fit_count = 64/bits_encoded;
+    unsigned long long int val = 0;
+    binary_file.write((char *)&fit_count, 4);
+    binary_file.write((char *)&bits_encoded, 4);
+    unsigned int curr_cnt = 1;
+    unsigned int vals_count = (unsigned int)dict_val.size()/fit_count;
+    if(!vals_count || dict_val.size()%fit_count)
+        vals_count++;
+    binary_file.write((char *)&vals_count, 4);
+    unsigned int real_count = (unsigned int)dict_val.size();
+    binary_file.write((char *)&real_count, 4);
+
+    for(unsigned int i = 0; i < dict_val.size(); i++) {
+
+        val = val | dict_val[i];
+
+        if(curr_cnt < fit_count)
+            val = val << bits_encoded;
+
+        if( (curr_cnt == fit_count) || (i == (dict_val.size() - 1)) ) {
+            if (curr_cnt < fit_count) {
+                val = val << ((fit_count-curr_cnt)-1)*bits_encoded;
+            };
+            curr_cnt = 1;
+            binary_file.write((char *)&val, int_size);
+            val = 0;
+        }
+        else
+            curr_cnt = curr_cnt + 1;
+    };
+    binary_file.close();
+};
+
 
 
 

@@ -2805,7 +2805,6 @@ int execute_file(int ac, char **av)
         };
 
         while(!buffer_names.empty()) {
-            //delete [] buffers[buffer_names.front()];
 			cudaFreeHost(buffers[buffer_names.front()]);
             buffer_sizes.erase(buffer_names.front());
             buffers.erase(buffer_names.front());
@@ -2814,6 +2813,11 @@ int execute_file(int ac, char **av)
 		for(auto it = index_buffers.begin(); it != index_buffers.end();it++) {
 			cudaFreeHost(it->second);
         };
+		for(auto it = idx_vals.begin(); it != idx_vals.end();it++) {
+			cudaFree(it->second);
+		idx_vals.clear();	
+    };
+	
 
     };
     if(save_dict) {

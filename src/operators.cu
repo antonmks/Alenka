@@ -39,9 +39,6 @@ map<unsigned int, unsigned int> join_and_cnt;
 map<string, map<string, bool> > used_vars;
 bool save_dict = 0;
 ContextPtr context;
-void* p_tmp1 = nullptr;
-bool set_p = 0;
-int p_sz = 0;
 thrust::device_vector<unsigned char> scratch;
 map<string, string> filter_var; 
 thrust::device_vector<int> ranj;
@@ -128,7 +125,7 @@ void emit_decimal(const char* str)
 	};	
 	op_nums.push(stoi(s1));
     op_nums_precision.push(precision);
-	//cout << "Decimal " << stoi(s1) << " " << precision << endl; 
+	cout << "Decimal " << stoi(s1) << " " << precision << endl; 
 }
 
 void emit_mul()
@@ -431,8 +428,7 @@ bool check_star_join(const string j1)
 
 
 void star_join(const char *s, const string j1)
-{
-
+{	
     map<string,bool> already_copied;
     queue<string> op_left;
     CudaSet* left = varNames.find(j1)->second;
@@ -454,7 +450,7 @@ void star_join(const char *s, const string j1)
     map<string, string> key_map;
     map<string, char> sort_map;
     map<string, string> r_map;
-
+	
     for(auto i = 0; i < join_tab_cnt; i++) {
 
         f1 = op_g.front();
@@ -462,21 +458,24 @@ void star_join(const char *s, const string j1)
         f2 = op_g.front();
         op_g.pop();
         r_map[f1] = f2;
+		
 
         queue<string> op_jj(op_join);
         for(auto z = 0; z < (join_tab_cnt-1) - i; z++)
             op_jj.pop();
+		
 
         size_t rcount;
         queue<string> op_vd(op_g), op_alt(op_sel);
         unsigned int jc = join_col_cnt;
+		
         while(jc) {
             jc--;
             op_vd.pop();
             op_alt.push(op_vd.front());
             op_vd.pop();
         };
-
+		
         key_map[op_jj.front()] = f1;
 
         CudaSet* right = varNames.find(op_jj.front())->second;
@@ -484,7 +483,7 @@ void star_join(const char *s, const string j1)
             cout << "Required bitmap on table " << op_jj.front() << " doesn't exists" << endl;
             exit(0);
         };
-
+		
         queue<string> second;
         while(!op_alt.empty()) {
             if(f2.compare(op_alt.front()) != 0 && std::find(right->columnNames.begin(), right->columnNames.end(), op_alt.front()) != right->columnNames.end()) {
@@ -500,8 +499,7 @@ void star_join(const char *s, const string j1)
             load_queue(second, right, "", rcount, 0, right->segCount, 0,0); // put all used columns into GPU
         };
     };
-
-
+	
     queue<string> idx;
     set<string> already_loaded;
     bool right_cpy = 0;
@@ -512,7 +510,6 @@ void star_join(const char *s, const string j1)
 
         idx = left->fil_value;
         already_loaded.clear();
-        //start1 = std::clock();
         while(!idx.empty()) {
             //load the index
             if(idx.front().find(".") != string::npos && (already_loaded.find(idx.front()) == already_loaded.end())) {
@@ -522,13 +519,12 @@ void star_join(const char *s, const string j1)
                 size_t pos2 = idx.front().find_first_of(".", pos1+1);
                 CudaSet* r = varNames.find(idx.front().substr(pos1+1, pos2-pos1-1))->second;
                 char a;
-                //a = left->loadIndex(idx.front(), i, r->char_size[idx.front().substr(pos2+1, string::npos)]);
+				//cout << "loading index " << idx.front() << endl;
                 a = left->loadIndex(idx.front(), i);
                 sort_map[idx.front().substr(pos1+1, pos2-pos1-1)] = a;
             };
             idx.pop();
         };
-        //std::cout<< "filter load " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
 
         left->filtered = 0;
         size_t cnt_c = 0;
@@ -537,7 +533,7 @@ void star_join(const char *s, const string j1)
         bool* res = filter(left->fil_type, left->fil_value, left->fil_nums, left->fil_nums_f, left->fil_nums_precision, left, i);
         thrust::device_ptr<bool> star((bool*)res);
         size_t cnt = thrust::count(star, star + (unsigned int)left->mRecCount, 1);
-        cout << "join res " << cnt << " out of " << left->mRecCount << endl;
+        //cout << "join res " << cnt << " out of " << left->mRecCount << endl;
         thrust::host_vector<unsigned int> prm_vh(cnt);
         thrust::device_vector<unsigned int> prm_v(cnt);
         thrust::host_vector<unsigned int> prm_tmp(cnt);
@@ -568,7 +564,6 @@ void star_join(const char *s, const string j1)
             while(!op_sel1.empty()) {
 
                 if(std::find(left->columnNames.begin(), left->columnNames.end(), op_sel1.front()) !=  left->columnNames.end()) {
-                    //cout << "Left " << op_sel1.front() << endl;
 
                     if(left->filtered)
                         t = varNames[left->source_name];
@@ -585,7 +580,7 @@ void star_join(const char *s, const string j1)
                         else {
                             t->readSegmentsFromFile(i, op_sel1.front());
                             void* h;
-
+							
                             if(!interactive) {
                                 if(left->type[op_sel1.front()] == 0)
                                     h = t->h_columns_int[op_sel1.front()].data();
@@ -620,7 +615,7 @@ void star_join(const char *s, const string j1)
                                 };
                             }
                             else if(bits == 32) {
-                                if(left->type[op_sel1.front()] == 0) {
+                                if(left->type[op_sel1.front()] == 0) {									
                                     thrust::gather(prm_vh.begin(), prm_vh.end(), (unsigned int*)((unsigned int*)h + 6), c->h_columns_int[op_sel1.front()].begin() + offset);
                                 }
                                 else {
@@ -639,7 +634,6 @@ void star_join(const char *s, const string j1)
                             };
                         };
 
-                        //cout << "lower_val bits " << lower_val << " " << bits << endl;
                         if(left->type[op_sel1.front()] != 1)
                             thrust::transform( c->h_columns_int[op_sel1.front()].begin() + offset,  c->h_columns_int[op_sel1.front()].begin() + offset + cnt,
                                                thrust::make_constant_iterator(lower_val), c->h_columns_int[op_sel1.front()].begin() + offset, thrust::plus<int_type>());
@@ -1554,20 +1548,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				op_sel1.pop();
 			};	
 			ranj.resize(0);			
-		};
-		
-    };
-	
-	
-    if(set_p) {
-        if(p_tmp1)
-            cudaFree(p_tmp1);
-        cudaMalloc((void **) &p_tmp1, 4*p_tmp.size());
-        thrust::device_ptr<int> d_tmp((int*)p_tmp1);
-        p_sz = p_tmp.size();
-        thrust::copy(p_tmp.begin(), p_tmp.end(), d_tmp);
-    };
-	
+		};		
+    };	
+
     left->deAllocOnDevice();
     right->deAllocOnDevice();
     c->deAllocOnDevice();
@@ -1835,8 +1818,7 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
 
 
 void emit_select(const char *s, const char *f, const int grp_cnt)
-{
-
+{	
     statement_count++;
     if (scan_state == 0) {
         if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
@@ -2226,69 +2208,77 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
         emit_sel_name(rcolumn);
         emit_name(lid);
         emit_name(rid);
-        emit_eq();
-        emit_join_tab(rtable,'I');
         check_used_vars();
-        stat["BITMAP"] = std::numeric_limits<unsigned int>::max();
-        stat[rtable] = std::numeric_limits<unsigned int>::max();
-        stat[ltable] = std::numeric_limits<unsigned int>::max();
+		stat[rtable] = std::numeric_limits<unsigned int>::max();
+        stat[ltable] = std::numeric_limits<unsigned int>::max();		
     }
     else {
+		cout << ltable << " " << rtable << " " << rid << " " << lid << endl;
+        emit_name(rcolumn);
+        emit_sel_name(rcolumn);
+        emit_name(lid);
+        emit_name(rid);
+        check_used_vars();	
+		
+        if(varNames.find(ltable) == varNames.end())
+            cout << "Couldn't find  " << ltable << endl;
+        if(varNames.find(rtable) == varNames.end())
+            cout << "Couldn't find  " << rtable << endl;
+		
+				
         CudaSet* left = varNames.find(ltable)->second;
-        set_p = 1;
+		CudaSet* right = varNames.find(rtable)->second;
+		
+		queue<string> op_vx;
+		op_vx.push(rcolumn);op_vx.push(rid);
+		allocColumns(right, op_vx);		
+		right->CopyColumnToGpu(rid, 0, 0);
+		right->CopyColumnToGpu(rcolumn, 0, 0);
+		op_vx.pop();op_vx.pop();
+		op_vx.push(lid);
+		allocColumns(left, op_vx);		
+		
         for(int i = 0; i < left->segCount; i++) {
-            emit_name(rcolumn);
-            emit_sel_name(rcolumn);
-            emit_name(lid);
-            emit_name(rid);
-            emit_eq();
-            emit_join_tab(rtable,'I');
-            emit_join("BITMAP", ltable, 0, i, i+1);
-            CudaSet* res = varNames.find("BITMAP")->second;
-
-            thrust::host_vector<unsigned int> s_tmp(p_sz);
-            thrust::device_ptr<int> d_tmp((int*)p_tmp1);
-            thrust::copy(d_tmp, d_tmp + p_sz, s_tmp.begin());
-            thrust::device_free(d_tmp);
-            p_tmp1 = 0;
+			
+			left->CopyColumnToGpu(lid, i, 0);			
+	
+			thrust::device_vector<unsigned int> output(left->mRecCount);
+			thrust::lower_bound(right->d_columns_int[rid].begin(), right->d_columns_int[rid].begin() + right->mRecCount, 
+							    left->d_columns_int[lid].begin(), left->d_columns_int[lid].begin() + left->mRecCount, output.begin());
 
             string str = std::string(ltable) + std::string(".") + std::string(rtable) + std::string(".") + std::string(rcolumn) + std::string(".") + to_string(i);
 
-            if(res->type[rcolumn] == 0) {
-                int_type* d_tmp = new int_type[res->mRecCount];
-                thrust::scatter(res->h_columns_int[rcolumn].begin(), res->h_columns_int[rcolumn].begin() + res->mRecCount,
-                                s_tmp.begin(), d_tmp);
-                thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_int[rcolumn].begin());
-                delete [] d_tmp;
-                res->compress_int(str, rcolumn, res->mRecCount);
-                check_sort(str, rtable, rid);
+			thrust::device_vector<int_type> res(left->mRecCount);
+			thrust::host_vector<int_type> res_h(left->mRecCount);
+			
+            if(right->type[rcolumn] == 0) {
+                thrust::gather(output.begin(), output.begin() + left->mRecCount,  right->d_columns_int[rcolumn].begin() , res.begin());
+                thrust::copy(res.begin(), res.begin() + left->mRecCount, res_h.begin());				
+                compress_int(str, res_h);
             }
-            else if(res->type[rcolumn] == 1) {
-                float_type* d_tmp = new float_type[res->mRecCount];
-                thrust::scatter(res->h_columns_float[rcolumn].begin(), res->h_columns_float[rcolumn].begin() + res->mRecCount,
-                                s_tmp.begin(), d_tmp);
-                thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_float[rcolumn].begin());
-                delete [] d_tmp;
+            else if(right->type[rcolumn] == 1) {
             }
             else { //strings
-                CudaSet* rr = varNames.find(rtable)->second;
-                string f1 = rr->load_file_name + "." + rcolumn + ".0.hash"; //ned to change it in case if there are dimensions table larger than 1 segment ?
+                string f1 = right->load_file_name + "." + rcolumn + ".0.hash"; //need to change it in case if there are dimensions tables larger than 1 segment ?
                 FILE* f = fopen(f1.c_str(), "rb" );
                 unsigned int cnt;
                 fread(&cnt, 4, 1, f);
-                fread(res->h_columns_int[rcolumn].data(), res->mRecCount*8, 1, f);
+				if(res_h.size() < cnt)
+					res_h.resize(cnt);
+				if(res.size() < cnt)
+					res.resize(cnt);				
+                fread(res_h.data(), cnt*8, 1, f);
+				res = res_h;
                 fclose(f);
 
-                int_type* d_tmp = new int_type[res->mRecCount];
-                thrust::scatter(res->h_columns_int[rcolumn].begin(), res->h_columns_int[rcolumn].begin() + res->mRecCount,
-                                s_tmp.begin(), d_tmp);
-                thrust::copy(d_tmp, d_tmp + res->mRecCount, res->h_columns_int[rcolumn].begin());
-                delete [] d_tmp;
-                res->compress_int(str, rcolumn, res->mRecCount);
-                check_sort(str, rtable, rid);
+				thrust::device_vector<int_type> output1(left->mRecCount);
+				thrust::gather(output.begin(), output.begin() + left->mRecCount ,
+								res.begin(), output1.begin());				
+							
+                thrust::copy(output1.begin(), output1.begin() + left->mRecCount, res_h.begin());
+                compress_int(str, res_h);
             };
-        };
-        set_p = 0;
+        };		
     };
 }
 
@@ -2353,7 +2343,7 @@ void emit_filter(char *s, char *f)
         return;
     };
 
-
+	
     CudaSet *a, *b;
 
     a = varNames.find(f)->second;
@@ -2374,9 +2364,8 @@ void emit_filter(char *s, char *f)
         b->fil_s = s;
         b->fil_f = f;
         b->fil_type = op_type;
-
         b->fil_value = op_value;
-        b->fil_nums = op_nums;
+        b->fil_nums = op_nums;		
         b->fil_nums_f = op_nums_f;		
 		b->fil_nums_precision = op_nums_precision;
         b->filtered = 1;
@@ -2401,6 +2390,11 @@ void emit_filter(char *s, char *f)
                 b->fil_nums.push(a->fil_nums.front());
                 a->fil_nums.pop();
             };
+			
+			while(!a->fil_nums_precision.empty()) {
+				b->fil_nums_precision.push(a->fil_nums_precision.front());
+				a->fil_nums_precision.pop();				
+			};	
 
             while(!a->fil_nums_f.empty()) {
                 b->fil_nums_f.push(a->fil_nums_f.front());
@@ -2538,6 +2532,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
 
 void emit_load_binary(const char *s, const char *f, const int d)
 {
+	
     statement_count++;
     if (scan_state == 0) {
         stat[s] = statement_count;
@@ -2547,7 +2542,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     if(verbose)
         printf("BINARY LOAD: %s %s \n", s, f);
 
-	//std::clock_t start1 = std::clock();	
+	std::clock_t start1 = std::clock();	
     CudaSet *a;
     unsigned int segCount, maxRecs;
     string f1(f);
@@ -2578,7 +2573,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
         a->free();
         varNames.erase(s);
     };
-	//std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
+	std::cout<< "load time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << '\n';
 }
 
 

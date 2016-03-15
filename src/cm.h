@@ -48,7 +48,7 @@
 #include <ctime>
 #include <limits>
 #include <fstream>
-#include "moderngpu/include/moderngpu.cuh"
+#include "moderngpu-master/include/moderngpu.cuh"
 
 typedef long long int int_type;
 typedef unsigned int int32_type;
@@ -687,6 +687,7 @@ struct col_data {
 };
 extern map<string, map<string, col_data> > data_dict;
 extern time_t curr_time;
+extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
 
 class CudaSet
@@ -703,8 +704,7 @@ public:
 	map<string, string> string_map; //maps char column names to string files, only a select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match
 	map<string, map<int_type, unsigned int> > idx_dictionary_int; //stored in host memory
-	map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
-
+	
     // to do filters in-place (during joins, groupby etc ops) we need to save a state of several queues's and a few misc. variables:
     char* fil_s, * fil_f, sort_check;
     queue<string> fil_type,fil_value;
@@ -769,8 +769,7 @@ public:
     void writeSortHeader(string file_name);
     void Display(unsigned int limit, bool binary, bool term);
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool append, const bool term = 0);
-    void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
-	void compress_int(const string file_name, const string colname, const size_t mCount);
+    void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);	
     bool LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
 						thrust::device_vector<unsigned int>& ind, thrust::device_vector<unsigned int>& dest_len);
     void free();
@@ -837,6 +836,7 @@ void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void alloc_pool(unsigned int maxRecs);
 time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
+void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
 
 #endif
 
