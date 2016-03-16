@@ -1,20 +1,22 @@
 ## Welcome to Alenka - GPU database engine
 
-### How to build?
-
-Download [Alenka](https://github.com/antonmks/Alenka/archive/master.zip)
-
-
-Download [ModernGpu](https://github.com/NVlabs/moderngpu) library
-
-Unzip ModernGPU into Alenka directory
-
-Run Makefile or Makefile.win
-
-
 ### What is this?
 
 This is a GPU based database engine written to use vector based processing and high bandwidth of modern GPUs
+
+### Requirements
+* CUDA (nvcc) + Nvidia GPU
+* bison
+* flex
+* Modern GPU Library (included as submodule) 
+
+### How to build?
+
+```
+git clone --recursive https://github.com/antonmks/Alenka.git
+cd Alenka
+make
+```
 
 ### Features :
 
