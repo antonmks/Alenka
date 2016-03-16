@@ -31,6 +31,9 @@ cm.o : cm.cu cm.h
 	$(nvcc) cm.cu
 bison.o : bison.cu cm.h sorts.cu
 	$(nvcc) -I moderngpu/include/ bison.cu
+bison.cu : bison.y
+	flex fl.l
+	bison -o bison.cu bison.y
 merge.o : merge.cu cm.h merge.h
 	$(nvcc) merge.cu
 MurmurHash2_64.o : MurmurHash2_64.cu cm.h 
@@ -53,4 +56,4 @@ mgpucontext.o : moderngpu/src/mgpucontext.cu
 	$(nvcc) -I moderngpu/include/ moderngpu/src/mgpucontext.cu moderngpu/src/mgpuutil.cpp
 	
 clean : 
-	$(RM) alenka *.o
+	$(RM) alenka *.o lex.yy.c bison.cu bison.tab.c bison.tab.h
