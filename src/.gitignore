@@ -43,4 +43,3 @@ bison.cu
 bison.tab.c
 bison.tab.h
 lex.yy.c 
-bison.cu
