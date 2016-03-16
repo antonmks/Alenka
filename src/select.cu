@@ -295,7 +295,7 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-        //cout << ss << endl;
+        LOG(logDEBUG) << ss;
 
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
@@ -373,11 +373,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                     }
                     else if(a->type[s1_val] == 2) {
                         //will add a DISTINCT on strings if anyone needs it
-                        cout << "DISTINCT on strings is not supported yet" << endl;
+                    	LOG(logERROR) << "DISTINCT on strings is not supported yet";
                         exit(0);
                     }
                     else {
-                        cout << "DISTINCT on float is not supported yet" << endl;
+                    	LOG(logERROR) << "DISTINCT on float is not supported yet";
                         exit(0);
                     };
                 }
@@ -426,11 +426,11 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 else if (ss.compare("SUM") == 0) {
 				
                     /*if(op_case) {
-                    	cout << "found case " << endl;
+                    	LOG(logDEBUG) << "found case ";
                     	op_case = 0;
                     	while(!exe_type.empty())
                     	{
-                    	cout << "CASE type " << exe_type.top() << endl;
+                    	LOG(logDEBUG) << "CASE type " << exe_type.top();
                     	exe_type.pop();
                     	exit(0);
                     	}

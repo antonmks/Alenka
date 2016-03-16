@@ -286,12 +286,17 @@ sort_def: { /* nil */
 
 %%
 
+#include "log.h"
+
 bool scan_state;
 unsigned int statement_count;
 time_t curr_time;
 
 int execute_file(int ac, char **av)
 {
+
+	LOG(logINFO) << "Executing File..";
+
     bool just_once  = 0;
     string script;
     process_count = 1000000000; //1GB by default
@@ -301,12 +306,15 @@ int execute_file(int ac, char **av)
     total_buffer_size = 0;
 	hash_seed = 100;
 
+	LOG::ReportingLevel() = LOG::FromString("INFO"); //default logging level
+
     for (int i = 1; i < ac; i++) {
         if(strcmp(av[i],"-l") == 0) {
             process_count = 1000000*atoff(av[i+1]);
         }
         else if(strcmp(av[i],"-v") == 0) {
             verbose = 1;
+            LOG::ReportingLevel() = LOG::FromString("DEBUG");
         }
         else if(strcmp(av[i],"-delta") == 0) {
             delta = 1;
@@ -358,10 +366,10 @@ int execute_file(int ac, char **av)
 		curr_time = time(0)*1000;
         if(!yyparse()) {
             if(verbose)
-                cout << "SQL scan parse worked " << endl;
+            	LOG(logDEBUG) << "SQL scan parse worked ";
         }
         else
-            cout << "SQL scan parse failed" << endl;
+        	LOG(logERROR) << "SQL scan parse failed ";
 
         fclose(yyin);
         for (auto it=varNames.begin() ; it != varNames.end(); ++it ) {
@@ -369,11 +377,11 @@ int execute_file(int ac, char **av)
         };
 
         if(verbose) {
-            cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
-			cout<< "disk time " << ( tot_disk / (double)CLOCKS_PER_SEC ) << " " << getFreeMem() << endl;
+        	LOG(logDEBUG) << "cycle time: " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " free mem: " << getFreeMem();
+        	LOG(logDEBUG) << "disk time: " << ( tot_disk / (double)CLOCKS_PER_SEC ) << " free mem: " << getFreeMem();
         };
     }
-    else {
+    else { // interactive mode
         context = CreateCudaDevice(0, nullptr, verbose);        
         if(!just_once)
             getline(cin, script);
@@ -404,7 +412,7 @@ int execute_file(int ac, char **av)
 			
             if(!yyparse()) {
                 if(verbose)
-                    cout << "SQL scan parse worked " <<  endl;
+                	LOG(logDEBUG) << "SQL scan parse worked ";
             };
             for (auto it=varNames.begin() ; it != varNames.end(); ++it ) {
                 (*it).second->free();
@@ -412,7 +420,7 @@ int execute_file(int ac, char **av)
             varNames.clear();
 
             if(verbose) {
-                cout<< "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << endl;
+            	LOG(logDEBUG) << "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
             };
             if(!just_once)
                 getline(cin, script);
@@ -456,6 +464,9 @@ int execute_file(int ac, char **av)
 		ranj.resize(0);
 		ranj.shrink_to_fit();
 	};	
+
+	LOG(logINFO) << "Execute Complete!";
+
     return 0;
 }
 
@@ -482,7 +493,7 @@ int alenkaExecute(char *s)
     //printf("execute: returned [%d]\n", ret);
     if(!ret) {
         if(verbose)
-            cout << "SQL scan parse worked" << endl;
+            LOG(logDEBUG) << "SQL scan parse worked";
     }
 
     scan_state = 1;
@@ -493,10 +504,10 @@ int alenkaExecute(char *s)
     yy_switch_to_buffer(bp);
     if(!yyparse()) {
         if(verbose)
-            cout << "SQL scan parse worked " << endl;
+            LOG(logDEBUG) << "SQL scan parse worked ";
     }
     else
-        cout << "SQL scan parse failed" << endl;
+        LOG(logERROR) << "SQL scan parse failed";
 
     yy_delete_buffer(bp);
 
@@ -507,10 +518,8 @@ int alenkaExecute(char *s)
     varNames.clear();
 
     if(verbose)
-        cout<< "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC ) << endl;
+        LOG(logDEBUG) << "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC );
     if(save_dict)
         save_col_data(data_dict,"data.dictionary");
     return ret;
 }
-
-

@@ -48,7 +48,8 @@
 #include <ctime>
 #include <limits>
 #include <fstream>
-#include "moderngpu-master/include/moderngpu.cuh"
+#include "moderngpu/include/moderngpu.cuh"
+#include "log.h"
 
 typedef long long int int_type;
 typedef unsigned int int32_type;

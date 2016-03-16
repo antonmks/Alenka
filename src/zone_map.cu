@@ -47,7 +47,7 @@ bool fh_less_equal_to(const float_type x, const float_type y)
 
 char host_logical_and(char column1, char column2)
 {
-    //cout << "AND " << column1 << " " << column2 << endl;
+    LOG(logDEBUG) << "AND " << column1 << " " << column2;
     if (column1 == 'A' && column2 == 'A')
         return 'A';
     else if (column1 == 'N' || column2 == 'N') {
@@ -61,7 +61,7 @@ char host_logical_and(char column1, char column2)
 
 char host_logical_or(char column1, char column2)
 {
-    //cout << "OR " << column1 << " " << column2 << endl;
+	LOG(logDEBUG) << "OR " << column1 << " " << column2;
     if (column1 == 'A' && column2 == 'A')
         return 'A';
     else if (column1 == 'N' && column2 == 'N')
@@ -146,7 +146,7 @@ char host_compare(int_type* column1, int_type d, int_type op_type)
     else if (op_type == 4 && column1[0] == d && column1[1] == d) { // =
         res = 'A';
     };
-    //cout << "res " << res << endl;
+    LOG(logDEBUG) << "res " << res;
 
     return res;
 }
@@ -154,7 +154,7 @@ char host_compare(int_type* column1, int_type d, int_type op_type)
 char host_compare(float_type* column1, float_type d, int_type op_type)
 {
     char res = 'R';
-    //cout << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
+    LOG(logDEBUG) << "CMP " << column1[0] << " " << column1[1] << " with " << d << endl;
 
     if (op_type == 2) { // >
         if(fh_less_equal_to(column1[1],d)) {
@@ -191,7 +191,7 @@ char host_compare(float_type* column1, float_type d, int_type op_type)
     else if (op_type == 4 && fh_equal_to(column1[0],d) && fh_equal_to(column1[1],d)) // =
         res = 'A';
 
-    //cout << "res " << res << endl;
+    LOG(logDEBUG) << "res " << res << endl;
     return res;
 
 }
@@ -680,7 +680,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 f1 = t->load_file_name + "." + fields.front() + "." + to_string(segment);
                 f = fopen (f1.c_str() , "rb" );
                 if(!f) {
-                    cout << "Error opening " << f1 << " file " << endl;
+                	LOG(logERROR) << "Error opening " << f1 << " file ";
                     exit(0);
                 };
 
@@ -691,9 +691,9 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     fread((char *)&a->h_columns_int[fields.front()][1], 8, 1, f);
 					fseek(f, 8+cnt, SEEK_CUR);
 					fread((char *)&a->mRecCount, 4, 1, f);
-					//cout << endl << "ZONE " << a->mRecCount << endl;
+					LOG(logDEBUG) << endl << "ZONE " << a->mRecCount;
 					fread((char *)&cnt, 4, 1, f);					
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1] << endl;
+					LOG(logDEBUG) << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1];
                 }
                 else  {
                     long long int t;
@@ -702,7 +702,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     a->h_columns_float[fields.front()][0] = (float_type)t/100.0;
                     fread((char *)&t, 8, 1, f);
                     a->h_columns_float[fields.front()][1] = (float_type)t/100.0;
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+                    LOG(logDEBUG) << "file " << f1 << " " << segment << " " << a->h_columns_float[fields.front()][0] << ":" << a->h_columns_float[fields.front()][1];
                 };
                 fclose(f);
             };
@@ -715,7 +715,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-		//cout << ss << endl;
+        LOG(logDEBUG) << ss;
 
         if (ss.compare("NAME") == 0 || ss.compare("NUMBER") == 0 || ss.compare("VECTOR") == 0 || ss.compare("FLOAT") == 0
                 || ss.compare("STRING") == 0) {
@@ -734,7 +734,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 }
                 else {
                     process_error(1, "Couldn't find column " + op_value.front());
-                    //cout << "Couldn't find column " << op_value.front() << endl;
+                    LOG(logERROR) << "Couldn't find column " << op_value.front();
                     //exit(0);
                 };
             }
@@ -1124,7 +1124,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                     exe_value.pop();
 					int_type val;
 					int_type* t = a->get_host_int_by_name(s2_val);
-					//cout << "name " << s2_val << endl;
+					LOG(logDEBUG) << "name " << s2_val;
 					
 					auto pos = s1_val.find("DAY");
 					if(pos != string::npos) {
@@ -2334,13 +2334,15 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 bool_vectors.push(host_logical_or(s2,s3));
             }
             else {
-                if(ss.compare("JOIN") == 0)
+                if(ss.compare("JOIN") == 0){
+                	LOG(logERROR) << "operation = is not valid";
                     process_error(2, "operation = is not valid");
-                //cout << "operation = is not valid" << endl;
-                else
+                }
+                else {
+                	LOG(logERROR) << "operation = is not valid";
                     process_error(2, "operation " + string(ss)+ " is not valid");
-                //cout << "operation " << ss << " is not valid" << endl;
-                exit(0);	// never gets here
+					exit(0);	// never gets here
+                }
             }
         };
     };

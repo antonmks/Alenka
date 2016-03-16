@@ -442,7 +442,7 @@ int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, s
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
     FILE* f = fopen(f1.c_str(), "rb" );
     if(!f) {
-        cout << "Error opening " << f1 << " file " << endl;
+    	LOG(logERROR) << "Error opening " << f1 << " file ";
         exit(0);
     };
 
@@ -460,10 +460,10 @@ int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, s
     fread(&lower_val, 8, 1, f);
     fseek(f, cnt - (8+4) + 32, SEEK_CUR);
     fread(&bits, 4, 1, f);
-    //cout << "lower_val bits " << lower_val << " " << bits << endl;
+    LOG(logDEBUG) << "lower_val bits " << lower_val << " " << bits << endl;
 
     if(type[colname] == 0) {
-        //cout << "lower_val bits " << lower_val << " " << bits << endl;
+    	LOG(logDEBUG) << "lower_val bits " << lower_val << " " << bits;;
 
         for(unsigned int i = 0; i < prm_vh.size(); i++) {
 
@@ -533,7 +533,7 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
     FILE* f = fopen(f1.c_str(), "rb" );
     if(!f) {
-        cout << "Error opening " << f1 << " file " << endl;
+    	LOG(logERROR) << "Error opening " << f1 << " file " << endl;
         exit(0);
     };
 
@@ -631,7 +631,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname)
             buffer_names.push(f1);
             total_buffer_size = total_buffer_size + fileSize;
             buffer_names.push(f1);
-            cout << "added buffer " << f1 << " " << fileSize << endl;
+            LOG(logDEBUG) << "added buffer " << f1 << " " << fileSize << endl;
         };
         // get data from buffers
         if(type[colname] != 1) {
@@ -649,7 +649,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname)
 
         FILE* f = fopen(f1.c_str(), "rb" );
         if(!f) {
-            cout << "Error opening " << f1 << " file " << endl;
+        	LOG(logERROR) << "Error opening " << f1 << " file " << endl;
             exit(0);
         };
 
@@ -930,13 +930,13 @@ void CudaSet::GroupBy(stack<string> columnRef)
 			};				
 			time_t end_t = unq[(result_end-unq.begin())-1]/1000;	
 
-			//cout << "start end " << start_t << " " << end_t << endl;	
+			LOG(logDEBUG) << "start end " << start_t << " " << end_t;
 			//int year_start, year_end, month_start, month_end, day_start, day_end, hour_start, hour_end, minute_start, minute_end, second_start, second_end;									
 			//struct tm my_tm, my_tm1;
 			auto my_tm = *gmtime (&start_t);
 			auto my_tm1 = *gmtime (&end_t );
 			
-			//cout << my_tm.tm_year << " " << my_tm1.tm_year << " " << my_tm.tm_min << " " << my_tm1.tm_min << " " << my_tm.tm_hour << " " << my_tm1.tm_hour << endl;			
+			LOG(logDEBUG) << my_tm.tm_year << " " << my_tm1.tm_year << " " << my_tm.tm_min << " " << my_tm1.tm_min << " " << my_tm.tm_hour << " " << my_tm1.tm_hour;
 			rcol.push_back(0);//1970/01/01
 			
 			auto pos = grp_val.find("YEAR");
@@ -965,11 +965,11 @@ void CudaSet::GroupBy(stack<string> columnRef)
 					my_tm.tm_min = 0;
 					my_tm.tm_sec = 0;
 					start_t = tm_to_time_t_utc(&my_tm);
-					//cout << "interval " << start_t << endl;
+					LOG(logDEBUG) << "interval " << start_t;
 					rcol.push_back(start_t*1000);
 					while(start_t <= end_t) {
 						start_t = add_interval(start_t, 0, grp_num, 0, 0, 0, 0);
-						//cout << "interval " << start_t << endl;
+						LOG(logDEBUG) << "interval " << start_t;
 						rcol.push_back(start_t*1000);				
 					};	
 				}		
@@ -1524,7 +1524,7 @@ void CudaSet::writeHeader(string file_name, string colname, unsigned int tot_seg
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&total_max, 4);
     binary_file.write((char *)&cnt_counts[ff], 4);
-	//cout << "HEADER1 " << total_count << " " << tot_segs << " " << total_max << endl;
+	LOG(logDEBUG) << "HEADER1 " << total_count << " " << tot_segs << " " << total_max;
     binary_file.close();
 };
 
@@ -1536,7 +1536,7 @@ void CudaSet::reWriteHeader(string file_name, string colname, unsigned int tot_s
     binary_file.write((char *)&newRecs, 8);
     binary_file.write((char *)&tot_segs, 4);
     binary_file.write((char *)&maxRecs1, 4);
-	//cout << "HEADER2 " << newRecs << endl;
+    LOG(logDEBUG) << "HEADER2 " << newRecs;
     binary_file.close();
 };
 
@@ -1555,7 +1555,7 @@ void CudaSet::writeSortHeader(string file_name)
         queue<string> os(op_sort);
         while(!os.empty()) {
             if(verbose)
-                cout << "sorted on " << idx << endl;
+            	LOG(logDEBUG) << "sorted on " << idx;
             idx = os.front().size();
             binary_file.write((char *)&idx, 4);
             binary_file.write(os.front().data(), idx);
@@ -1613,7 +1613,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
         print_all = 1;
     };
 
-    cout << "mRecCount=" << mRecCount << " mcount = " << mCount << " term " << term <<  " limit=" << limit << " print_all=" << print_all << endl;
+    LOG(logDEBUG) << "mRecCount=" << mRecCount << " mcount = " << mCount << " term " << term <<  " limit=" << limit << " print_all=" << print_all;
 
     unsigned int cc =0;
     unordered_map<string, FILE*> file_map;
@@ -1644,7 +1644,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term)
 						
 						if(decimal_zeroes[columnNames[j]]) {
 							str = std::to_string(h_columns_int[columnNames[j]][i]);
-							//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+							LOG(logDEBUG) << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i];
 							while(str.length() <= decimal_zeroes[columnNames[j]])
 								str = '0' + str;
 							str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
@@ -1789,7 +1789,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
         if(!term) {
             file_pr = fopen(file_name.c_str(), "w");
             if (!file_pr)
-                cout << "Could not open file " << file_name << endl;
+            	LOG(logERROR) << "Could not open file " << file_name;
         }
         else
             file_pr = stdout;
@@ -1802,7 +1802,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                         if(string_map.find(columnNames[j]) == string_map.end()) {		
 							if(decimal_zeroes[columnNames[j]]) {
 								str = std::to_string(h_columns_int[columnNames[j]][i]);
-								//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+								LOG(logDEBUG) << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i];
 								while(str.length() <= decimal_zeroes[columnNames[j]])
 									str = '0' + str;
 								str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
@@ -1880,7 +1880,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                     size_t olRecs = mRecCount;
                     mRecCount = olRecs;
                     CopyToHost(0,mRecCount);
-                    //cout << "start " << sum_printed << " " <<  mRecCount << " " <<  mCount << endl;
+                    LOG(logDEBUG) << "start " << sum_printed << " " <<  mRecCount << " " <<  mCount;
                     if(sum_printed + mRecCount <= mCount || print_all) {
                         curr_count = mRecCount;
                     }
@@ -1893,7 +1893,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 };
 
                 sum_printed = sum_printed + mRecCount;
-                //cout << "sum printed " << sum_printed << " " << curr_count << " " << curr_seg << endl;				
+                LOG(logDEBUG) << "sum printed " << sum_printed << " " << curr_count << " " << curr_seg;
 				
                 for(unsigned int i=0; i < curr_count; i++) {
                     for(unsigned int j=0; j < columnNames.size(); j++) {
@@ -1902,7 +1902,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 								
 								if(decimal_zeroes[columnNames[j]]) {
 									str = std::to_string(h_columns_int[columnNames[j]][i]);
-									//cout << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i] << endl;								
+									LOG(logDEBUG) << "decimals " << columnNames[j] << " " << decimal_zeroes[columnNames[j]] << " " << h_columns_int[columnNames[j]][i];
 									while(str.length() <= decimal_zeroes[columnNames[j]])
 										str = '0' + str;
 									str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
@@ -2130,7 +2130,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			process_piece = process_count;	
 		readbuff = new char[process_piece+1];	
 		d_readbuff.resize(process_piece+1);
-		cout << "set a piece to " << process_piece << " " << getFreeMem() << endl;		
+		LOG(logDEBUG) << "set a piece to " << process_piece << " " << getFreeMem();
 	};	
 		
 	
@@ -2177,7 +2177,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			total_max = curr_cnt;
 		};			
 		
-		//cout << "curr_cnt " << curr_cnt << " Memory: " << getFreeMem() << endl;
+		LOG(logDEBUG) << "curr_cnt " << curr_cnt << " Memory: " << getFreeMem();
 
 		if(first_time)	{
 			for(unsigned int i=0; i < columnNames.size(); i++) {
@@ -2248,14 +2248,14 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		if(!finished) {		
 			if(curr_cnt < rec_sz) {					
 				offset = (dev_pos[curr_cnt] - rb)+1;
-				//cout << "PATH 1 " << dev_pos[curr_cnt] << " " << offset << endl;
+				LOG(logDEBUG) << "PATH 1 " << dev_pos[curr_cnt] << " " << offset;
 				fseek(file_p, offset, SEEK_CUR);		
 				total_processed = total_processed + rb + offset;
 				mRecCount = curr_cnt;	
 			}
 			else {			
 				offset = (dev_pos[rec_sz] - rb)+1;
-				//cout << "PATH 2 " << dev_pos[rec_sz] << " " << offset << endl;
+				LOG(logDEBUG) << "PATH 2 " << dev_pos[rec_sz] << " " << offset;
 				fseek(file_p, offset, SEEK_CUR);					
 				total_processed = total_processed + rb + offset;
 				mRecCount = rec_sz;	
@@ -2328,7 +2328,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		};	
 		delete [] readbuff;
 	};
-	cout << "processed recs " << recs_processed << " " << getFreeMem() << endl;	
+	LOG(logDEBUG) << "processed recs " << recs_processed << " " << getFreeMem();
 	first_time = 0;
 	mRecCount = recs_processed;
 	return finished;			
@@ -2670,7 +2670,7 @@ int_type* CudaSet::op(int_type* column1, int_type d, string op_type, bool revers
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
 	};
-	//cout << "OP " << d << " " << op_type << " " << p1 << " " << p2 << endl;
+	LOG(logDEBUG) << "OP " << d << " " << op_type << " " << p1 << " " << p2;
 	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());								    
     thrust::device_ptr<int_type> dev_ptr1(column1);
 	unsigned int d1 = d;
@@ -2742,7 +2742,7 @@ int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, bool
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
 	
-	//cout << "OP " <<  op_type << " " << p1 << " " << p2 << " " << reverse << endl;
+	LOG(logDEBUG) << "OP " <<  op_type << " " << p1 << " " << p2 << " " << reverse;
 
     if(reverse == 0) {
         if (op_type.compare("MUL") == 0) {
@@ -3027,7 +3027,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             str.assign(buffer, idx);
             sorted_fields.push(str);
             if(verbose)
-                cout << "segment sorted on " << str << endl;
+            	LOG(logDEBUG) << "segment sorted on " << str;
         };
         fclose(f);
     };
@@ -3043,7 +3043,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             str.assign(buffer, idx);
             presorted_fields.push(str);
             if(verbose)
-                cout << "presorted on " << str << endl;
+            	LOG(logDEBUG) << "presorted on " << str;
         };
         fclose(f);
     };
@@ -3065,7 +3065,7 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
             f1 = file_name + "." + nameRef.front() + ".0";
             f = fopen (f1.c_str() , "rb" );
             if(!f) {
-                cout << "Couldn't find field " << nameRef.front() << endl;
+            	LOG(logERROR) << "Couldn't find field " << nameRef.front() << endl;
                 exit(0);
             };
             for(unsigned int j = 0; j < 6; j++)
@@ -3446,7 +3446,7 @@ void copyFinalize(CudaSet* a, queue<string> fields, bool ts)
 
 void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz, bool flt)
 {
-	//std::clock_t start1 = std::clock();	
+	std::clock_t start1 = std::clock();
     set<string> uniques;
     if(a->filtered) { //filter the segment
         if(flt) {
@@ -3485,7 +3485,7 @@ void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t&
         };
         fields.pop();
     };
-	//std::cout<< "copy time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) <<'\n';
+    LOG(logDEBUG) << "copy time " <<  ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
 }
 
 
@@ -3748,7 +3748,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
     }
     else {
         if(verbose)
-            cout << "FILTER " << s << " " << f << " " << getFreeMem() << '\xd';
+        	LOG(logDEBUG) << "FILTER " << s << " " << f << " " << getFreeMem();
 
         b = varNames[s];
         b->name = s;
@@ -3762,9 +3762,9 @@ void filter_op(const char *s, const char *f, unsigned int segment)
             b->prm_d.resize(a->maxRecs);
 		};	
 
-        cout << endl << "MAP CHECK start " << segment <<  endl;
+        LOG(logDEBUG) << "MAP CHECK start " << segment;
         char map_check = zone_map_check(b->fil_type,b->fil_value,b->fil_nums, b->fil_nums_f, b->fil_nums_precision, a, segment);
-        cout << endl << "MAP CHECK segment " << segment << " " << map_check <<  endl;
+        LOG(logDEBUG) << "MAP CHECK segment " << segment << " " << map_check;
 
         if(map_check == 'R') {
 			auto old_ph = phase_copy;
@@ -3791,7 +3791,7 @@ void filter_op(const char *s, const char *f, unsigned int segment)
             a->deAllocOnDevice();
     }
     if(verbose)
-        cout << endl << "filter result " << b->mRecCount << endl;
+    	LOG(logDEBUG) << "filter result " << b->mRecCount;
 }
 
 
@@ -3850,7 +3850,7 @@ void insert_records(const char* f, const char* s) {
     b->name = f;
 
     // if both source and destination are on disk
-    cout << "SOURCES " << a->source << ":" << b->source << endl;
+    LOG(logDEBUG) << "SOURCES " << a->source << ":" << b->source;
     if(a->source && b->source) {
         for(unsigned int i = 0; i < a->segCount; i++) {
             for(unsigned int z = 0; z < a->columnNames.size(); z++) {			
@@ -3858,7 +3858,7 @@ void insert_records(const char* f, const char* s) {
 				if(a->type[a->columnNames[z]] != 2) {
 					str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i);
 					str_d = b->load_file_name + "." + a->columnNames[z] + "." + to_string(b->segCount + i);
-					cout << str_s << " " << str_d << endl;
+					LOG(logDEBUG) << str_s << " " << str_d;
 					FILE* source = fopen(str_s.c_str(), "rb");
 					FILE* dest = fopen(str_d.c_str(), "wb");
 					while (size = fread(buf, 1, BUFSIZ, source)) {
@@ -4053,7 +4053,7 @@ void delete_records(const char* f) {
 
             map_check = zone_map_check(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a, i);
             if(verbose)
-                cout << "MAP CHECK segment " << i << " " << map_check <<  endl;
+            	LOG(logDEBUG) << "MAP CHECK segment " << i << " " << map_check;
             if(map_check != 'N') {
 
                 cnt = 0;
@@ -4069,7 +4069,7 @@ void delete_records(const char* f) {
                     a->mRecCount = thrust::count(bp, bp + (unsigned int)a->mRecCount, 0);
                     cudaFree(res);
 
-//					cout << "Remained recs count " << a->mRecCount << endl;
+					LOG(logDEBUG) << "Remained recs count " << a->mRecCount;
                     if(a->mRecCount > maxRecs)
                         maxRecs = a->mRecCount;
 
@@ -4090,7 +4090,7 @@ void delete_records(const char* f) {
 
                         }
                         else { //some deleted
-                            //cout << "writing segment " << new_seg_count << endl;
+                        	LOG(logDEBUG) << "writing segment " << new_seg_count;
 
                             map<string, col_data> s = data_dict[a->load_file_name];
                             for ( map<string, col_data>::iterator it=s.begin() ; it != s.end(); ++it ) {
@@ -4152,7 +4152,7 @@ void delete_records(const char* f) {
 
         if (new_seg_count < a->segCount) {
             for(unsigned int i = new_seg_count; i < a->segCount; i++) {
-                //cout << "delete segment " << i << endl;
+            	LOG(logDEBUG) << "delete segment " << i;
                 for(unsigned int z = 0; z < a->columnNames.size(); z++) {
                     str = a->load_file_name + "." + a->columnNames[z];
                     str += "." + to_string(i);
@@ -4226,13 +4226,13 @@ void load_col_data(map<string, map<string, col_data> >& data_dict, string file_n
                 binary_file.read((char*)&col_length, 4);
                 data_dict[str1][str2].col_type = col_type;
                 data_dict[str1][str2].col_length = col_length;
-                //cout << "data DICT " << str1 << " " << str2 << " " << col_type << " " << col_length << endl;
+                LOG(logDEBUG) << "data DICT " << str1 << " " << str2 << " " << col_type << " " << col_length;
             };
         };
         binary_file.close();
     }
     else {
-        cout << "Couldn't open data dictionary" << endl;
+    	LOG(logWARNING) << "Couldn't open data dictionary";
     };
 }
 
@@ -4355,7 +4355,7 @@ void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, 
 	//cout << "Init vals " << a->d_columns_int[colname][z] << " " << perm[z] << " " << temp_int[z] << endl;
 	//};
 	
-	//cout << "sz " << a->h_columns_int[colname].size() << " " << a->d_columns_int[colname].size() <<  " " << len << endl;
+	LOG(logDEBUG) << "sz " << a->h_columns_int[colname].size() << " " << a->d_columns_int[colname].size() <<  " " << len;
 	cudaMemcpy(thrust::raw_pointer_cast(a->h_columns_int[colname].data()), temp, 8*a->mRecCount, cudaMemcpyDeviceToHost);
 
     FILE *f;
@@ -4445,7 +4445,7 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
     };
 
     bits_encoded = (unsigned int)ceil(log2(double(d_ordered.size()+1)));
-    //cout << "bits " << bits_encoded << endl;
+    LOG(logDEBUG) << "bits " << bits_encoded;
 
     unsigned int sz = (unsigned int)d_ordered.size();
     // write to a file

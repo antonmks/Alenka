@@ -103,7 +103,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     vector<string> opv;
     for(unsigned int z = 0; z < cycle_sz; z++) {
         if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { //sanity check
-            cout << "Syntax error: alias " << op_v3.front() << endl;
+        	LOG(logERROR) << "Syntax error: alias " << op_v3.front();
             exit(0);
         };
         opv.push_back(aliases[op_v3.front()]);
@@ -121,8 +121,8 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 			for(int i = 0; i < b->mRecCount; i++) {
 				//memcpy(&sum[i*cycle_sz + z], &b->h_columns_int[opv[z]][i], 8);			
 				sum[i*cycle_sz + z] = b->h_columns_int[opv[z]][i];
-				//cout << "CPY to " << i*cycle_sz + z << " " << opv[z] << " " << b->h_columns_int[opv[z]][i] <<   endl;
-				//cout << "SET " << sum[i*cycle_sz + z] << endl;
+				LOG(logDEBUG) << "CPY to " << i*cycle_sz + z << " " << opv[z] << " " << b->h_columns_int[opv[z]][i];
+				LOG(logDEBUG) << "SET " << sum[i*cycle_sz + z];
 			};			
         }
         else {  //float
@@ -134,7 +134,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
     for(int i = 0; i < b->mRecCount; i++) {
         hashes[i] = MurmurHash64A(&sum[i*cycle_sz], 8*cycle_sz, hash_seed);
-		//cout << "hash " << hashes[i] << " " << i*cycle_sz << " "  << sum[i*cycle_sz] << " " << sum[i*cycle_sz + 1] << endl;
+        LOG(logDEBUG) << "hash " << hashes[i] << " " << i*cycle_sz << " "  << sum[i*cycle_sz] << " " << sum[i*cycle_sz + 1];;
     };
 
     delete [] sum;
@@ -201,7 +201,7 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
     delete [] tmp;
     delete [] hashes;
 
-    //cout << endl << "end b and c " << b->mRecCount << " " << c->mRecCount << endl;
+    LOG(logDEBUG) << "end b and c " << b->mRecCount << " " << c->mRecCount;
     //for(int i = 0; i < h_merge.size();i++)
     //cout << "H " << h_merge[i] << endl;
 
