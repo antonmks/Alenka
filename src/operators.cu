@@ -1,48 +1,54 @@
 #include "operators.h"
-#include <thrust/iterator/permutation_iterator.h>
-#include <thrust/set_operations.h>
 
-struct is_even
-   {
-     __host__ __device__
-     bool operator()(const int &x)
-     {
-       return (x % 2) == 0;
-     }
-   };
+struct col_data {
+	unsigned int col_type;
+	unsigned int col_length;
+};
+extern map<string, map<string, col_data> > data_dict;
+extern size_t getFreeMem();
+extern bool verbose;
+extern queue<string> op_value;
+extern queue<string> op_type;
+extern queue<unsigned int> op_nums_precision; //decimals' precision
+extern queue<int_type> op_nums;
+extern queue<string> op_sort;
+extern bool op_case;
+extern bool ssd;
+extern bool interactive;
+extern string grp_val;
+extern map<string, unsigned int> cpy_bits;
+extern bool scan_state;
+extern map<string, char*> index_buffers;
 
-using namespace mgpu;
-using namespace std;
-using namespace thrust::placeholders;
+extern size_t load_queue(queue<string> c1, CudaSet* right, string f2, size_t &rcount,
+                  unsigned int start_segment, unsigned int end_segment, bool rsz = 1, bool flt = 1);
 
-size_t int_size = sizeof(int_type);
-size_t float_size = sizeof(float_type);
-
-queue<string> namevars;
-queue<string> typevars;
-queue<int> sizevars;
-queue<int> cols;
-
-queue<unsigned int> j_col_count;
-unsigned int sel_count = 0;
-unsigned int join_cnt = 0;
-unsigned int distinct_cnt = 0;
-unsigned int join_col_cnt = 0;
-unsigned int join_tab_cnt = 0;
-unsigned int tab_cnt = 0;
-queue<string> op_join;
-queue<char> join_type;
-queue<char> join_eq_type;
-unsigned int partition_count;
-map<string,unsigned int> stat;
-map<unsigned int, unsigned int> join_and_cnt;
-map<string, map<string, bool> > used_vars;
-bool save_dict = 0;
-ContextPtr context;
-thrust::device_vector<unsigned char> scratch;
-map<string, string> filter_var; 
-thrust::device_vector<int> ranj;
-unsigned long long int currtime;
+extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
+extern queue<string> op_presort;
+extern queue<float_type> op_nums_f;
+extern map<string, char*> buffers;
+extern unsigned int statement_count;
+extern bool check_bitmaps_exist(CudaSet* left, CudaSet* right);
+extern bool check_bitmap_file_exist(CudaSet* left, CudaSet* right);
+extern void allocColumns(CudaSet* a, queue<string> fields);
+extern void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
+extern void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
+extern size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg);
+extern bool phase_copy;
+extern map<string,bool> min_max_eq;
+extern vector<void*> alloced_mem;
+extern size_t max_char(CudaSet* a);
+extern void setSegments(CudaSet* a, queue<string> cols);
+extern size_t max_char(CudaSet* a, queue<string> field_names);
+extern void copyFinalize(CudaSet* a, queue<string> fields, bool ts);
+extern void delete_records(const char* f);
+extern void insert_records(const char* f, const char* s);
+extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
+extern unsigned int total_segments;
+extern size_t process_count;
+extern bool fact_file_loaded;
+extern void* allocated_tmp;
+extern void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
 
 void check_used_vars()
 {
@@ -2795,7 +2801,7 @@ void alenkaClose()
     statement_count = 0;
 
     if(alloced_sz) {
-        cudaFree(alloced_tmp);
+        cudaFree(allocated_tmp);
         alloced_sz = 0;
     };
 }

@@ -1,10 +1,45 @@
-#include "cm.h"
+#ifndef OPERATORS_H_
+#define OPERATORS_H_
+
+#include <queue>
+#include <map>
+
+#include "thrust.h"
+#include "CudaSet.h"
+#include "merge.h"
 #include "filter.h"
 #include "select.h"
-#include "merge.h"
-#include "sorts.cu"
-#include "callbacks.h"
 
+
+using namespace mgpu;
+using namespace std;
+using namespace thrust::placeholders;
+
+queue<string> namevars;
+queue<string> typevars;
+queue<int> sizevars;
+queue<int> cols;
+
+queue<unsigned int> j_col_count;
+unsigned int sel_count = 0;
+unsigned int join_cnt = 0;
+unsigned int distinct_cnt = 0;
+unsigned int join_col_cnt = 0;
+unsigned int join_tab_cnt = 0;
+unsigned int tab_cnt = 0;
+queue<string> op_join;
+queue<char> join_type;
+queue<char> join_eq_type;
+unsigned int partition_count;
+map<string,unsigned int> stat;
+map<unsigned int, unsigned int> join_and_cnt;
+map<string, map<string, bool> > used_vars;
+bool save_dict = 0;
+ContextPtr context;
+thrust::device_vector<unsigned char> scratch;
+map<string, string> filter_var;
+thrust::device_vector<int> ranj;
+unsigned long long int currtime;
 
 void emit_multijoin(const string s, const string j1, const string j2, const unsigned int tab, const char* res_name, const int start_segment, const int end_segment);
 void clean_queues();
@@ -68,4 +103,7 @@ void emit_create_index(const char *index_name, const char *table, const char *co
 void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn);
 void emit_fieldname(const char* name1, const char* name2);
 void load_vars();
-void emit_string_grp(const char *str, const char *str_grp); 
+void emit_string_grp(const char *str, const char *str_grp);
+
+
+#endif /* OPERATORS_H_ */

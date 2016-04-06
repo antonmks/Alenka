@@ -21,9 +21,8 @@
 // ---------------------------------------------------
 //
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdlib.h>
+#include <stdio.h>
 
 /*
  * Row call back:
@@ -33,6 +32,4 @@ extern "C" {
 extern int row_cb(int field_count, char **fields, char **ColNames);
 
 void error_cb(int severity, const char * err);
-#ifdef __cplusplus
-}
-#endif
+

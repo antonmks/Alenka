@@ -12,15 +12,15 @@
  *  limitations under the License.
  */
 
-#include <map>
-#include <string>
 #include <iostream>
 #include <ctime>
-
+#include <string>
 
 using namespace std;
+
 #include "alenka.h"
 #include "log.h"
+
 
 int main(int ac, char **av)
 {

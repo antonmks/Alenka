@@ -11,7 +11,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-#include "cm.h"
+//#include "cm.h"
+
+#include <queue>
+#include <math.h>
+#include <time.h>
+
+#include "types.h"
+#include "CudaSet.h"
+#include "filter.cuh"
+#include "zone_map.h"
+
+using namespace std;
 
 unsigned int precision_vec2(unsigned int p1, unsigned int p2, int_type* n1, int_type& n2, string op, size_t cnt);
 unsigned int precision_vec3(unsigned int p1, unsigned int p2, int_type* n1, int_type* n2, string op, size_t cnt);

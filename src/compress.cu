@@ -1,187 +1,25 @@
-/*
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+#include "compress.h"
 
-// PFOR and PFOR-DELTA Compression and decompression routines
+extern bool phase_copy;
+extern map<string, unsigned int> cnt_counts;
+extern string curr_file;
+extern map<string, bool> min_max_eq;
 
+extern size_t int_size;
+extern size_t float_size;
 
-#include <stdio.h>
-#include <iomanip>
-#include <thrust/extrema.h>
-#include "cm.h"
+extern map<string, unsigned int> cpy_bits;
+extern map<string, long long int> cpy_init_val;
 
-using namespace std;
+extern thrust::device_vector<unsigned char> scratch;
 
-//thrust::device_vector<unsigned char> scratch;
-bool phase_copy = 0;
-map<string, unsigned int> cnt_counts;
-string curr_file;
-map<string,bool> min_max_eq;
-
-
-template<typename T>
-struct type_to_int64
-{
-	const T *source;
-    long long int *dest;
-	long long int *ad;
-		
-	type_to_int64(const T* _source, long long int *_dest, long long int *_ad):
-			  source(_source), dest(_dest), ad(_ad) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {			
-		dest[i] = (int_type)source[i] + ad[0];	
-	}
-};
-
-template<typename T>
-struct int64_to_type
-{
-    __host__ __device__
-    unsigned int operator()(const int_type x)
-    {
-        return (T)x;
-    }
-};
-
-template<typename T>
-struct to_int64
-{
-    __host__ __device__
-    int_type operator()(const T x)
-    {
-        return (int_type)x;
-    }
-};
-
-
-struct compress_functor_int
-{
-
-    const int_type * source;
-    unsigned long long int * dest;
-    const long long int * start_val;
-    const unsigned int * vals;
-
-
-    compress_functor_int(const int_type * _source, unsigned long long int  * _dest,
-                         const long long int * _start_val, const unsigned int * _vals):
-        source(_source), dest(_dest), start_val(_start_val), vals(_vals) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-        long long int val = source[i] - start_val[0];
-        unsigned int shifted = vals[2] - vals[0] - (i%vals[1])*vals[0];
-        dest[i] = val << shifted;
-    }
-};
-
-struct compress_functor_float
-{
-
-    const long long int * source;
-    unsigned long long int * dest;
-    const long long int * start_val;
-    const unsigned int * vals;
-
-
-    compress_functor_float(const long long int * _source, unsigned long long int  * _dest,
-                           const long long int * _start_val, const unsigned int * _vals):
-        source(_source), dest(_dest), start_val(_start_val), vals(_vals) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-        long long int val;
-
-        unsigned int bits = vals[0];
-        unsigned int fit_count = vals[1];
-        unsigned int int_sz = vals[2];
-
-        val = source[i] - start_val[0];
-        unsigned int z = i%fit_count;
-
-        unsigned int shifted = int_sz - bits - z*bits;
-        dest[i] = val << shifted;
-    }
-};
-
-
-
-struct decompress_functor_int
-{
-    const unsigned long long int * source;
-    int_type * dest;
-    const long long int * start_val;
-    const unsigned int * vals;
-
-    decompress_functor_int(const unsigned long long int * _source, int_type * _dest,
-                           const long long int * _start_val, const unsigned int * _vals):
-        source(_source), dest(_dest), start_val(_start_val), vals(_vals) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        unsigned long long int tmp = source[i/vals[1]]  >> (vals[2] - vals[0] - (i%vals[1])*vals[0]);
-        // set  the rest of bits to 0
-        tmp	= tmp << (vals[2] - vals[0]);
-        tmp	= tmp >> (vals[2] - vals[0]);
-        dest[i] = tmp + start_val[0];
-    }
-};
-
-
-struct decompress_functor_str
-{
-    const unsigned long long  * source;
-    unsigned int * dest;
-    const unsigned int * vals;
-
-    decompress_functor_str(const unsigned long long int * _source, unsigned int * _dest,
-                           const unsigned int * _vals):
-        source(_source), dest(_dest), vals(_vals) {}
-
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        unsigned int bits = vals[0];
-        unsigned int fit_count = vals[1];
-        unsigned int int_sz = 64;
-
-        //find the source index
-        unsigned int src_idx = i/fit_count;
-        // find the exact location
-        unsigned int src_loc = i%fit_count;
-        //right shift the values
-        unsigned int shifted = ((fit_count-src_loc)-1)*bits;
-        unsigned long long int tmp = source[src_idx]  >> shifted;
-        // set  the rest of bits to 0
-        tmp	= tmp << (int_sz - bits);
-        tmp	= tmp >> (int_sz - bits);
-        dest[i] = tmp;
-    }
-};
-
+extern bool delta;
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname)
 {
     unsigned int bit_count = 64;
     auto cnt = ((unsigned int*)host)[0];
-	auto orig_upper_val = ((long long int*)((char*)host +12))[0]; 
+	auto orig_upper_val = ((long long int*)((char*)host +12))[0];
     auto orig_recCount = ((unsigned int*)((char*)host + cnt))[7];
     auto bits = ((unsigned int*)((char*)host + cnt))[8];
     auto orig_lower_val = ((long long int*)((unsigned int*)((char*)host + cnt) + 9))[0];
@@ -193,14 +31,14 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     LOG(logDEBUG) << colname << " " << orig_lower_val << " " << orig_upper_val;
 	if(orig_lower_val == orig_upper_val)
 		min_max_eq[colname] = 1;
-	else	
+	else
 		min_max_eq[colname] = 0;
-	
-    if(scratch.size() < cnt) 
+
+    if(scratch.size() < cnt)
 		scratch.resize(cnt);
-		
+
     cudaMemcpy(thrust::raw_pointer_cast(scratch.data()), (void*)((unsigned int*)host + 6), cnt, cudaMemcpyHostToDevice);
-    thrust::device_ptr<int_type> d_int((int_type*)destination);	
+    thrust::device_ptr<int_type> d_int((int_type*)destination);
 
     if(comp_type == 1) {
         thrust::device_ptr<unsigned int> dd_v((unsigned int*)d_v);
@@ -225,25 +63,25 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 			thrust::counting_iterator<unsigned int> begin(0);
 			if(bits == 8) {
 				type_to_int64<unsigned char> ff1((const unsigned char *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
-				thrust::for_each(begin, begin + orig_recCount, ff1);				
+				thrust::for_each(begin, begin + orig_recCount, ff1);
 			}
 			else if(bits == 16) {
 				type_to_int64<unsigned short int> ff1((const unsigned short int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
-				thrust::for_each(begin, begin + orig_recCount, ff1);				
+				thrust::for_each(begin, begin + orig_recCount, ff1);
 			}
 			else if(bits == 32) {
 				type_to_int64<unsigned int> ff1((const unsigned int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
-				thrust::for_each(begin, begin + orig_recCount, ff1);				
+				thrust::for_each(begin, begin + orig_recCount, ff1);
 			}
 			else {
 				type_to_int64<long long int> ff1((const long long int *)thrust::raw_pointer_cast(scratch.data()),(int_type*)destination, thrust::raw_pointer_cast(ad.data()));
-				thrust::for_each(begin, begin + orig_recCount, ff1);				
+				thrust::for_each(begin, begin + orig_recCount, ff1);
 			};
 		}
 		else {
 			cpy_bits[colname] = bits;
 			cpy_init_val[colname] = orig_lower_val;
-			if(bits == 8) {				
+			if(bits == 8) {
 				thrust::device_ptr<unsigned char> dest((unsigned char*)destination);
 				thrust::copy(scratch.begin(), scratch.begin()+orig_recCount, dest);
 			}
@@ -255,13 +93,13 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 			else if(bits == 32) {
 				thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(scratch.data()));
 				thrust::device_ptr<unsigned int> dest((unsigned int*)destination);
-				thrust::copy(src, src+orig_recCount, dest);			
+				thrust::copy(src, src+orig_recCount, dest);
 			}
 			else {
 				thrust::device_ptr<int_type> src((int_type*)thrust::raw_pointer_cast(scratch.data()));
 				thrust::copy(src, src+orig_recCount, d_int);
-			};			
-		};	
+			};
+		};
     };
     return orig_recCount;
 }
@@ -506,7 +344,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
 
     fit_count = 64/bits;
 
-    
+
     LOG(logDEBUG) << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val;
     fstream binary_file(file_name.c_str(),ios::out|ios::binary|ios::trunc);
     binary_file.write((char *)&cnt, 4);

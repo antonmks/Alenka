@@ -23,8 +23,6 @@
 //
 
 
-
-#ifdef __cplusplus		// If c++ then expose data.dict structure and calls
 //------------------------------------------------------------------------------------------
 #include <map>
 
@@ -36,9 +34,6 @@ struct col_data {
 extern map<string, map<string, col_data> > data_dict;
 extern void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 //------------------------------------------------------------------------------------------
-#endif
-
-
 
 // call:
 void alenkaInit(char ** av);

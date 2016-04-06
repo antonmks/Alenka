@@ -14,7 +14,7 @@
  
 
 %{
-#include "bison.tab.h"
+#include "alenka.hu"
 #include "atof.h"
 
 #ifdef _WIN64

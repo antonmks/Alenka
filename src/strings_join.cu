@@ -12,10 +12,7 @@
  *  limitations under the License.
  */
 
-
-#include "strings.h"
-#include "strings_type.h"
-
+#include "strings_join.h"
 
 template<unsigned int len>
 struct T_str_scatter_host {

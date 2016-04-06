@@ -14,46 +14,9 @@
 
 #include "merge.h"
 
-using namespace std;
-
-void process_error(int severity, string err);	// this should probably live in a utils header file
-
-
-#if defined(_MSC_VER)
-#define BIG_CONSTANT(x) (x)
-// Other compilers
-#else   // defined(_MSC_VER)
-#define BIG_CONSTANT(x) (x##LLU)
-#endif // !defined(_MSC_VER)
-
-unsigned int hash_seed;
-
-struct float_avg
-{
-    __host__  float_type operator()(const float_type &lhs, const int_type &rhs) const {
-        return lhs/rhs;
-    }
-};
-
-struct float_avg1
-{
-    __host__  float_type operator()(const int_type &lhs, const int_type &rhs) const {
-        return ((float_type)lhs)/rhs;
-    }
-};
-
-struct div100
-{
-    __host__  int_type operator()(const int_type &lhs, const int_type &rhs) const {
-        return (lhs*100)/rhs;
-    }
-};
-
-thrust::host_vector<unsigned long long int> h_merge;
-
-using namespace std;
-using namespace thrust::placeholders;
-
+extern unsigned int hash_seed;
+extern thrust::host_vector<unsigned long long int> h_merge;
+extern size_t max_char(CudaSet* a);
 
 void create_c(CudaSet* c, CudaSet* b)
 {

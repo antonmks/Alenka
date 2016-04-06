@@ -4,12 +4,7 @@
 // The same caveats as 32-bit MurmurHash2 apply here - beware of alignment 
 // and endian-ness issues if used across multiple platforms.
 
-#include <stdint.h>
-
-
-#ifdef _WIN64
-typedef unsigned __int64 uint64_t;
-#endif
+#include "MurmurHash2_64.h"
 
 // 64-bit hash for 64-bit platforms
 

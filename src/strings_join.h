@@ -1,24 +1,9 @@
-/*
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+#ifndef STRINGS_JOIN_H_
+#define STRINGS_JOIN_H_
 
-/// ======================================== H File =================================================
-//---------------------------------------------------------------------------
-#pragma once
-#ifndef STRINGS_H
-#define STRINGS_H
-//---------------------------------------------------------------------------
-#include "cm.h"
+
+#include "thrust.h"
+#include "strings_type.cuh"
 //---------------------------------------------------------------------------
 
 #define UNROLL_COUNT 101
@@ -64,5 +49,5 @@ void str_sort_host(char* tmp, size_t RecCount, unsigned int* permutation, bool d
 */
 void str_sort(char* tmp, size_t RecCount, unsigned int* permutation, bool desc_order, unsigned int len);
 
-//---------------------------------------------------------------------------
-#endif	/// STRINGS_H
+
+#endif /* STRINGS_JOIN_H_ */

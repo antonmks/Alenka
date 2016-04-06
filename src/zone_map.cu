@@ -14,7 +14,15 @@
 
 #include "zone_map.h"
 
-void process_error(int severity, string err);   // this should probably live in a utils header file
+
+extern void process_error(int severity, string err);
+extern time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
+extern int_type reverse_op(int_type op_type);
+extern bool var_exists(CudaSet* a, string name);
+
+extern stack<char> bool_vectors;
+extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
+extern time_t curr_time;
 
 bool fh_equal_to(const float_type x, const float_type y)
 {

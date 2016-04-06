@@ -1,21 +1,5 @@
-/*
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-//---------------------------------------------------------------------------
-#pragma once
-#ifndef STRINGS_TYPE_H
-#define STRINGS_TYPE_H
-//---------------------------------------------------------------------------
+#ifndef STRINGS_TYPE_CUH_
+#define STRINGS_TYPE_CUH_
 
 /// Number of turns of the templated functors
 //#define UNROLL_COUNT 40
@@ -40,7 +24,7 @@ class Str {
 public:
 	T data[N];
 	enum { size = N };
-	enum { bytes2_count = size / sizeof(unsigned short int), 
+	enum { bytes2_count = size / sizeof(unsigned short int),
 		bytes4_count = size / sizeof(unsigned int) };
 
 	/// Uniform comparison
@@ -57,7 +41,7 @@ public:
 				if(swap_le_be_32(data4_first[i]) > swap_le_be_32(data4_second[i])) return 0;
 				else if(swap_le_be_32(data4_first[i]) < swap_le_be_32(data4_second[i])) return 1;
 			}
-		} else if(size % 2 == 0) {			
+		} else if(size % 2 == 0) {
 			/// Speedup in 2 - 2.5 times (compare unaligned data by 2 bytes)
 			unsigned short int const* data2_first = reinterpret_cast<unsigned short int const*>(data);
 			unsigned short int const* data2_second = reinterpret_cast<unsigned short int const *>(other.data);
@@ -81,7 +65,7 @@ public:
 				else if(swap_le_be_16(data2_first[6]) < swap_le_be_16(data2_second[6])) return 1;
 				if(swap_le_be_16(data2_first[7]) > swap_le_be_16(data2_second[7])) return 0;
 				else if(swap_le_be_16(data2_first[7]) < swap_le_be_16(data2_second[7])) return 1;
-			} else 
+			} else
 			if(size > 8) {
 				if(swap_le_be_16(data2_first[0]) > swap_le_be_16(data2_second[0])) return 0;
 				else if(swap_le_be_16(data2_first[0]) < swap_le_be_16(data2_second[0])) return 1;
@@ -103,7 +87,7 @@ public:
 			for(unsigned int i = bytes2_count*2; i < size; i++) {
 				if(data[i] > other.data[i]) return 0;
 				else if(data[i] < other.data[i]) return 1;
-			}			
+			}
 		} else {
 			#pragma unroll
 			for(unsigned int i = 0; i < size; i++) {
@@ -113,11 +97,11 @@ public:
 		}
 		return 2;
 	}
-	
+
 
 	__host__ __device__
 	bool operator<(const Str& other) const
-	{		
+	{
 		unsigned char ret = comparison(other);
 		if(ret != 2) return ret;
 		else return false;
@@ -142,7 +126,7 @@ public:
 			for(unsigned int i = 0; i < size/4; i++) {
 				if(swap_le_be_32(data4_first[i]) != swap_le_be_32(data4_second[i])) return true;
 			}
-		} else if(size % 2 == 0) {	
+		} else if(size % 2 == 0) {
 			unsigned short int const* data2_first = reinterpret_cast<unsigned short int const*>(data);
 			unsigned short int const* data2_second = reinterpret_cast<unsigned short int const*>(other.data);
 			#pragma unroll
@@ -180,12 +164,12 @@ struct T_unroll_functor {
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, T6 &val6, const unsigned int len) {
 		if(len == unroll_count) { functor(val1, val2, val3, val4, val5, val6); return true; }
 		else return next_unroll(val1, val2, val3, val4, val5, val6, len);
-	}		
+	}
 	template<typename T1, typename T2, typename T3, typename T4, typename T5>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, const unsigned int len) {
 		if(len == unroll_count) { functor(val1, val2, val3, val4, val5); return true; }
 		else return next_unroll(val1, val2, val3, val4, val5, len);
-	}	
+	}
 	template<typename T1, typename T2, typename T3, typename T4>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, const unsigned int len) {
 		if(len == unroll_count) { functor(val1, val2, val3, val4); return true; }
@@ -199,7 +183,7 @@ struct T_unroll_functor {
 };
 /// End of unroll (partial specialization)
 template<template<unsigned int> class T_functor>
-struct T_unroll_functor<0, T_functor> { 
+struct T_unroll_functor<0, T_functor> {
 	template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, T4 &val4, T5 &val5, T6 &val6, const unsigned int len) { return false; }
 	template<typename T1, typename T2, typename T3, typename T4, typename T5>
@@ -209,7 +193,5 @@ struct T_unroll_functor<0, T_functor> {
 	template<typename T1, typename T2, typename T3>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, const unsigned int len) { return false; }
 };
-// -----------------------------------------------------------------------
 
-//---------------------------------------------------------------------------
-#endif	/// STRINGS_TYPE_H
+#endif /* STRINGS_TYPE_CUH_ */
