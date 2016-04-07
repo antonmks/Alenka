@@ -1,6 +1,36 @@
+/*
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-#ifndef COMPRESS_CUH_
-#define COMPRESS_CUH_
+
+#ifndef COMPRESS
+#define COMPRESS
+// PFOR and PFOR-DELTA Compression and decompression routines
+
+#include <fstream>
+#include <stdio.h>
+#include <iomanip>
+#include <thrust/extrema.h>
+#include "global.h"
+#include "cuda_safe.h"
+
+using namespace std;
+
+//thrust::device_vector<unsigned char> scratch;
+extern bool phase_copy ;
+extern map<string, unsigned int> cnt_counts;
+extern string curr_file;
+extern map<string,bool> min_max_eq;
 
 
 template<typename T>
@@ -150,7 +180,7 @@ struct decompress_functor_str
     }
 };
 
+#define COMPRESS_FUNCTIONS
+#include "compress.cu"
 
-
-
-#endif /* COMPRESS_CUH_ */
+#endif

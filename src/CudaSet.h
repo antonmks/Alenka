@@ -12,11 +12,10 @@
 #include <fstream>
 
 #include "global.h"
-//#include "common.h"
+#include "compress.cuh"
+#include "sorts.cuh"
 #include "util.cuh"
 #include "cuda_safe.h"
-#include "compress.h"
-#include "sorts.h"
 #include "MurmurHash2_64.h"
 #include "callbacks.h"
 #include "moderngpu/include/moderngpu.cuh"
@@ -24,6 +23,7 @@
 using namespace std;
 using namespace thrust::placeholders;
 using namespace thrust::system::cuda::experimental;
+
 
 class CudaSet
 {

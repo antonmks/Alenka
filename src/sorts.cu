@@ -12,10 +12,14 @@
  *  limitations under the License.
  */
  
-#include "sorts.h"
 
-extern bool phase_copy;
+#ifndef COMPRESS_FUNCTIONS
+#include "sorts.cuh"
 
+// regular functions:
+// ...
+
+#else
 
 template <typename KeyType>
 void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp, unsigned int bits)
@@ -129,7 +133,7 @@ void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned lo
     thrust::gather(permutation, permutation + RecCount, key, res);
 }
 
-
+#endif
 
 
 

@@ -64,6 +64,7 @@ extern map<string, map<string, col_data> > data_dict;
 
 extern map<string, unsigned int> cnt_counts;
 
+
 /*
 extern bool save_dict;
 extern unsigned int hash_seed;

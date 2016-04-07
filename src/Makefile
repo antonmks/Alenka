@@ -13,7 +13,7 @@ GENCODE_FLAGS	:= -gencode arch=compute_20,code=sm_20
 nvcc = nvcc $(CFLAGS) $(GENCODE_FLAGS) -c
 
 alenka : alenka.o callbacks.o common.o compress.o CudaSet.o filter.o global.o main.o \
- 		 merge.o mgpucontext.o MurmurHash2_64.o operators.o select.o sorts.o \
+ 		 merge.o mgpucontext.o mgpuutil.o MurmurHash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 zone_map.o
 
@@ -33,7 +33,7 @@ callbacks.o : callbacks.c callbacks.h
 	$(nvcc) callbacks.c	
 common.o : common.cu common.h
 	$(nvcc) common.cu		
-compress.o : compress.cu compress.h
+compress.o : compress.cu
 	$(nvcc) compress.cu
 CudaSet.o : CudaSet.cu CudaSet.h
 	$(nvcc) CudaSet.cu	
@@ -55,7 +55,7 @@ operators.o : operators.cu operators.h
 	$(nvcc) operators.cu
 select.o : select.cu select.h 
 	$(nvcc) select.cu
-sorts.o : sorts.cu sorts.h 
+sorts.o : sorts.cu sorts.cuh 
 	$(nvcc) sorts.cu
 strings_join.o : strings_join.cu strings_type.cuh
 	$(nvcc) strings_join.cu
