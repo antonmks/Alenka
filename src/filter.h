@@ -11,13 +11,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-//#include "cm.h"
+
 
 #include <queue>
 #include <math.h>
 #include <time.h>
 
-#include "types.h"
+#include "global.h"
 #include "CudaSet.h"
 #include "filter.cuh"
 #include "zone_map.h"

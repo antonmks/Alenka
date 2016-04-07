@@ -3,65 +3,18 @@
 
 #include <unistd.h>
 
+#include "global.h"
 #include "CudaSet.h"
 #include "zone_map.h"
 #include "filter.h"
 #include "strings_sort_host.h"
 
-struct col_data {
-	unsigned int col_type;
-	unsigned int col_length;
-};
-
-
-size_t total_count = 0, total_max;
-clock_t tot;
-unsigned int total_segments = 0, old_segments;
-size_t process_count;
-size_t alloced_sz = 0;
-bool fact_file_loaded = 1;
-bool verbose;
-bool interactive, ssd, delta, star;
-void* d_v = nullptr;
-void* s_v = nullptr;
-queue<string> op_sort;
-queue<string> op_presort;
-queue<string> op_type;
-bool op_case = 0;
-string grp_val;
-queue<string> op_value;
-queue<int_type> op_nums;
-queue<float_type> op_nums_f;
-queue<unsigned int> op_nums_precision;
-queue<string> col_aliases;
-map<string, map<string, col_data> > data_dict;
-map<unsigned int, map<unsigned long long int, size_t> > char_hash;
-
-map<string, char*> index_buffers;
-map<string, unsigned long long int*> idx_vals;
-map<string, char*> buffers;
-map<string, size_t> buffer_sizes;
-size_t total_buffer_size;
-queue<string> buffer_names;
-
-void* alloced_tmp;
-bool alloced_switch = 0;
-map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
-map<string, unsigned int> cpy_bits;
-map<string, long long int> cpy_init_val;
-char* readbuff = nullptr;
-thrust::device_vector<unsigned int> rcol_matches;
-thrust::device_vector<int_type> rcol_dev;
-
-
+extern map<string,CudaSet*> varNames;
 
 void write_compressed_char(string file_name, unsigned int index, size_t mCount);
 size_t getFreeMem();
 size_t getTotalSystemMemory();
 void process_error(int severity, string err);
-
-
-
 
 void allocColumns(CudaSet* a, queue<string> fields);
 void gatherColumns(CudaSet* a, CudaSet* t, string field, unsigned int segment, size_t& count);

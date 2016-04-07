@@ -1,19 +1,13 @@
 #ifndef COMPRESS_H_
 #define COMPRESS_H_
 
-#include <map>
 #include <fstream>
-
 #include <thrust/extrema.h>
 
-#include "types.h"
-#include "thrust.h"
-#include "log.h"
+#include "global.h"
 #include "compress.cuh"
 #include "cuda_safe.h"
 
-using namespace std;
-using namespace thrust::system::cuda::experimental;
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname);
 template< typename T>

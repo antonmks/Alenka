@@ -1,7 +1,6 @@
 #ifndef CUDASET_H_
 #define CUDASET_H_
 
-#include <queue>
 #include <string>
 #include <map>
 #include <unordered_map>
@@ -12,13 +11,12 @@
 #include <limits>
 #include <fstream>
 
-#include "log.h"
+#include "global.h"
+//#include "common.h"
 #include "util.cuh"
-#include "types.h"
 #include "cuda_safe.h"
 #include "compress.h"
 #include "sorts.h"
-#include "thrust.h"
 #include "MurmurHash2_64.h"
 #include "callbacks.h"
 #include "moderngpu/include/moderngpu.cuh"

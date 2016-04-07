@@ -34,7 +34,7 @@
 // 	Usage:
 // 		Replace this routine with your own output method. The Display verb will call it.
 //
-extern int row_cb(int field_count, char **fields, char **ColName){
+void row_cb(int field_count, char **fields, char **ColName){
    int i;
    char tab=' ';
    for(i=0; i<field_count; i++){
@@ -42,7 +42,6 @@ extern int row_cb(int field_count, char **fields, char **ColName){
       	tab = '\t';	// dont stall the x86 pipeline with an if statement...
    }
    printf("|\n");
-   return 0;
 }
 
 //

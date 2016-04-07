@@ -1,10 +1,3 @@
-/*
- * merge.cuh
- *
- *  Created on: Apr 5, 2016
- *      Author: user
- */
-
 #ifndef MERGE_CUH_
 #define MERGE_CUH_
 

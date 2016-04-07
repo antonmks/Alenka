@@ -1,6 +1,7 @@
 #ifndef MERGE_H_
 #define MERGE_H_
 
+#include "global.h"
 #include "CudaSet.h"
 #include "merge.cuh"
 

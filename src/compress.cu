@@ -1,19 +1,10 @@
 #include "compress.h"
 
-extern bool phase_copy;
-extern map<string, unsigned int> cnt_counts;
-extern string curr_file;
-extern map<string, bool> min_max_eq;
 
-extern size_t int_size;
-extern size_t float_size;
-
-extern map<string, unsigned int> cpy_bits;
-extern map<string, long long int> cpy_init_val;
-
-extern thrust::device_vector<unsigned char> scratch;
-
-extern bool delta;
+bool phase_copy = 0;
+map<string, unsigned int> cnt_counts;
+string curr_file;
+map<string,bool> min_max_eq;
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname)
 {

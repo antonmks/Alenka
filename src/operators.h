@@ -1,45 +1,42 @@
 #ifndef OPERATORS_H_
 #define OPERATORS_H_
 
-#include <queue>
-#include <map>
-
-#include "thrust.h"
+#include "global.h"
 #include "CudaSet.h"
+#include "common.h"
 #include "merge.h"
 #include "filter.h"
 #include "select.h"
-
 
 using namespace mgpu;
 using namespace std;
 using namespace thrust::placeholders;
 
-queue<string> namevars;
-queue<string> typevars;
-queue<int> sizevars;
-queue<int> cols;
+extern queue<string> namevars;
+extern queue<string> typevars;
+extern queue<int> sizevars;
+extern queue<int> cols;
 
-queue<unsigned int> j_col_count;
-unsigned int sel_count = 0;
-unsigned int join_cnt = 0;
-unsigned int distinct_cnt = 0;
-unsigned int join_col_cnt = 0;
-unsigned int join_tab_cnt = 0;
-unsigned int tab_cnt = 0;
-queue<string> op_join;
-queue<char> join_type;
-queue<char> join_eq_type;
-unsigned int partition_count;
-map<string,unsigned int> stat;
-map<unsigned int, unsigned int> join_and_cnt;
-map<string, map<string, bool> > used_vars;
-bool save_dict = 0;
-ContextPtr context;
-thrust::device_vector<unsigned char> scratch;
-map<string, string> filter_var;
-thrust::device_vector<int> ranj;
-unsigned long long int currtime;
+extern queue<unsigned int> j_col_count;
+extern unsigned int sel_count;
+extern unsigned int join_cnt;
+extern unsigned int distinct_cnt;
+extern unsigned int join_col_cnt;
+extern unsigned int join_tab_cnt;
+extern unsigned int tab_cny;
+extern queue<string> op_join;
+extern queue<char> join_type;
+extern queue<char> join_eq_type;
+extern unsigned int partition_count;
+extern map<string,unsigned int> stat;
+extern map<unsigned int, unsigned int> join_and_cnt;
+extern map<string, map<string, bool> > used_vars;
+extern bool save_dict;
+extern ContextPtr context;
+extern thrust::device_vector<unsigned char> scratch;
+extern map<string, string> filter_var;
+extern thrust::device_vector<int> ranj;
+extern unsigned long long int currtime;
 
 void emit_multijoin(const string s, const string j1, const string j2, const unsigned int tab, const char* res_name, const int start_segment, const int end_segment);
 void clean_queues();

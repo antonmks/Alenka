@@ -1,9 +1,8 @@
 #include "operators.h"
 
-struct col_data {
-	unsigned int col_type;
-	unsigned int col_length;
-};
+
+/*
+
 extern map<string, map<string, col_data> > data_dict;
 extern size_t getFreeMem();
 extern bool verbose;
@@ -49,6 +48,33 @@ extern size_t process_count;
 extern bool fact_file_loaded;
 extern void* allocated_tmp;
 extern void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
+*/
+
+queue<string> namevars;
+queue<string> typevars;
+queue<int> sizevars;
+queue<int> cols;
+
+queue<unsigned int> j_col_count;
+unsigned int sel_count = 0;
+unsigned int join_cnt = 0;
+unsigned int distinct_cnt = 0;
+unsigned int join_col_cnt = 0;
+unsigned int join_tab_cnt = 0;
+unsigned int tab_cnt = 0;
+queue<string> op_join;
+queue<char> join_type;
+queue<char> join_eq_type;
+unsigned int partition_count;
+map<string,unsigned int> stat;
+map<unsigned int, unsigned int> join_and_cnt;
+map<string, map<string, bool> > used_vars;
+bool save_dict = 0;
+ContextPtr context;
+thrust::device_vector<unsigned char> scratch;
+map<string, string> filter_var;
+thrust::device_vector<int> ranj;
+unsigned long long int currtime;
 
 void check_used_vars()
 {
@@ -2801,7 +2827,7 @@ void alenkaClose()
     statement_count = 0;
 
     if(alloced_sz) {
-        cudaFree(allocated_tmp);
+        cudaFree(alloced_tmp);
         alloced_sz = 0;
     };
 }

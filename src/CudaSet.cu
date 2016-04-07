@@ -1,10 +1,11 @@
 #include "CudaSet.h"
 
+
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 extern bool fact_file_loaded;
 extern size_t process_count;
-extern void* allocated_tmp;
-extern bool allocated_switch;
+extern void* alloced_tmp;
+extern bool alloced_switch;
 extern bool save_dict;
 extern bool interactive;
 extern bool verbose;
@@ -54,20 +55,20 @@ extern bool op_case;
 extern queue<string> op_sort;
 extern queue<string> op_presort;
 extern queue<string> op_value;
-extern vector<void*> allocated_mem;
+//extern vector<void*> alloced_mem;
 
 extern unsigned int total_segments, old_segments;
 extern unsigned int partition_count;
 
-struct col_data {
-	unsigned int col_type;
-	unsigned int col_length;
-};
 extern map<string, map<string, col_data> > data_dict;
 
 extern map<string, unsigned int> cnt_counts;
 
-
+/*
+extern bool save_dict;
+extern unsigned int hash_seed;
+extern vector<void*> alloced_mem;
+*/
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs)
     : mColumnCount(0), mRecCount(0)
 {
@@ -437,7 +438,7 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
     return lower_val;
 }
 
-std::clock_t tot_disk;
+extern std::clock_t tot_disk;
 
 void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname)
 {
@@ -543,20 +544,20 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
         };
 
         if(type[colname] != 1) {
-            if(!allocated_switch) {
+            if(!alloced_switch) {
                 thrust::copy(h_columns_int[colname].begin() + maxRecs*segment, h_columns_int[colname].begin() + maxRecs*segment + mRecCount, d_columns_int[colname].begin() + offset);
 			}
             else {
-                thrust::device_ptr<int_type> d_col((int_type*)allocated_tmp);
+                thrust::device_ptr<int_type> d_col((int_type*)alloced_tmp);
                 thrust::copy(h_columns_int[colname].begin() + maxRecs*segment, h_columns_int[colname].begin() + maxRecs*segment + mRecCount, d_col);
             };
         }
         else {
-            if(!allocated_switch) {
+            if(!alloced_switch) {
                 thrust::copy(h_columns_float[colname].begin() + maxRecs*segment, h_columns_float[colname].begin() + maxRecs*segment + mRecCount, d_columns_float[colname].begin() + offset);
             }
             else {
-                thrust::device_ptr<float_type> d_col((float_type*)allocated_tmp);
+                thrust::device_ptr<float_type> d_col((float_type*)alloced_tmp);
                 thrust::copy(h_columns_float[colname].begin() + maxRecs*segment, h_columns_float[colname].begin() + maxRecs*segment + mRecCount, d_col);
             };
         }
@@ -577,7 +578,7 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
         };
 
         if(type[colname] != 1) {
-            if(!allocated_switch) {
+            if(!alloced_switch) {
                 if(buffers.find(f1) == buffers.end()) {
                     mRecCount = pfor_decompress(thrust::raw_pointer_cast(d_columns_int[colname].data() + offset), h_columns_int[colname].data(), d_v, s_v, colname);
                 }
@@ -587,16 +588,16 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
             }
             else {
                 if(buffers.find(f1) == buffers.end()) {
-                    mRecCount = pfor_decompress(allocated_tmp, h_columns_int[colname].data(), d_v, s_v, colname);
+                    mRecCount = pfor_decompress(alloced_tmp, h_columns_int[colname].data(), d_v, s_v, colname);
                 }
                 else {
-                    mRecCount = pfor_decompress(allocated_tmp, buffers[f1], d_v, s_v, colname);
+                    mRecCount = pfor_decompress(alloced_tmp, buffers[f1], d_v, s_v, colname);
                 };
             };
         }
         else  {
             if(decimal[colname]) {
-                if(!allocated_switch) {
+                if(!alloced_switch) {
                     if(buffers.find(f1) == buffers.end()) {
                         mRecCount = pfor_decompress( thrust::raw_pointer_cast(d_columns_float[colname].data() + offset) , h_columns_float[colname].data(), d_v, s_v, colname);
                     }
@@ -610,14 +611,14 @@ void CudaSet::CopyColumnToGpu(string colname,  unsigned int segment, size_t offs
                 }
                 else {
                     if(buffers.find(f1) == buffers.end()) {
-                        mRecCount = pfor_decompress(allocated_tmp, h_columns_float[colname].data(), d_v, s_v, colname);
+                        mRecCount = pfor_decompress(alloced_tmp, h_columns_float[colname].data(), d_v, s_v, colname);
                     }
                     else {
-                        mRecCount = pfor_decompress(allocated_tmp, buffers[f1], d_v, s_v, colname);
+                        mRecCount = pfor_decompress(alloced_tmp, buffers[f1], d_v, s_v, colname);
                     };
 					if(!phase_copy) {
-						thrust::device_ptr<long long int> d_col_int((long long int*)allocated_tmp);
-						thrust::device_ptr<float_type> d_col_float((float_type*)allocated_tmp);
+						thrust::device_ptr<long long int> d_col_int((long long int*)alloced_tmp);
+						thrust::device_ptr<float_type> d_col_float((float_type*)alloced_tmp);
 						thrust::transform(d_col_int,d_col_int+mRecCount, d_col_float, long_to_float());
 					};
 					//for(int i = 0; i < mRecCount;i++)
@@ -1262,7 +1263,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 
 void CudaSet::calc_intervals(string dt1, string dt2, string index, unsigned int total_segs, bool append) {
 
-	allocated_switch = 1;
+	alloced_switch = 1;
 	not_compressed = 1;
 	thrust::device_vector<unsigned int> permutation;
 	thrust::device_vector<int_type> stencil(maxRecs);
@@ -1311,12 +1312,12 @@ void CudaSet::calc_intervals(string dt1, string dt2, string index, unsigned int 
 
 		if(mysz*maxRecs > alloced_sz) {
 			if(alloced_sz) {
-				cudaFree(allocated_tmp);
+				cudaFree(alloced_tmp);
 			};
-			cudaMalloc((void **) &allocated_tmp, mysz*maxRecs);
+			cudaMalloc((void **) &alloced_tmp, mysz*maxRecs);
 			alloced_sz = mysz*maxRecs;
 		}
-		thrust::device_ptr<int_type> d_col((int_type*)allocated_tmp);
+		thrust::device_ptr<int_type> d_col((int_type*)alloced_tmp);
 		d_columns_int[dt2].resize(0);
 
 		thrust::device_vector<unsigned int> output(stack_count);
@@ -2199,7 +2200,7 @@ void CudaSet::free()  {
 void alloc_pool(unsigned int maxRecs) {
 	void* temp;
 	CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 8*maxRecs));
-	allocated_mem.push_back(temp);
+	alloced_mem.push_back(temp);
 };
 
 
@@ -2474,10 +2475,10 @@ bool* CudaSet::compare(float_type* column1, int_type* column2, int_type op_type)
 
 float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, bool reverse)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
-	thrust::device_ptr<float_type> temp((float_type*)allocated_mem.back());
+	thrust::device_ptr<float_type> temp((float_type*)alloced_mem.back());
     thrust::device_ptr<int_type> dev_ptr(column1);
 
     thrust::transform(dev_ptr, dev_ptr + mRecCount, temp, long_to_float_type()); // in-place transformation
@@ -2504,17 +2505,17 @@ float_type* CudaSet::op(int_type* column1, float_type* column2, string op_type, 
             thrust::transform(temp, temp+mRecCount, dev_ptr1, temp, thrust::divides<float_type>());
 
     };
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
 }
 
 int_type* CudaSet::op(int_type* column1, int_type d, string op_type, bool reverse, unsigned int p1, unsigned int p2)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
 	LOG(logDEBUG) << "OP " << d << " " << op_type << " " << p1 << " " << p2;
-	thrust::device_ptr<int_type> temp((int_type*)allocated_mem.back());
+	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());
     thrust::device_ptr<int_type> dev_ptr1(column1);
 	unsigned int d1 = d;
 	if(p2)
@@ -2571,17 +2572,17 @@ int_type* CudaSet::op(int_type* column1, int_type d, string op_type, bool revers
 				thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d) + mRecCount, thrust::make_transform_iterator(dev_ptr1, power_functor<int_type>(p1)), temp, thrust::divides<int_type>());
 		};
     };
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
 }
 
 
 int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, bool reverse, unsigned int p1, unsigned int p2)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
-	thrust::device_ptr<int_type> temp((int_type*)allocated_mem.back());
+	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
 
@@ -2661,16 +2662,16 @@ int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, bool
 				thrust::transform(thrust::make_transform_iterator(dev_ptr2, power_functor<int_type>(p2)), thrust::make_transform_iterator(dev_ptr2+mRecCount, power_functor<int_type>(p2)), dev_ptr1, temp, thrust::divides<int_type>());
 		}
     }
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
 }
 
 float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type, bool reverse)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
-	thrust::device_ptr<float_type> temp((float_type*)allocated_mem.back());
+	thrust::device_ptr<float_type> temp((float_type*)alloced_mem.back());
     thrust::device_ptr<float_type> dev_ptr1(column1);
     thrust::device_ptr<float_type> dev_ptr2(column2);
 
@@ -2694,7 +2695,7 @@ float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type
         else
             thrust::transform(dev_ptr2, dev_ptr2+mRecCount, dev_ptr1, temp, thrust::divides<float_type>());
     };
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
 }
 
@@ -2703,10 +2704,10 @@ float_type* CudaSet::op(float_type* column1, float_type* column2, string op_type
 
 float_type* CudaSet::op(int_type* column1, float_type d, string op_type, bool reverse)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
-	thrust::device_ptr<float_type> temp((float_type*)allocated_mem.back());
+	thrust::device_ptr<float_type> temp((float_type*)alloced_mem.back());
     thrust::fill(temp, temp+mRecCount, d);
 
     thrust::device_ptr<int_type> dev_ptr(column1);
@@ -2735,16 +2736,16 @@ float_type* CudaSet::op(int_type* column1, float_type d, string op_type, bool re
 
     };
     thrust::device_free(dev_ptr1);
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return thrust::raw_pointer_cast(temp);
 }
 
 float_type* CudaSet::op(float_type* column1, float_type d, string op_type,bool reverse)
 {
-	if(allocated_mem.empty()) {
+	if(alloced_mem.empty()) {
 		alloc_pool(maxRecs);
 	};
-	thrust::device_ptr<float_type> temp((float_type*)allocated_mem.back());
+	thrust::device_ptr<float_type> temp((float_type*)alloced_mem.back());
     thrust::device_ptr<float_type> dev_ptr1(column1);
 
     if(reverse == 0) {
@@ -2767,7 +2768,7 @@ float_type* CudaSet::op(float_type* column1, float_type d, string op_type,bool r
         else
             thrust::transform(thrust::make_constant_iterator(d), thrust::make_constant_iterator(d)+mRecCount, dev_ptr1, temp, thrust::divides<float_type>());
     };
-	allocated_mem.pop_back();
+	alloced_mem.pop_back();
     return (float_type*)thrust::raw_pointer_cast(temp);
 }
 

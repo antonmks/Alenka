@@ -1,7 +1,7 @@
 # Makefile
 #
 # The -D below may have to change to /D on some dos compilers
-CFLAGS=--machine 64 -O0 -g -std=c++11 -I moderngpu/include/
+CFLAGS=--machine 64 -O3 -std=c++11 -I moderngpu/include/
 
 #GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
 #GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
@@ -12,14 +12,14 @@ GENCODE_FLAGS	:= -gencode arch=compute_20,code=sm_20
 
 nvcc = nvcc $(CFLAGS) $(GENCODE_FLAGS) -c
 
-alenka : alenka.o callbacks.o common.o compress.o CudaSet.o filter.o main.o merge.o \
-         mgpucontext.o MurmurHash2_64.o operators.o  select.o  \
+alenka : alenka.o callbacks.o common.o compress.o CudaSet.o filter.o global.o main.o \
+ 		 merge.o mgpucontext.o MurmurHash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 zone_map.o
 
 	nvcc $(CFLAGS) -L . mgpucontext.o mgpuutil.o -o alenka  \
-		 alenka.o callbacks.o common.o compress.o CudaSet.o filter.o main.o merge.o \
-         mgpucontext.o MurmurHash2_64.o operators.o  select.o  \
+		 alenka.o callbacks.o common.o compress.o CudaSet.o filter.o global.o main.o \
+		 merge.o MurmurHash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o \
 		 zone_map.o
 
@@ -38,20 +38,24 @@ compress.o : compress.cu compress.h
 CudaSet.o : CudaSet.cu CudaSet.h
 	$(nvcc) CudaSet.cu	
 filter.o : filter.cu filter.h
-	$(nvcc) filter.cu		
-main.o : main.cpp
-	$(nvcc) main.cpp
+	$(nvcc) filter.cu	
+global.o : global.cu global.h
+	$(nvcc) global.cu		
+main.o : main.cu
+	$(nvcc) main.cu
 merge.o : merge.cu merge.h
 	$(nvcc) merge.cu	
-mgpucontext.o : moderngpu/src/mgpucontext.cu 	
-	$(nvcc) -I moderngpu/include/ moderngpu/src/mgpucontext.cu moderngpu/src/mgpuutil.cpp		
+mgpucontext.o : moderngpu/src/mgpucontext.cu
+	$(nvcc) -I moderngpu/include/ moderngpu/src/mgpucontext.cu
+mgpuutil.o : moderngpu/src/mgpuutil.cpp
+	$(nvcc) -I moderngpu/include/ moderngpu/src/mgpuutil.cpp	
 MurmurHash2_64.o : MurmurHash2_64.cpp
 	$(nvcc) MurmurHash2_64.cpp	
 operators.o : operators.cu operators.h 
 	$(nvcc) operators.cu
 select.o : select.cu select.h 
 	$(nvcc) select.cu
-sorts.o : sorts.cpp sorts.h 
+sorts.o : sorts.cu sorts.h 
 	$(nvcc) sorts.cu
 strings_join.o : strings_join.cu strings_type.cuh
 	$(nvcc) strings_join.cu

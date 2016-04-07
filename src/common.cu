@@ -1,7 +1,6 @@
 #include "common.h"
 
-extern thrust::device_vector<unsigned char> scratch;
-extern bool phase_copy;
+map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 
 int get_utc_offset() {
 

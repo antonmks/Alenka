@@ -9,7 +9,4 @@ typedef unsigned short int int16_type;
 typedef unsigned char int8_type;
 typedef double float_type;
 
-size_t int_size = sizeof(int_type);
-size_t float_size = sizeof(float_type);
-
 #endif /* TYPES_H_ */

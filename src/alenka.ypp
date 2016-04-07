@@ -13,7 +13,9 @@
  */
 
 %{
+
 #include "lex.yy.c"
+#include "global.h"
 #include "operators.h"
 #include "common.h"
 
@@ -283,13 +285,10 @@ sort_def: { /* nil */
 
 %%
 
-#include "log.h"
 
 bool scan_state;
 unsigned int statement_count;
 time_t curr_time;
-std::clock_t tot_disk;
-int hash_seed;
 
 int execute_file(int ac, char **av)
 {

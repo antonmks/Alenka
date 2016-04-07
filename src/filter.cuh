@@ -1,7 +1,6 @@
 #ifndef FILTER_CUH_
 #define FILTER_CUH_
 
-
 struct cmp_functor_dict
 {
     const unsigned long long* source;
@@ -50,7 +49,7 @@ struct cmp_functor_dict
 
 struct gpu_regex
 {
-    char  *source;
+    char *source;
     char *pattern;
     bool * dest;
     const unsigned int *len;

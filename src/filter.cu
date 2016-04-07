@@ -6,10 +6,7 @@ extern time_t curr_time;
 extern int_type reverse_op(int_type op_type);
 extern time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 
-struct col_data {
-	unsigned int col_type;
-	unsigned int col_length;
-};
+
 extern map<string, map<string, col_data> > data_dict;
 
 extern unsigned int hash_seed;

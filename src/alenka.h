@@ -24,15 +24,7 @@
 
 
 //------------------------------------------------------------------------------------------
-#include <map>
-
-struct col_data {
-        unsigned int col_type;
-        unsigned int col_length;
-};
-
-extern map<string, map<string, col_data> > data_dict;
-extern void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
+#include "global.h"
 //------------------------------------------------------------------------------------------
 
 // call:

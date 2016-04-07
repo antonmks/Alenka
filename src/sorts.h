@@ -5,7 +5,6 @@
 
 using namespace std;
 
-
 template <typename KeyType>
 void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp, unsigned int bits);
 

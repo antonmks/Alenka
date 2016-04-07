@@ -1,0 +1,83 @@
+
+#ifndef GLOBAL_H_
+#define GLOBAL_H_
+
+#include <map>
+#include <queue>
+#include <time.h>
+
+#include "thrust.h"
+#include "types.h"
+#include "log.h"
+
+#include "moderngpu/include/moderngpu.cuh"
+
+using namespace std;
+using namespace mgpu;
+using namespace thrust::system::cuda::experimental;
+
+
+extern size_t int_size;
+extern size_t float_size;
+extern unsigned int hash_seed;
+extern queue<string> op_type;
+extern bool op_case;
+extern queue<string> op_sort;
+extern queue<string> op_presort;
+extern queue<string> op_value;
+extern string grp_val;
+extern queue<int_type> op_nums;
+extern queue<float_type> op_nums_f;
+extern queue<unsigned int> op_nums_precision; //decimals' precision
+extern queue<string> col_aliases;
+extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
+extern unsigned int total_segments;
+extern size_t process_count;
+extern bool fact_file_loaded;
+
+extern unsigned int partition_count;
+extern map<string,string> setMap; //map to keep track of column names and set names
+extern clock_t tot;
+extern clock_t tot_disk;
+extern bool verbose;
+extern bool save_dict;
+extern bool interactive;
+extern bool ssd;
+extern bool delta;
+extern bool star;
+extern map<string, char*> index_buffers;
+extern map<string, char*> buffers;
+extern map<string, size_t> buffer_sizes;
+extern queue<string> buffer_names;
+extern size_t total_buffer_size;
+extern thrust::device_vector<unsigned char> scratch;
+extern thrust::device_vector<unsigned int> rcol_matches;
+extern thrust::device_vector<int_type> rcol_dev;
+extern thrust::device_vector<int> ranj;
+extern size_t allocated_sz;
+extern ContextPtr context;
+extern map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
+extern bool scan_state;
+extern unsigned int statement_count;
+extern map<string, map<string, bool> > used_vars;
+extern map<string, unsigned int> cpy_bits;
+extern map<string, long long int> cpy_init_val;
+extern bool phase_copy;
+extern map<string,bool> min_max_eq;
+extern map<string, string> filter_var;
+
+extern void* alloced_tmp;
+extern bool alloced_switch;
+extern vector<void*> alloced_mem;
+
+struct col_data {
+	unsigned int col_type;
+	unsigned int col_length;
+};
+
+
+extern map<string, map<string, col_data> > data_dict;
+extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
+
+
+#endif /* GLOBAL_H_ */
