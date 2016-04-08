@@ -29,7 +29,6 @@ map<string,bool> min_max_eq;
 // regular functions:
 // ...
 
-#else
 
 
 
@@ -121,6 +120,8 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     };
     return orig_recCount;
 }
+
+#else
 
 
 template< typename T>

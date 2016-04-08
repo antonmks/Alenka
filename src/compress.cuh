@@ -180,6 +180,8 @@ struct decompress_functor_str
     }
 };
 
+size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname);
+
 #define COMPRESS_FUNCTIONS
 #include "compress.cu"
 
