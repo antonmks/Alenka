@@ -39,7 +39,6 @@ alenka
 *.app
 
 # Bison Flex
-bison.cu
-bison.tab.c
-bison.tab.h
+alenka.cu
+alenka.hu
 lex.yy.c 
