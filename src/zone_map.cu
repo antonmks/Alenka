@@ -14,7 +14,6 @@
 
 #include "zone_map.h"
 
-
 extern void process_error(int severity, string err);
 extern time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 extern int_type reverse_op(int_type op_type);

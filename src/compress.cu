@@ -12,12 +12,6 @@
  *  limitations under the License.
  */
 
-
-
-// PFOR and PFOR-DELTA Compression and decompression routines
-
-
-
 #ifndef COMPRESS_FUNCTIONS
 #include "compress.cuh"
 
@@ -26,11 +20,7 @@ map<string, unsigned int> cnt_counts;
 string curr_file;
 map<string,bool> min_max_eq;
 
-// regular functions:
-// ...
-
-
-
+// PFOR and PFOR-DELTA Compression and decompression routines
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname)
 {

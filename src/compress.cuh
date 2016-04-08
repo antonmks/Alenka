@@ -12,10 +12,8 @@
  *  limitations under the License.
  */
 
-
 #ifndef COMPRESS
 #define COMPRESS
-// PFOR and PFOR-DELTA Compression and decompression routines
 
 #include <fstream>
 #include <stdio.h>
@@ -24,14 +22,10 @@
 #include "global.h"
 #include "cuda_safe.h"
 
-using namespace std;
-
-//thrust::device_vector<unsigned char> scratch;
 extern bool phase_copy ;
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
 extern map<string,bool> min_max_eq;
-
 
 template<typename T>
 struct type_to_int64

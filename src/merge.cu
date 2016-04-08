@@ -19,7 +19,6 @@ extern size_t max_char(CudaSet* a);
 unsigned int hash_seed;
 thrust::host_vector<unsigned long long int> h_merge;
 
-
 void create_c(CudaSet* c, CudaSet* b)
 {
     c->not_compressed = 1;

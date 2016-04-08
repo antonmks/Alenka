@@ -3,12 +3,10 @@
 # The -D below may have to change to /D on some dos compilers
 CFLAGS=--machine 64 -O3 -std=c++11 -I moderngpu/include/
 
-#GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
-#GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
-#GENCODE_SM50	:= -gencode arch=compute_50,code=sm_50
-#GENCODE_FLAGS	:= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM50)
-
-GENCODE_FLAGS	:= -gencode arch=compute_20,code=sm_20
+GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
+GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
+GENCODE_SM50	:= -gencode arch=compute_50,code=sm_50
+GENCODE_FLAGS	:= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM50)
 
 nvcc = nvcc $(CFLAGS) $(GENCODE_FLAGS) -c
 
@@ -29,8 +27,8 @@ alenka.cu alenka.hu: alenka.ypp
 	bison -d -o alenka.cu alenka.ypp
 lex.yy.c: alenka.l alenka.hu
 	flex alenka.l
-callbacks.o : callbacks.c callbacks.h
-	$(nvcc) callbacks.c	
+callbacks.o : callbacks.cpp callbacks.h
+	$(nvcc) callbacks.cpp	
 common.o : common.cu common.h
 	$(nvcc) common.cu		
 compress.o : compress.cu

@@ -93,4 +93,3 @@ void str_sort(char* tmp, const size_t RecCount, unsigned int* permutation, const
 	else if(len  == 255) T_str_sort<255>().operator()(tmp, RecCount, dev_per, desc_order);
 	
 }
-// ---------------------------------------------------------------------------

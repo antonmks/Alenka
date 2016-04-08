@@ -13,19 +13,7 @@
 *  limitations under the License.
 */
 
-//
-// ---------------------------------------------------
-// File:	Alenka.h
-// Purpose:	The list of supported alenka lib calls
-// Author:	Randolph 
-// Date:	14/2/14
-// ---------------------------------------------------
-//
-
-
-//------------------------------------------------------------------------------------------
 #include "global.h"
-//------------------------------------------------------------------------------------------
 
 // call:
 void alenkaInit(char ** av);
@@ -34,5 +22,3 @@ void alenkaClose();
 
 // or:
 int execute_file(int ac, char **av);
-
-

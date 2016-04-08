@@ -1,54 +1,18 @@
-#include "operators.h"
-
-
 /*
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-extern map<string, map<string, col_data> > data_dict;
-extern size_t getFreeMem();
-extern bool verbose;
-extern queue<string> op_value;
-extern queue<string> op_type;
-extern queue<unsigned int> op_nums_precision; //decimals' precision
-extern queue<int_type> op_nums;
-extern queue<string> op_sort;
-extern bool op_case;
-extern bool ssd;
-extern bool interactive;
-extern string grp_val;
-extern map<string, unsigned int> cpy_bits;
-extern bool scan_state;
-extern map<string, char*> index_buffers;
-
-extern size_t load_queue(queue<string> c1, CudaSet* right, string f2, size_t &rcount,
-                  unsigned int start_segment, unsigned int end_segment, bool rsz = 1, bool flt = 1);
-
-extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
-extern queue<string> op_presort;
-extern queue<float_type> op_nums_f;
-extern map<string, char*> buffers;
-extern unsigned int statement_count;
-extern bool check_bitmaps_exist(CudaSet* left, CudaSet* right);
-extern bool check_bitmap_file_exist(CudaSet* left, CudaSet* right);
-extern void allocColumns(CudaSet* a, queue<string> fields);
-extern void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
-extern void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
-extern size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg);
-extern bool phase_copy;
-extern map<string,bool> min_max_eq;
-extern vector<void*> alloced_mem;
-extern size_t max_char(CudaSet* a);
-extern void setSegments(CudaSet* a, queue<string> cols);
-extern size_t max_char(CudaSet* a, queue<string> field_names);
-extern void copyFinalize(CudaSet* a, queue<string> fields, bool ts);
-extern void delete_records(const char* f);
-extern void insert_records(const char* f, const char* s);
-extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
-extern unsigned int total_segments;
-extern size_t process_count;
-extern bool fact_file_loaded;
-extern void* allocated_tmp;
-extern void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
-*/
+#include "operators.h"
 
 queue<string> namevars;
 queue<string> typevars;

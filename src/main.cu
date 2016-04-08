@@ -20,7 +20,6 @@ using namespace std;
 
 #include "alenka.h"
 
-
 int main(int ac, char **av)
 {
     std::clock_t start;
