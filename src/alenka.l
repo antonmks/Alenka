@@ -15,7 +15,7 @@
 
 %{
 #include "alenka.hu"
-#include "atof.h"
+#include "atof.hpp"
 
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)

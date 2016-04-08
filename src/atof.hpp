@@ -10,6 +10,9 @@
 // 09-May-2009 Tom Van Baak (tvb) www.LeapSecond.com
 //
 
+#ifndef ATOF_H_
+#define ATOF_H_
+
 #define white_space(c) ((c) == ' ' || (c) == '\t')
 #define valid_digit(c) ((c) >= '0' && (c) <= '9')
 
@@ -89,3 +92,5 @@ double atoff (const char *p)
 
     return sign * (frac ? (value / scale) : (value * scale));
 };
+
+#endif /* ATOF_H_ */
