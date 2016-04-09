@@ -36,6 +36,6 @@ void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned lo
 }
 
 #define SORT_FUNCTIONS
-#include "sorts.cu"
+#include "../src/sorts.cu"
 
 #endif /* SORTS_H_ */

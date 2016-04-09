@@ -180,7 +180,7 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
 }
 
 #define COMPRESS_FUNCTIONS
-#include "compress.cu"
+#include "../src/compress.cu"
 
 #endif
 

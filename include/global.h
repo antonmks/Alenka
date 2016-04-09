@@ -23,7 +23,7 @@
 #include "types.h"
 #include "log.h"
 
-#include "moderngpu/include/moderngpu.cuh"
+#include "moderngpu.cuh"
 
 using namespace std;
 using namespace mgpu;
