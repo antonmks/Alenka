@@ -18,9 +18,9 @@
 namespace alenka {
 
 // call:
-void alenkaInit(char ** av);
-int alenkaExecute(char *s);
-void alenkaClose();
+void init(char ** av);
+int execute(char *s);
+void close();
 
 // or:
 int execute_file(int ac, char **av);

@@ -27,12 +27,11 @@
 
 #include "global.h"
 #include "compress.cuh"
-#include "sorts.cuh"
+#include "sorts.h"
 #include "util.cuh"
 #include "cuda_safe.h"
 #include "MurmurHash2_64.h"
 #include "callbacks.h"
-#include "moderngpu/include/moderngpu.cuh"
 
 using namespace std;
 using namespace thrust::placeholders;

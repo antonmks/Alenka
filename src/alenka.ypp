@@ -471,13 +471,7 @@ int execute_file(int ac, char **av)
     return 0;
 }
 
-
-
-//external c global to report errors
-//char alenka_err[4048];
-
-
-int alenkaExecute(char *s)
+int execute(char *s)
 {
     YY_BUFFER_STATE bp;
 

@@ -14,7 +14,13 @@
 
 
 #ifndef COMPRESS_FUNCTIONS
-#include "sorts.cuh"
+#include "sorts.h"
+
+namespace alenka {
+
+
+}
+
 
 #else
 

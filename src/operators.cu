@@ -2777,7 +2777,7 @@ void process_error(int severity, string err) {
 }
 
 
-void alenkaInit(char ** av)
+void init(char ** av)
 {
     process_count = 1000000000;
     verbose = 0;
@@ -2788,7 +2788,7 @@ void alenkaInit(char ** av)
 }
 
 
-void alenkaClose()
+void close()
 {
     statement_count = 0;
 
