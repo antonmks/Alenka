@@ -11,18 +11,18 @@ GENCODE_FLAGS	:= $(GENCODE_SM30)
 
 #alenka binary
 alenka : libalenka.a main.o
-	nvcc $(CFLAGS) -L . $@ -o $@ main.o
+	nvcc $(CFLAGS) -L . $< -o $@ main.o
 
 #static library
 libalenka.a : alenka.o callbacks.o common.o compress.o CudaSet.o filter.o global.o \
  		 merge.o mgpucontext.o mgpuutil.o MurmurHash2_64.o operators.o select.o sorts.o \
-		 strings_join.o strings_sort_host.o strings_sort_device zone_map.o	 
-	ar rcs $^
+		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
+	ar rcs $@ $^
 
 #shared library
 libalenka.so : alenka.o callbacks.o common.o compress.o CudaSet.o filter.o global.o \
  		 merge.o mgpucontext.o mgpuutil.o MurmurHash2_64.o operators.o select.o sorts.o \
-		 strings_join.o strings_sort_host.o strings_sort_device zone_map.o	 
+		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	nvcc -o libalenka.so --shared $^
 
 #alenka objects
@@ -41,7 +41,7 @@ filter.o : filter.cu
 	$(nvcc) -c $< -o $@
 global.o : global.cu
 	$(nvcc) -c $< -o $@
-main.o : main.cu alenka.h
+main.o : main.cu
 	$(nvcc) -c $< -o $@
 merge.o : merge.cu
 	$(nvcc) -c $< -o $@
@@ -80,14 +80,14 @@ clean :
 #install binary + libs + header
 PREFIX = /usr/local
 .PHONY: install
-install: alenka libalenka.a libalenka.so alenka.h
+install: alenka libalenka.a libalenka.so
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp $< $(DESTDIR)$(PREFIX)/bin/alenka
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 	mkdir -p $(DESTDIR)$(PREFIX)/include
 	cp libalenka.a $(DESTDIR)$(PREFIX)/lib/
 	cp libalenka.so $(DESTDIR)$(PREFIX)/lib/
-	cp alenka.hh $(DESTDIR)$(PREFIX)/include/
+	cp ../include/alenka.h $(DESTDIR)$(PREFIX)/include/
 
 .PHONY: uninstall
 uninstall:
