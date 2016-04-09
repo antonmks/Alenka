@@ -15,6 +15,8 @@
 #ifndef STRING_SORT_DEVICE_CUH_
 #define STRING_SORT_DEVICE_CUH_
 
+namespace alenka {
+
 /// The conversion between big endian and little endian, it need for sort strings as like fundamental types
 struct T_swap_le_be_64 {
 	__host__ __device__
@@ -52,5 +54,7 @@ struct T_swap_le_be_8 {
 	__host__ __device__
 	inline unsigned char operator()(unsigned char const& val) const { return val; }
 };
+
+}
 
 #endif /* STRING_SORT_DEVICE_CUH_ */

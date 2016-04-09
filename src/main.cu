@@ -16,9 +16,10 @@
 #include <ctime>
 #include <string>
 
-using namespace std;
-
 #include "alenka.h"
+
+using namespace std;
+using namespace alenka;
 
 int main(int ac, char **av)
 {

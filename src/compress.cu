@@ -15,6 +15,8 @@
 #ifndef COMPRESS_FUNCTIONS
 #include "compress.cuh"
 
+namespace alenka {
+
 bool phase_copy = 0;
 map<string, unsigned int> cnt_counts;
 string curr_file;
@@ -111,8 +113,11 @@ size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, stri
     return orig_recCount;
 }
 
+}
+
 #else
 
+namespace alenka {
 
 template< typename T>
 void pfor_delta_compress(void* source, size_t source_len, string file_name, thrust::host_vector<T, pinned_allocator<T> >& host, bool tp)
@@ -372,4 +377,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
         cnt_counts[curr_file] = cnt;
 }
 
+}
+
 #endif
+

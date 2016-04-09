@@ -141,5 +141,3 @@ void PROC_FLUSH_BUF ( FILE * xFile )
         yy_switch_to_buffer ( yy_create_buffer ( xFile, YY_BUF_SIZE ) ); 
 }
 
-
-

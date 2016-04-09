@@ -18,6 +18,8 @@
 #include "types.h"
 #include "thrust.h"
 
+namespace alenka {
+
 struct f_equal_to {
 	__host__ __device__
 	bool operator()(const float_type x, const float_type y) {
@@ -633,5 +635,7 @@ struct parse_functor {
 
 	}
 };
+
+}
 
 #endif /* UTIL_H_ */

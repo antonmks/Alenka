@@ -17,6 +17,8 @@
 
 #include "types.h"
 
+namespace alenka {
+
 struct float_avg
 {
     __host__
@@ -41,6 +43,6 @@ struct div100
     }
 };
 
-
+}
 
 #endif /* MERGE_CUH_ */

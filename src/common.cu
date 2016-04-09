@@ -14,6 +14,9 @@
 
 #include "common.h"
 
+namespace alenka {
+
+
 map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 
 int get_utc_offset() {
@@ -1258,3 +1261,5 @@ size_t getTotalSystemMemory()
     return pages * page_size;
 }
 #endif
+
+}

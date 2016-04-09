@@ -15,6 +15,8 @@
 
 #include "global.h"
 
+namespace alenka {
+
 // call:
 void alenkaInit(char ** av);
 int alenkaExecute(char *s);
@@ -22,3 +24,5 @@ void alenkaClose();
 
 // or:
 int execute_file(int ac, char **av);
+
+}

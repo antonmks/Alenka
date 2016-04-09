@@ -26,8 +26,7 @@
 #define BIG_CONSTANT(x) (x##LLU)
 #endif // !defined(_MSC_VER)
 
-using namespace std;
-using namespace thrust::placeholders;
+namespace alenka {
 
 void create_c(CudaSet* c, CudaSet* b);
 void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases,
@@ -36,4 +35,5 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 void count_avg(CudaSet* c, vector<thrust::device_vector<int_type> >& distinct_hash);
 void count_simple(CudaSet* c);
 
+}
 #endif /* MERGE_H_ */

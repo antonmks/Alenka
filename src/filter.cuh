@@ -15,6 +15,8 @@
 #ifndef FILTER_CUH_
 #define FILTER_CUH_
 
+namespace alenka {
+
 struct cmp_functor_dict
 {
     const unsigned long long* source;
@@ -122,6 +124,6 @@ starCheck:
     }
 };
 
-
+}
 
 #endif /* FILTER_CUH_ */

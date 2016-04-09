@@ -14,10 +14,13 @@
 
 %{
 
-#include "lex.yy.c"
 #include "global.h"
 #include "operators.h"
 #include "common.h"
+
+namespace alenka {
+
+#include "lex.yy.c"
 
 %}
 
@@ -520,4 +523,6 @@ int alenkaExecute(char *s)
     if(save_dict)
         save_col_data(data_dict,"data.dictionary");
     return ret;
+}
+
 }

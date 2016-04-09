@@ -29,6 +29,7 @@ using namespace std;
 using namespace mgpu;
 using namespace thrust::system::cuda::experimental;
 
+namespace alenka {
 
 extern size_t int_size;
 extern size_t float_size;
@@ -92,5 +93,6 @@ struct col_data {
 extern map<string, map<string, col_data> > data_dict;
 extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 
+}
 
 #endif /* GLOBAL_H_ */

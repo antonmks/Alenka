@@ -14,6 +14,8 @@
 
 #include "strings_join.h"
 
+namespace alenka {
+
 template<unsigned int len>
 struct T_str_scatter_host {
     inline void operator()(const unsigned int* d_int, const size_t real_count, void* d, void* d_char) {
@@ -77,6 +79,6 @@ void str_gather(void* d_int, const size_t real_count, void* d, void* d_char, con
 	else if(len  == 1023) T_str_gather<1023>().operator()(res, real_count, d, d_char);
 }
 
-
+}
 
 // ---------------------------------------------------------------------------

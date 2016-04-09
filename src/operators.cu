@@ -14,6 +14,8 @@
 
 #include "operators.h"
 
+namespace alenka {
+
 queue<string> namevars;
 queue<string> typevars;
 queue<int> sizevars;
@@ -2797,5 +2799,5 @@ void alenkaClose()
 }
 
 
-
+}
 

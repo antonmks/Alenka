@@ -38,6 +38,7 @@ using namespace std;
 using namespace thrust::placeholders;
 using namespace thrust::system::cuda::experimental;
 
+namespace alenka {
 
 class CudaSet
 {
@@ -154,6 +155,6 @@ private:
     void* s_v = nullptr;
 };
 
-
+}
 
 #endif /* CUDASET_H_ */

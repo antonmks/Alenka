@@ -14,6 +14,8 @@
 
 #include "global.h"
 
+namespace alenka {
+
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
 
@@ -60,5 +62,5 @@ thrust::device_vector<int_type> rcol_dev;
 clock_t tot_disk;
 
 
-
+}
 //map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables

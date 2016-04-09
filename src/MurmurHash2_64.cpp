@@ -6,6 +6,8 @@
 
 #include "MurmurHash2_64.h"
 
+namespace alenka {
+
 // 64-bit hash for 64-bit platforms
 
 uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count )
@@ -151,3 +153,5 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed )
 
 	return h;
 } 
+
+}

@@ -12,10 +12,13 @@
  *  limitations under the License.
  */
 
+
 #ifndef COMPRESS_FUNCTIONS
 #include "sorts.cuh"
 
 #else
+
+namespace alenka {
 
 template <typename KeyType>
 void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp, unsigned int bits)
@@ -129,9 +132,9 @@ void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned lo
     thrust::gather(permutation, permutation + RecCount, key, res);
 }
 
+}
+
 #endif
-
-
 
 
 

@@ -14,6 +14,8 @@
 
 #include "merge.h"
 
+namespace alenka {
+
 extern size_t max_char(CudaSet* a);
 
 unsigned int hash_seed;
@@ -447,3 +449,4 @@ void count_avg(CudaSet* c,  vector<thrust::device_vector<int_type> >& distinct_h
     c->maxRecs = c->mRecCount;
 };
 
+}

@@ -22,6 +22,8 @@
 #include "filter.h"
 #include "select.h"
 
+namespace alenka {
+
 extern queue<string> namevars;
 extern queue<string> typevars;
 extern queue<int> sizevars;
@@ -112,5 +114,6 @@ void emit_fieldname(const char* name1, const char* name2);
 void load_vars();
 void emit_string_grp(const char *str, const char *str_grp);
 
+}
 
 #endif /* OPERATORS_H_ */

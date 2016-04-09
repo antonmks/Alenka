@@ -14,6 +14,8 @@
 
 #include "select.h"
 
+namespace alenka {
+
 extern void alloc_pool(unsigned int maxRecs);
 extern thrust::device_vector<unsigned int> rcol_matches;
 extern thrust::device_vector<int_type> rcol_dev;
@@ -1036,4 +1038,6 @@ void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         b->mRecCount = res_size;
         one_liner = 0;
     };
+}
+
 }

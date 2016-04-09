@@ -14,6 +14,8 @@
 
 #include "CudaSet.h"
 
+namespace alenka {
+
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 extern bool fact_file_loaded;
 extern size_t process_count;
@@ -3166,3 +3168,6 @@ void CudaSet::initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<str
         op_sel.pop();
     };
 };
+
+
+}

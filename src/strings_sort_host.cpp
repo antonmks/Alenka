@@ -14,6 +14,8 @@
 
 #include "strings_sort_host.h"
 
+namespace alenka {
+
 /// SORT on host static strings
 void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len)
 {
@@ -26,3 +28,5 @@ void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, 
 	else if(len  == 255) T_str_sort_host<255>().operator()(tmp, RecCount, permutation, desc_order);
 }
 // ---------------------------------------------------------------------------
+
+}

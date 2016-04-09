@@ -18,6 +18,8 @@
 #include <thrust/sort.h>
 #include "strings_join.h"
 
+namespace alenka {
+
 /// SORT on host static strings (functor)
 template<unsigned int len>
 struct T_str_sort_host {
@@ -31,4 +33,5 @@ struct T_str_sort_host {
 
 void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len);
 
+}
 #endif /* STRINGS_SORT_HOST_H_ */

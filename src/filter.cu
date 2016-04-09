@@ -14,6 +14,8 @@
 
 #include "filter.h"
 
+namespace alenka {
+
 extern map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
 extern time_t curr_time;
 extern int_type reverse_op(int_type op_type);
@@ -2007,4 +2009,6 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
     };
 
     return bool_vectors.top();
+}
+
 }

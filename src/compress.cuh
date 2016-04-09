@@ -22,6 +22,8 @@
 #include "global.h"
 #include "cuda_safe.h"
 
+namespace alenka {
+
 extern bool phase_copy ;
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
@@ -62,7 +64,6 @@ struct to_int64
         return (int_type)x;
     }
 };
-
 
 struct compress_functor_int
 {
@@ -176,7 +177,11 @@ struct decompress_functor_str
 
 size_t pfor_decompress(void* destination, void* host, void* d_v, void* s_v, string colname);
 
+}
+
 #define COMPRESS_FUNCTIONS
 #include "compress.cu"
 
 #endif
+
+

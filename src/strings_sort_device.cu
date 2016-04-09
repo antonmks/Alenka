@@ -16,6 +16,8 @@
 #include "strings_type.cuh"
 #include "strings_sort_device.cuh"
 
+namespace alenka {
+
 /// SORT on device static strings (functor)
 template<unsigned int len>
 struct T_str_sort {
@@ -92,4 +94,6 @@ void str_sort(char* tmp, const size_t RecCount, unsigned int* permutation, const
 	else if(len  == 101) T_str_sort<101>().operator()(tmp, RecCount, dev_per, desc_order);
 	else if(len  == 255) T_str_sort<255>().operator()(tmp, RecCount, dev_per, desc_order);
 	
+}
+
 }

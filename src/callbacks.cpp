@@ -14,6 +14,9 @@
 
 #include "callbacks.h"
 
+namespace alenka {
+
+
 int row_cb(int field_count, char **fields, char **ColName){
    int i;
    char tab=' ';
@@ -32,3 +35,4 @@ void error_cb(int severity, const char * err) {
 	exit(1);
 }
 
+}

@@ -15,8 +15,7 @@
 #ifndef STRINGS_TYPE_CUH_
 #define STRINGS_TYPE_CUH_
 
-/// Number of turns of the templated functors
-//#define UNROLL_COUNT 40
+namespace alenka {
 
 /// Static string type 4
 template<unsigned int N, typename T = unsigned char>
@@ -207,5 +206,7 @@ struct T_unroll_functor<0, T_functor> {
 	template<typename T1, typename T2, typename T3>
 	bool operator()(T1 &val1, T2 &val2, T3 &val3, const unsigned int len) { return false; }
 };
+
+}
 
 #endif /* STRINGS_TYPE_CUH_ */

@@ -15,6 +15,8 @@
 #ifndef CUDA_SAFE_H_
 #define CUDA_SAFE_H_
 
+namespace alenka {
+
 #  define CUDA_SAFE_CALL_NO_SYNC( call) do {                                \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
@@ -30,5 +32,7 @@
                 __FILE__, __LINE__, cudaGetErrorString( err) );              \
         exit(EXIT_FAILURE);                                                  \
     } } while (0)
+
+}
 
 #endif /* CUDA_SAFE_H_ */

@@ -19,6 +19,8 @@
 #include <string>
 #include <stdio.h>
 
+namespace alenka {
+
 inline std::string NowTime();
 
 enum TLogLevel {logERROR, logWARNING, logINFO, logDEBUG, logDEBUG1, logDEBUG2, logDEBUG3, logDEBUG4};
@@ -133,5 +135,7 @@ inline std::string NowTime() {
 }
 
 #endif //WIN32
+
+}
 
 #endif //__LOG_H__

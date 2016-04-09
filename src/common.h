@@ -23,6 +23,8 @@
 #include "filter.h"
 #include "strings_sort_host.h"
 
+namespace alenka {
+
 extern map<string,CudaSet*> varNames;
 
 void write_compressed_char(string file_name, unsigned int index, size_t mCount);
@@ -65,6 +67,7 @@ void alloc_pool(unsigned int maxRecs);
 time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
 
+}
 
 
 #endif /* COMMON_H_ */

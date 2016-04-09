@@ -14,6 +14,8 @@
 
 #include "types.h"
 
+namespace alenka {
+
 template<typename T>
 struct distinct : public binary_function<T,T,T>
 {
@@ -243,7 +245,7 @@ struct gpu_getday
 	}
 };	
 
-
+}
 
 
 
