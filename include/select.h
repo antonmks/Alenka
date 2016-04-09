@@ -16,6 +16,7 @@
 #define SELECT_H_
 
 #include "global.h"
+#include "common.h"
 #include "CudaSet.h"
 #include "zone_map.h"
 #include "util.cuh"

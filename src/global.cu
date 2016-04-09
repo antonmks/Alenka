@@ -12,13 +12,17 @@
  *  limitations under the License.
  */
 
+#include <map>
+#include <queue>
+#include <string>
+#include <vector>
+
 #include "global.h"
 
 namespace alenka {
 
 size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
-
 size_t total_count = 0, total_max;
 clock_t tot;
 unsigned int total_segments = 0, old_segments;
@@ -41,26 +45,26 @@ queue<unsigned int> op_nums_precision;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
 map<unsigned int, map<unsigned long long int, size_t> > char_hash;
-
 map<string, char*> index_buffers;
 map<string, unsigned long long int*> idx_vals;
 map<string, char*> buffers;
 map<string, size_t> buffer_sizes;
 size_t total_buffer_size;
 queue<string> buffer_names;
-
 void* alloced_tmp;
 bool alloced_switch = 0;
 vector<void*> alloced_mem;
-
 map<string, unsigned int> cpy_bits;
 map<string, long long int> cpy_init_val;
 char* readbuff = nullptr;
 thrust::device_vector<unsigned int> rcol_matches;
 thrust::device_vector<int_type> rcol_dev;
-
 clock_t tot_disk;
+bool phase_copy = 0;
+map<string, unsigned int> cnt_counts;
+string curr_file;
+map<string, bool> min_max_eq;
 
 
-}
-//map<string,CudaSet*> varNames; //  STL map to manage CudaSet variables
+} // namespace alenka
+

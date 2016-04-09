@@ -16,23 +16,21 @@
 
 namespace alenka {
 
-
-int row_cb(int field_count, char **fields, char **ColName){
-   int i;
-   char tab=' ';
-   for(i=0; i<field_count; i++){
-      	printf("|%s%c", fields[i] ? fields[i] : "NULL", tab);
+int row_cb(int field_count, char **fields, char **ColName) {
+	int i;
+	char tab = ' ';
+	for(i = 0; i < field_count; i++) {
+		printf("|%s%c", fields[i] ? fields[i] : "NULL", tab);
 	tab = '\t';	// dont stall the x86 pipeline with an if statement...
-   }
-   printf("|\n");
-   return 0;
+	}
+	printf("|\n");
+	return 0;
 }
 
-
 void error_cb(int severity, const char * err) {
-    printf("%s\n", err);
-    if (severity >1)
+	printf("%s\n", err);
+	if (severity >1)
 	exit(1);
 }
 
-}
+} // namespace alenka

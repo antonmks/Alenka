@@ -17,16 +17,14 @@
 namespace alenka {
 
 /// SORT on host static strings
-void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len)
-{
+void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len) {
 	T_unroll_functor<UNROLL_COUNT, T_str_sort_host> str_sort_host_functor;
 	if (str_sort_host_functor(tmp, RecCount, permutation, desc_order, len)) {}
-	else if(len  == 50) T_str_sort_host<50>().operator()(tmp, RecCount, permutation, desc_order);
-	else if(len  == 60) T_str_sort_host<60>().operator()(tmp, RecCount, permutation, desc_order);
-	else if(len  == 100) T_str_sort_host<100>().operator()(tmp, RecCount, permutation, desc_order);
-	else if(len  == 101) T_str_sort_host<101>().operator()(tmp, RecCount, permutation, desc_order);
-	else if(len  == 255) T_str_sort_host<255>().operator()(tmp, RecCount, permutation, desc_order);
+	else if (len  == 50) T_str_sort_host<50>().operator()(tmp, RecCount, permutation, desc_order);
+	else if (len  == 60) T_str_sort_host<60>().operator()(tmp, RecCount, permutation, desc_order);
+	else if (len  == 100) T_str_sort_host<100>().operator()(tmp, RecCount, permutation, desc_order);
+	else if (len  == 101) T_str_sort_host<101>().operator()(tmp, RecCount, permutation, desc_order);
+	else if (len  == 255) T_str_sort_host<255>().operator()(tmp, RecCount, permutation, desc_order);
 }
-// ---------------------------------------------------------------------------
 
-}
+} // namespace alenka

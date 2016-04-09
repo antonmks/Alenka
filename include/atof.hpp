@@ -16,8 +16,7 @@
 #define white_space(c) ((c) == ' ' || (c) == '\t')
 #define valid_digit(c) ((c) >= '0' && (c) <= '9')
 
-double atoff (const char *p)
-{
+double atoff (const char *p) {
     int frac;
     double sign, value, scale;
 

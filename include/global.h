@@ -79,19 +79,19 @@ extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
 extern map<string,bool> min_max_eq;
 extern map<string, string> filter_var;
-
 extern void* alloced_tmp;
 extern bool alloced_switch;
 extern vector<void*> alloced_mem;
-
 struct col_data {
 	unsigned int col_type;
 	unsigned int col_length;
 };
-
-
 extern map<string, map<string, col_data> > data_dict;
 extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
+extern bool phase_copy ;
+extern map<string, unsigned int> cnt_counts;
+extern string curr_file;
+extern map<string,bool> min_max_eq;
 
 }
 

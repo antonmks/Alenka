@@ -14,6 +14,8 @@
 
 %{
 
+#include <string>
+
 #include "global.h"
 #include "operators.h"
 #include "common.h"
@@ -293,9 +295,7 @@ bool scan_state;
 unsigned int statement_count;
 time_t curr_time;
 
-int execute_file(int ac, char **av)
-{
-
+int execute_file(int ac, char **av) {
 	LOG(logINFO) << "Executing File..";
 
     bool just_once  = 0;
@@ -310,169 +310,153 @@ int execute_file(int ac, char **av)
 	LOG::ReportingLevel() = LOG::FromString("INFO"); //default logging level
 
     for (int i = 1; i < ac; i++) {
-        if(strcmp(av[i],"-l") == 0) {
+        if (strcmp(av[i], "-l") == 0) {
             process_count = 1000000*atoff(av[i+1]);
-        }
-        else if(strcmp(av[i],"-v") == 0) {
+        } else if (strcmp(av[i], "-v") == 0) {
             verbose = 1;
             LOG::ReportingLevel() = LOG::FromString("DEBUG");
-        }
-        else if(strcmp(av[i],"-delta") == 0) {
+        } else if (strcmp(av[i], "-delta") == 0) {
             delta = 1;
-        }		
-        else if(strcmp(av[i],"-ssd") == 0) {
+        } else if (strcmp(av[i], "-ssd") == 0) {
             ssd = 1;
-        }		
-        else if(strcmp(av[i],"-i") == 0) {
+        } else if (strcmp(av[i], "-i") == 0) {
             interactive = 1;
             break;
-        }
-        else if(strcmp(av[i],"-s") == 0) {
+        } else if (strcmp(av[i], "-s") == 0) {
             just_once = 1;
             interactive = 1;
             script = av[i+1];
-        };
-    };
+        }
+    }
 
     load_col_data(data_dict, "data.dictionary");
 	tot_disk = 0;
 
     if (!interactive) {
-        if((yyin = fopen(av[ac-1], "r")) == nullptr) {
+        if ((yyin = fopen(av[ac-1], "r")) == nullptr) {
             perror(av[ac-1]);
             exit(1);
-        };
+        }
 
-        if(yyparse()) {
+        if (yyparse()) {
             printf("SQL scan parse failed\n");
             exit(1);
-        };
+        }
 
         scan_state = 1;
         std::clock_t start1 = std::clock();
-
-        load_vars();
-		
         statement_count = 0;
+        load_vars();
         clean_queues();
 		filter_var.clear();
 
         yyin = fopen(av[ac-1], "r");
-        PROC_FLUSH_BUF ( yyin );
+        PROC_FLUSH_BUF(yyin);
         statement_count = 0;
 
         extern FILE *yyin;
         context = CreateCudaDevice(0, nullptr, verbose);
 
 		curr_time = time(0)*1000;
-        if(!yyparse()) {
-            if(verbose)
+        if (!yyparse()) {
+            if (verbose)
             	LOG(logDEBUG) << "SQL scan parse worked ";
-        }
-        else
+        } else {
         	LOG(logERROR) << "SQL scan parse failed ";
+        }
 
         fclose(yyin);
-        for (auto it=varNames.begin() ; it != varNames.end(); ++it ) {
+        for (auto it = varNames.begin() ; it != varNames.end() ; ++it) {
             (*it).second->free();
-        };
+        }
 
-        if(verbose) {
-        	LOG(logDEBUG) << "cycle time: " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC ) << " free mem: " << getFreeMem();
-        	LOG(logDEBUG) << "disk time: " << ( tot_disk / (double)CLOCKS_PER_SEC ) << " free mem: " << getFreeMem();
-        };
-    }
-    else { // interactive mode
-        context = CreateCudaDevice(0, nullptr, verbose);        
-        if(!just_once)
+        if (verbose) {
+        	LOG(logDEBUG) << "cycle time: " << ((std::clock() - start1) / (double)CLOCKS_PER_SEC) << " free mem: " << getFreeMem();
+        	LOG(logDEBUG) << "disk time: " << (tot_disk / (double)CLOCKS_PER_SEC) << " free mem: " << getFreeMem();
+        }
+    } else { // interactive mode
+        context = CreateCudaDevice(0, nullptr, verbose);
+        if (!just_once)
             getline(cin, script);
 
         while (script != "exit" && script != "EXIT") {
-
             used_vars.clear();
             yy_scan_string(script.c_str());
             scan_state = 0;
             statement_count = 0;
             clean_queues();
-            if(yyparse()) {
+            if (yyparse()) {
                 printf("SQL scan parse failed \n");
                 getline(cin, script);
                 continue;
-            };
+            }
 
             scan_state = 1;
-
             load_vars();
-
             statement_count = 0;
             clean_queues();
 			filter_var.clear();
             yy_scan_string(script.c_str());
             std::clock_t start1 = std::clock();
 			curr_time = time(0)*1000;
-			
-            if(!yyparse()) {
-                if(verbose)
+
+            if (!yyparse()) {
+                if (verbose)
                 	LOG(logDEBUG) << "SQL scan parse worked ";
-            };
-            for (auto it=varNames.begin() ; it != varNames.end(); ++it ) {
+            }
+            for (auto it = varNames.begin() ; it != varNames.end() ; ++it) {
                 (*it).second->free();
-            };
+            }
             varNames.clear();
 
-            if(verbose) {
-            	LOG(logDEBUG) << "cycle time " << ( ( std::clock() - start1 ) / (double)CLOCKS_PER_SEC );
-            };
-            if(!just_once)
+            if (verbose) {
+            	LOG(logDEBUG) << "cycle time " << ((std::clock() - start1) / (double)CLOCKS_PER_SEC);
+            }
+            if (!just_once)
                 getline(cin, script);
             else
                 script = "exit";
-        };
-
-        while(!buffer_names.empty()) {
+        }
+        while (!buffer_names.empty()) {
 			cudaFreeHost(buffers[buffer_names.front()]);
             buffer_sizes.erase(buffer_names.front());
             buffers.erase(buffer_names.front());
             buffer_names.pop();
-        };
-		for(auto it = index_buffers.begin(); it != index_buffers.end();it++) {
+        }
+		for (auto it = index_buffers.begin() ; it != index_buffers.end() ; it++) {
 			cudaFreeHost(it->second);
-        };
-		for(auto it = idx_vals.begin(); it != idx_vals.end();it++) {
+        }
+		for (auto it = idx_vals.begin() ; it != idx_vals.end() ; it++) {
 			cudaFree(it->second);
-		idx_vals.clear();	
-    };
-	
-
-    };
-    if(save_dict) {
-        save_col_data(data_dict,"data.dictionary");
-	};	
-
-    if(alloced_sz) {
+			idx_vals.clear();
+    	}
+    }
+    if (save_dict) {
+        save_col_data(data_dict, "data.dictionary");
+	}
+    if (alloced_sz) {
         cudaFree(alloced_tmp);
         alloced_sz = 0;
-    };
-	if(scratch.size()) {
+    }
+	if (scratch.size()) {
 		scratch.resize(0);
 		scratch.shrink_to_fit();
-	};	
-	if(rcol_dev.size()) {
+	}
+	if (rcol_dev.size()) {
 		rcol_dev.resize(0);
 		rcol_dev.shrink_to_fit();
-	};
-	if(ranj.size()) {
+	}
+	if (ranj.size()) {
 		ranj.resize(0);
 		ranj.shrink_to_fit();
-	};	
+	}
 
 	LOG(logINFO) << "Execute Complete!";
 
     return 0;
 }
 
-int execute(char *s)
-{
+int execute(char *s) {
     YY_BUFFER_STATE bp;
 
     total_buffer_size = 0;
@@ -480,14 +464,13 @@ int execute(char *s)
     load_col_data(data_dict, "data.dictionary");
     std::clock_t start;
 
-    if(verbose)
+    if (verbose)
         start = std::clock();
     bp = yy_scan_string(s);
     yy_switch_to_buffer(bp);
     int ret = yyparse();
-    //printf("execute: returned [%d]\n", ret);
-    if(!ret) {
-        if(verbose)
+    if (!ret) {
+        if (verbose)
             LOG(logDEBUG) << "SQL scan parse worked";
     }
 
@@ -497,26 +480,26 @@ int execute(char *s)
     clean_queues();
     bp = yy_scan_string(s);
     yy_switch_to_buffer(bp);
-    if(!yyparse()) {
-        if(verbose)
+    if (!yyparse()) {
+        if (verbose)
             LOG(logDEBUG) << "SQL scan parse worked ";
-    }
-    else
+    } else {
         LOG(logERROR) << "SQL scan parse failed";
+    }
 
     yy_delete_buffer(bp);
 
     // Clear Vars
-    for (auto it=varNames.begin() ; it != varNames.end(); ++it ) {
+    for (auto it = varNames.begin() ; it != varNames.end() ; ++it) {
         (*it).second->free();
-    };
+    }
     varNames.clear();
 
-    if(verbose)
-        LOG(logDEBUG) << "statement time " <<  ( ( std::clock() - start ) / (double)CLOCKS_PER_SEC );
-    if(save_dict)
-        save_col_data(data_dict,"data.dictionary");
+    if (verbose)
+        LOG(logDEBUG) << "statement time " <<  ((std::clock() - start) / (double)CLOCKS_PER_SEC);
+    if (save_dict)
+        save_col_data(data_dict, "data.dictionary");
     return ret;
 }
 
-}
+} // namespace alenka

@@ -16,7 +16,6 @@
 
 #include <queue>
 #include <string>
-#include <algorithm>
 #include <stack>
 #include <set>
 
@@ -2036,4 +2035,4 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     return bool_vectors.top();
 }
 
-}  // namespace alenka
+} // namespace alenka

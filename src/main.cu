@@ -21,11 +21,9 @@
 using namespace std;
 using namespace alenka;
 
-int main(int ac, char **av)
-{
+int main(int ac, char **av) {
     std::clock_t start;
     int x;
-
     // test QPS via alenkaExecute	-- this section is the only C++ dependency
     if (ac == 2 && string(av[1]) == "--QPS-test") {
         init(NULL);
@@ -33,16 +31,15 @@ int main(int ac, char **av)
         for (x=0; x< 1000; x++)  {
             execute("A1 := SELECT  count(n_name) AS col1 FROM nation;\n DISPLAY A1 USING ('|');");
         }
-        LOG(alenka::logINFO) << "Ave QPS is : " <<  ( 1000/ (( std::clock() - start ) / (double)CLOCKS_PER_SEC ));
+        LOG(alenka::logINFO) << "Ave QPS is : " <<  (1000/ ((std::clock() - start) / (double)CLOCKS_PER_SEC));
         close();
-    }
-    else {				// ordinary alenka file mode
+    } else {  // ordinary alenka file mode
         if (ac < 2) {
             cerr << "Usage : alenka [--QPS-test] | [ [-l load size(MB)] [-v] script.sql ]" << endl;
             exit(EXIT_FAILURE);
+        } else {
+            return execute_file(ac, av);
         }
-        else
-            return execute_file(ac, av) ;
     }
 }
 
