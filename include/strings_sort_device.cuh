@@ -46,7 +46,7 @@ struct T_swap_le_be_16 {
 	__host__ __device__
 	inline unsigned short int operator()(unsigned short int const& val) const {
 		return (val << 8) |		// move byte 0 to byte 1
-				(val > >8);		// move byte 1 to byte 0
+				(val >> 8);		// move byte 1 to byte 0
 	}
 };
 
