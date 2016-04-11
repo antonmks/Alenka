@@ -17,8 +17,7 @@
 
 namespace alenka {
 
-struct cmp_functor_dict
-{
+struct cmp_functor_dict {
     const unsigned long long* source;
     bool *dest;
     const unsigned int *pars;
@@ -29,7 +28,6 @@ struct cmp_functor_dict
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-
         unsigned int idx = pars[0];
         unsigned int cmp = pars[1];
         unsigned int bits = ((unsigned int*)source)[1];
@@ -47,37 +45,32 @@ struct cmp_functor_dict
         tmp	= tmp << (int_sz - bits);
         tmp	= tmp >> (int_sz - bits);
         //printf("COMP1 %llu %d \n", tmp, idx);
-        if(cmp == 4) { // ==
-            if(tmp == idx)
+        if (cmp == 4) { // ==
+            if (tmp == idx)
                 dest[i] = 1;
             else
                 dest[i] = 0;
+        } else { // !=
+            if (tmp == idx)
+                dest[i] = 0;
+            else
+                dest[i] = 1;
         }
-        else  { // !=
-            if(tmp == idx)
-                dest[i] = 0;
-            else
-                dest[i] = 1;
-        };
     }
 };
 
-
-struct gpu_regex
-{
+struct gpu_regex {
     char *source;
     char *pattern;
     bool * dest;
     const unsigned int *len;
 
-    gpu_regex(char * _source,char * _pattern, bool * _dest,
-              const unsigned int * _len):
+    gpu_regex(char * _source, char * _pattern, bool * _dest, const unsigned int * _len):
         source(_source), pattern(_pattern), dest(_dest), len(_len) {}
 
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-
         bool star = 0;
         int j = 0;
         char* s;
@@ -96,8 +89,7 @@ loopStart:
                 str = s, pat = p;
                 do {
                     ++pat;
-                }
-                while (*pat == '%');
+                } while (*pat == '%');
                 if (!*pat) {
                     dest[i] = 1;
                     return;
@@ -117,13 +109,13 @@ starCheck:
         if (!star) {
             dest[i] = 0;
             return;
-        };
+        }
         str++;
         j++;
         goto loopStart;
     }
 };
 
-}
+} // namespace alenka
 
 #endif /* FILTER_CUH_ */

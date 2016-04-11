@@ -1139,4 +1139,112 @@ size_t getTotalSystemMemory() {
 }
 #endif
 
+
+void yyerror(char *s, ...) {
+    extern int yylineno;
+    extern char *yytext;
+
+    fprintf(stderr, "%d: error: ", yylineno);
+    LOG(logERROR) << yytext << endl;
+    error_cb(1, s);
+}
+
+void clean_queues() {
+    while (!op_type.empty()) op_type.pop();
+    while (!op_value.empty()) op_value.pop();
+    while (!op_join.empty()) op_join.pop();
+    while (!op_nums.empty()) op_nums.pop();
+    while (!op_nums_f.empty()) op_nums_f.pop();
+	while (!op_nums_precision.empty()) op_nums_precision.pop();
+    while (!j_col_count.empty()) j_col_count.pop();
+    while (!namevars.empty()) namevars.pop();
+    while (!typevars.empty()) typevars.pop();
+    while (!sizevars.empty()) sizevars.pop();
+    while (!cols.empty()) cols.pop();
+    while (!op_sort.empty()) op_sort.pop();
+    while (!op_presort.empty()) op_presort.pop();
+    while (!join_type.empty()) join_type.pop();
+	while (!join_eq_type.empty()) join_eq_type.pop();
+
+    op_case = 0;
+    sel_count = 0;
+    join_cnt = 0;
+    join_col_cnt = 0;
+    distinct_cnt = 0;
+    join_tab_cnt = 0;
+    tab_cnt = 0;
+    join_and_cnt.clear();
+}
+
+void load_vars() {
+    if (used_vars.size() == 0) {
+    	LOG(logERROR) << "Error, no valid column names have been found ";
+        //exit(0);
+    } else {
+        for (auto it = used_vars.begin(); it != used_vars.end(); ++it) {
+            while (!namevars.empty()) namevars.pop();
+            while (!typevars.empty()) typevars.pop();
+            while (!sizevars.empty()) sizevars.pop();
+            while (!cols.empty()) cols.pop();
+            if (stat.count((*it).first) != 0) {
+                auto c = (*it).second;
+                for (auto sit = c.begin() ; sit != c.end(); ++sit) {
+                	LOG(logDEBUG) << "name " << (*sit).first << " " << data_dict[(*it).first][(*sit).first].col_length;
+                    namevars.push((*sit).first);
+                    if (data_dict[(*it).first][(*sit).first].col_type == 0) {
+						if (data_dict[(*it).first][(*sit).first].col_length == 0) {
+							typevars.push("int");
+						} else {
+							if (data_dict[(*it).first][(*sit).first].col_length == UINT_MAX)
+								typevars.push("timestamp");
+							else
+								typevars.push("decimal");
+						}
+					} else if (data_dict[(*it).first][(*sit).first].col_type == 1) {
+                        typevars.push("float");
+					} else {
+                    	typevars.push("char");
+					}
+                    sizevars.push(data_dict[(*it).first][(*sit).first].col_length);
+                    cols.push(0);
+                }
+                emit_load_binary((*it).first.c_str(), (*it).first.c_str(), 0);
+            }
+        }
+    }
+}
+
+void process_error(int severity, string err) {
+    switch (severity) {
+    case 1:
+        err = "(Warning) " + err;
+        break;
+    case 2:
+        err = "(Fatal) " + err;
+        break;
+    default:
+        err = "(Aborting) " + err;
+        break;
+    }
+    error_cb(severity, err.c_str());            // send the error to the c based callback
+}
+
+void init(char ** av) {
+    process_count = 1000000000;
+    verbose = 0;
+    scan_state = 1;
+    statement_count = 0;
+    clean_queues();
+    context = CreateCudaDevice(0, nullptr, true);
+}
+
+void close() {
+    statement_count = 0;
+
+    if (alloced_sz) {
+        cudaFree(alloced_tmp);
+        alloced_sz = 0;
+    }
+}
+
 } // namespace alenka

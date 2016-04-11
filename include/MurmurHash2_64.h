@@ -10,12 +10,10 @@ namespace alenka {
 typedef unsigned __int64 uint64_t;
 #endif
 
-using namespace std;
+uint64_t MurmurHash64S(const void * key, int len, unsigned int seed, unsigned int step, size_t count);
+uint64_t MurmurHash64A(const void * key, int len, unsigned int seed);
+uint64_t MurmurHash64B(const void * key, int len, unsigned int seed);
 
-uint64_t MurmurHash64S ( const void * key, int len, unsigned int seed, unsigned int step, size_t count );
-uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
-uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed );
-
-}
+} // namespace alenka
 
 #endif /* MURMURHASH2_64_H_ */

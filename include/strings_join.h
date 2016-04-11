@@ -63,6 +63,6 @@ void str_sort_host(char* tmp, size_t RecCount, unsigned int* permutation, bool d
 */
 void str_sort(char* tmp, size_t RecCount, unsigned int* permutation, bool desc_order, unsigned int len);
 
-}
+} // namespace alenka
 
 #endif /* STRINGS_JOIN_H_ */

@@ -15,6 +15,10 @@
 #ifndef SELECT_H_
 #define SELECT_H_
 
+#include <queue>
+#include <string>
+#include <vector>
+
 #include "global.h"
 #include "common.h"
 #include "CudaSet.h"
@@ -27,6 +31,6 @@ namespace alenka {
 void select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
             CudaSet* b, vector<thrust::device_vector<int_type> >& distinct_tmp, bool& one_liner);
 
-}
+} // namespace alenka
 
 #endif /* SELECT_H_ */

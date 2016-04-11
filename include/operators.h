@@ -15,6 +15,9 @@
 #ifndef OPERATORS_H_
 #define OPERATORS_H_
 
+#include <string>
+#include <stack>
+
 #include "global.h"
 #include "CudaSet.h"
 #include "common.h"
@@ -24,36 +27,9 @@
 
 namespace alenka {
 
-extern queue<string> namevars;
-extern queue<string> typevars;
-extern queue<int> sizevars;
-extern queue<int> cols;
-
-extern queue<unsigned int> j_col_count;
-extern unsigned int sel_count;
-extern unsigned int join_cnt;
-extern unsigned int distinct_cnt;
-extern unsigned int join_col_cnt;
-extern unsigned int join_tab_cnt;
-extern unsigned int tab_cny;
-extern queue<string> op_join;
-extern queue<char> join_type;
-extern queue<char> join_eq_type;
-extern unsigned int partition_count;
-extern map<string,unsigned int> stat;
-extern map<unsigned int, unsigned int> join_and_cnt;
-extern map<string, map<string, bool> > used_vars;
-extern bool save_dict;
-extern ContextPtr context;
-extern thrust::device_vector<unsigned char> scratch;
-extern map<string, string> filter_var;
-extern thrust::device_vector<int> ranj;
-extern unsigned long long int currtime;
-
+void check_used_vars();
 void emit_multijoin(const string s, const string j1, const string j2, const unsigned int tab, const char* res_name, const int start_segment, const int end_segment);
-void clean_queues();
 void order_inplace(CudaSet* a, stack<string> exe_type, bool update_int);
-void yyerror(char *s, ...);
 void emit(const char *s, ...);
 void emit_mul();
 void emit_add();
@@ -106,14 +82,12 @@ void emit_case();
 void emit_show_tables();
 void emit_describe_table(const char* table_name);
 void emit_drop_table(const char* table_name);
-void process_error(const int severity, const string err);
 void emit_create_bitmap_index(const char *index_name, const char *ltable, const char *rtable, const char *rcolumn, const char *lid, const char *rid);
 void emit_create_index(const char *index_name, const char *table, const char *column);
 void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn);
 void emit_fieldname(const char* name1, const char* name2);
-void load_vars();
 void emit_string_grp(const char *str, const char *str_grp);
 
-}
+} // namespace alenka
 
 #endif /* OPERATORS_H_ */

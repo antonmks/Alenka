@@ -15,6 +15,8 @@
 #ifndef SORTS_H_
 #define SORTS_H_
 
+#include <string>
+
 #include "thrust.h"
 
 using namespace std;
@@ -33,7 +35,7 @@ void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permut
 template <typename KeyType>
 void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, KeyType* res);
 
-}
+} // namespace alenka
 
 #define SORT_FUNCTIONS
 #include "../src/sorts.cu"

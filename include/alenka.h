@@ -13,7 +13,10 @@
 *  limitations under the License.
 */
 
-#include "global.h"
+#ifndef ALENKA_H_
+#define ALENKA_H_
+
+#include "log.h"
 
 namespace alenka {
 
@@ -25,4 +28,6 @@ void close();
 // or:
 int execute_file(int ac, char **av);
 
-}
+} // namespace alenka
+
+#endif /* ALENKA_H_ */

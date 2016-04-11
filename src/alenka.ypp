@@ -14,8 +14,6 @@
 
 %{
 
-#include <string>
-
 #include "global.h"
 #include "operators.h"
 #include "common.h"

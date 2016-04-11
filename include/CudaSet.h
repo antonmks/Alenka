@@ -15,6 +15,7 @@
 #ifndef CUDASET_H_
 #define CUDASET_H_
 
+#include <queue>
 #include <string>
 #include <map>
 #include <unordered_map>
@@ -39,8 +40,7 @@ using namespace thrust::system::cuda::experimental;
 
 namespace alenka {
 
-class CudaSet
-{
+class CudaSet {
 public:
     map<string, thrust::host_vector<int_type, pinned_allocator<int_type> > > h_columns_int;
     map<string, thrust::host_vector<float_type, pinned_allocator<float_type> > > h_columns_float;
@@ -56,14 +56,14 @@ public:
 
     // to do filters in-place (during joins, groupby etc ops) we need to save a state of several queues's and a few misc. variables:
     char* fil_s, * fil_f, sort_check;
-    queue<string> fil_type,fil_value;
+    queue<string> fil_type, fil_value;
     queue<int_type> fil_nums;
     queue<float_type> fil_nums_f;
 	queue<unsigned int> fil_nums_precision;
 
     size_t mRecCount, maxRecs, hostRecCount, devRecCount, grp_count, segCount, totalRecs;
     vector<string> columnNames;
-	map<string,bool> compTypes; // pfor delta or not
+	map<string, bool> compTypes; // pfor delta or not
     map<string, FILE*> filePointers;
     thrust::device_vector<bool> grp;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
@@ -79,7 +79,7 @@ public:
     map<unsigned int, string> cols; // column positions in a file
 	map<string, bool> map_like; //for LIKE processing
 	map<string, thrust::device_vector<unsigned int> > map_res; //also for LIKE processing
-	map<string,bool> ts_cols; //timestamp columns
+	map<string, bool> ts_cols; //timestamp columns
 
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
     CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name, unsigned int max);
@@ -142,7 +142,6 @@ public:
 	void gpu_perm(queue<string> sf, thrust::device_vector<unsigned int>& permutation);
 
 protected:
-
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name);
     void initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs);
     void initialize(const size_t RecordCount, const unsigned int ColumnCount);
@@ -154,6 +153,6 @@ private:
     void* s_v = nullptr;
 };
 
-}
+} // namespace alenka
 
 #endif /* CUDASET_H_ */

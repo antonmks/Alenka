@@ -17,7 +17,8 @@
 
 #include <map>
 #include <queue>
-#include <time.h>
+#include <string>
+#include <vector>
 
 #include "thrust.h"
 #include "types.h"
@@ -31,6 +32,7 @@ using namespace thrust::system::cuda::experimental;
 
 namespace alenka {
 
+//common
 extern size_t int_size;
 extern size_t float_size;
 extern unsigned int hash_seed;
@@ -48,9 +50,8 @@ extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
 extern unsigned int total_segments;
 extern size_t process_count;
 extern bool fact_file_loaded;
-
 extern unsigned int partition_count;
-extern map<string,string> setMap; //map to keep track of column names and set names
+extern map<string, string> setMap; //map to keep track of column names and set names
 extern clock_t tot;
 extern clock_t tot_disk;
 extern bool verbose;
@@ -77,7 +78,7 @@ extern map<string, map<string, bool> > used_vars;
 extern map<string, unsigned int> cpy_bits;
 extern map<string, long long int> cpy_init_val;
 extern bool phase_copy;
-extern map<string,bool> min_max_eq;
+extern map<string, bool> min_max_eq;
 extern map<string, string> filter_var;
 extern void* alloced_tmp;
 extern bool alloced_switch;
@@ -88,11 +89,37 @@ struct col_data {
 };
 extern map<string, map<string, col_data> > data_dict;
 extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
-extern bool phase_copy ;
+extern bool phase_copy;
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
-extern map<string,bool> min_max_eq;
+extern map<string, bool> min_max_eq;
 
-}
+//operators
+extern queue<string> namevars;
+extern queue<string> typevars;
+extern queue<int> sizevars;
+extern queue<int> cols;
+extern queue<unsigned int> j_col_count;
+extern unsigned int sel_count;
+extern unsigned int join_cnt;
+extern unsigned int distinct_cnt;
+extern unsigned int join_col_cnt;
+extern unsigned int join_tab_cnt;
+extern unsigned int tab_cnt;
+extern queue<string> op_join;
+extern queue<char> join_type;
+extern queue<char> join_eq_type;
+extern unsigned int partition_count;
+extern map<string, unsigned int> stat;
+extern map<unsigned int, unsigned int> join_and_cnt;
+extern map<string, map<string, bool> > used_vars;
+extern bool save_dict;
+extern ContextPtr context;
+extern thrust::device_vector<unsigned char> scratch;
+extern map<string, string> filter_var;
+extern thrust::device_vector<int> ranj;
+extern unsigned long long int currtime;
+
+} // namespace alenka
 
 #endif /* GLOBAL_H_ */

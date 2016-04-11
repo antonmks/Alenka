@@ -33,5 +33,6 @@ struct T_str_sort_host {
 
 void str_sort_host(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len);
 
-}
+}// namespace alenka
+
 #endif /* STRINGS_SORT_HOST_H_ */

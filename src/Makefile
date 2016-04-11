@@ -1,5 +1,6 @@
 # Linux Makefile
 
+#flags
 CFLAGS=--machine 64 -O3 -std=c++11 -I ../moderngpu/include/ -I ../include/ --compiler-options '-fPIC'
 
 #compute compatibility
@@ -72,10 +73,10 @@ alenka.cu alenka.hu: alenka.ypp
 lex.yy.c: alenka.l alenka.hu
 	flex $<
 
-#clean up
+#clean up all generated files
 .PHONY: clean
 clean : 
-	rm -f alenka *.o lex.yy.c alenka.cu alenka.hu *.a
+	rm -f alenka *.o lex.yy.c alenka.cu alenka.hu *.a *.so
 	
 #install binary + libs + header
 PREFIX = /usr/local
@@ -85,13 +86,13 @@ install: alenka libalenka.a libalenka.so
 	cp $< $(DESTDIR)$(PREFIX)/bin/alenka
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 	mkdir -p $(DESTDIR)$(PREFIX)/include
-	cp libalenka.a $(DESTDIR)$(PREFIX)/lib/
-	cp libalenka.so $(DESTDIR)$(PREFIX)/lib/
+	cp libalenka.a $(DESTDIR)$(PREFIX)/lib64/
+	cp libalenka.so $(DESTDIR)$(PREFIX)/lib64/
 	cp ../include/alenka.h $(DESTDIR)$(PREFIX)/include/
 
 .PHONY: uninstall
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/alenka
-	rm -f $(DESTDIR)$(PREFIX)/lib/libalenka.a
-	rm -f $(DESTDIR)$(PREFIX)/lib/libalenka.so
+	rm -f $(DESTDIR)$(PREFIX)/lib64/libalenka.a
+	rm -f $(DESTDIR)$(PREFIX)/lib64/libalenka.so
 	rm -f $(DESTDIR)$(PREFIX)/include/alenka.h

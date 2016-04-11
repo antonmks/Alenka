@@ -25,6 +25,6 @@ typedef unsigned short int int16_type;
 typedef unsigned char int8_type;
 typedef double float_type;
 
-}
+} // namespace alenka
 
 #endif /* TYPES_H_ */

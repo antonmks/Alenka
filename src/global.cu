@@ -64,6 +64,31 @@ bool phase_copy = 0;
 map<string, unsigned int> cnt_counts;
 string curr_file;
 map<string, bool> min_max_eq;
+//operators
+queue<string> namevars;
+queue<string> typevars;
+queue<int> sizevars;
+queue<int> cols;
+queue<unsigned int> j_col_count;
+unsigned int sel_count = 0;
+unsigned int join_cnt = 0;
+unsigned int distinct_cnt = 0;
+unsigned int join_col_cnt = 0;
+unsigned int join_tab_cnt = 0;
+unsigned int tab_cnt = 0;
+queue<string> op_join;
+queue<char> join_type;
+queue<char> join_eq_type;
+unsigned int partition_count;
+map<string,unsigned int> stat;
+map<unsigned int, unsigned int> join_and_cnt;
+map<string, map<string, bool> > used_vars;
+bool save_dict = 0;
+ContextPtr context;
+thrust::device_vector<unsigned char> scratch;
+map<string, string> filter_var;
+thrust::device_vector<int> ranj;
+unsigned long long int currtime;
 
 
 } // namespace alenka

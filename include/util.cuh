@@ -210,9 +210,9 @@ struct gpu_interval_char {
 				if (index[i * (*len) + z] != index[(i + 1) * (*len) + z]) {
 					test = 0;
 					break;
-				};
-			};
-		};
+				}
+			}
+		}
 		if (test)
 			dt2[i] = dt1[i + 1];
 	}
@@ -230,7 +230,6 @@ struct gpu_interval {
 	template<typename IndexType>
 	__host__ __device__
 	void operator()(const IndexType & i) {
-
 		if (dt2[i] == 0 && index[i + 1] == index[i])
 			dt2[i] = dt1[i + 1];
 	}
@@ -251,11 +250,10 @@ struct gpu_interval_set {
 	template<typename IndexType>
 	__host__ __device__
 	void operator()(const IndexType & i) {
-
 		//printf("T %d %lld %lld %lld %lld %d %lld \n", i, dt1[i], dt2[i], index1[i], index2[bs[index1[i]]], bs[index1[i]], index2[i]);
 		if (dt2[i] == 0 && index1[i] == index2[bs[i]]) {
 			dt2[i] = dt1[bs[i]];
-		};
+		}
 	}
 };
 
@@ -281,7 +279,7 @@ struct gpu_date {
 				c -= '0';
 				acc *= 10;
 				acc += c;
-			};
+			}
 			z++;
 		}
 		dest[i] = acc;
@@ -316,10 +314,11 @@ struct gpu_tdate {
 				if (!year_set) {
 					y = acc;
 					year_set = 1;
-				} else
+				} else {
 					m = acc;
+				}
 				acc = 0;
-			};
+			}
 			z++;
 		}
 
@@ -508,14 +507,14 @@ struct gpu_atold {
 		}
 
 		for (acc = 0;; c = (unsigned char) *s++) {
-			if (c >= '0' && c <= '9')
+			if (c >= '0' && c <= '9') {
 				c -= '0';
-			else {
+			} else {
 				if (c != '.')
 					break;
 				cnt = 1;
 				continue;
-			};
+			}
 			if (c >= 10)
 				break;
 			if (neg) {
@@ -616,9 +615,9 @@ struct parse_functor {
 						dest[dest_curr][dest_len[dest_curr] * i + t] =
 								source[pos + j];
 						t++;
-					};
+					}
 					j++;
-				};
+				}
 				j++;
 				dest_curr++;
 			} else {
@@ -626,16 +625,15 @@ struct parse_functor {
 				while (source[pos + j] != *separator) {
 					j++;
 					//printf("CONT Skip %d \n", j);
-				};
+				}
 				j++;
-			};
+			}
 			curr_cnt++;
 			//printf("DEST CURR %d %d %d %d \n" , j, dest_curr, ind[dest_curr], curr_cnt);
 		}
-
 	}
 };
 
-}
+} // namespace alenka
 
 #endif /* UTIL_H_ */

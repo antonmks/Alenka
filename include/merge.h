@@ -15,7 +15,13 @@
 #ifndef MERGE_H_
 #define MERGE_H_
 
+#include <map>
+#include <queue>
+#include <string>
+#include <vector>
+
 #include "global.h"
+#include "common.h"
 #include "CudaSet.h"
 #include "merge.cuh"
 
@@ -29,11 +35,12 @@
 namespace alenka {
 
 void create_c(CudaSet* c, CudaSet* b);
-void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases,
+void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string, string> aliases,
 		 vector<thrust::device_vector<int_type> >& distinct_tmp, vector<thrust::device_vector<int_type> >& distinct_val,
          vector<thrust::device_vector<int_type> >& distinct_hash, CudaSet* a);
 void count_avg(CudaSet* c, vector<thrust::device_vector<int_type> >& distinct_hash);
 void count_simple(CudaSet* c);
 
-}
+} // namespace alenka
+
 #endif /* MERGE_H_ */

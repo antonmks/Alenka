@@ -25,13 +25,11 @@ inline std::string NowTime();
 
 enum TLogLevel {logERROR, logWARNING, logINFO, logDEBUG, logDEBUG1, logDEBUG2, logDEBUG3, logDEBUG4};
 
-class Log
-{
+class Log {
 public:
     Log();
     virtual ~Log();
     std::ostringstream& Get(TLogLevel level = logINFO);
-public:
     static TLogLevel& ReportingLevel();
     static std::string ToString(TLogLevel level);
     static TLogLevel FromString(const std::string& level);
@@ -42,39 +40,33 @@ private:
     Log& operator =(const Log&);
 };
 
-inline Log::Log()
-{
+inline Log::Log() {
 }
 
-inline std::ostringstream& Log::Get(TLogLevel level)
-{
+inline std::ostringstream& Log::Get(TLogLevel level) {
     os << "- " << NowTime();
     os << " " << ToString(level) << ": ";
     os << std::string(level > logDEBUG ? level - logDEBUG : 0, '\t');
     return os;
 }
 
-inline Log::~Log()
-{
+inline Log::~Log() {
     os << std::endl;
     fprintf(stderr, "%s", os.str().c_str());
     fflush(stderr);
 }
 
-inline TLogLevel& Log::ReportingLevel()
-{
+inline TLogLevel& Log::ReportingLevel() {
     static TLogLevel reportingLevel = logDEBUG4;
     return reportingLevel;
 }
 
-inline std::string Log::ToString(TLogLevel level)
-{
+inline std::string Log::ToString(TLogLevel level) {
 	static const char* const buffer[] = {"ERROR", "WARNING", "INFO", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3", "DEBUG4"};
     return buffer[level];
 }
 
-inline TLogLevel Log::FromString(const std::string& level)
-{
+inline TLogLevel Log::FromString(const std::string& level) {
     if (level == "DEBUG4")
         return logDEBUG4;
     if (level == "DEBUG3")
@@ -105,8 +97,7 @@ typedef Log LOG;
 
 #include <windows.h>
 
-inline std::string NowTime()
-{
+inline std::string NowTime() {
     const int MAX_LEN = 200;
     char buffer[MAX_LEN];
     if (GetTimeFormatA(LOCALE_USER_DEFAULT, 0, 0,
@@ -136,6 +127,6 @@ inline std::string NowTime() {
 
 #endif //WIN32
 
-}
+} // namespace alenka
 
 #endif //__LOG_H__
