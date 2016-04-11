@@ -40,6 +40,7 @@ extern size_t int_size;
 extern size_t float_size;
 extern unsigned int total_segments, old_segments;
 extern unsigned int hash_seed;
+extern time_t curr_time;
 extern void* d_v;
 extern void* s_v;
 extern queue<string> op_type;

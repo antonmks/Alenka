@@ -288,10 +288,9 @@ sort_def: { /* nil */
 
 %%
 
-
-bool scan_state;
-unsigned int statement_count;
-time_t curr_time;
+extern bool scan_state;
+extern unsigned int statement_count;
+extern time_t curr_time;
 
 int execute_file(int ac, char **av) {
 	LOG(logINFO) << "Executing File..";

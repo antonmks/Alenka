@@ -21,7 +21,6 @@
 
 namespace alenka {
 
-unsigned int hash_seed;
 thrust::host_vector<unsigned long long int> h_merge;
 
 void create_c(CudaSet* c, CudaSet* b) {

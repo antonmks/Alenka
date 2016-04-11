@@ -26,6 +26,7 @@ size_t int_size = sizeof(int_type);
 size_t float_size = sizeof(float_type);
 unsigned int total_segments = 0, old_segments;
 unsigned int hash_seed;
+time_t curr_time;
 void* d_v = nullptr;
 void* s_v = nullptr;
 queue<string> op_type;
