@@ -1939,12 +1939,6 @@ void CudaSet::free() {
     deAllocOnDevice();
 }
 
-void alloc_pool(unsigned int maxRecs) {
-	void* temp;
-	CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 8*maxRecs));
-	alloced_mem.push_back(temp);
-}
-
 bool* CudaSet::logical_and(bool* column1, bool* column2) {
     thrust::device_ptr<bool> dev_ptr1(column1);
     thrust::device_ptr<bool> dev_ptr2(column2);

@@ -25,6 +25,7 @@
 #include "types.h"
 #include "log.h"
 #include "callbacks.h"
+#include "cuda_safe.h"
 
 #include "moderngpu.cuh"
 
@@ -120,6 +121,7 @@ size_t getFreeMem();
 size_t getTotalSystemMemory();
 void process_error(int severity, string err);
 time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
+void alloc_pool(unsigned int maxRecs);
 
 } // namespace alenka
 

@@ -46,6 +46,7 @@ void apply_permutation_char_host(char* key, unsigned int* permutation, size_t Re
 void filter_op(const char *s, const char *f, unsigned int segment);
 int_type reverse_op(int_type op_type);
 size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg);
+void insert_records(const char* f, const char* s);
 void delete_records(const char* f);
 void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name);
 void load_col_data(map<string, map<string, col_data> >& data_dict, string file_name);

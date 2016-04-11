@@ -185,5 +185,12 @@ time_t add_interval(time_t t, int year, int month, int day, int hour, int minute
 	}
 }
 
+void alloc_pool(unsigned int maxRecs) {
+	void* temp;
+	CUDA_SAFE_CALL(cudaMalloc((void **) &temp, 8*maxRecs));
+	alloced_mem.push_back(temp);
+}
+
+
 } // namespace alenka
 
