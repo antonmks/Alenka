@@ -423,6 +423,19 @@ void filter_op(const char *s, const char *f, unsigned int segment) {
     	LOG(logDEBUG) << "filter result " << b->mRecCount;
 }
 
+int_type reverse_op(int_type op_type)
+{
+    if (op_type == 2) // >
+        return 1;
+    else if (op_type == 1)  // <
+        return 2;
+    else if (op_type == 6) // >=
+        return 5;
+    else if (op_type == 5)  // <=
+        return 6;
+    else return op_type;
+}
+
 size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> op_alt, size_t& rcount, unsigned int start_seg, unsigned int end_seg) {
     size_t cnt_r = 0;
     //if join is on strings then add integer columns to left and right tables and modify colInd1 and colInd2
