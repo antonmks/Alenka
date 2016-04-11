@@ -143,9 +143,6 @@ protected:
     void initialize(CudaSet* a, CudaSet* b, queue<string> op_sel, queue<string> op_sel_as);
     void initialize(queue<string> op_sel, const queue<string> op_sel_as);
 
-private:
-    void* d_v = nullptr;
-    void* s_v = nullptr;
 };
 
 } // namespace alenka
