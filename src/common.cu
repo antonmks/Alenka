@@ -24,67 +24,6 @@ namespace alenka {
 
 map<string, CudaSet*> varNames; //  STL map to manage CudaSet variables
 
-int get_utc_offset() {
-	time_t zero = 24*60*60L;
-	struct tm * timeptr;
-	int gmtime_hours;
-
-	/* get the local time for Jan 2, 1900 00:00 UTC */
-	timeptr = localtime(&zero);
-	gmtime_hours = timeptr->tm_hour;
-
-	/* if the local time is the "day before" the UTC, subtract 24 hours
-	from the hours to get the UTC offset */
-	if (timeptr->tm_mday < 2)
-	gmtime_hours -= 24;
-
-	return gmtime_hours;
-}
-
-/*
-  the utc analogue of mktime,
-  (much like timegm on some systems)
-*/
-time_t tm_to_time_t_utc(struct tm * timeptr) {
-  /* gets the epoch time relative to the local time zone,
-  and then adds the appropriate number of seconds to make it UTC */
-  return mktime(timeptr) + get_utc_offset() * 3600;
-}
-
-/*class power_functor {
-
-    unsigned int a;
-
-    public:
-
-        power_functor(unsigned int a_) { a = a_; }
-
-        __host__ __device__ int_type operator()(int_type x) const
-        {
-            return x*(unsigned int)pow((double)10,(double)a);
-        }
-}
-*/
-
-int_type reverse_op(int_type op_type) {
-    if (op_type == 2) // >
-        return 1;
-    else if (op_type == 1)  // <
-        return 2;
-    else if (op_type == 6) // >=
-        return 5;
-    else if (op_type == 5)  // <=
-        return 6;
-    else
-    	return op_type;
-}
-
-size_t getFreeMem() {
-    size_t available, total;
-    cudaMemGetInfo(&available, &total);
-    return available;
-}
-
 void allocColumns(CudaSet* a, queue<string> fields) {
     if (a->filtered) {
         CudaSet* t;
@@ -512,8 +451,6 @@ size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> o
     return cnt_r;
 }
 
-
-
 void insert_records(const char* f, const char* s) {
     char buf[4096];
     size_t size, maxRecs, cnt = 0;
@@ -660,7 +597,6 @@ void insert_records(const char* f, const char* s) {
         }
     }
 }
-
 
 void delete_records(const char* f) {
     CudaSet *a;
@@ -830,7 +766,6 @@ void delete_records(const char* f) {
         cudaFree(d);
     }
 }
-
 
 void save_col_data(map<string, map<string, col_data> >& data_dict, string file_name) {
     size_t str_len;
@@ -1031,31 +966,6 @@ void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, 
     }
 }
 
-time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second) {
-	if (year) {
-		struct tm tt = *gmtime(&t);
-		tt.tm_year = tt.tm_year + year;
-		return tm_to_time_t_utc(&tt);
-	} else if (month) {
-		struct tm tt = *gmtime(&t);
-		if (tt.tm_mon + month > 11) {
-			tt.tm_year++;
-			tt.tm_mon = ((tt.tm_mon + month) - 11)-1;
-		} else {
-			tt.tm_mon = tt.tm_mon + month;
-		}
-		return tm_to_time_t_utc(&tt);
-	} else if (day) {
-		return t + day*24*60*60;
-	} else if (hour) {
-		return t + hour*60*60;
-	} else if (minute) {
-		return t + minute*60;
-	} else {
-		return t + second;
-	}
-}
-
 void compress_int(const string file_name, const thrust::host_vector<int_type>& res) {
     std::vector<unsigned int> dict_val;
     unsigned int bits_encoded;
@@ -1120,23 +1030,6 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
     }
     binary_file.close();
 }
-
-
-#ifdef _WIN64
-size_t getTotalSystemMemory() {
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(status);
-    GlobalMemoryStatusEx(&status);
-    return status.ullTotalPhys;
-}
-#else
-size_t getTotalSystemMemory() {
-    long pages = sysconf(_SC_PHYS_PAGES);
-    long page_size = sysconf(_SC_PAGE_SIZE);
-    return pages * page_size;
-}
-#endif
-
 
 void yyerror(char *s, ...) {
     extern int yylineno;
@@ -1210,21 +1103,6 @@ void load_vars() {
             }
         }
     }
-}
-
-void process_error(int severity, string err) {
-    switch (severity) {
-    case 1:
-        err = "(Warning) " + err;
-        break;
-    case 2:
-        err = "(Fatal) " + err;
-        break;
-    default:
-        err = "(Aborting) " + err;
-        break;
-    }
-    error_cb(severity, err.c_str());            // send the error to the c based callback
 }
 
 void init(char ** av) {

@@ -21,6 +21,7 @@
 #include <time.h>
 
 #include "global.h"
+#include "common.h"
 #include "CudaSet.h"
 #include "filter.cuh"
 #include "zone_map.h"

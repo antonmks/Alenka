@@ -23,68 +23,12 @@
 
 namespace alenka {
 
-extern map<string, CudaSet*> varNames; //  STL map to manage CudaSet variables
-extern bool fact_file_loaded;
-extern size_t process_count;
-extern void* alloced_tmp;
-extern bool alloced_switch;
-extern bool save_dict;
-extern bool interactive;
-extern bool verbose;
-
-extern void process_error(int severity, string err);
-
-extern map<string, char*> buffers;
-extern map<string, char*> index_buffers;
-extern map<string, unsigned long long int*> idx_vals;
-extern map<string, char*> buffers;
-extern map<string, size_t> buffer_sizes;
-extern size_t total_buffer_size;
-extern queue<string> buffer_names;
-
-//cm.cu
-extern size_t getTotalSystemMemory();
 extern void copyFinalize(CudaSet* a, queue<string> fields, bool ts);
-extern time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
-extern time_t tm_to_time_t_utc(struct tm * timeptr);
 extern void update_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, string SortType, char* tmp, unsigned int len);
 extern void apply_permutation_char_host(char* key, unsigned int* permutation, size_t RecCount, char* res, unsigned int len);
 extern void allocColumns(CudaSet* a, queue<string> fields);
 extern void copyColumns(CudaSet* a, queue<string> fields, unsigned int segment, size_t& count, bool rsz = 0, bool flt = 1);
-extern size_t getFreeMem();
-
-extern bool phase_copy;
-extern thrust::device_vector<unsigned char> scratch;
-extern thrust::device_vector<unsigned int> rcol_matches;
-extern thrust::device_vector<int_type> rcol_dev;
-extern queue<string> col_aliases;
-
-
-extern char* readbuff;
-extern string curr_file;
-
-extern map<string, unsigned int> cpy_bits;
-extern map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
-
-extern string grp_val;
-
-extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
-extern size_t int_size;
-extern size_t float_size;
-extern unsigned int hash_seed;
-extern queue<string> op_type;
-extern bool op_case;
-extern queue<string> op_sort;
-extern queue<string> op_presort;
-extern queue<string> op_value;
-//extern vector<void*> alloced_mem;
-
-extern unsigned int total_segments, old_segments;
-extern unsigned int partition_count;
-extern map<string, map<string, col_data> > data_dict;
-extern map<string, unsigned int> cnt_counts;
-
-
+extern map<string, CudaSet*> varNames; //  STL map to manage CudaSet variables
 
 CudaSet::CudaSet(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs)
     : mColumnCount(0), mRecCount(0) {
@@ -113,7 +57,6 @@ CudaSet::CudaSet(const size_t RecordCount, const unsigned int ColumnCount) {
     fil_f = nullptr;
     fil_s = nullptr;
 }
-
 
 CudaSet::CudaSet(queue<string> op_sel, const queue<string> op_sel_as) {
     initialize(op_sel, op_sel_as);

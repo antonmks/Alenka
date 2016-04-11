@@ -21,15 +21,6 @@
 
 namespace alenka {
 
-extern map<string, CudaSet*> varNames; //  STL map to manage CudaSet variables
-extern time_t curr_time;
-extern int_type reverse_op(int_type op_type);
-extern time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
-extern map<string, map<string, col_data> > data_dict;
-extern unsigned int hash_seed;
-extern map<string, unsigned long long int*> idx_vals;
-extern size_t getFreeMem();
-
 bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a, unsigned int segment) {
     stack<string> exe_type;
     stack<string> exe_value;

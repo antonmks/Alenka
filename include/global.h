@@ -15,6 +15,7 @@
 #ifndef GLOBAL_H_
 #define GLOBAL_H_
 
+#include <unistd.h>
 #include <map>
 #include <queue>
 #include <string>
@@ -23,6 +24,7 @@
 #include "thrust.h"
 #include "types.h"
 #include "log.h"
+#include "callbacks.h"
 
 #include "moderngpu.cuh"
 
@@ -35,6 +37,7 @@ namespace alenka {
 //common
 extern size_t int_size;
 extern size_t float_size;
+extern unsigned int total_segments, old_segments;
 extern unsigned int hash_seed;
 extern queue<string> op_type;
 extern bool op_case;
@@ -47,13 +50,13 @@ extern queue<float_type> op_nums_f;
 extern queue<unsigned int> op_nums_precision; //decimals' precision
 extern queue<string> col_aliases;
 extern size_t total_count, oldCount, total_max, totalRecs, alloced_sz;
-extern unsigned int total_segments;
 extern size_t process_count;
 extern bool fact_file_loaded;
 extern unsigned int partition_count;
 extern map<string, string> setMap; //map to keep track of column names and set names
 extern clock_t tot;
 extern clock_t tot_disk;
+extern unsigned long long int currtime;
 extern bool verbose;
 extern bool save_dict;
 extern bool interactive;
@@ -90,10 +93,8 @@ struct col_data {
 };
 extern map<string, map<string, col_data> > data_dict;
 extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
-extern bool phase_copy;
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
-extern map<string, bool> min_max_eq;
 
 //operators
 extern queue<string> namevars;
@@ -110,16 +111,15 @@ extern unsigned int tab_cnt;
 extern queue<string> op_join;
 extern queue<char> join_type;
 extern queue<char> join_eq_type;
-extern unsigned int partition_count;
 extern map<string, unsigned int> stat;
 extern map<unsigned int, unsigned int> join_and_cnt;
-extern map<string, map<string, bool> > used_vars;
-extern bool save_dict;
-extern ContextPtr context;
-extern thrust::device_vector<unsigned char> scratch;
-extern map<string, string> filter_var;
-extern thrust::device_vector<int> ranj;
-extern unsigned long long int currtime;
+
+int get_utc_offset();
+time_t tm_to_time_t_utc(struct tm * timeptr);
+size_t getFreeMem();
+size_t getTotalSystemMemory();
+void process_error(int severity, string err);
+time_t add_interval(time_t t, int year, int month, int day, int hour, int minute, int second);
 
 } // namespace alenka
 

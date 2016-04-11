@@ -21,7 +21,6 @@
 
 namespace alenka {
 
-
 bool fh_equal_to(const float_type x, const float_type y) {
     return (((x-y) < EPSILON) && ((x-y) > -EPSILON));
 }
