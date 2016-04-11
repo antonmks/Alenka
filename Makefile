@@ -11,8 +11,11 @@ install:
 all:
 	cd src && $(MAKE)
 
-cpplint:
-	python cpplint.py --filter=-whitespace/tab,-legal/copyright,-whitespace/line_length,-readability/casting,-whitespace/comments src/*
-	python cpplint.py --filter=-whitespace/tab,-legal/copyright,-whitespace/line_length,-readability/casting,-whitespace/comments include/*	
+cpplint_src:
+	python cpplint.py --filter=-whitespace/tab,-legal/copyright,-whitespace/line_length,-readability/casting,-whitespace/comments,-runtime,-build/include, src/*
+
+cpplint_include:
+	python cpplint.py --filter=-whitespace/tab,-legal/copyright,-whitespace/line_length,-readability/casting,-whitespace/comments,-runtime,-build/include,-build/header_guard include/*
+
 	
-.PHONY: install all cpplint	
+.PHONY: install all cpplint_src cpplint_include

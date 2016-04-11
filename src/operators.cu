@@ -1200,8 +1200,9 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 						}
 						thrust::device_free(d_add);
 					}
-					if (!join_eq_type1.empty())
+					if (!join_eq_type1.empty()) {
 						join_eq_type1.pop();
+					}
                 }
 
 				while (!join_eq_type1.empty())
@@ -1448,11 +1449,11 @@ void order_on_host(CudaSet *a, CudaSet* b, queue<string> names, stack<string> ex
 
     // sort on host
     for (int i=0; !exe_type.empty(); ++i, exe_type.pop(), exe_value.pop()) {
-        if (a->type[exe_type.top()] == 0)
+        if (a->type[exe_type.top()] == 0) {
             update_permutation_host(a->h_columns_int[exe_type.top()].data(), permutation, a->mRecCount, exe_value.top(), (int_type*)temp);
-        else if (a->type[exe_type.top()] == 1)
+        } else if (a->type[exe_type.top()] == 1) {
             update_permutation_host(a->h_columns_float[exe_type.top()].data(), permutation, a->mRecCount, exe_value.top(), (float_type*)temp);
-        else {
+        } else {
             update_char_permutation(a, exe_type.top(), permutation, exe_value.top(),  temp, 1);
         }
     }
@@ -1566,23 +1567,24 @@ void emit_order(const char *s, const char *f, const int e, const int ll) {
         void* temp;
         CUDA_SAFE_CALL(cudaMalloc((void **) &temp, a->mRecCount*max_char(a)));
 
-        if (a->filtered)
+        if (a->filtered) {
             varNames[a->source_name]->hostRecCount = varNames[a->source_name]->mRecCount;
-        else
+        } else {
             a->hostRecCount = a->mRecCount;;
+        }
 
-
-        if (a->filtered)
+        if (a->filtered) {
             varNames[a->source_name]->mRecCount = varNames[a->source_name]->hostRecCount;
-        else
+        } else {
             a->mRecCount = a->hostRecCount;
+        }
 
         for (int i=0; !exe_type.empty(); ++i, exe_type.pop(), exe_value.pop()) {
-            if (a->type[exe_type.top()] == 0 && a->string_map.find(exe_type.top()) == a->string_map.end())
+            if (a->type[exe_type.top()] == 0 && a->string_map.find(exe_type.top()) == a->string_map.end()) {
                 update_permutation(a->d_columns_int[exe_type.top()], perm_ptr, a->mRecCount, exe_value.top(), (int_type*)temp, 64);
-            else if (a->type[exe_type.top()] == 1)
+            } else if (a->type[exe_type.top()] == 1) {
                 update_permutation(a->d_columns_float[exe_type.top()], perm_ptr, a->mRecCount, exe_value.top(), (float_type*)temp, 64);
-            else {
+            } else {
                 //get strings to device
                 update_char_permutation(a, exe_type.top(), perm_ptr, exe_value.top(), temp, 0);
             }
@@ -1660,9 +1662,9 @@ void emit_select(const char *s, const char *f, const int grp_cnt) {
     }
 
     CudaSet *a;
-    if (varNames.find(f) != varNames.end())
+    if (varNames.find(f) != varNames.end()) {
         a = varNames.find(f)->second;
-    else {
+    } else {
         process_error(2, "Couldn't find " + string(f) );
     }
 
@@ -2035,10 +2037,12 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
                 FILE* f = fopen(f1.c_str(), "rb");
                 unsigned int cnt;
                 fread(&cnt, 4, 1, f);
-				if(res_h.size() < cnt)
+				if(res_h.size() < cnt) {
 					res_h.resize(cnt);
-				if(res.size() < cnt)
+				}
+				if(res.size() < cnt) {
 					res.resize(cnt);
+				}
                 fread(res_h.data(), cnt*8, 1, f);
 				res = res_h;
                 fclose(f);
@@ -2173,9 +2177,9 @@ void emit_filter(char *s, char *f) {
     b->hostRecCount = a->hostRecCount;
     clean_queues();
 
-
-    if (varNames.count(s) > 0)
+    if (varNames.count(s) > 0) {
         varNames[s]->free();
+    }
     varNames[s] = b;
 
     if (stat[s] == statement_count) {
@@ -2191,8 +2195,9 @@ void emit_store(const char *s, const char *f, const char* sep) {
             process_error(2, "Store : couldn't find variable " + string(s) );
         }
         stat[s] = statement_count;
-		if(filter_var.find(f) != filter_var.end())
+		if(filter_var.find(f) != filter_var.end()) {
 			stat[filter_var[f]] = statement_count;
+		}
         clean_queues();
         return;
     }
@@ -2226,8 +2231,9 @@ void emit_store_binary(const char *s, const char *f, const bool append) {
             process_error(2, "Store : couldn't find variable " + string(s));
         }
         stat[s] = statement_count;
-		if (filter_var.find(f) != filter_var.end())
+		if (filter_var.find(f) != filter_var.end()) {
 			stat[filter_var[f]] = statement_count;
+		}
         clean_queues();
         return;
     }
@@ -2272,8 +2278,9 @@ void emit_store_binary(const char *s, const char *f, const bool append) {
             	LOG(logDEBUG) << "LOADING " << a->load_file_name << " mem: " << getFreeMem();
             if (a->text_source)
                 fact_file_loaded = a->LoadBigFile(file_p, d_readbuff, dest, ind, dest_len);
-			if (a->maxRecs < a->mRecCount)
+			if (a->maxRecs < a->mRecCount) {
 				a->maxRecs = a->mRecCount;
+			}
             a->Store(f, "", limit, 1, append);
         }
     }

@@ -12,8 +12,6 @@
  *  limitations under the License.
  */
 
-#include <functional>
-#include <algorithm>
 #include <string>
 
 #ifndef COMPRESS_FUNCTIONS

@@ -13,9 +13,7 @@
  */
 
 #include <string>
-#include <algorithm>
 #include <queue>
-#include <functional>
 #include <vector>
 #include <stack>
 

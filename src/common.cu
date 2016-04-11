@@ -14,10 +14,8 @@
 
 #include <set>
 #include <vector>
-#include <functional>
 #include <queue>
 #include <map>
-#include <algorithm>
 #include <string>
 
 #include "common.h"

@@ -194,9 +194,9 @@ char host_compare(int_type* column1, int_type* column2, int_type op_type) {
             res = 'A';
         else if (column1[0] > column2[1])
             res = 'N';
-    }  else if (op_type == 4 && column1[0] == column2[1] && column1[1] == column2[0]) // =
+    }  else if (op_type == 4 && column1[0] == column2[1] && column1[1] == column2[0]) { // =
         res = 'A';
-
+    }
     return res;
 }
 
@@ -223,9 +223,9 @@ char host_compare(float_type* column1, float_type* column2, int_type op_type) {
             res = 'A';
         else if (fh_greater(column1[0], column2[1]))
             res = 'N';
-    } else if (op_type == 4 && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1], column2[0])) // =
+    } else if (op_type == 4 && fh_equal_to(column1[0], column2[1]) && fh_equal_to(column1[1], column2[0])) { // =
         res = 'A';
-
+	}
     return res;
 }
 
@@ -252,9 +252,9 @@ char host_compare(float_type* column1, int_type* column2, int_type op_type) {
             res = 'A';
         else if (fh_greater(column1[0], (float_type)column2[1]))
             res = 'N';
-    } else if (op_type == 4 && fh_equal_to(column1[0], (float_type) column2[1]) && fh_equal_to(column1[1], (float_type)column2[0])) // =
+    } else if (op_type == 4 && fh_equal_to(column1[0], (float_type) column2[1]) && fh_equal_to(column1[1], (float_type)column2[0])) { // =
         res = 'A';
-
+	}
     return res;
 }
 
@@ -1496,7 +1496,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                 s2 = exe_type.top();
                 exe_type.pop();
 
-
                 if (s1.compare("NUMBER") == 0 && s2.compare("NUMBER") == 0) {
                     n1 = exe_nums.top();
                     exe_nums.pop();
@@ -1513,6 +1512,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
 						n1 = n1*(unsigned int)pow(10, pres-p1);
 					if(p2)
 						n2 = n2*(unsigned int)pow(10, pres-p2);
+
                     bool_vectors.push(host_compare(n1, n2, cmp_type));
                 } else if (s1.compare("FLOAT") == 0 && s2.compare("FLOAT") == 0) {
                     n1_f = exe_nums_f.top();

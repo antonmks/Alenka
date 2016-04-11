@@ -87,7 +87,6 @@ struct T_str_sort<1> {
 /// SORT on device static strings
 void str_sort(char* tmp, const size_t RecCount, unsigned int* permutation, const bool desc_order, const unsigned int len) {
 	thrust::device_ptr<unsigned int> dev_per((unsigned int*)permutation);
-	
 	T_unroll_functor<UNROLL_COUNT, T_str_sort> str_sort_functor;
 	if (str_sort_functor(tmp, RecCount, dev_per, desc_order, len)) {}
 	else if (len  == 50) T_str_sort<50>().operator()(tmp, RecCount, dev_per, desc_order);
@@ -95,7 +94,6 @@ void str_sort(char* tmp, const size_t RecCount, unsigned int* permutation, const
 	else if (len  == 100) T_str_sort<100>().operator()(tmp, RecCount, dev_per, desc_order);
 	else if (len  == 101) T_str_sort<101>().operator()(tmp, RecCount, dev_per, desc_order);
 	else if (len  == 255) T_str_sort<255>().operator()(tmp, RecCount, dev_per, desc_order);
-	
 }
 
 } // namespace alenka

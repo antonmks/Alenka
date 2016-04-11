@@ -18,13 +18,10 @@
 #include <queue>
 #include <string>
 #include <map>
-#include <unordered_map>
-#include <set>
 #include <vector>
+#include <set>
 #include <stack>
-#include <ctime>
-#include <limits>
-#include <fstream>
+#include <unordered_map>
 
 #include "global.h"
 #include "compress.cuh"

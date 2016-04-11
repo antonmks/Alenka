@@ -66,6 +66,7 @@ extern map<string, size_t> buffer_sizes;
 extern queue<string> buffer_names;
 extern size_t total_buffer_size;
 extern thrust::device_vector<unsigned char> scratch;
+extern char* readbuff;
 extern thrust::device_vector<unsigned int> rcol_matches;
 extern thrust::device_vector<int_type> rcol_dev;
 extern thrust::device_vector<int> ranj;

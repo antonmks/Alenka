@@ -31,6 +31,8 @@ namespace alenka {
 
 extern map<string, CudaSet*> varNames;
 
+int get_utc_offset();
+time_t tm_to_time_t_utc(struct tm * timeptr);
 void write_compressed_char(string file_name, unsigned int index, size_t mCount);
 size_t getFreeMem();
 size_t getTotalSystemMemory();
