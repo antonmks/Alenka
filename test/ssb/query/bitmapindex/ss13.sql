@@ -1,0 +1,1 @@
+../../../../benchmark/SSB_queries_with_bitmaps/ss13.sql
