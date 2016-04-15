@@ -1,3 +1,6 @@
 [submodule "src/moderngpu"]
 	path = src/moderngpu
 	url = https://github.com/NVlabs/moderngpu.git
+[submodule "moderngpu"]
+	path = moderngpu
+	url = https://github.com/moderngpu/moderngpu
