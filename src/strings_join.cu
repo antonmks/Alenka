@@ -12,10 +12,9 @@
  *  limitations under the License.
  */
 
+#include "strings_join.h"
 
-#include "strings.h"
-#include "strings_type.h"
-
+namespace alenka {
 
 template<unsigned int len>
 struct T_str_scatter_host {
@@ -25,8 +24,7 @@ struct T_str_scatter_host {
 };
 
 /// JOIN on host static strings
-void str_scatter_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
-{
+void str_scatter_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len) {
     T_unroll_functor<UNROLL_COUNT, T_str_scatter_host> str_scatter_host_functor;
     if (str_scatter_host_functor(d_int, real_count, d, d_char, len)) {}
 }
@@ -40,18 +38,16 @@ struct T_str_gather_host {
 };
 
 /// JOIN on host static strings
-void str_gather_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
-{
+void str_gather_host(const unsigned int* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len) {
 	T_unroll_functor<UNROLL_COUNT, T_str_gather_host> str_gather_host_functor;
 	if (str_gather_host_functor(d_int, real_count, d, d_char, len)) {}
-	else if(len  == 50) T_str_gather_host<50>().operator()(d_int, real_count, d, d_char);
-	else if(len  == 60) T_str_gather_host<60>().operator()(d_int, real_count, d, d_char);
-	else if(len  == 100) T_str_gather_host<100>().operator()(d_int, real_count, d, d_char);
-	else if(len  == 101) T_str_gather_host<101>().operator()(d_int, real_count, d, d_char);
-	else if(len  == 255) T_str_gather_host<255>().operator()(d_int, real_count, d, d_char);
-	else if(len  == 1023) T_str_gather_host<1023>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 50) T_str_gather_host<50>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 60) T_str_gather_host<60>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 100) T_str_gather_host<100>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 101) T_str_gather_host<101>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 255) T_str_gather_host<255>().operator()(d_int, real_count, d, d_char);
+	else if (len  == 1023) T_str_gather_host<1023>().operator()(d_int, real_count, d, d_char);
 }
-// ---------------------------------------------------------------------------
 
 /// JOIN on device static strings (functor)
 template<unsigned int len>
@@ -64,20 +60,17 @@ struct T_str_gather {
 };
 
 /// JOIN on device static strings
-void str_gather(void* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len)
-{
+void str_gather(void* d_int, const size_t real_count, void* d, void* d_char, const unsigned int len) {
 	thrust::device_ptr<unsigned int> res((unsigned int*)d_int);
 
 	T_unroll_functor<UNROLL_COUNT, T_str_gather> str_gather_functor;
 	if (str_gather_functor(res, real_count, d, d_char, len)) {}
-	else if(len  == 50) T_str_gather<50>().operator()(res, real_count, d, d_char);
-	else if(len  == 60) T_str_gather<60>().operator()(res, real_count, d, d_char);
-	else if(len  == 100) T_str_gather<100>().operator()(res, real_count, d, d_char);
-	else if(len  == 101) T_str_gather<101>().operator()(res, real_count, d, d_char);
-	else if(len  == 255) T_str_gather<255>().operator()(res, real_count, d, d_char);
-	else if(len  == 1023) T_str_gather<1023>().operator()(res, real_count, d, d_char);
+	else if (len  == 50) T_str_gather<50>().operator()(res, real_count, d, d_char);
+	else if (len  == 60) T_str_gather<60>().operator()(res, real_count, d, d_char);
+	else if (len  == 100) T_str_gather<100>().operator()(res, real_count, d, d_char);
+	else if (len  == 101) T_str_gather<101>().operator()(res, real_count, d, d_char);
+	else if (len  == 255) T_str_gather<255>().operator()(res, real_count, d, d_char);
+	else if (len  == 1023) T_str_gather<1023>().operator()(res, real_count, d, d_char);
 }
 
-
-
-// ---------------------------------------------------------------------------
+} // namespace alenka

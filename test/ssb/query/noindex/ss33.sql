@@ -1,0 +1,1 @@
+../../../../benchmark/SSB_queries_no_bitmaps/ss33.sql

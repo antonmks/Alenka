@@ -11,124 +11,122 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
-#include "strings.h"
+
+#include <string>
+
+#ifndef COMPRESS_FUNCTIONS
+#include "sorts.h"
+
+namespace alenka {
+
+
+} // namespace alenka
+
+#else
+
+namespace alenka {
 
 template <typename KeyType>
-void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp, unsigned int bits)
-{
+void update_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp, unsigned int bits) {
     thrust::device_ptr<unsigned int> dev_per(permutation);
-    
+
     // permute the keys with the current reordering
 	if (phase_copy) {
-		if(bits == 8) {
+		if (bits == 8) {
 			thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(key.data()));
 			thrust::device_ptr<unsigned char> temp((unsigned char*)tmp);
 			thrust::gather(dev_per, dev_per+RecCount, src, temp);
 			if (SortType.compare("DESC") == 0 )
 				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<unsigned char>());
 			else
-				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);		
-		}
-		else if(bits == 16) {
+				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
+		} else if (bits == 16) {
 			thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(key.data()));
 			thrust::device_ptr<unsigned short int> temp((unsigned short int*)tmp);
 			thrust::gather(dev_per, dev_per+RecCount, src, temp);
 			if (SortType.compare("DESC") == 0 )
 				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<unsigned short int>());
 			else
-				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);		
-		}
-		else if(bits == 32) {
+				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
+		} else if (bits == 32) {
 			thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(key.data()));
 			thrust::device_ptr<unsigned int> temp((unsigned int*)tmp);
 			thrust::gather(dev_per, dev_per+RecCount, src, temp);
 			if (SortType.compare("DESC") == 0 )
 				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<unsigned int>());
 			else
-				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);		
-		}
-		else {
+				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
+		} else {
 			thrust::device_ptr<KeyType> temp(tmp);
-			thrust::gather(dev_per, dev_per+RecCount, key.begin(), temp);    
+			thrust::gather(dev_per, dev_per+RecCount, key.begin(), temp);
 			if (SortType.compare("DESC") == 0 )
 				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<KeyType>());
 			else
 				thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
-		}	
-	}
-	else {
+		}
+	} else {
 		thrust::device_ptr<KeyType> temp(tmp);
-		thrust::gather(dev_per, dev_per+RecCount, key.begin(), temp);    
-		if (SortType.compare("DESC") == 0 )
+		thrust::gather(dev_per, dev_per+RecCount, key.begin(), temp);
+		if (SortType.compare("DESC") == 0)
 			thrust::stable_sort_by_key(temp, temp+RecCount, dev_per, thrust::greater<KeyType>());
 		else
 			thrust::stable_sort_by_key(temp, temp+RecCount, dev_per);
-	};	
+	}
 }
 
-
 template <typename KeyType>
-void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp)
-{
+void update_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, string SortType, KeyType* tmp) {
     thrust::gather(permutation, permutation+RecCount, key, tmp);
 
-    if (SortType.compare("DESC") == 0 )
+    if (SortType.compare("DESC") == 0)
         thrust::stable_sort_by_key(tmp, tmp+RecCount, permutation, thrust::greater<KeyType>());
     else
         thrust::stable_sort_by_key(tmp, tmp+RecCount, permutation);
 }
 
-
-
 template <typename KeyType>
-void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, KeyType* tmp, unsigned int bits)
-{
+void apply_permutation(thrust::device_vector<KeyType>& key, unsigned int* permutation, unsigned long long int RecCount, KeyType* tmp, unsigned int bits) {
     thrust::device_ptr<unsigned int> dev_per(permutation);
-	
+
 	if (phase_copy) {
-		if(bits == 8) {
+		if (bits == 8) {
 			thrust::device_ptr<unsigned char> temp((unsigned char*)tmp);
 			thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(key.data()));
 			thrust::copy(src, src + RecCount, temp);
 			thrust::gather(dev_per, dev_per+RecCount, temp, src);
-		}
-		else if(bits == 16) {
+		} else if (bits == 16) {
 			thrust::device_ptr<unsigned short int> temp((unsigned short int*)tmp);
 			thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(key.data()));
 			thrust::copy(src, src + RecCount, temp);
 			thrust::gather(dev_per, dev_per+RecCount, temp, src);
-		}
-		else if(bits == 32) {
+		} else if (bits == 32) {
 			thrust::device_ptr<unsigned int> temp((unsigned int*)tmp);
 			thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(key.data()));
 			thrust::copy(src, src + RecCount, temp);
 			thrust::gather(dev_per, dev_per+RecCount, temp, src);
-		}
-		else {
+		} else {
 			thrust::device_ptr<KeyType> temp(tmp);
 			// copy keys to temporary vector
 			thrust::copy(key.begin(), key.begin() + RecCount, temp);
 			// permute the keys
 			thrust::gather(dev_per, dev_per+RecCount, temp, key.begin());
-		};	
-	}
-	else {
-		thrust::device_ptr<KeyType> temp(tmp);		
-		thrust::copy(key.begin(), key.begin() + RecCount, temp);		
+		}
+	} else {
+		thrust::device_ptr<KeyType> temp(tmp);
+		thrust::copy(key.begin(), key.begin() + RecCount, temp);
 		thrust::gather(dev_per, dev_per+RecCount, temp, key.begin());
-	};	
+	}
 }
 
 template <typename KeyType>
-void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, KeyType* res)
-{
+void apply_permutation_host(KeyType* key, unsigned int* permutation, unsigned long long int RecCount, KeyType* res) {
     thrust::gather(permutation, permutation + RecCount, key, res);
 }
 
+} // namespace alenka
 
 
-
+#endif
 
 
 
