@@ -17,5 +17,7 @@ cpplint_src:
 cpplint_include:
 	python cpplint.py --filter=-whitespace/tab,-legal/copyright,-whitespace/line_length,-readability/casting,-whitespace/comments,-runtime,-build/include,-build/header_guard include/*
 
+test:
+	cd test && py.test -v --basetemp=tmp
 	
-.PHONY: install all cpplint_src cpplint_include
+.PHONY: install all cpplint_src cpplint_include test
