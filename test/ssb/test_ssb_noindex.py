@@ -7,16 +7,15 @@ import subprocess
 class TestSSBNoIndex:
 
 	def test_alenka(self, testdir):
-		#if not os.path.exists("src/alenka"):
-		#	raise Exception('missing src/alenka') 
+		if not os.path.exists("../src/alenka"):
+			raise Exception('missing src/alenka') 
 
-		#shutil.copy2("src/alenka", str(testdir.realpath()))
-		pass
+		shutil.copy2("../src/alenka", str(testdir.realpath()))
 
 	def test_cp_load(self, testdir):
 		shutil.copy2("ssb/load/load_customer.sql", str(testdir.realpath()))
 		shutil.copy2("ssb/load/load_date.sql", str(testdir.realpath()))
-		#shutil.copy2("ssb/load/load_lineorder.sql", str(testdir.realpath()))
+		shutil.copy2("ssb/load/load_lineorder.sql", str(testdir.realpath()))
 		shutil.copy2("ssb/load/load_part.sql", str(testdir.realpath()))
 		shutil.copy2("ssb/load/load_supplier.sql", str(testdir.realpath()))
 
@@ -60,17 +59,38 @@ class TestSSBNoIndex:
 	def test_chdir(self, testdir):
 		os.chdir(str(testdir.realpath()))
 
-	def test_alenka_load(self, testdir):
-		print subprocess.call(["alenka", "load_customer.sql"])
-		print subprocess.call(["alenka", "load_date.sql"])
-		print subprocess.call(["alenka", "load_lineorder.sql"])
-		print subprocess.call(["alenka", "load_part.sql"])
-		print subprocess.call(["alenka", "load_supplier.sql"])
+	def test_load_ssb_customer(self, testdir):
+		if subprocess.call(["alenka", "load_customer.sql"]) != 0:
+			raise Exception('load error')
+
+	def test_load_ssb_date(self, testdir):
+		if subprocess.call(["alenka", "load_date.sql"]) != 0:
+			raise Exception('load error')
+
+	def test_load_ssb_lineorder(self, testdir):
+		if subprocess.call(["alenka", "load_lineorder.sql"]) != 0:
+			raise Exception('load error')
+
+	def test_load_ssb_part(self, testdir):
+		if subprocess.call(["alenka", "load_part.sql"]) != 0:
+			raise Exception('load error')
+
+	def test_load_ssb_supplier(self, testdir):
+		if subprocess.call(["alenka", "load_supplier.sql"]) != 0:
+			raise Exception('load error')
 
 	def test_query_ss11(self, testdir):
-		print subprocess.call(["alenka", "ss11.sql"])
+		if subprocess.call(["alenka", "ss11.sql"]) != 0:
+			raise Exception('query error')
+	
+		result1 = open('ss11.txt', 'r')
+		result2 = open('ss11.txt2', 'r')
+		diff = difflib.SequenceMatcher(None, result1.read(), result2.read())
+		print diff
+		assert 1
 		
 	def test_query_ss12(self, testdir):
+		assert 0
 		print subprocess.call(["alenka", "ss12.sql"])
 
 	def test_query_ss13(self, testdir):
