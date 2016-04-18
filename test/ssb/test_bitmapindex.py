@@ -4,7 +4,7 @@ import pytest
 import subprocess
 
 @pytest.mark.incremental
-class TestSSBNoIndex:
+class TestSSBBitmapIndex:
 
 	def test_alenka(self, testdir):
 		if not os.path.exists("../src/alenka"):
