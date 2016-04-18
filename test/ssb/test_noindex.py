@@ -6,6 +6,13 @@ import subprocess
 @pytest.mark.incremental
 class TestSSBNoIndex:
 
+	def test_check_testdir(self, testdir):
+		#clean up test dir
+		for the_file in os.listdir(str(testdir.realpath())):
+			file_path = os.path.join(str(testdir.realpath()), the_file)
+			if os.path.isfile(file_path):
+				os.unlink(file_path)
+
 	def test_alenka(self, testdir):
 		if not os.path.exists("../src/alenka"):
 			raise Exception('missing src/alenka') 
