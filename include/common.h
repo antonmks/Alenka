@@ -20,7 +20,7 @@
 #include <string>
 
 #include "global.h"
-#include "CudaSet.h"
+#include "cudaset.h"
 #include "zone_map.h"
 #include "filter.h"
 #include "operators.h"
@@ -55,6 +55,9 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right);
 void check_sort(const string str, const char* rtable, const char* rid);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
+unsigned int get_decimals(CudaSet* a, string s1_val, stack<unsigned int>& exe_precision);
+int_type* get_host_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
+int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
 void yyerror(char *s, ...);
 void clean_queues();
 void load_vars();

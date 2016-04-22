@@ -1,7 +1,7 @@
 # Linux Makefile
 
 #flags
-CFLAGS=--machine 64 -O2 -g -std=c++11 -I ../moderngpu/include/ -I ../include/ -I ../redis3m/include/ --compiler-options '-fPIC' -DDATADICT_REDIS_SIMPLE=1
+CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda -I ../ -I ../include/ -I ../redis3m/include/ --compiler-options '-fPIC' -DDATADICT_REDIS_SIMPLE=1
 
 #compute compatibility
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
@@ -14,16 +14,16 @@ alenka : libalenka.a main.o
 	nvcc $(CFLAGS) -L . $< libredis3m.a -lhiredis -o $@ main.o
 
 #static library
-libalenka.a : alenka.o callbacks.o common.o compress.o CudaSet.o datadict_local.o datadict_redis_ha.o \
+libalenka.a : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o datadict_redis_ha.o \
 		 datadict_redis_simple.o filter.o global.o \
- 		 merge.o mgpucontext.o mgpuutil.o MurmurHash2_64.o operators.o select.o sorts.o \
+ 		 merge.o murmurhash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	ar rcs $@ $^
 
 #shared library
 libalenka.so : alenka.o callbacks.o common.o compress.o datadict_local.o datadict_redis_ha.o \
-		 datadict_redis_simple.o CudaSet.o filter.o global.o \
- 		 merge.o mgpucontext.o mgpuutil.o MurmurHash2_64.o operators.o select.o sorts.o \
+		 datadict_redis_simple.o cudaset.o filter.o global.o \
+ 		 merge.o murmurhash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	nvcc -o libalenka.so --shared $^
 
@@ -37,7 +37,7 @@ common.o : common.cu
 	$(nvcc) -c $< -o $@
 compress.o : compress.cu
 	$(nvcc) -c $< -o $@
-CudaSet.o : CudaSet.cu
+cudaset.o : cudaset.cu
 	$(nvcc) -c $< -o $@
 datadict_local.o : datadict_local.cpp
 	$(nvcc) -c $< -o $@
@@ -53,11 +53,7 @@ main.o : main.cu
 	$(nvcc) -c $< -o $@
 merge.o : merge.cu
 	$(nvcc) -c $< -o $@
-mgpucontext.o : ../moderngpu/src/mgpucontext.cu
-	$(nvcc) -c $< -o $@
-mgpuutil.o : ../moderngpu/src/mgpuutil.cpp
-	$(nvcc) -c $< -o $@
-MurmurHash2_64.o : MurmurHash2_64.cpp
+murmurhash2_64.o : murmurhash2_64.cpp
 	$(nvcc) -c $< -o $@
 operators.o : operators.cu
 	$(nvcc) -c $< -o $@

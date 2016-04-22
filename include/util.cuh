@@ -235,6 +235,23 @@ struct gpu_interval {
 	}
 };
 
+struct split_int2
+{
+	int *v1;
+    int *v2;
+	const int2 *source;
+
+	split_int2(int *_v1, int *_v2, const int2* _source):
+			  v1(_v1), v2(_v2), source(_source) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
+
+		v1[i] = source[i].x;
+		v2[i] = source[i].y;
+	}
+};
+
 struct gpu_interval_set {
 	const long long int *dt1;
 	long long int *dt2;

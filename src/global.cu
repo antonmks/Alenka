@@ -64,7 +64,7 @@ thrust::device_vector<unsigned int> rcol_matches;
 thrust::device_vector<int_type> rcol_dev;
 thrust::device_vector<int> ranj;
 size_t allocated_sz;
-ContextPtr context;
+standard_context_t context;
 map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
 bool scan_state;
 unsigned int statement_count;
@@ -81,6 +81,7 @@ IDataDict *data_dict;
 map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 map<string, unsigned int> cnt_counts;
 string curr_file;
+
 
 //operators
 queue<string> namevars;

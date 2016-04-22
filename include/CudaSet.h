@@ -27,11 +27,9 @@
 #include "compress.cuh"
 #include "sorts.h"
 #include "util.cuh"
-#include "MurmurHash2_64.h"
+#include "murmurhash2_64.h"
 
-using namespace std;
 using namespace thrust::placeholders;
-using namespace thrust::system::cuda::experimental;
 
 namespace alenka {
 

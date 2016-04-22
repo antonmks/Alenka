@@ -19,7 +19,7 @@
 #include <stack>
 
 #include "global.h"
-#include "CudaSet.h"
+#include "cudaset.h"
 #include "common.h"
 #include "merge.h"
 #include "filter.h"

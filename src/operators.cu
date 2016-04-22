@@ -18,8 +18,13 @@
 #include <stack>
 #include <vector>
 #include <set>
+#include <algorithm>
+
+#include "moderngpu/src/moderngpu/kernel_join.hxx"
 
 #include "operators.h"
+
+using namespace mgpu;
 
 namespace alenka {
 
@@ -916,8 +921,6 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
     size_t cnt_l, res_count, tot_count = 0, offset = 0, k = 0;
     queue<string> lc(cc);
     thrust::device_vector<unsigned int> v_l(left->maxRecs);
-    MGPU_MEM(int) aIndicesDevice, bIndicesDevice, intersectionDevice;
-
     stack<string> exe_type;
     set<string> field_names;
     exe_type.push(f2);
@@ -1073,11 +1076,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 				}
 
 				if (prejoin) {
-					res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
+			/*		res_count = SetOpKeys<MgpuSetOpIntersection, true>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
 															thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
 															&intersectionDevice, *context, false);
 					if (!res_count)
 						continue;
+			*/
 				}
 
                 if (verbose)
@@ -1105,27 +1109,40 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
 
                 char join_kind = join_type.front();
 				std::clock_t start11 = std::clock();
+				mem_t<int2> res;
 
-                if (join_kind == 'I' || join_kind == '1' || join_kind == '2' || join_kind == '3' || join_kind == '4')
-                    res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
-                                thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
-                                &aIndicesDevice, &bIndicesDevice,
-                                mgpu::less<int_type>(), *context);
-                else if (join_kind == 'L')
+                if (join_kind == 'I' || join_kind == '1' || join_kind == '2' || join_kind == '3' || join_kind == '4') {
+                    //res_count = RelationalJoin<MgpuJoinKindInner>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
+                    //            thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
+                    //            &aIndicesDevice, &bIndicesDevice,
+                    //            mgpu::less<int_type>(), *context);
+
+
+
+
+					res = inner_join(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
+									thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r, less_t<int_type>(), context);
+
+				}
+
+				res_count = res.size();
+
+               /* else if(join_kind == 'L')
                     res_count = RelationalJoin<MgpuJoinKindLeft>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
-                else if (join_kind == 'R')
+                else if(join_kind == 'R')
                     res_count = RelationalJoin<MgpuJoinKindRight>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
-                else if (join_kind == 'O')
+                else if(join_kind == 'O')
                     res_count = RelationalJoin<MgpuJoinKindOuter>(thrust::raw_pointer_cast(left->d_columns_int[colname1].data()), cnt_l,
                                 thrust::raw_pointer_cast(right->d_columns_int[colname2].data()), cnt_r,
                                 &aIndicesDevice, &bIndicesDevice,
                                 mgpu::less<int_type>(), *context);
+				*/
 
 				if (verbose)
 					 LOG(logDEBUG) << "join time " <<  ((std::clock() - start11) / (double)CLOCKS_PER_SEC);
@@ -1136,10 +1153,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
                 if (res_count == 0)
 					prejoin = 1;
 
-                int* r1 = aIndicesDevice->get();
-                thrust::device_ptr<int> d_res1((int*)r1);
-                int* r2 = bIndicesDevice->get();
-                thrust::device_ptr<int> d_res2((int*)r2);
+                thrust::device_ptr<int> d_res1 = thrust::device_malloc<int>(res_count);
+                thrust::device_ptr<int> d_res2 = thrust::device_malloc<int>(res_count);
+
+				thrust::counting_iterator<unsigned int> begin(0);
+				split_int2 ff(thrust::raw_pointer_cast(d_res1), thrust::raw_pointer_cast(d_res2), res.data());
+				thrust::for_each(begin, begin + res_count, ff);
 
                 if (res_count) {
                     p_tmp.resize(res_count);
@@ -1801,7 +1820,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt) {
             }
 
 			copyFinalize(a, op_vx, 0);
-            select(op_type, op_value, op_nums, op_nums_f, op_nums_precision, a, b, distinct_tmp, one_liner);
+			one_liner = select(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a,b, distinct_tmp);
 
             if (i == 0)
                 std::reverse(b->columnNames.begin(), b->columnNames.end());

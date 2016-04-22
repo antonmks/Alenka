@@ -22,7 +22,7 @@
 
 #include "global.h"
 #include "common.h"
-#include "CudaSet.h"
+#include "cudaset.h"
 #include "filter.cuh"
 #include "zone_map.h"
 

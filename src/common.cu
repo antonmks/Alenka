@@ -17,6 +17,7 @@
 #include <queue>
 #include <map>
 #include <string>
+#include <algorithm>
 
 #include "common.h"
 
@@ -989,6 +990,45 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
     binary_file.close();
 }
 
+unsigned int get_decimals(CudaSet* a, string s1_val, stack<unsigned int>& exe_precision) {
+	unsigned int t;
+	if(std::find(a->columnNames.begin(), a->columnNames.end(), s1_val) != a->columnNames.end())
+		t = a->decimal_zeroes[s1_val];
+	else {
+		t = exe_precision.top();
+		exe_precision.pop();
+	}
+	return t;
+}
+
+int_type* get_host_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors) {
+	int_type* t;
+	if(std::find(a->columnNames.begin(), a->columnNames.end(), s1_val) != a->columnNames.end()) {
+		t = a->get_host_int_by_name(s1_val);
+	}
+	else {
+		t = exe_vectors.top();
+
+		thrust::device_ptr<int_type> st1((int_type*)t);
+		for(int z = 0; z < 10; z++)
+		cout << "RESVEC " << st1[z] << endl;
+
+		exe_vectors.pop();
+	}
+	return t;
+}
+
+int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors) {
+	int_type* t;
+	if(std::find(a->columnNames.begin(), a->columnNames.end(), s1_val) != a->columnNames.end())
+		t = a->get_int_by_name(s1_val);
+	else {
+		t = exe_vectors.top();
+		exe_vectors.pop();
+	}
+	return t;
+}
+
 void yyerror(char *s, ...) {
     extern int yylineno;
     extern char *yytext;
@@ -1070,7 +1110,6 @@ void init(char ** av) {
     scan_state = 1;
     statement_count = 0;
     clean_queues();
-    context = CreateCudaDevice(0, nullptr, true);
 }
 
 void close() {

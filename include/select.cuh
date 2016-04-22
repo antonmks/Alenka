@@ -32,7 +32,7 @@ struct gpu_getyear {
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-		mgpu::uint64 sec;
+		unsigned long long int sec;
 		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
 		uint year, leap;
 		uint yday;
@@ -41,7 +41,7 @@ struct gpu_getyear {
 			{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}, // 365 days, non-leap
 			{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}  // 366 days, leap
 		};
-		mgpu::uint64 SecondsSinceEpoch = source[i]/1000;
+		unsigned long long int SecondsSinceEpoch = source[i]/1000;
 		sec = SecondsSinceEpoch + 11644473600;
 
 		//wday = (uint)((sec / 86400 + 1) % 7); // day of week
@@ -97,7 +97,7 @@ struct gpu_getmonth {
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-		mgpu::uint64 sec;
+    	unsigned long long int sec;
 		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
 		uint year, leap;
 		uint yday;
@@ -106,7 +106,7 @@ struct gpu_getmonth {
 			{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}, // 365 days, non-leap
 			{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}  // 366 days, leap
 		};
-		mgpu::uint64 SecondsSinceEpoch = source[i]/1000;
+		unsigned long long int SecondsSinceEpoch = source[i]/1000;
 		sec = SecondsSinceEpoch + 11644473600;
 
 		//wday = (uint)((sec / 86400 + 1) % 7); // day of week
@@ -162,7 +162,7 @@ struct gpu_getday {
     template <typename IndexType>
     __host__ __device__
     void operator()(const IndexType & i) {
-		mgpu::uint64 sec;
+    	unsigned long long int sec;
 		uint quadricentennials, centennials, quadrennials, annuals/*1-ennial?*/;
 		uint year, leap;
 		uint yday, hour, min;
@@ -171,7 +171,7 @@ struct gpu_getday {
 			{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}, // 365 days, non-leap
 			{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}  // 366 days, leap
 		};
-		mgpu::uint64 SecondsSinceEpoch = source[i]/1000;
+		unsigned long long int SecondsSinceEpoch = source[i]/1000;
 		sec = SecondsSinceEpoch + 11644473600;
 
 		wday = (uint)((sec / 86400 + 1) % 7); // day of week

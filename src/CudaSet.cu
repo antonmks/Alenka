@@ -18,8 +18,9 @@
 #include <stack>
 #include <set>
 #include <vector>
+#include <algorithm>
 
-#include "CudaSet.h"
+#include "cudaset.h"
 
 namespace alenka {
 

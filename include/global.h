@@ -28,7 +28,9 @@
 #include "cuda_safe.h"
 #include "idatadict.h"
 
-#include "moderngpu.cuh"
+//#include "moderngpu.cuh"
+#include "moderngpu/src/moderngpu/kernel_reduce.hxx"
+#include "moderngpu/src/moderngpu/kernel_segreduce.hxx"
 
 using namespace std;
 using namespace mgpu;
@@ -79,7 +81,7 @@ extern thrust::device_vector<unsigned int> rcol_matches;
 extern thrust::device_vector<int_type> rcol_dev;
 extern thrust::device_vector<int> ranj;
 extern size_t allocated_sz;
-extern ContextPtr context;
+extern standard_context_t context;
 extern map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
 extern bool scan_state;
 extern unsigned int statement_count;

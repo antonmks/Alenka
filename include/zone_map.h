@@ -20,7 +20,7 @@
 
 #include "global.h"
 #include "common.h"
-#include "CudaSet.h"
+#include "cudaset.h"
 
 namespace alenka {
 
