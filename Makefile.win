@@ -1,7 +1,0 @@
-.DEFAULT:
-	cd src && (nmake -f Makefile.win)
-
-all:
-	cd src && (nmake -f Makefile.win)
-
-.PHONY: all

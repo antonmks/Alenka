@@ -1,1 +1,0 @@
-../../../benchmark/SSB_load/load_part.sql

@@ -1,1 +1,0 @@
-../../../../benchmark/SSB_bitmap_indexes/index11.sql

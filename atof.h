@@ -1,0 +1,1 @@
+double atoff (const char *p);
