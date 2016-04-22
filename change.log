@@ -1,0 +1,74 @@
+11/02/2014
+  Modified the storage model for strings. Now Alenka works with string hashes as opposed to actual strings.	
+
+08/11/2014 
+  Added support for bitmap join indexes. Added SSD optimizations for storage engine.
+
+02/26/2014
+  Added a simple built-in data dictionary.	
+
+02/20/2014
+  Added ability to use Alenka as a lib call.
+
+02/07/2014
+  Added support for sparse datasets : one can load the data like this now : 
+	A := LOAD 'lineitem.tbl' USING ('|') AS (orderkey{1}:int REFERENCES orders(1) ...
+  In order to use this you need to load orders first, then lineitems. Performance of many join operations 
+  is improved by 2X.
+
+
+09/14/2013
+  Join tables that do not fit into limited GPU memory are partitioned :
+  STORE A INTO 'lineitem' BINARY SORT SEGMENTS BY orderkey PARTITION BY 2; 
+  This way it becomes possible to join huge tables that normally won't fit into GPU memory.
+
+09/05/2013 
+  Filters are done in-place, host memory usage is improved.
+
+07/04/2013
+  Major join performance improvements due to addition of local segments sort option.
+
+05/27/2013
+  Added a sorted merge joins as default join type.
+  Added support for left, right and outer joins.
+  Tested a few TPC-H queries on a 300GB dataset.
+
+
+05/10/2013
+   Added support for star query joins (important for data warehousing applications)
+     -look at star_schema_queries.zip
+   Support for multitable joins.
+   Tested on a 1TB database (Star Schema Benchmark).
+   Fixed a problem with grouping of datasets that do not fit GPU.
+
+
+03/22/2013
+   Joins are now GPU hash joins.
+
+02/16/2013
+   Performance and bug fixes
+
+02/10/2013
+   Modified groupby op - now it is hash-based and scalable.
+   Switched to Sean Baxter's binary search implementation (it is significantly faster)
+   Added support for COUNT(DISTINCT field))
+
+
+01/28/2013
+    Bug fixes.
+
+
+01/19/2013.
+    Major changes to the way the strings are stored and processed by the engine.
+    Implemented join on strings using Murmurhash library.
+    Implemented external sort.
+
+
+11/30/2012.
+    Modified the database file structure for faster access to the database segments.
+
+
+
+11/16/2012.
+    I have verified that the program runs correctly for 64bit values.
+    Because CUDPP Hash table supports only 32 bit keys I had to modify the hash join algorithm.
