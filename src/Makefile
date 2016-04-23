@@ -1,7 +1,7 @@
 # Linux Makefile
 
 #flags
-CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda -I ../deps/ -I ../include/ -I ../deps/redis3m/include/ --compiler-options '-fPIC' -DDATADICT_REDIS_SIMPLE=1
+CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda --compiler-options '-fPIC' -I ../deps/ -I ../include/ -I ../deps/redis3m/include/ -DDATADICT_REDIS_HA=1
 
 #compute compatibility
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
@@ -11,19 +11,17 @@ GENCODE_FLAGS	:= $(GENCODE_SM30)
 
 #alenka binary
 alenka : libalenka.a main.o
-	nvcc $(CFLAGS) -L . $< libredis3m.a -lhiredis -o $@ main.o
+	nvcc $(CFLAGS) -L . $< libredis3m.a -lhiredis -lboost_regex -o $@ main.o
 
 #static library
 libalenka.a : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o datadict_redis_ha.o \
-		 datadict_redis_simple.o filter.o global.o \
- 		 merge.o murmurhash2_64.o operators.o select.o sorts.o \
+		 datadict_redis_simple.o filter.o global.o merge.o murmurhash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	ar rcs $@ $^
 
 #shared library
-libalenka.so : alenka.o callbacks.o common.o compress.o datadict_local.o datadict_redis_ha.o \
-		 datadict_redis_simple.o cudaset.o filter.o global.o \
- 		 merge.o murmurhash2_64.o operators.o select.o sorts.o \
+libalenka.so : alenka.o callbacks.o common.o compress.o cudaset.o  datadict_local.o datadict_redis_ha.o \
+		 datadict_redis_simple.o filter.o global.o merge.o murmurhash2_64.o operators.o select.o sorts.o \
 		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	nvcc -o libalenka.so --shared $^
 
