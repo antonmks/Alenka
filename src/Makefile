@@ -1,7 +1,7 @@
 # Linux Makefile
 
 #flags
-CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda -I ../ -I ../include/ -I ../redis3m/include/ --compiler-options '-fPIC' -DDATADICT_REDIS_SIMPLE=1
+CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda -I ../deps/ -I ../include/ -I ../deps/redis3m/include/ --compiler-options '-fPIC' -DDATADICT_REDIS_SIMPLE=1
 
 #compute compatibility
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30

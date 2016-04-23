@@ -1,0 +1,6 @@
+[submodule "deps/moderngpu"]
+	path = deps/moderngpu
+	url = https://github.com/moderngpu/moderngpu.git
+[submodule "deps/redis3m"]
+	path = deps/redis3m
+	url = https://github.com/hurdad/redis3m.git
