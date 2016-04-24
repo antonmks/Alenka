@@ -81,7 +81,7 @@ IDataDict *data_dict;
 map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 map<string, unsigned int> cnt_counts;
 string curr_file;
-
+IFileSystem *file_system;
 
 //operators
 queue<string> namevars;

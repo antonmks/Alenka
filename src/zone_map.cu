@@ -538,7 +538,7 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
     set<string> uniques;
     queue<string> fields(op_value);
     CudaSet *t;
-    FILE* f;
+    iFileSystemHandle* f;
     unsigned int cnt;
     string f1;
 
@@ -552,32 +552,32 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
             // copy t min and max values to a only if int, decimal or float
             if (t->type[fields.front()] <= 1) {
                 f1 = t->load_file_name + "." + fields.front() + "." + to_string(segment);
-                f = fopen(f1.c_str(), "rb");
+                f = file_system->open(f1.c_str(), "rb");
                 if (!f) {
-                    cout << "Error opening " << f1 << " file " << endl;
+                	LOG(logERROR) << "Error opening " << f1 << " file ";
                     exit(0);
                 }
 
-                fread((char *)&cnt, 4, 1, f);
+                file_system->read((char *)&cnt, 4, f);
                 if (t->type[fields.front()] == 0) {
                     a->h_columns_int[fields.front()].resize(2);
-                    fread((char *)&a->h_columns_int[fields.front()][0], 8, 1, f);
-                    fread((char *)&a->h_columns_int[fields.front()][1], 8, 1, f);
-                    fseek(f, 8+cnt, SEEK_CUR);
-                    fread((char *)&a->mRecCount, 4, 1, f);
-                    //cout << endl << "ZONE " << a->mRecCount << endl;
-                    fread((char *)&cnt, 4, 1, f);
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1] << endl;
+                    file_system->read((char *)&a->h_columns_int[fields.front()][0], 8, f);
+                    file_system->read((char *)&a->h_columns_int[fields.front()][1], 8, f);
+                    file_system->seek(f, 8+cnt, SEEK_CUR);
+                    file_system->read((char *)&a->mRecCount, 4, f);
+                    LOG(logDEBUG) << endl << "ZONE " << a->mRecCount;
+                    file_system->read((char *)&cnt, 4, f);
+                    LOG(logDEBUG) << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1];
                 } else {
                     long long int t;
                     a->h_columns_float[fields.front()].resize(2);
-                    fread((char *)&t, 8, 1, f);
+                    file_system->read((char *)&t, 8, f);
                     a->h_columns_float[fields.front()][0] = (float_type)t/100.0;
-                    fread((char *)&t, 8, 1, f);
+                    file_system->read((char *)&t, 8, f);
                     a->h_columns_float[fields.front()][1] = (float_type)t/100.0;
-                    //cout << "file " << f1 << " " << segment << " " << a->h_columns_float[a->type_index[colIndex]][0] << ":" << a->h_columns_float[a->type_index[colIndex]][1] << endl;
+                    LOG(logDEBUG) << "file " << f1 << " " << segment << " " << a->h_columns_int[fields.front()][0] << ":" << a->h_columns_int[fields.front()][1];
                 }
-                fclose(f);
+                file_system->close(f);
             }
         }
         uniques.insert(fields.front());
@@ -643,7 +643,6 @@ char zone_map_check(queue<string> op_type, queue<string> op_value, queue<int_typ
                         res = n1/n2;
                     else
                         res = n1-n2;
-
 
                     exe_type.push("NUMBER");
                     exe_nums.push(res);

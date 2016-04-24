@@ -27,10 +27,24 @@
 #include "callbacks.h"
 #include "cuda_safe.h"
 #include "idatadict.h"
+#include "ifilesystem.h"
 
-//#include "moderngpu.cuh"
 #include "moderngpu/src/moderngpu/kernel_reduce.hxx"
 #include "moderngpu/src/moderngpu/kernel_segreduce.hxx"
+
+#ifdef DATADICT_REDIS_SIMPLE
+#include "datadict_redis_simple.h"
+#elif DATADICT_REDIS_HA
+#include "datadict_redis_ha.h"
+#else
+#include "datadict_local.h"
+#endif
+
+#ifdef FILESYSTEM_HDFS
+#include "filesystem_hdfs.h"
+#else
+#include "filesystem_local.h"
+#endif
 
 using namespace std;
 using namespace mgpu;
@@ -98,6 +112,7 @@ extern IDataDict *data_dict;
 extern map<string, unsigned long long int*> idx_vals; // pointer to compressed values in gpu memory
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
+extern IFileSystem *file_system;
 
 //operators
 extern queue<string> namevars;

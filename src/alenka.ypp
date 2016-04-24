@@ -18,14 +18,6 @@
 #include "common.h"
 #include "operators.h"
 
-#ifdef DATADICT_REDIS_SIMPLE
-#include "datadict_redis_simple.h"
-#elif DATADICT_REDIS_HA
-#include "datadict_redis_ha.h"
-#else
-#include "datadict_local.h"
-#endif  
-
 namespace alenka {
 
 #include "lex.yy.c"
@@ -343,6 +335,12 @@ int execute_file(int ac, char **av) {
 	data_dict = new DataDictLocal("data.dictionary"); 
 #endif
 
+#ifdef FILESYSTEM_HDFS
+	file_system = new FileSystemHDFS("default", 0);
+#else
+	file_system = new FileSystemLocal();
+#endif
+
     if (!interactive) {
         if ((yyin = fopen(av[ac-1], "r")) == nullptr) {
             perror(av[ac-1]);
@@ -461,8 +459,10 @@ int execute_file(int ac, char **av) {
 		ranj.resize(0);
 		ranj.shrink_to_fit();
 	}
-	delete data_dict;
 
+	delete data_dict;
+	delete file_system;
+	
 	LOG(logINFO) << "Execute Complete!";
 
     return 0;
@@ -481,6 +481,12 @@ int execute(char *s) {
 	data_dict = new DataDictRedisHA("sentinel1,sentinel2,sentinel3", "test", 26379);
 #else
 	data_dict = new DataDictLocal("data.dictionary"); 
+#endif
+
+#ifdef FILESYSTEM_HDFS
+	file_system = new FileSystemHDFS("default", 0);
+#else
+	file_system = new FileSystemLocal();
 #endif
 
     if (verbose)
@@ -520,6 +526,7 @@ int execute(char *s) {
    		data_dict->save();
 
 	delete data_dict;
+	delete file_system;
     return ret;
 }
 

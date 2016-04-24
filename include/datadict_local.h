@@ -17,8 +17,6 @@
 
 #include "idatadict.h"
 
-using namespace std;
-
 namespace alenka {
 
 class DataDictLocal: public IDataDict {

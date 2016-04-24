@@ -1,28 +1,38 @@
 # Linux Makefile
 
-#flags
-CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda --compiler-options '-fPIC' -I ../deps/ -I ../include/ -I ../deps/redis3m/include/ -DDATADICT_REDIS_HA=1
+#uncomment for redis data dictionary (SIMPLE or HA)
+#REDIS_FLAGS=-I ../deps/redis3m/include/ -DDATADICT_REDIS_SIMPLE=1
+#REDIS_LIBS=-L ../deps/redis3m/libredis3m.a -lhiredis -lboost_regex
+#REDIS_OBJ=datadict_redis_ha.o datadict_redis_simple.o
 
-#compute compatibility
+#uncomment for hdfs filesystem
+#HDFS_FLAGS=-DFILESYSTEM_HDFS=1 
+#HDFS_LIBS=-lhdfs
+#HDFS_OBJ=filesystem_hdfs.o
+
+#flags
+CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda --compiler-options '-fPIC' -I ../deps/ -I ../include/ $(REDIS_FLAGS) $(HDFS_FLAGS)
+
+#compute compatibility (https://developer.nvidia.com/cuda-gpus])
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
-GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
-GENCODE_SM50	:= -gencode arch=compute_50,code=sm_50
-GENCODE_FLAGS	:= $(GENCODE_SM30)
+#GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
+#GENCODE_SM50	:= -gencode arch=compute_50,code=sm_50
+GENCODE_FLAGS	:= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM50)
 
 #alenka binary
 alenka : libalenka.a main.o
-	nvcc $(CFLAGS) -L . $< libredis3m.a -lhiredis -lboost_regex -o $@ main.o
+	nvcc $(CFLAGS) -L . $< $(REDIS_LIBS) $(HDFS_LIBS) -o $@ main.o
 
 #static library
-libalenka.a : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o datadict_redis_ha.o \
-		 datadict_redis_simple.o filter.o global.o merge.o murmurhash2_64.o operators.o select.o sorts.o \
-		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
+libalenka.a : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o \
+		 $(REDIS_OBJ) $(HDFS_OBJ) filesystem_local.o filter.o global.o merge.o murmurhash2_64.o \
+		 operators.o select.o sorts.o strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	ar rcs $@ $^
 
 #shared library
-libalenka.so : alenka.o callbacks.o common.o compress.o cudaset.o  datadict_local.o datadict_redis_ha.o \
-		 datadict_redis_simple.o filter.o global.o merge.o murmurhash2_64.o operators.o select.o sorts.o \
-		 strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
+libalenka.so : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o \
+		 $(REDIS_OBJ) $(HDFS_OBJ) filesystem_local.o filter.o global.o merge.o murmurhash2_64.o \
+		 operators.o select.o sorts.o strings_join.o strings_sort_host.o strings_sort_device.o zone_map.o	 
 	nvcc -o libalenka.so --shared $^
 
 #alenka objects
@@ -42,6 +52,10 @@ datadict_local.o : datadict_local.cpp
 datadict_redis_ha.o : datadict_redis_ha.cpp
 	$(nvcc) -c $< -o $@
 datadict_redis_simple.o : datadict_redis_simple.cpp
+	$(nvcc) -c $< -o $@
+filesystem_local.o : filesystem_local.cpp
+	$(nvcc) -c $< -o $@
+filesystem_hdfs.o : filesystem_hdfs.cpp
 	$(nvcc) -c $< -o $@
 filter.o : filter.cu
 	$(nvcc) -c $< -o $@
