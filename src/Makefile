@@ -2,7 +2,7 @@
 
 #uncomment for redis data dictionary (SIMPLE or HA)
 #REDIS_FLAGS=-I ../deps/redis3m/include/ -DDATADICT_REDIS_SIMPLE=1
-#REDIS_LIBS=-L ../deps/redis3m/libredis3m.a -lhiredis -lboost_regex
+#REDIS_LIBS=../deps/redis3m/libredis3m.a -lhiredis -lboost_regex
 #REDIS_OBJ=datadict_redis_ha.o datadict_redis_simple.o
 
 #uncomment for hdfs filesystem
