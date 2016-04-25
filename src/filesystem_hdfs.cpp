@@ -25,17 +25,16 @@ FileSystemHDFS::~FileSystemHDFS(){
 }
 
 iFileSystemHandle* FileSystemHDFS::open(const char* path, const char * mode) {
-	int bufferSize = 0;
-	short replication = 0;
-	tSize blocksize = 0;
+	int bufferSize = 0; //Default
+	short replication = 0; //Default
+	tSize blocksize = 0; //Default
 	int flags = O_RDONLY;//FIXME
 
-	HDFSFile *f = hdfsOpenFile(_fs, path, flags, bufferSize, replication, blocksize);
-	if(!f)
+	FileSystemHandleHDFS *h = new FileSystemHandleHDFS;
+	h->_file = hdfsOpenFile(_fs, path, flags, bufferSize, replication, blocksize);
+	if(!h->_file)
 		return NULL;
 
-	FileSystemHandleHDFS *h = new FileSystemHandleHDFS;
-	h->_file = f;
 	return h;
 }
 
@@ -59,11 +58,11 @@ size_t FileSystemHDFS::putc(int character, iFileSystemHandle* h){
 
 }
 
-size_t FileSystemLocal::puts(const char * str, iFileSystemHandle* h){
+size_t FileSystemHDFS::puts(const char * str, iFileSystemHandle* h){
 	//TODO
 }
 
-size_t FileSystemLocal::printf(iFileSystemHandle* h, const char * format, ...) {
+size_t FileSystemHDFS::printf(iFileSystemHandle* h, const char * format, ...) {
 
 }
 

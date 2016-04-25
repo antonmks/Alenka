@@ -38,7 +38,7 @@ public:
 	size_t tell(iFileSystemHandle* h);
 	size_t putc(int character, iFileSystemHandle* h);
 	size_t puts(const char * str, iFileSystemHandle* h);
-	size_t printf (iFileSystemHandle* h, const char * format, ...);
+	size_t printf(iFileSystemHandle* h, const char * format, ...);
 	void close(iFileSystemHandle* h);
 	int remove(const char* path);
 	int rename(const char* oldPath, const char* newPath);

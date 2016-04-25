@@ -34,7 +34,7 @@ public:
 	virtual size_t tell(iFileSystemHandle* h) = 0;
 	virtual size_t putc(int character, iFileSystemHandle* h) = 0;
 	virtual size_t puts(const char * str, iFileSystemHandle* h) = 0;
-	virtual size_t printf (iFileSystemHandle* h, const char * format, ...) = 0;
+	virtual size_t printf(iFileSystemHandle* h, const char * format, ...) = 0;
 	virtual void close(iFileSystemHandle* h) = 0;
 	virtual int remove(const char* path) = 0;
 	virtual int rename(const char* oldPath, const char* newPath) = 0;

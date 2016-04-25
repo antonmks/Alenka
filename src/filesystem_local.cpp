@@ -24,12 +24,11 @@ FileSystemLocal::FileSystemLocal() {
 }
 
 iFileSystemHandle* FileSystemLocal::open(const char* path, const char * mode) {
-	FILE *f = fopen(path, mode);
-	if(!f)
+	FileSystemHandleLocal *h = new FileSystemHandleLocal;
+	h->_file = fopen(path, mode);
+	if(!h->_file)
 		return NULL;
 
-	FileSystemHandleLocal *h = new FileSystemHandleLocal;
-	h->_file = f;
 	return h;
 }
 
@@ -81,7 +80,7 @@ int FileSystemLocal::rename(const char* oldPath, const char* newPath) {
 
 bool FileSystemLocal::exist(const char* path){
 	std::ifstream infile(path);
-    return infile.good();
+	return infile.good();
 }
 
 } // namespace alenka
