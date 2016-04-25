@@ -19,17 +19,14 @@
 
 namespace alenka {
 
-FileSystemLocal::FileSystemLocal() {
-
+FileSystemLocal::FileSystemLocal(const char* base_path) {
+	_base_path = base_path;
 }
 
 iFileSystemHandle* FileSystemLocal::open(const char* path, const char * mode) {
 	FileSystemHandleLocal *h = new FileSystemHandleLocal;
 	h->_file = fopen(path, mode);
-	if(!h->_file)
-		return NULL;
-
-	return h;
+	return (!h->_file) ? NULL : h;
 }
 
 size_t FileSystemLocal::read(void* buffer, size_t length, iFileSystemHandle * h) {

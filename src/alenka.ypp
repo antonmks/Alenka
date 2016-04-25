@@ -336,9 +336,9 @@ int execute_file(int ac, char **av) {
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS("default", 0);
+	file_system = new FileSystemHDFS("default", 0, "/tmp");
 #else
-	file_system = new FileSystemLocal();
+	file_system = new FileSystemLocal(".");
 #endif
 
     if (!interactive) {
@@ -484,9 +484,9 @@ int execute(char *s) {
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS("default", 0);
+	file_system = new FileSystemHDFS("default", 0, "/tmp/");
 #else
-	file_system = new FileSystemLocal();
+	file_system = new FileSystemLocal(".");
 #endif
 
     if (verbose)

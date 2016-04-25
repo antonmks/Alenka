@@ -29,7 +29,7 @@ public:
 
 class FileSystemLocal: public IFileSystem {
 public:
-	FileSystemLocal();
+	FileSystemLocal(const char* base_path);
 	iFileSystemHandle* open(const char* path, const char * mode);
 	size_t read(void* buffer, size_t length, iFileSystemHandle * h);
 	size_t write(const void* buffer, size_t length, iFileSystemHandle * h);

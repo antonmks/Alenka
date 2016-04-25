@@ -24,12 +24,17 @@ namespace alenka {
 class FileSystemHandleHDFS: public iFileSystemHandle
 {
 public:
+	FileSystemHandleHDFS();
 	hdfsFile _file;
+	size_t _offset;
+	size_t _size;
+	const char* _path;
 };
 
 class FileSystemHDFS: public IFileSystem {
 public:
-	FileSystemHDFS(const char* host, tPort port);
+	FileSystemHDFS(const char* host, tPort port, const char* base_path);
+	FileSystemHDFS(const char* host, tPort port,  const char *user, const char* base_path);
 	~FileSystemHDFS();
 	iFileSystemHandle* open(const char* path, const char* mode);
 	size_t read(void* buffer, size_t length, iFileSystemHandle* h);

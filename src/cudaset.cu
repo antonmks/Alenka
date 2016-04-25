@@ -893,14 +893,14 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 		}
 	}
 	string s = file_name + ".interval";
-	ifstream f(s.c_str());
-	if (f.good()) {
-		f.seekg(0, f.end);
-		int length = f.tellg();
-		f.seekg(0, f.beg);
+	iFileSystemHandle* f = file_system->open(s.c_str(), "rb");
+	if (f) {
+    	file_system->seek(f, 0, SEEK_END);
+        long length = file_system->tell(f);
+        file_system->seek(f, 0, SEEK_SET);
 		char* buff = new char[length];
-		f.read(buff, length);
-		f.close();
+		file_system->read(buff, length, f);
+		file_system->close(f);
 		char* p = strtok(buff, "|");
 		string s1(p);
 		p = strtok(NULL, "|");
@@ -908,15 +908,15 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 		delete [] buff;
 
 		s = file_name + ".key";
-		ifstream f1(s.c_str());
-		if (f1.good()) {
-			f1.seekg(0, f1.end);
-			length = f1.tellg();
-			f1.seekg(0, f1.beg);
+		iFileSystemHandle* f1 = file_system->open(s.c_str(), "rb");
+		if (f1) {
+			file_system->seek(f1, 0, SEEK_END);
+			long length = file_system->tell(f1);
+			file_system->seek(f1, 0, SEEK_SET);
 			buff = new char[length+1];
 			buff[length] = 0;
-			f1.read(buff, length);
-			f1.close();
+			file_system->read(buff, length, f1);
+			file_system->close(f1);
 			string s3(buff);
 			delete [] buff;
 			load_file_name = file_name;

@@ -39,7 +39,8 @@ public:
 	virtual int remove(const char* path) = 0;
 	virtual int rename(const char* oldPath, const char* newPath) = 0;
 	virtual bool exist(const char* path) = 0;
-
+protected:
+	const char* _base_path;
 };
 
 } // namespace alenka
