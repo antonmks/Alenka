@@ -29,8 +29,13 @@ iFileSystemHandle* FileSystemHDFS::open(const char* path, const char * mode) {
 	short replication = 0;
 	tSize blocksize = 0;
 	int flags = O_RDONLY;//FIXME
+
+	HDFSFile *f = hdfsOpenFile(_fs, path, flags, bufferSize, replication, blocksize);
+	if(!f)
+		return NULL;
+
 	FileSystemHandleHDFS *h = new FileSystemHandleHDFS;
-	h->_file = hdfsOpenFile(_fs, path, flags, bufferSize, replication, blocksize);
+	h->_file = f;
 	return h;
 }
 
@@ -50,6 +55,18 @@ size_t FileSystemHDFS::tell(iFileSystemHandle * h) {
 	return hdfsTell(_fs, reinterpret_cast<FileSystemHandleHDFS*>(h)->_file);
 }
 
+size_t FileSystemHDFS::putc(int character, iFileSystemHandle* h){
+
+}
+
+size_t FileSystemLocal::puts(const char * str, iFileSystemHandle* h){
+	//TODO
+}
+
+size_t FileSystemLocal::printf(iFileSystemHandle* h, const char * format, ...) {
+
+}
+
 void FileSystemHDFS::close(iFileSystemHandle * h) {
 	hdfsCloseFile(_fs, reinterpret_cast<FileSystemHandleHDFS*>(h)->_file);
 	delete h;
@@ -61,6 +78,10 @@ int FileSystemHDFS::remove(const char* path){
 
 int FileSystemHDFS::rename(const char* oldPath, const char* newPath){
 	return hdfsRename(_fs, oldPath, newPath);
+}
+
+bool FileSystemHDFS::exist(const char* path){
+    return hdfsExists(_fs, path);
 }
 
 } // namespace alenka

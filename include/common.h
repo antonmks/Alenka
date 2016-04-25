@@ -49,7 +49,6 @@ size_t load_right(CudaSet* right, string f2, queue<string> op_g, queue<string> o
 void insert_records(const char* f, const char* s);
 void delete_records(const char* f);
 bool var_exists(CudaSet* a, string name);
-int file_exist(const char *filename);
 bool check_bitmap_file_exist(CudaSet* left, CudaSet* right);
 bool check_bitmaps_exist(CudaSet* left, CudaSet* right);
 void check_sort(const string str, const char* rtable, const char* rid);

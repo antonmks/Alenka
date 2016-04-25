@@ -36,9 +36,13 @@ public:
 	size_t write(const void* buffer, size_t length, iFileSystemHandle* h);
 	size_t seek(iFileSystemHandle* h, size_t offset, int origin);
 	size_t tell(iFileSystemHandle* h);
+	size_t putc(int character, iFileSystemHandle* h);
+	size_t puts(const char * str, iFileSystemHandle* h);
+	size_t printf (iFileSystemHandle* h, const char * format, ...);
 	void close(iFileSystemHandle* h);
 	int remove(const char* path);
 	int rename(const char* oldPath, const char* newPath);
+	bool exist(const char* path);
 private:
 	hdfsFS _fs;
 };

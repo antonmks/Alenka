@@ -218,7 +218,7 @@ CudaSet* CudaSet::copyDeviceStruct() {
 
 int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, size_t offset, thrust::host_vector<unsigned int>& prm_vh, CudaSet* dest) {
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
-    FILE* f = fopen(f1.c_str(), "rb");
+    iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
     if (!f) {
     	LOG(logERROR) << "Error opening " << f1 << " file ";
         exit(0);
@@ -234,33 +234,33 @@ int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, s
     unsigned int idx;
     bool idx_set = 0;
 
-    fread(&cnt, 4, 1, f);
-    fread(&lower_val, 8, 1, f);
-    fseek(f, cnt - (8+4) + 32, SEEK_CUR);
-    fread(&bits, 4, 1, f);
+    file_system->read(&cnt, 4, f);
+    file_system->read(&lower_val, 8, f);
+    file_system->seek(f, cnt - (8+4) + 32, SEEK_CUR);
+    file_system->read(&bits, 4, f);
     LOG(logDEBUG) << "lower_val bits " << lower_val << " " << bits << endl;
 
     if (type[colname] == 0) {
     	LOG(logDEBUG) << "lower_val bits " << lower_val << " " << bits;
         for (unsigned int i = 0; i < prm_vh.size(); i++) {
             if (!idx_set ||  prm_vh[i] >= idx + 4096/(bits/8))  {
-                fseek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
+            	file_system->seek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
                 idx = prm_vh[i];
                 idx_set = 1;
 
                 if (bits == 8) {
-                    fread(&val_c_r[0], 4096, 1, f);
+                	file_system->read(&val_c_r[0], 4096, f);
                     dest->h_columns_int[colname][i + offset] = val_c_r[0];
                 } else if (bits == 16) {
-                    fread(&val_s_r, 4096, 1, f);
+                	file_system->read(&val_s_r, 4096, f);
                     dest->h_columns_int[colname][i + offset] = val_s_r[0];
                 }
                 if (bits == 32) {
-                    fread(&val_i_r, 4096, 1, f);
+                	file_system->read(&val_i_r, 4096, f);
                     dest->h_columns_int[colname][i + offset] = val_i_r[0];
                 }
                 if (bits == 84) {
-                    fread(&val_l_r, 4096, 1, f);
+                	file_system->read(&val_l_r, 4096, f);
                     dest->h_columns_int[colname][i + offset] = val_l_r[0];
                 }
             } else {
@@ -280,10 +280,10 @@ int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, s
     } else if (type[colname] == 1) {
         for (unsigned int i = 0; i < prm_vh.size(); i++) {
             if (!idx_set ||  prm_vh[i] >= idx + 4096/(bits/8))  {
-                fseek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
+            	file_system->seek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
                 idx = prm_vh[i];
                 idx_set = 1;
-                fread(val_c_r, 4096, 1, f);
+                file_system->read(val_c_r, 4096, f);
                 memcpy(&dest->h_columns_float[colname][i + offset], &val_c_r[0], bits/8);
             } else {
                 memcpy(&dest->h_columns_float[colname][i + offset], &val_c_r[(prm_vh[i]-idx)*(bits/8)], bits/8);
@@ -292,13 +292,13 @@ int_type CudaSet::readSsdSegmentsFromFile(unsigned int segNum, string colname, s
     } else {
         //no strings in fact tables
     }
-    fclose(f);
+    file_system->close(f);
     return lower_val;
 }
 
 int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, thrust::host_vector<unsigned int>& prm_vh, thrust::host_vector<unsigned int>& dest) {
     string f1 = load_file_name + "." + colname + "." + to_string(segNum);
-    FILE* f = fopen(f1.c_str(), "rb");
+    iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
     if (!f) {
     	LOG(logERROR) << "Error opening " << f1 << " file " << endl;
         exit(0);
@@ -306,10 +306,10 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
 
     unsigned int cnt, bits;
     int_type lower_val;
-    fread(&cnt, 4, 1, f);
-    fread(&lower_val, 8, 1, f);
-    fseek(f, cnt - (8+4) + 32, SEEK_CUR);
-    fread(&bits, 4, 1, f);
+    file_system->read(&cnt, 4, f);
+    file_system->read(&lower_val, 8, f);
+    file_system->seek(f, cnt - (8+4) + 32, SEEK_CUR);
+    file_system->read(&bits, 4, f);
 
     unsigned short int val_s_r[4096/2];
     char val_c_r[4096];
@@ -320,23 +320,23 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
 
     for (unsigned int i = 0; i < prm_vh.size(); i++) {
         if (!idx_set ||  prm_vh[i] >= idx + 4096/(bits/8))  {
-            fseek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
+        	file_system->seek(f, 24 + prm_vh[i]*(bits/8), SEEK_SET);
             idx = prm_vh[i];
             idx_set = 1;
 
             if (bits == 8) {
-                fread(val_c_r, 4096, 1, f);
+            	file_system->read(val_c_r, 4096, f);
                 dest[i] = val_c_r[0];
             } else if (bits == 16) {
-                fread(val_s_r, 4096, 1, f);
+            	file_system->read(val_s_r, 4096, f);
                 dest[i] = val_s_r[0];
             }
             if (bits == 32) {
-                fread(val_i_r, 4096, 1, f);
+            	file_system->read(val_i_r, 4096, f);
                 dest[i] = val_i_r[0];
             }
             if (bits == 84) {
-                fread(val_l_r, 4096, 1, f);
+            	file_system->read(val_l_r, 4096, f);
                 dest[i] = val_l_r[0];
             }
         } else {
@@ -353,7 +353,7 @@ int_type CudaSet::readSsdSegmentsFromFileR(unsigned int segNum, string colname, 
             }
         }
     }
-    fclose(f);
+    file_system->close(f);
     return lower_val;
 }
 
@@ -368,12 +368,12 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname) {
 
     if (interactive) { //check if data are in buffers
         if (buffers.find(f1) == buffers.end()) { // add data to buffers
-            FILE* f = fopen(f1.c_str(), "rb");
+            iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
             if (!f) {
             	process_error(3, "Error opening " + string(f1) +" file ");
             }
-            fseek(f, 0, SEEK_END);
-            long fileSize = ftell(f);
+            file_system->seek(f, 0, SEEK_END);
+            long fileSize = file_system->tell(f);
             while (total_buffer_size + fileSize > getTotalSystemMemory() && !buffer_names.empty()) { //free some buffers
                 //delete [] buffers[buffer_names.front()];
 				cudaFreeHost(buffers[buffer_names.front()]);
@@ -382,12 +382,12 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname) {
                 buffers.erase(buffer_names.front());
                 buffer_names.pop();
             }
-            fseek(f, 0, SEEK_SET);
+            file_system->seek(f, 0, SEEK_SET);
 
 			char* buff;
 			cudaHostAlloc((void**) &buff, fileSize, cudaHostAllocDefault);
-            fread(buff, fileSize, 1, f);
-            fclose(f);
+			file_system->read(buff, fileSize, f);
+			file_system->close(f);
             buffers[f1] = buff;
             buffer_sizes[f1] = fileSize;
             buffer_names.push(f1);
@@ -406,7 +406,7 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname) {
                 h_columns_float[colname].resize(cnt/8 + 10);
         }
     } else {
-        FILE* f = fopen(f1.c_str(), "rb");
+    	iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
         if (!f) {
         	LOG(logERROR) << "Error opening " << f1 << " file " << endl;
             exit(0);
@@ -415,12 +415,12 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname) {
         if (type[colname] != 1) {
             if (1 > h_columns_int[colname].size())
                 h_columns_int[colname].resize(1);
-            fread(h_columns_int[colname].data(), 4, 1, f);
+            file_system->read(h_columns_int[colname].data(), 4, f);
             unsigned int cnt = ((unsigned int*)(h_columns_int[colname].data()))[0];
             if (cnt/8+10 > h_columns_int[colname].size()) {
                 h_columns_int[colname].resize(cnt + 10);
 			}
-            size_t rr = fread((unsigned int*)(h_columns_int[colname].data()) + 1, 1, cnt+52, f);
+            size_t rr = file_system->read((unsigned int*)(h_columns_int[colname].data()) + 1, cnt+52, f);
             if (rr != cnt+52) {
                 char buf[1024];
                 sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
@@ -429,18 +429,18 @@ void CudaSet::readSegmentsFromFile(unsigned int segNum, string colname) {
         } else  {
             if (1 > h_columns_float[colname].size())
                 h_columns_float[colname].resize(1);
-            fread(h_columns_float[colname].data(), 4, 1, f);
+            file_system->read(h_columns_float[colname].data(), 4, f);
             unsigned int cnt = ((unsigned int*)(h_columns_float[colname].data()))[0];
             if (cnt/8+10 > h_columns_float[colname].size())
                 h_columns_float[colname].resize(cnt + 10);
-            size_t rr = fread((unsigned int*)(h_columns_float[colname].data()) + 1, 1, cnt+52, f);
+            size_t rr = file_system->read((unsigned int*)(h_columns_float[colname].data()) + 1, cnt+52, f);
             if (rr != cnt+52) {
                 char buf[1024];
                 sprintf(buf, "Couldn't read %d bytes from %s ,read only", cnt+52, f1.c_str());
                 process_error(3, string(buf));
             }
         }
-        fclose(f);
+        file_system->close(f);
     }
     tot_disk =  tot_disk + (std::clock() - start1);
 }
@@ -881,14 +881,14 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 
 	if (!total_segments && append) {
 		string s = file_name + "." + columnNames[0] + ".header";
-		ifstream binary_file(s.c_str(), ios::binary);
-		if(binary_file) {
-			binary_file.read((char *)&oldCount, 8);
-			binary_file.read((char *)&total_segments, 4);
-			binary_file.read((char *)&maxRecs, 4);
+		iFileSystemHandle* f = file_system->open(s.c_str(), "rb");
+		if(f) {
+			file_system->read((char *)&oldCount, 8, f);
+			file_system->read((char *)&total_segments, 4, f);
+			file_system->read((char *)&maxRecs, 4, f);
 			if (total_max < maxRecs)
 				total_max = maxRecs;
-			binary_file.close();
+			file_system->close(f);
 			total_count = oldCount + mCount;
 		}
 	}
@@ -1015,32 +1015,32 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
                         else
                             curr_cnt = mCount - partition_recs*p;
 
-                        fstream binary_file(str.c_str(), ios::out|ios::binary|fstream::app);
-                        binary_file.write((char *)&curr_cnt, 4);
-                        binary_file.write((char *)(h_columns_float[colname].data() + new_offset), curr_cnt*float_size);
+                        iFileSystemHandle* f = file_system->open(str.c_str(), "ab");
+                        file_system->write((char *)&curr_cnt, 4, f);
+                        file_system->write((char *)(h_columns_float[colname].data() + new_offset), curr_cnt*float_size, f);
                         new_offset = new_offset + partition_recs;
                         unsigned int comp_type = 3;
-                        binary_file.write((char *)&comp_type, 4);
-                        binary_file.close();
+                        file_system->write((char *)&comp_type, 4, f);
+                        file_system->close(f);
                     }
                 } else {
-                    fstream binary_file(str.c_str(), ios::out|ios::binary|fstream::app);
-                    binary_file.write((char *)&mCount, 4);
-                    binary_file.write((char *)(h_columns_float[colname].data() + offset), mCount*float_size);
+                	iFileSystemHandle* f = file_system->open(str.c_str(), "ab");
+                	file_system->write((char *)&mCount, 4, f);
+                	file_system->write((char *)(h_columns_float[colname].data() + offset), mCount*float_size, f);
                     unsigned int comp_type = 3;
-                    binary_file.write((char *)&comp_type, 4);
-                    binary_file.close();
+                    file_system->write((char *)&comp_type, 4, f);
+                    file_system->close(f);
                 }
             }
         } else { //char
 			//populate char_hash
 			if (append && total_segments == 1) {
 				string s = file_name + "." + colname;
-				ifstream binary_file(s.c_str(), ios::binary);
-				if (binary_file) {
+				iFileSystemHandle* f = file_system->open(s.c_str(), "rb");
+				if (f) {
 					char* strings = new char[oldCount*char_size[colname]];
-					binary_file.read(strings, oldCount*char_size[colname]);
-					binary_file.close();
+					file_system->read(strings, oldCount*char_size[colname], f);
+					file_system->close(f);
 					unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
 					for (unsigned int z = 0 ; z < oldCount; z++) {
 						char_hash[ind][MurmurHash64A(&strings[z*char_size[colname]], char_size[colname], hash_seed)/2] = z;
@@ -1159,12 +1159,12 @@ void CudaSet::calc_intervals(string dt1, string dt2, string index, unsigned int 
 
 				if (type[index] == 2) {
 					string f1 = load_file_name + "." + index + "." + to_string(i) + ".hash";
-					FILE* f = fopen(f1.c_str(), "rb");
+					iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
 					unsigned int cnt;
-					fread(&cnt, 4, 1, f);
+					file_system->read(&cnt, 4, f);
 					unsigned long long int* buff = new unsigned long long int[cnt];
-					fread(buff, cnt*8, 1, f);
-					fclose(f);
+					file_system->read(buff, cnt*8, f);
+					file_system->close(f);
 					thrust::copy(buff, buff + cnt, d_index.begin());
 					delete [] buff;
 				} else {
@@ -1190,25 +1190,25 @@ void CudaSet::writeHeader(string file_name, string colname, unsigned int tot_seg
     string str = file_name + "." + colname;
     string ff = str;
     str += ".header";
-    fstream binary_file(str.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&total_count, 8);
-    binary_file.write((char *)&tot_segs, 4);
-    binary_file.write((char *)&total_max, 4);
-    binary_file.write((char *)&cnt_counts[ff], 4);
+    iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+    file_system->write((char *)&total_count, 8, f);
+    file_system->write((char *)&tot_segs, 4, f);
+    file_system->write((char *)&total_max, 4, f);
+    file_system->write((char *)&cnt_counts[ff], 4, f);
 	LOG(logDEBUG) << "HEADER1 " << total_count << " " << tot_segs << " " << total_max;
-    binary_file.close();
+	file_system->close(f);
 }
 
 void CudaSet::reWriteHeader(string file_name, string colname, unsigned int tot_segs, size_t newRecs, size_t maxRecs1) {
     string str = file_name + "." + colname;
     string ff = str;
     str += ".header";
-    fstream binary_file(str.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&newRecs, 8);
-    binary_file.write((char *)&tot_segs, 4);
-    binary_file.write((char *)&maxRecs1, 4);
+    iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+    file_system->write((char *)&newRecs, 8, f);
+    file_system->write((char *)&tot_segs, 4, f);
+    file_system->write((char *)&maxRecs1, 4, f);
     LOG(logDEBUG) << "HEADER2 " << newRecs;
-    binary_file.close();
+    file_system->close(f);
 }
 
 void CudaSet::writeSortHeader(string file_name) {
@@ -1217,41 +1217,41 @@ void CudaSet::writeSortHeader(string file_name) {
 
     if (!op_sort.empty()) {
         str += ".sort";
-        fstream binary_file(str.c_str(), ios::out|ios::binary|ios::trunc);
+        iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
         idx = (unsigned int)op_sort.size();
-        binary_file.write((char *)&idx, 4);
+        file_system->write((char *)&idx, 4, f);
         queue<string> os(op_sort);
         while (!os.empty()) {
             if (verbose)
             	LOG(logDEBUG) << "sorted on " << idx;
             idx = os.front().size();
-            binary_file.write((char *)&idx, 4);
-            binary_file.write(os.front().data(), idx);
+            file_system->write((char *)&idx, 4, f);
+            file_system->write(os.front().data(), idx, f);
             os.pop();
         }
-        binary_file.close();
+        file_system->close(f);
     } else {
         str += ".sort";
-        remove(str.c_str());
+        file_system->remove(str.c_str());
     }
 
 	str = file_name;
     if (!op_presort.empty()) {
         str += ".presort";
-        fstream binary_file(str.c_str(), ios::out|ios::binary|ios::trunc);
+        iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
         idx = (unsigned int)op_presort.size();
-        binary_file.write((char *)&idx, 4);
+        file_system->write((char *)&idx, 4, f);
         queue<string> os(op_presort);
         while (!os.empty()) {
             idx = os.front().size();
-            binary_file.write((char *)&idx, 4);
-            binary_file.write(os.front().data(), idx);
+            file_system->write((char *)&idx, 4, f);
+            file_system->write(os.front().data(), idx, f);
             os.pop();
         }
-        binary_file.close();
+        file_system->close(f);
     } else {
         str += ".presort";
-        remove(str.c_str());
+        file_system->remove(str.c_str());
     }
 }
 
@@ -1279,7 +1279,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term) {
     LOG(logDEBUG) << "mRecCount=" << mRecCount << " mcount = " << mCount << " term " << term <<  " limit=" << limit << " print_all=" << print_all;
 
     unsigned int cc = 0;
-    unordered_map<string, FILE*> file_map;
+    unordered_map<string, iFileSystemHandle*> file_map;
     unordered_map<string, unsigned int> len_map;
 
     for (unsigned int i = 0; i < columnNames.size(); i++) {
@@ -1290,8 +1290,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term) {
 			auto s = string_map[columnNames[i]];
 			auto pos = s.find_first_of(".");
 			auto len = data_dict->get_column_length(s.substr(0, pos), s.substr(pos+1));
-			FILE *f;
-			f = fopen(string_map[columnNames[i]].c_str(), "rb");
+			iFileSystemHandle* f = file_system->open(string_map[columnNames[i]].c_str(), "rb");
 			file_map[string_map[columnNames[i]]] = f;
 			len_map[string_map[columnNames[i]]] = len;
 		}
@@ -1332,8 +1331,8 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term) {
 							}
 						}
 					} else {
-                        fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
-                        fread(fields[j], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
+                        file_system->seek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
+                        file_system->read(fields[j], len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
                         fields[j][len_map[string_map[columnNames[j]]]] ='\0'; // zero terminate string
                     }
                 } else {
@@ -1376,9 +1375,9 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term) {
                         if (string_map.find(columnNames[j]) == string_map.end()) {
                             sprintf(fields[j], "%lld", (h_columns_int[columnNames[j]])[i] );
                         } else {
-                            fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
-                            fread(fields[j], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
-                            fields[j][len_map[string_map[columnNames[j]]]] ='\0'; // zero terminate string
+							file_system->seek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
+							file_system->read(fields[j], len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
+							fields[j][len_map[string_map[columnNames[j]]]] ='\0'; // zero terminate string
                         }
                     } else {
                         sprintf(fields[j], "%.2f", (h_columns_float[columnNames[j]])[i] );
@@ -1393,7 +1392,7 @@ void CudaSet::Display(unsigned int limit, bool binary, bool term) {
         }
     }      // end else
     for (auto it = file_map.begin(); it != file_map.end(); it++)
-		fclose(it->second);
+    	file_system->close(it->second);
 }
 
 void CudaSet::Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool append, const bool term) {
@@ -1416,7 +1415,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
     }
 
     if (binary == 0) {
-        unordered_map<string, FILE*> file_map;
+        unordered_map<string, iFileSystemHandle*> file_map;
         unordered_map<string, unsigned int> len_map;
         string bf;
         unsigned int max_len = 0;
@@ -1427,21 +1426,20 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
                 auto len = data_dict->get_column_length(s.substr(0, pos), s.substr(pos+1));
                 if (len > max_len)
                     max_len = len;
-                FILE *f;
-                f = fopen(string_map[columnNames[j]].c_str(), "rb");
+
+                iFileSystemHandle* f = file_system->open(string_map[columnNames[j]].c_str(), "rb");
                 file_map[string_map[columnNames[j]]] = f;
                 len_map[string_map[columnNames[j]]] = len;
             }
         }
         bf.reserve(max_len);
-
-        FILE *file_pr;
+        iFileSystemHandle* file_pr;
         if (!term) {
-            file_pr = fopen(file_name.c_str(), "w");
+        	file_pr = file_system->open(file_name.c_str(), "w");
             if (!file_pr)
             	LOG(logERROR) << "Could not open file " << file_name;
         } else {
-            file_pr = stdout;
+            //file_pr = stdout; TODO Fix
         }
 
         if (not_compressed && prm_d.size() == 0) {
@@ -1455,37 +1453,37 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 								while (str.length() <= decimal_zeroes[columnNames[j]])
 									str = '0' + str;
 								str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
-								fprintf(file_pr, "%s", str.c_str());
+								file_system->printf(file_pr, "%s", str.c_str());
 							} else {
 								if (!ts_cols[columnNames[j]]) {
-									fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+									file_system->printf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
 								} else {
 									time_t ts = (h_columns_int[columnNames[j]][i])/1000;
 									auto ti = gmtime(&ts);
 									char buffer[30];
 									auto rem = (h_columns_int[columnNames[j]][i])%1000;
 									strftime(buffer, 30, "%Y-%m-%d %H.%M.%S", ti);
-									fprintf(file_pr, "%s", buffer);
-									fprintf(file_pr, ".%d", rem);
+									file_system->printf(file_pr, "%s", buffer);
+									file_system->printf(file_pr, ".%d", rem);
 								}
 							}
 						} else {
                             //fprintf(file_pr, "%.*s", string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str());
-                            fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
-                            fread(&bf[0], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
-                            fprintf(file_pr, "%.*s", len_map[string_map[columnNames[j]]], bf.c_str());
+							file_system->seek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
+							file_system->read(&bf[0], len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
+							file_system->printf(file_pr, "%.*s", len_map[string_map[columnNames[j]]], bf.c_str());
                         }
-                        fputs(sep, file_pr);
+                        file_system->puts(sep, file_pr);
                     } else {
-                        fprintf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
-                        fputs(sep, file_pr);
+                    	file_system->printf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
+                        file_system->puts(sep, file_pr);
                     }
                 }
                 if (i != mCount -1 )
-                    fputs("\n", file_pr);
+                	file_system->puts("\n", file_pr);
             }
             if (!term)
-                fclose(file_pr);
+                file_system->close(file_pr);
         } else {
 		    queue<string> op_vx;
             string ss;
@@ -1542,45 +1540,45 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 									while (str.length() <= decimal_zeroes[columnNames[j]])
 										str = '0' + str;
 									str.insert(str.length()- decimal_zeroes[columnNames[j]], ".");
-									fprintf(file_pr, "%s", str.c_str());
+									file_system->printf(file_pr, "%s", str.c_str());
 								} else {
 									if (!ts_cols[columnNames[j]]) {
-										fprintf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
+										file_system->printf(file_pr, "%lld", (h_columns_int[columnNames[j]])[i]);
 									} else {
 										time_t ts = (h_columns_int[columnNames[j]][i])/1000;
 										auto ti = gmtime(&ts);
 										char buffer[30];
 										auto rem = (h_columns_int[columnNames[j]][i])%1000;
 										strftime(buffer, 30, "%Y-%m-%d %H.%M.%S", ti);
-										fprintf(file_pr, "%s", buffer);
-										fprintf(file_pr, ".%d", rem);
+										file_system->printf(file_pr, "%s", buffer);
+										file_system->printf(file_pr, ".%d", rem);
 									}
 								}
 
 							} else {
-                                fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
-                                fread(&bf[0], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
-                                fprintf(file_pr, "%.*s", len_map[string_map[columnNames[j]]], bf.c_str());
+								file_system->seek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
+                                file_system->read(&bf[0], len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
+                                file_system->printf(file_pr, "%.*s", len_map[string_map[columnNames[j]]], bf.c_str());
                             }
-                            fputs(sep, file_pr);
+                            file_system->puts(sep, file_pr);
                         } else  {
-                            fprintf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
-                            fputs(sep, file_pr);
+                        	file_system->printf(file_pr, "%.2f", (h_columns_float[columnNames[j]])[i]);
+                            file_system->puts(sep, file_pr);
                         }
                     }
                     if (i != mCount -1 && (curr_seg != segCount || i < curr_count))
-                        fputs("\n", file_pr);
+                    	file_system->puts("\n", file_pr);
                 }
                 curr_seg++;
                 if (curr_seg == segCount)
                     print_all = 0;
             }
             if (!term) {
-                fclose(file_pr);
+            	file_system->close(file_pr);
             }
         }
 		for (auto it = file_map.begin(); it != file_map.end(); it++)
-			fclose(it->second);
+			file_system->close(it->second);
     } else {
         //lets update the data dictionary
         for (unsigned int j=0; j < columnNames.size(); j++) {
@@ -1659,15 +1657,15 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
     string h_name, i_name, file_no_seg = file_name.substr(0, file_name.find_last_of("."));
     i_name = file_no_seg + "." + to_string(segment) + ".idx";
     h_name = file_no_seg + "." + to_string(segment) + ".hash";
-    fstream b_file_str, loc_hashes;
+    iFileSystemHandle* b_file;
 
-    fstream binary_file_h(h_name.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file_h.write((char *)&mCount, 4);
+    iFileSystemHandle* file_h = file_system->open(h_name.c_str(), "tb");//truncate binary
+    file_system->write((char *)&mCount, 4, file_h);
 
 	if (segment == 0) {
-        b_file_str.open(file_no_seg.c_str(), ios::out|ios::binary|ios::trunc);
+		b_file = file_system->open(file_no_seg.c_str(), "tb"); //truncate binary
     } else {
-        b_file_str.open(file_no_seg.c_str(), ios::out|ios::binary|ios::app);
+    	b_file = file_system->open(file_no_seg.c_str(), "ab"); //append binary
     }
 
 	if (h_columns_int.find(colname) == h_columns_int.end()) {
@@ -1694,28 +1692,28 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 		if (iter == char_hash[ind].end()) {
 			cnt = char_hash[ind].size();
 			char_hash[ind][hash_array[i]] = cnt;
-			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
+			file_system->write((char *)h_columns_char[colname] + (i+offset)*len, len, b_file);
 			h_columns_int[colname][i] = cnt;
 		} else {
 			h_columns_int[colname][i] = iter->second;
 		}
 	}
 
-	binary_file_h.write((char *)hash_array, 8*mCount);
+	file_system->write((char *)hash_array, 8*mCount, file_h);
 	delete [] hash_array;
 
     thrust::device_vector<int_type> d_col(mCount);
     thrust::copy(h_columns_int[colname].begin(), h_columns_int[colname].begin() + mCount, d_col.begin());
     pfor_compress(thrust::raw_pointer_cast(d_col.data()), mCount*int_size, i_name, h_columns_int[colname], 0);
-    binary_file_h.close();
-    b_file_str.close();
+    file_system->close(file_h);
+    file_system->close(b_file);
 }
 
 bool first_time = 1;
 size_t rec_sz = 0;
 size_t process_piece;
 
-bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
+bool CudaSet::LoadBigFile(iFileSystemHandle* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
 							thrust::device_vector<unsigned int>& ind, thrust::device_vector<unsigned int>& dest_len) {
     const char* sep = separator.c_str();
     unsigned int maxx = cols.rbegin()->first;
@@ -1760,7 +1758,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 	const unsigned int max_len = 23;
 
 	while (!done) {
-		auto rb = fread(readbuff, 1, process_piece, file_p);
+		auto rb = file_system->read(readbuff, process_piece, file_p);
 
 		if (readbuff[rb-1] != '\n') {
 			rb++;
@@ -1770,7 +1768,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		if (rb < process_piece) {
 			done = 1;
 			finished = 1;
-			fclose(file_p);
+			file_system->close(file_p);
 		}
 		if (total_processed >= process_count)
 			done = 1;
@@ -1851,13 +1849,13 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 			if (curr_cnt < rec_sz) {
 				offset = (dev_pos[curr_cnt] - rb)+1;
 				LOG(logDEBUG) << "PATH 1 " << dev_pos[curr_cnt] << " " << offset;
-				fseek(file_p, offset, SEEK_CUR);
+				file_system->seek(file_p, offset, SEEK_CUR);
 				total_processed = total_processed + rb + offset;
 				mRecCount = curr_cnt;
 			} else {
 				offset = (dev_pos[rec_sz] - rb)+1;
 				LOG(logDEBUG) << "PATH 2 " << dev_pos[rec_sz] << " " << offset;
-				fseek(file_p, offset, SEEK_CUR);
+				file_system->seek(file_p, offset, SEEK_CUR);
 				total_processed = total_processed + rb + offset;
 				mRecCount = rec_sz;
 			}
@@ -2466,7 +2464,6 @@ float_type* CudaSet::op(float_type* column1, float_type d, string op_type, bool 
 }
 
 char CudaSet::loadIndex(const string index_name, const unsigned int segment) {
-    FILE* f;
     unsigned int bits_encoded, fit_count, vals_count, sz, real_count;
     void* d_str;
     string f1 = index_name + "." + to_string(segment);
@@ -2475,15 +2472,15 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment) {
 	//interactive = 0;
     if (interactive) {
         if (index_buffers.find(f1) == index_buffers.end()) {
-            f = fopen(f1.c_str(), "rb");
-            fseek(f, 0, SEEK_END);
-            long fileSize = ftell(f);
+        	iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
+        	file_system->seek(f, 0, SEEK_END);
+            long fileSize = file_system->tell(f);
             char* buff;
             cudaHostAlloc(&buff, fileSize, cudaHostAllocDefault);
 
-            fseek(f, 0, SEEK_SET);
-            fread(buff, fileSize, 1, f);
-            fclose(f);
+            file_system->seek(f, 0, SEEK_SET);
+            file_system->read(buff, fileSize, f);
+            file_system->close(f);
             index_buffers[f1] = buff;
         }
         sz = ((unsigned int*)index_buffers[f1])[0];
@@ -2503,28 +2500,28 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment) {
 		}
 
     } else {
-        f = fopen(f1.c_str(), "rb");
-        fread(&sz, 4, 1, f);
+    	iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
+    	file_system->read(&sz, 4, f);
         int_type* d_array = new int_type[sz];
         idx_dictionary_int[index_name].clear();
-        fread((void*)d_array, sz*int_size, 1, f);
+        file_system->read((void*)d_array, sz*int_size, f);
         for (unsigned int i = 0; i < sz; i++) {
             idx_dictionary_int[index_name][d_array[i]] = i;
         }
         delete [] d_array;
 
-        fread(&fit_count, 4, 1, f);
-        fread(&bits_encoded, 4, 1, f);
-        fread(&vals_count, 4, 1, f);
-        fread(&real_count, 4, 1, f);
+        file_system->read(&fit_count, 4, f);
+        file_system->read(&bits_encoded, 4, f);
+        file_system->read(&vals_count, 4, f);
+        file_system->read(&real_count, 4, f);
 
         mRecCount = real_count;
 
         unsigned long long int* int_array = new unsigned long long int[vals_count+2];
-        fseek(f, -16 , SEEK_CUR);
-        fread((void*)int_array, 1, vals_count*8 + 16, f);
-        fread(&res, 1, 1, f);
-        fclose(f);
+        file_system->seek(f, -16 , SEEK_CUR);
+        file_system->read((void*)int_array, vals_count*8 + 16, f);
+        file_system->read(&res, 1, f);
+        file_system->close(f);
         void* d_str;
         cudaMalloc((void **) &d_str, (vals_count+2)*int_size);
         cudaMemcpy(d_str, (void *) int_array, (vals_count+2)*int_size, cudaMemcpyHostToDevice);
@@ -2537,7 +2534,6 @@ char CudaSet::loadIndex(const string index_name, const unsigned int segment) {
 
 void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<int> &sizeRef, queue<int> &colsRef, size_t Recs, string file_name) { // compressed data for DIM tables
     mColumnCount = (unsigned int)nameRef.size();
-    FILE* f;
     string f1;
     unsigned int cnt;
     char buffer[4000];
@@ -2549,35 +2545,35 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
     load_file_name = file_name;
 
     f1 = file_name + ".sort";
-    f = fopen(f1.c_str() , "rb");
+    iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
     if (f) {
         unsigned int sz, idx;
-        fread((char *)&sz, 4, 1, f);
+        file_system->read((char *)&sz, 4, f);
         for (unsigned int j = 0; j < sz; j++) {
-            fread((char *)&idx, 4, 1, f);
-            fread(buffer, idx, 1, f);
+        	file_system->read((char *)&idx, 4, f);
+        	file_system->read(buffer, idx, f);
             str.assign(buffer, idx);
             sorted_fields.push(str);
             if (verbose)
             	LOG(logDEBUG) << "segment sorted on " << str;
         }
-        fclose(f);
+        file_system->close(f);
     }
 
     f1 = file_name + ".presort";
-    f = fopen(f1.c_str() , "rb");
+    f = file_system->open(f1.c_str(), "rb");
     if (f) {
         unsigned int sz, idx;
-        fread((char *)&sz, 4, 1, f);
+        file_system->read((char *)&sz, 4, f);
         for (unsigned int j = 0; j < sz; j++) {
-            fread((char *)&idx, 4, 1, f);
-            fread(buffer, idx, 1, f);
+        	file_system->read((char *)&idx, 4, f);
+        	file_system->read(buffer, idx, f);
             str.assign(buffer, idx);
             presorted_fields.push(str);
             if (verbose)
             	LOG(logDEBUG) << "presorted on " << str;
         }
-        fclose(f);
+        file_system->close(f);
     }
 
     tmp_table = 0;
@@ -2589,14 +2585,14 @@ void CudaSet::initialize(queue<string> &nameRef, queue<string> &typeRef, queue<i
 
         if (((typeRef.front()).compare("decimal") == 0) || ((typeRef.front()).compare("int") == 0)) {
             f1 = file_name + "." + nameRef.front() + ".0";
-            f = fopen(f1.c_str() , "rb");
+            iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
             if (!f) {
             	LOG(logERROR) << "Couldn't find field " << nameRef.front() << endl;
                 exit(0);
             }
             for (unsigned int j = 0; j < 6; j++)
-                fread((char *)&cnt, 4, 1, f);
-            fclose(f);
+            	file_system->read((char *)&cnt, 4, f);
+            file_system->close(f);
             compTypes[nameRef.front()] = cnt;
         }
 		if ((typeRef.front()).compare("timestamp") == 0)

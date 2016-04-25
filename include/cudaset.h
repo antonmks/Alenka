@@ -112,7 +112,7 @@ public:
     void Display(unsigned int limit, bool binary, bool term);
     void Store(const string file_name, const char* sep, const unsigned int limit, const bool binary, const bool append, const bool term = 0);
     void compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment);
-    bool LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
+    bool LoadBigFile(iFileSystemHandle* file_p, thrust::device_vector<char>& d_readbuff, thrust::device_vector<char*>& dest,
 						thrust::device_vector<unsigned int>& ind, thrust::device_vector<unsigned int>& dest_len);
     void free();
     bool* logical_and(bool* column1, bool* column2);

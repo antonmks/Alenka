@@ -12,6 +12,9 @@
  *  limitations under the License.
  */
 
+#include <stdarg.h>
+#include <fstream>
+
 #include "filesystem_local.h"
 
 namespace alenka {
@@ -21,8 +24,12 @@ FileSystemLocal::FileSystemLocal() {
 }
 
 iFileSystemHandle* FileSystemLocal::open(const char* path, const char * mode) {
+	FILE *f = fopen(path, mode);
+	if(!f)
+		return NULL;
+
 	FileSystemHandleLocal *h = new FileSystemHandleLocal;
-	h->_file = fopen(path, "");
+	h->_file = f;
 	return h;
 }
 
@@ -42,8 +49,26 @@ size_t FileSystemLocal::tell(iFileSystemHandle * h) {
 	return ftell(reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
 }
 
+size_t FileSystemLocal::putc(int character, iFileSystemHandle* h){
+	return fputc(character, reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
+}
+
+size_t FileSystemLocal::puts(const char * str, iFileSystemHandle* h){
+	return fputs(str, reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
+}
+
+size_t FileSystemLocal::printf(iFileSystemHandle* h, const char * format, ...) {
+	va_list arg;
+	int done;
+	va_start(arg, format);
+	done = vfprintf(reinterpret_cast<FileSystemHandleLocal*>(h)->_file, format, arg);
+	va_end(arg);
+	return done;
+}
+
 void FileSystemLocal::close(iFileSystemHandle * h) {
 	fclose (reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
+	delete h;
 }
 
 int FileSystemLocal::remove(const char* path) {
@@ -52,6 +77,11 @@ int FileSystemLocal::remove(const char* path) {
 
 int FileSystemLocal::rename(const char* oldPath, const char* newPath) {
 	return rename(oldPath, newPath);
+}
+
+bool FileSystemLocal::exist(const char* path){
+	std::ifstream infile(path);
+    return infile.good();
 }
 
 } // namespace alenka

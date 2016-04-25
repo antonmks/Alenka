@@ -1318,12 +1318,13 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									}
 									vv[0] = MurmurHash64A(&s1_val[0], s1_val.length(), hash_seed)/2;
 									string f1 = a->load_file_name + "." + s2_val + "." + to_string(segment) + ".hash";
-									FILE* f = fopen(f1.c_str(), "rb");
+
+									iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
 									unsigned long long int* buff = new unsigned long long int[a->mRecCount];
 									unsigned int cnt;
-									fread(&cnt, 4, 1, f);
-									fread(buff, a->mRecCount*8, 1, f);
-									fclose(f);
+									file_system->read(&cnt, 4, f);
+									file_system->read(buff, a->mRecCount*8, f);
+									file_system->close(f);
 									thrust::device_vector<unsigned long long int> vals(a->mRecCount);
 									thrust::copy(buff, buff+a->mRecCount, vals.begin());
 									if (cmp_type == 4) //==
@@ -1340,10 +1341,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										cudaMemcpy(d_str, (void *)s1_val.c_str(), s1_val.length(), cudaMemcpyHostToDevice);
 
 										string f1 = a->load_file_name + "." + s2_val;
-										FILE* f = fopen(f1.c_str(), "rb");
-										fseek(f, 0, SEEK_END);
-										long fileSize = ftell(f);
-										fseek(f, 0, SEEK_SET);
+										iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
+										file_system->seek(f, 0, SEEK_END);
+										long fileSize = file_system->tell(f);
+										file_system->seek(f, 0, SEEK_SET);
 
 										unsigned int pieces = 1;
 										if (fileSize > getFreeMem()/2)
@@ -1358,7 +1359,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										for (auto i = 0; i < pieces; i++) {
 											if (i == pieces-1)
 												piece_sz = fileSize - piece_sz*i;
-											fread(buff, piece_sz, 1, f);
+											file_system->read(buff, piece_sz, f);
 											cudaMemcpy(thrust::raw_pointer_cast(dev.data()), (void*)buff, piece_sz, cudaMemcpyHostToDevice);
 
 											gpu_regex ff(thrust::raw_pointer_cast(dev.data()), (char*)d_str, (bool*)d_res, (unsigned int*)d_v);
@@ -1371,7 +1372,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 															dd_res, a->map_res[s2_val].begin() + offset, thrust::identity<bool>());
 										}
 
-										fclose(f);
+										file_system->close(f);
 										delete [] buff;
 										cudaFree(d_str);
 										thrust::sort(a->map_res[s2_val].begin(), a->map_res[s2_val].end());

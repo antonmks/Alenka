@@ -216,19 +216,19 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     cnt = cnt*8;
 
     cudaMemcpy(host.data(), (void *)raw_src, cnt, cudaMemcpyDeviceToHost);
-    fstream binary_file(file_name.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&cnt, 4);
-    binary_file.write((char *)&real_lower, 8);
-    binary_file.write((char *)&real_upper, 8);
-    binary_file.write((char *)&comp_type, 4);
-    binary_file.write((char *)host.data(), cnt);
-    binary_file.write((char *)&cnt, 4);
-    binary_file.write((char *)&recCount, 4);
-    binary_file.write((char *)&bits, 4);
-    binary_file.write((char *)&orig_lower_val, 8);
-    binary_file.write((char *)&fit_count, 4);
-    binary_file.write((char *)&start_val, 8);
-    binary_file.close();
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    file_system->write((char *)&cnt, 4, f);
+    file_system->write((char *)&real_lower, 8, f);
+    file_system->write((char *)&real_upper, 8, f);
+    file_system->write((char *)&comp_type, 4, f);
+    file_system->write((char *)host.data(), cnt, f);
+    file_system->write((char *)&cnt, 4, f);
+    file_system->write((char *)&recCount, 4, f);
+    file_system->write((char *)&bits, 4, f);
+    file_system->write((char *)&orig_lower_val, 8, f);
+    file_system->write((char *)&fit_count, 4, f);
+    file_system->write((char *)&start_val, 8, f);
+    file_system->close(f);
     if (cnt_counts[curr_file] < cnt)
         cnt_counts[curr_file] = cnt;
 
@@ -328,19 +328,19 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     fit_count = 64/bits;
 
     LOG(logDEBUG) << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val;
-    fstream binary_file(file_name.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&cnt, 4);
-    binary_file.write((char *)&orig_lower_val, 8);
-    binary_file.write((char *)&orig_upper_val, 8);
-    binary_file.write((char *)&comp_type, 4);
-    binary_file.write((char *)host.data(), cnt);
-    binary_file.write((char *)&cnt, 4);
-    binary_file.write((char *)&recCount, 4);
-    binary_file.write((char *)&bits, 4);
-    binary_file.write((char *)&orig_lower_val, 8);
-    binary_file.write((char *)&fit_count, 4);
-    binary_file.write((char *)&start_val, 8);
-    binary_file.close();
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    file_system->write((char *)&cnt, 4, f);
+    file_system->write((char *)&orig_lower_val, 8, f);
+    file_system->write((char *)&orig_upper_val, 8, f);
+    file_system->write((char *)&comp_type, 4, f);
+    file_system->write((char *)host.data(), cnt, f);
+    file_system->write((char *)&cnt, 4, f);
+    file_system->write((char *)&recCount, 4, f);
+    file_system->write((char *)&bits, 4, f);
+    file_system->write((char *)&orig_lower_val, 8, f);
+    file_system->write((char *)&fit_count, 4, f);
+    file_system->write((char *)&start_val, 8, f);
+    file_system->close(f);
     if (cnt_counts[curr_file] < cnt)
         cnt_counts[curr_file] = cnt;
 }

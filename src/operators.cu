@@ -1978,25 +1978,23 @@ void emit_case() {
 
 void emit_create_index(const char *index_name, const char *table, const char *column) {
 	if (scan_state != 0) {
-		FILE *f;
 		string s1(table);
 		string s3 = s1 + ".key";
-		f = fopen(s3.c_str(), "w");
-		fputs(column, f);
-		fclose(f);
+		iFileSystemHandle* f = file_system->open(s3.c_str(), "w");
+		file_system->puts(column, f);
+		file_system->close(f);
 	}
 }
 
 void emit_create_interval(const char *interval_name, const char *table, const char *lcolumn, const char *rcolumn) {
 	if (scan_state != 0) {
-		FILE *f;
 		string s1(table);
 		string s3 = s1 + ".interval";
-		f = fopen(s3.c_str(), "w");
-		fputs(lcolumn, f);
-		fputc('|', f);
-		fputs(rcolumn, f);
-		fclose(f);
+		iFileSystemHandle* f = file_system->open(s3.c_str(), "w");
+		file_system->puts(lcolumn, f);
+		file_system->putc('|', f);
+		file_system->puts(rcolumn, f);
+		file_system->close(f);
 	}
 }
 
@@ -2054,18 +2052,18 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
             		//TBD
             } else { //strings
                 string f1 = right->load_file_name + "." + rcolumn + ".0.hash"; //need to change it in case if there are dimensions tables larger than 1 segment ?
-                FILE* f = fopen(f1.c_str(), "rb");
+                iFileSystemHandle* f = file_system->open(f1.c_str(), "rb");
                 unsigned int cnt;
-                fread(&cnt, 4, 1, f);
+                file_system->read(&cnt, 4, f);
 				if(res_h.size() < cnt) {
 					res_h.resize(cnt);
 				}
 				if(res.size() < cnt) {
 					res.resize(cnt);
 				}
-                fread(res_h.data(), cnt*8, 1, f);
+				file_system->read(res_h.data(), cnt*8, f);
 				res = res_h;
-                fclose(f);
+				file_system->close(f);
 
 				thrust::device_vector<int_type> output1(left->mRecCount);
 				thrust::gather(output.begin(), output.begin() + left->mRecCount, res.begin(), output1.begin());
@@ -2280,9 +2278,9 @@ void emit_store_binary(const char *s, const char *f, const bool append) {
     if (fact_file_loaded) {
         a->Store(f, "", limit, 1, append);
     } else {
-        FILE* file_p;
+    	iFileSystemHandle* file_p;
         if (a->text_source) {
-            file_p = fopen(a->load_file_name.c_str(), "rb");
+            file_p = file_system->open(a->load_file_name.c_str(), "rb");
             if (!file_p) {
                 process_error(2, "Could not open file " + a->load_file_name);
             }
@@ -2328,15 +2326,15 @@ void emit_load_binary(const char *s, const char *f, const int d) {
     string f1(f);
     f1 += "." + namevars.front() + ".header";
 
-    FILE* ff = fopen(f1.c_str(), "rb");
+    iFileSystemHandle* ff = file_system->open(f1.c_str(), "rb");
     if (!ff) {
         process_error(2, "Couldn't open file " + f1);
     }
     size_t totRecs;
-    fread((char *)&totRecs, 8, 1, ff);
-    fread((char *)&segCount, 4, 1, ff);
-    fread((char *)&maxRecs, 4, 1, ff);
-    fclose(ff);
+    file_system->read((char *)&totRecs, 8, ff);
+    file_system->read((char *)&segCount, 4, ff);
+    file_system->read((char *)&maxRecs, 4, ff);
+    file_system->close(ff);
 
     if (verbose)
     	LOG(logDEBUG) << "Reading " << totRecs << " records";
@@ -2394,18 +2392,18 @@ void emit_drop_table(const char* table_name) {
             for (map<string, col_data>::iterator it=s.begin() ; it != s.end(); ++it) {
                 int seg = 0;
                 string f_name = string(table_name) + "." + (*it).first + "." + to_string(seg);
-                while (!remove(f_name.c_str())) {
+                while (!file_system->remove(f_name.c_str())) {
                     seg++;
                     f_name = string(table_name) + "." + (*it).first + "." + to_string(seg);
                 }
                 f_name = string(table_name) + "." + (*it).first + ".header";
-                remove(f_name.c_str());
+                file_system->remove(f_name.c_str());
             }
 
 			string s_name = string(table_name) + ".presort";
-			remove(s_name.c_str());
+			file_system->remove(s_name.c_str());
 			s_name = string(table_name) + ".sort";
-			remove(s_name.c_str());
+			file_system->remove(s_name.c_str());
 			data_dict->remove_table(table_name);
 			save_dict = 1;
 

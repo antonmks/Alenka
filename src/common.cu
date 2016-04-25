@@ -494,48 +494,48 @@ void insert_records(const char* f, const char* s) {
 					str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i);
 					str_d = b->load_file_name + "." + a->columnNames[z] + "." + to_string(b->segCount + i);
 					LOG(logDEBUG) << str_s << " " << str_d;
-					FILE* source = fopen(str_s.c_str(), "rb");
-					FILE* dest = fopen(str_d.c_str(), "wb");
-					while (size = fread(buf, 1, BUFSIZ, source)) {
-						fwrite(buf, 1, size, dest);
+					iFileSystemHandle* source = file_system->open(str_s.c_str(), "rb");
+					iFileSystemHandle* dest = file_system->open(str_d.c_str(), "wb");
+					while (size = file_system->read(buf, BUFSIZ, source)) {
+						file_system->write(buf, size, dest);
 					}
-					fclose(source);
-					fclose(dest);
+					file_system->close(source);
+					file_system->close(dest);
 				} else { //merge strings
 					//read b's strings
 					str_s = b->load_file_name + "." + b->columnNames[z];
-					FILE* dest = fopen(str_s.c_str(), "rb");
+					iFileSystemHandle* dest = file_system->open(str_s.c_str(), "rb");
 					auto len = b->char_size[b->columnNames[z]];
 					map<string, unsigned long long int> map_d;
 					buf[len] = 0;
 					unsigned long long cnt = 0;
-					while (fread(buf, len, 1, dest)) {
+					while (file_system->read(buf, len, dest)) {
 						map_d[buf] = cnt;
 						cnt++;
 					}
-					fclose(dest);
+					file_system->close(dest);
 					unsigned long long int cct = cnt;
 
 					str_s = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i) + ".hash";
 					str_d = b->load_file_name + "." + b->columnNames[z] + "." + to_string(b->segCount + i) + ".hash";
-					FILE* source = fopen(str_s.c_str(), "rb");
-					dest = fopen(str_d.c_str(), "wb");
-					while (size = fread(buf, 1, BUFSIZ, source)) {
-						fwrite(buf, 1, size, dest);
+					iFileSystemHandle* source = file_system->open(str_s.c_str(), "rb");
+					dest = file_system->open(str_d.c_str(), "wb");
+					while (size = file_system->read(buf, BUFSIZ, source)) {
+						file_system->write(buf, size, dest);
 					}
-					fclose(source);
-					fclose(dest);
+					file_system->close(source);
+					file_system->close(dest);
 
 					str_s = a->load_file_name + "." + a->columnNames[z];
-					source = fopen(str_s.c_str(), "rb");
+					source = file_system->open(str_s.c_str(), "rb");
 					map<unsigned long long int, string> map_s;
 					buf[len] = 0;
 					cnt = 0;
-					while (fread(buf, len, 1, source)) {
+					while (file_system->read(buf, len, source)) {
 						map_s[cnt] = buf;
 						cnt++;
 					}
-					fclose(source);
+					file_system->close(source);
 
 					queue<string> op_vx;
 					op_vx.push(a->columnNames[z]);
@@ -545,20 +545,19 @@ void insert_records(const char* f, const char* s) {
 					a->CopyColumnToHost(a->columnNames[z]);
 
 					str_d = b->load_file_name + "." + b->columnNames[z];
-                    fstream f_file;
-                    f_file.open(str_d.c_str(), ios::out|ios::app|ios::binary);
+                    iFileSystemHandle *f_file = file_system->open(str_d.c_str(), "ab");//append binary
 
 					for(auto j = 0; j < a->mRecCount; j++) {
 						auto ss = map_s[a->h_columns_int[a->columnNames[z]][j]];
 						if(map_d.find(ss) == map_d.end()) { //add
-							f_file.write((char *)ss.c_str(), len);
+							file_system->write((char *)ss.c_str(), len, f_file);
 							a->h_columns_int[a->columnNames[z]][j] = cct;
 							cct++;
 						} else {
 							a->h_columns_int[a->columnNames[z]][j] = map_d[ss];
 						}
 					}
-					f_file.close();
+					file_system->close(f_file);
 
 					thrust::device_vector<int_type> d_col(a->mRecCount);
 					thrust::copy(a->h_columns_int[a->columnNames[z]].begin(), a->h_columns_int[a->columnNames[z]].begin() + a->mRecCount, d_col.begin());
@@ -698,8 +697,8 @@ void delete_records(const char* f) {
                                     auto colname = (*it).first;
                                     str_old = a->load_file_name + "." + colname + "." + to_string(i);
                                     str = a->load_file_name + "." + colname + "." + to_string(new_seg_count);
-                                    remove(str.c_str());
-                                    rename(str_old.c_str(), str.c_str());
+                                    file_system->remove(str.c_str());
+                                    file_system->rename(str_old.c_str(), str.c_str());
                                 }
                             }
                             new_seg_count++;
@@ -726,12 +725,12 @@ void delete_records(const char* f) {
                                     } else {
                                         thrust::gather(a->prm_d.begin(), a->prm_d.begin() + a->mRecCount, a->d_columns_float[colname].begin(), d_col);
                                         thrust::copy(d_col, d_col + a->mRecCount, a->h_columns_float[colname].begin());
-                                        fstream binary_file(str.c_str(), ios::out|ios::binary);
-                                        binary_file.write((char *)&a->mRecCount, 4);
-                                        binary_file.write((char *)(a->h_columns_float[colname].data()), a->mRecCount*float_size);
+                                        iFileSystemHandle* f = file_system->open(str.c_str(), "wb");
+                                        file_system->write((char *)&a->mRecCount, 4, f);
+                                        file_system->write((char *)(a->h_columns_float[colname].data()), a->mRecCount*float_size, f);
                                         unsigned int comp_type = 3;
-                                        binary_file.write((char *)&comp_type, 4);
-                                        binary_file.close();
+                                        file_system->write((char *)&comp_type, 4, f);
+                                        file_system->close(f);
                                     }
                                 } else {
                                     thrust::device_ptr<int_type> d_col((int_type*)d);
@@ -750,8 +749,8 @@ void delete_records(const char* f) {
                     for (unsigned int z = 0; z < a->columnNames.size(); z++) {
                         str_old = a->load_file_name + "." + a->columnNames[z] + "." + to_string(i);
                         str = a->load_file_name + "." + a->columnNames[z] + "." + to_string(new_seg_count);
-                        remove(str.c_str());
-                        rename(str_old.c_str(), str.c_str());
+                        file_system->remove(str.c_str());
+                        file_system->rename(str_old.c_str(), str.c_str());
                     }
                 }
                 new_seg_count++;
@@ -765,7 +764,7 @@ void delete_records(const char* f) {
                 for (unsigned int z = 0; z < a->columnNames.size(); z++) {
                     str = a->load_file_name + "." + a->columnNames[z];
                     str += "." + to_string(i);
-                    remove(str.c_str());
+                    file_system->remove(str.c_str());
                 }
             }
         }
@@ -788,11 +787,6 @@ bool var_exists(CudaSet* a, string name) {
         return 0;
 }
 
-int file_exist(const char *filename) {
-    std::ifstream infile(filename);
-    return infile.good();
-}
-
 bool check_bitmap_file_exist(CudaSet* left, CudaSet* right) {
     queue<string> cols(right->fil_value);
     bool bitmaps_exist = 1;
@@ -803,7 +797,7 @@ bool check_bitmap_file_exist(CudaSet* left, CudaSet* right) {
     while (cols.size()) {
         if (std::find(right->columnNames.begin(), right->columnNames.end(), cols.front()) != right->columnNames.end()) {
             string fname = left->load_file_name + "."  + right->load_file_name + "." + cols.front() + ".0";
-            if (!file_exist(fname.c_str())) {
+            if (!file_system->exist(fname.c_str())) {
                 bitmaps_exist = 0;
             }
         }
@@ -824,7 +818,7 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right) {
     while (cols.size()) {
         if (std::find(right->columnNames.begin(), right->columnNames.end(), cols.front()) != right->columnNames.end()) {
             string fname = left->load_file_name + "."  + right->load_file_name + "." + cols.front() + ".0";
-            if (!file_exist(fname.c_str())) {
+           if (!file_system->exist(fname.c_str())) {
                 bitmaps_exist = 0;
             }
         }
@@ -870,9 +864,9 @@ bool check_bitmaps_exist(CudaSet* left, CudaSet* right) {
 
 void check_sort(const string str, const char* rtable, const char* rid) {
     CudaSet* right = varNames.find(rtable)->second;
-    fstream binary_file(str.c_str(), ios::out|ios::binary|ios::app);
-    binary_file.write((char *)&right->sort_check, 1);
-    binary_file.close();
+    iFileSystemHandle* f = file_system->open(str.c_str(), "ab");
+    file_system->write((char *)&right->sort_check, 1, f);
+    file_system->close(f);
 }
 
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host) {
@@ -895,14 +889,12 @@ void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, 
 	LOG(logDEBUG) << "sz " << a->h_columns_int[colname].size() << " " << a->d_columns_int[colname].size() <<  " " << len;
 	cudaMemcpy(thrust::raw_pointer_cast(a->h_columns_int[colname].data()), temp, 8*a->mRecCount, cudaMemcpyDeviceToHost);
 
-    FILE *f;
-    f = fopen(a->string_map[colname].c_str(), "rb");
-
+	iFileSystemHandle* f = file_system->open(a->string_map[colname].c_str(), "rb");
     for (int z = 0 ; z < a->mRecCount ; z++) {
-        fseek(f, a->h_columns_int[colname][z] * len, SEEK_SET);
-        fread(a->h_columns_char[colname] + z*len, 1, len, f);
+    	file_system->seek(f, a->h_columns_int[colname][z] * len, SEEK_SET);
+    	file_system->read(a->h_columns_char[colname] + z*len, len, f);
     }
-    fclose(f);
+    file_system->close(f);
 
     if (!host) {
         void *d;
@@ -951,24 +943,23 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
 
     unsigned int sz = (unsigned int)d_ordered.size();
     // write to a file
-    fstream binary_file(file_name.c_str(), ios::out|ios::binary|ios::trunc);
-    binary_file.write((char *)&sz, 4);
-
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    file_system->write((char *)&sz, 4, f);
     for (auto it = d_ordered.begin(); it != d_ordered.end(); it++) {
-        binary_file.write((char*)(&(it->first)), int_size);
+    	file_system->write((char*)(&(it->first)), int_size, f);
     }
 
     unsigned int fit_count = 64/bits_encoded;
     unsigned long long int val = 0;
-    binary_file.write((char *)&fit_count, 4);
-    binary_file.write((char *)&bits_encoded, 4);
+    file_system->write((char *)&fit_count, 4, f);
+    file_system->write((char *)&bits_encoded, 4, f);
     unsigned int curr_cnt = 1;
     unsigned int vals_count = (unsigned int)dict_val.size()/fit_count;
     if (!vals_count || dict_val.size()%fit_count)
         vals_count++;
-    binary_file.write((char *)&vals_count, 4);
+    file_system->write((char *)&vals_count, 4, f);
     unsigned int real_count = (unsigned int)dict_val.size();
-    binary_file.write((char *)&real_count, 4);
+    file_system->write((char *)&real_count, 4, f);
 
     for (unsigned int i = 0; i < dict_val.size() ; i++) {
         val = val | dict_val[i];
@@ -981,13 +972,13 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
                 val = val << ((fit_count-curr_cnt)-1)*bits_encoded;
             }
             curr_cnt = 1;
-            binary_file.write((char *)&val, int_size);
+            file_system->write((char *)&val, int_size, f);
             val = 0;
         } else {
             curr_cnt = curr_cnt + 1;
         }
     }
-    binary_file.close();
+    file_system->close(f);
 }
 
 unsigned int get_decimals(CudaSet* a, string s1_val, stack<unsigned int>& exe_precision) {
