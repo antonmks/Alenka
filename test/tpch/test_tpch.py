@@ -52,13 +52,13 @@ class TestTPCH:
 
 	def test_cp_result(self, testdir):
 		shutil.copy2("tpch/result/q1.result.txt", str(testdir.realpath()))
-		shutil.copy2("tpch/result/q2.result.txt", str(testdir.realpath()))
+		#shutil.copy2("tpch/result/q2.result.txt", str(testdir.realpath()))
 		shutil.copy2("tpch/result/q3.result.txt", str(testdir.realpath()))
-		shutil.copy2("tpch/result/q4.result.txt", str(testdir.realpath()))
+		#shutil.copy2("tpch/result/q4.result.txt", str(testdir.realpath()))
 		shutil.copy2("tpch/result/q5.result.txt", str(testdir.realpath()))
 		shutil.copy2("tpch/result/q6.result.txt", str(testdir.realpath()))
-		shutil.copy2("tpch/result/q7.result.txt", str(testdir.realpath()))
-		shutil.copy2("tpch/result/q9.result.txt", str(testdir.realpath()))
+		#shutil.copy2("tpch/result/q7.result.txt", str(testdir.realpath()))
+		#shutil.copy2("tpch/result/q9.result.txt", str(testdir.realpath()))
 		shutil.copy2("tpch/result/q10.result.txt", str(testdir.realpath()))
 
 	def test_chdir(self, testdir):
@@ -113,18 +113,18 @@ class TestTPCH:
 		r1.close()
 		r2.close()
 		
-	def test_query_q2(s2elf):
-		if subprocess.call(["alenka", "q2.sql"]) != 0:
-			raise Exception('query error')
-
-		r1 = open('q2.result.txt', 'r')
-		r2 = open('q2.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
-
-		r1.close()
-		r2.close()
+##	def test_query_q2(s2elf):
+#		if subprocess.call(["alenka", "q2.sql"]) != 0:
+#			raise Exception('query error')
+#
+#		r1 = open('q2.result.txt', 'r')
+#		r2 = open('q2.txt', 'r')
+#		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
+#		if diff.ratio != 1.0:
+#			raise Exception('query results dont match!')
+#
+#		r1.close()
+#		r2.close()
 
 	def test_query_q3(self):
 		if subprocess.call(["alenka", "q3.sql"]) != 0:
@@ -139,18 +139,18 @@ class TestTPCH:
 		r1.close()
 		r2.close()
 
-	def test_query_q4(self):
-		if subprocess.call(["alenka", "q4.sql"]) != 0:
-			raise Exception('query error')
-
-		r1 = open('q4.result.txt', 'r')
-		r2 = open('q4.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
-
-		r1.close()
-		r2.close()
+#	def test_query_q4(self):
+#		if subprocess.call(["alenka", "q4.sql"]) != 0:
+#			raise Exception('query error')
+#
+#		r1 = open('q4.result.txt', 'r')
+#		r2 = open('q4.txt', 'r')
+#		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
+#		if diff.ratio != 1.0:
+#			raise Exception('query results dont match!')
+#
+#		r1.close()
+#		r2.close()
 
 	def test_query_q5(self):
 		if subprocess.call(["alenka", "q5.sql"]) != 0:
@@ -178,31 +178,31 @@ class TestTPCH:
 		r1.close()
 		r2.close()
 
-	def test_query_a7(self):
-		if subprocess.call(["alenka", "a7.sql"]) != 0:
-			raise Exception('query error')
-
-		r1 = open('a7.result.txt', 'r')
-		r2 = open('a7.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
-
-		r1.close()
-		r2.close()
-
-	def test_query_q9(self,):
-		if subprocess.call(["alenka", "q9.sql"]) != 0:
-			raise Exception('query error')
-
-		r1 = open('q9.result.txt', 'r')
-		r2 = open('q9.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
-
-		r1.close()
-		r2.close()
+#	def test_query_a7(self):
+#		if subprocess.call(["alenka", "a7.sql"]) != 0:
+#			raise Exception('query error')
+#
+#		r1 = open('a7.result.txt', 'r')
+#		r2 = open('a7.txt', 'r')
+#		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
+#		if diff.ratio != 1.0:
+#			raise Exception('query results dont match!')
+#
+#		r1.close()
+#		r2.close()
+#
+#	def test_query_q9(self,):
+#		if subprocess.call(["alenka", "q9.sql"]) != 0:
+#			raise Exception('query error')
+#
+#		r1 = open('q9.result.txt', 'r')
+#		r2 = open('q9.txt', 'r')
+#		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
+#		if diff.ratio != 1.0:
+#			raise Exception('query results dont match!')
+#
+#		r1.close()
+#		r2.close()
 
 	def test_query_q10(self):
 		if subprocess.call(["alenka", "q10.sql"]) != 0:
