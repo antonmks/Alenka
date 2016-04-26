@@ -2,7 +2,6 @@ import shutil
 import os
 import pytest
 import subprocess
-import difflib
 
 @pytest.mark.incremental
 class TestTPCH:
@@ -66,44 +65,46 @@ class TestTPCH:
 		os.chdir(str(testdir.realpath()))
 
 	def test_load_tpch_customer(self):
-		if subprocess.call(["alenka", "load_customer.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_customer.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_lineitem(self):
-		if subprocess.call(["alenka", "load_lineitem.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_lineitem.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_nation(self):
-		if subprocess.call(["alenka", "load_nation.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_nation.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_orders(self):
-		if subprocess.call(["alenka", "load_orders.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_orders.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_part(self):
-		if subprocess.call(["alenka", "load_part.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_part.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_partsupp(self):
-		if subprocess.call(["alenka", "load_partsupp.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_partsupp.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_part(self):
-		if subprocess.call(["alenka", "load_part.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_part.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_region(self):
-		if subprocess.call(["alenka", "load_region.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_region.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_tpch_supplier(self):
-		if subprocess.call(["alenka", "load_supplier.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_supplier.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_query_q1(self):
-		if subprocess.call(["alenka", "q1.sql"]) != 0:
+		if subprocess.call(["./alenka", "q1.sql"]) != 0:
 			raise Exception('query error')
+
+		assert 0
 	
 		r1 = open('q1.result.txt', 'r')
 		r2 = open('q1.txt', 'r')
@@ -125,7 +126,7 @@ class TestTPCH:
 #		r2.close()
 
 	def test_query_q3(self):
-		if subprocess.call(["alenka", "q3.sql"]) != 0:
+		if subprocess.call(["./alenka", "q3.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('q3.result.txt', 'r')
@@ -137,7 +138,7 @@ class TestTPCH:
 		r2.close()
 
 #	def test_query_q4(self):
-#		if subprocess.call(["alenka", "q4.sql"]) != 0:
+#		if subprocess.call(["./alenka", "q4.sql"]) != 0:
 #			raise Exception('query error')
 #
 #		r1 = open('q4.result.txt', 'r')
@@ -149,7 +150,7 @@ class TestTPCH:
 #		r2.close()
 
 	def test_query_q5(self):
-		if subprocess.call(["alenka", "q5.sql"]) != 0:
+		if subprocess.call(["./alenka", "q5.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('q5.result.txt', 'r')
@@ -161,7 +162,7 @@ class TestTPCH:
 		r2.close()
 
 	def test_query_q6(self):
-		if subprocess.call(["alenka", "q6.sql"]) != 0:
+		if subprocess.call(["./alenka", "q6.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('q6.result.txt', 'r')
@@ -173,7 +174,7 @@ class TestTPCH:
 		r2.close()
 
 #	def test_query_a7(self):
-#		if subprocess.call(["alenka", "a7.sql"]) != 0:
+#		if subprocess.call(["./alenka", "a7.sql"]) != 0:
 #			raise Exception('query error')
 #
 #		r1 = open('q7.result.txt', 'r')
@@ -186,7 +187,7 @@ class TestTPCH:
 #		r2.close()
 #
 #	def test_query_q9(self,):
-#		if subprocess.call(["alenka", "q9.sql"]) != 0:
+#		if subprocess.call(["./alenka", "q9.sql"]) != 0:
 #			raise Exception('query error')
 #
 #		r1 = open('q9.result.txt', 'r')
@@ -198,7 +199,7 @@ class TestTPCH:
 #		r2.close()
 
 	def test_query_q10(self):
-		if subprocess.call(["alenka", "q10.sql"]) != 0:
+		if subprocess.call(["./alenka", "q10.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('q10.result.txt', 'r')

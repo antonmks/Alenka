@@ -67,27 +67,27 @@ class TestSSBNoIndex:
 		os.chdir(str(testdir.realpath()))
 
 	def test_load_ssb_customer(self):
-		if subprocess.call(["alenka", "load_customer.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_customer.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_ssb_date(self):
-		if subprocess.call(["alenka", "load_date.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_date.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_ssb_lineorder(self):
-		if subprocess.call(["alenka", "load_lineorder.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_lineorder.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_ssb_part(self):
-		if subprocess.call(["alenka", "load_part.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_part.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_load_ssb_supplier(self):
-		if subprocess.call(["alenka", "load_supplier.sql"]) != 0:
+		if subprocess.call(["./alenka", "load_supplier.sql"]) != 0:
 			raise Exception('load error')
 
 	def test_query_ss11(self):
-		if subprocess.call(["alenka", "ss11.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss11.sql"]) != 0:
 			raise Exception('query error')
 	
 		r1 = open('ss11.result.txt', 'r')
@@ -99,7 +99,7 @@ class TestSSBNoIndex:
 		r2.close()
 		
 	def test_query_ss12(self):
-		if subprocess.call(["alenka", "ss12.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss12.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss12.result.txt', 'r')
@@ -111,7 +111,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss13(self):
-		if subprocess.call(["alenka", "ss13.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss13.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss13.result.txt', 'r')
@@ -123,7 +123,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss21(self):
-		if subprocess.call(["alenka", "ss21.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss21.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss21.result.txt', 'r')
@@ -135,7 +135,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss22(self):
-		if subprocess.call(["alenka", "ss22.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss22.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss22.result.txt', 'r')
@@ -147,7 +147,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss23(self):
-		if subprocess.call(["alenka", "ss23.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss23.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss23.result.txt', 'r')
@@ -159,7 +159,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss31(self):
-		if subprocess.call(["alenka", "ss31.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss31.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss31.result.txt', 'r')
@@ -171,7 +171,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss32(self,):
-		if subprocess.call(["alenka", "ss32.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss32.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss32.result.txt', 'r')
@@ -183,7 +183,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss33(self):
-		if subprocess.call(["alenka", "ss33.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss33.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss33.result.txt', 'r')
@@ -195,7 +195,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss34(self):
-		if subprocess.call(["alenka", "ss34.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss34.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss34.result.txt', 'r')
@@ -207,7 +207,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss41(self):
-		if subprocess.call(["alenka", "ss41.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss41.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss41.result.txt', 'r')
@@ -219,7 +219,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss42(self):
-		if subprocess.call(["alenka", "ss42.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss42.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss42.result.txt', 'r')
@@ -231,7 +231,7 @@ class TestSSBNoIndex:
 		r2.close()
 
 	def test_query_ss43(self):
-		if subprocess.call(["alenka", "ss43.sql"]) != 0:
+		if subprocess.call(["./alenka", "ss43.sql"]) != 0:
 			raise Exception('query error')
 
 		r1 = open('ss43.result.txt', 'r')
