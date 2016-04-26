@@ -13,4 +13,4 @@ F := SELECT c_custkey AS c_custkey, c_name AS c_name, c_acctbal AS c_acctbal, n_
  	 GROUP BY c_custkey, c_name, c_acctbal, c_phone, n_name, c_address, c_comment;	
 	  
 RES := ORDER F BY revenue DESC;	   
-STORE RES INTO 'mytest.txt' USING ('|') LIMIT 20;
+STORE RES INTO 'q10.txt' USING ('|');

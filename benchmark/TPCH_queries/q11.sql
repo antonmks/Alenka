@@ -17,4 +17,4 @@ RES := FILTER PG BY value > PP.amount;
 
 R := ORDER RES BY value DESC;
 
-STORE R INTO 'mytest.txt' USING ('|');  
+STORE R INTO 'q11.txt' USING ('|');  

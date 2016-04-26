@@ -10,5 +10,5 @@ F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, o_shippriority
             SUM(price*(1-discount)) AS sum_revenue, COUNT(o_orderkey) AS cnt  FROM OLC 
  	 GROUP BY o_orderkey, o_orderdate, o_shippriority;	
 	  
-RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	   
-DISPLAY RES USING ('|') LIMIT 10;	
+RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	
+STORE RES INTO 'q3.txt' USING ('|');

@@ -4,4 +4,4 @@ D := SELECT returnflag AS rf1, linestatus AS lf1, SUM(price) AS price_sum, SUM(q
 			SUM((1-discount)*price) AS discount_price, AVG(tax) AS tax_avg,
 			COUNT(qty) AS qq
 	 FROM B	GROUP BY returnflag, linestatus;
-STORE D INTO 'mytest.txt' USING ('|');
+STORE D INTO 'q1.txt' USING ('|');

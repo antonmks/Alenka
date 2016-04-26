@@ -18,6 +18,6 @@ F := SELECT n_name AS n_name, ps_partkey AS ps_partkey, ps_supplycost AS ps_supp
 	 
 FO := ORDER F BY s_acctbal DESC, n_name ASC, s_name ASC, ps_partkey ASC;	
 
-STORE FO INTO 'mytest.txt' USING ('|') LIMIT 100;   
+STORE FO INTO 'q2.txt' USING ('|');
 
 

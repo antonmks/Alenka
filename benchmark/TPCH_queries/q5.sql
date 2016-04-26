@@ -14,7 +14,7 @@ F := SELECT n_name AS n_name1, SUM(price*(1-discount)) AS revenue FROM J1
 
 F1 := ORDER F BY revenue DESC;
 
-DISPLAY F1 USING ('|');
+STORE F1 INTO 'q5.txt' USING ('|');
 
 
 

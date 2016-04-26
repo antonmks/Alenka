@@ -28,5 +28,5 @@ G := SELECT n_name AS n_name1, year AS year1, SUM(amount) AS amount1 FROM LN
 	 
 T := ORDER G BY n_name1, year1 DESC;	 
 
-STORE T INTO 'mytest.txt' USING ('|');
+STORE T INTO 'q9.txt' USING ('|');
 
