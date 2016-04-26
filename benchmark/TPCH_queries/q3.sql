@@ -6,8 +6,11 @@ OLC := SELECT o_orderkey AS o_orderkey, o_orderdate AS o_orderdate, o_shippriori
        FROM LF JOIN OFI ON orderkey = o_orderkey
 	           JOIN CF ON o_custkey = c_custkey;
 			  
-F := SELECT o_orderkey AS o_orderkey1, o_orderdate AS orderdate1, o_shippriority AS shippriority1,
-            SUM(price*(1-discount)) AS sum_revenue, COUNT(o_orderkey) AS cnt  FROM OLC 
+F := SELECT o_orderkey AS o_orderkey1,
+		SUM(price*(1-discount)) AS sum_revenue, 
+		o_orderdate AS orderdate1,
+		o_shippriority AS shippriority1 
+	FROM OLC 
  	 GROUP BY o_orderkey, o_orderdate, o_shippriority;	
 	  
 RES := ORDER F BY sum_revenue DESC, orderdate1 ASC;	
