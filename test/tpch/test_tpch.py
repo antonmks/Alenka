@@ -107,7 +107,7 @@ class TestTPCH:
 	
 		r1 = open('q1.result.txt', 'r')
 		r2 = open('q1.txt', 'r')
-		if r1.read() != r2.read():
+                if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
 		r1.close()
@@ -119,7 +119,7 @@ class TestTPCH:
 #
 #		r1 = open('q2.result.txt', 'r')
 #		r2 = open('q2.txt', 'r')
-#		if r1.read() != r2.read():
+#		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
 #                       raise Exception('query results dont match!')
 #		r1.close()
 #		r2.close()
@@ -130,7 +130,7 @@ class TestTPCH:
 
 		r1 = open('q3.result.txt', 'r')
 		r2 = open('q3.txt', 'r')
-		if r1.read() != r2.read():
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
 		r1.close()
@@ -142,7 +142,7 @@ class TestTPCH:
 #
 #		r1 = open('q4.result.txt', 'r')
 #		r2 = open('q4.txt', 'r')
-#		if r1.read() != r2.read():
+#		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
 #                        raise Exception('query results dont match!')
 #
 #		r1.close()
@@ -154,7 +154,7 @@ class TestTPCH:
 
 		r1 = open('q5.result.txt', 'r')
 		r2 = open('q5.txt', 'r')
-		if r1.read() != r2.read():
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
 		r1.close()
@@ -166,7 +166,7 @@ class TestTPCH:
 
 		r1 = open('a6.result.txt', 'r')
 		r2 = open('a6.txt', 'r')
-		if r1.read() != r2.read():
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
 		r1.close()
@@ -178,7 +178,7 @@ class TestTPCH:
 #
 #		r1 = open('a7.result.txt', 'r')
 #		r2 = open('a7.txt', 'r')
-#		if r1.read() != r2.read():
+#		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
 #                        raise Exception('query results dont match!')
 #
 #
@@ -191,7 +191,7 @@ class TestTPCH:
 #
 #		r1 = open('q9.result.txt', 'r')
 #		r2 = open('q9.txt', 'r')
-#		if r1.read() != r2.read():
+#		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
 #                        raise Exception('query results dont match!')
 #
 #		r1.close()
@@ -203,7 +203,7 @@ class TestTPCH:
 
 		r1 = open('q10.result.txt', 'r')
 		r2 = open('q10.txt', 'r')
-		if r1.read() != r2.read():
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
 		r1.close()
