@@ -37,7 +37,7 @@ size_t FileSystemLocal::write(const void* buffer, size_t length, iFileSystemHand
 	return fwrite(buffer, sizeof(char), length, reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
 }
 
-size_t FileSystemLocal::seek(iFileSystemHandle * h, size_t offset, int origin) {
+size_t FileSystemLocal::seek(iFileSystemHandle * h, long int offset, int origin) {
 	return fseek(reinterpret_cast<FileSystemHandleLocal*>(h)->_file, offset, origin);
 }
 

@@ -74,7 +74,7 @@ size_t FileSystemHDFS::write(const void* buffer, size_t length, iFileSystemHandl
 	return hdfsWrite(_fs, reinterpret_cast<FileSystemHandleHDFS*>(h)->_file, buffer, length);
 }
 
-size_t FileSystemHDFS::seek(iFileSystemHandle* h, size_t offset, int origin) {
+size_t FileSystemHDFS::seek(iFileSystemHandle* h, long int offset, int origin) {
 	FileSystemHandleHDFS * f = reinterpret_cast<FileSystemHandleHDFS*>(h);
 
 	if (origin == SEEK_SET) {

@@ -39,7 +39,7 @@ public:
 	iFileSystemHandle* open(const char* path, const char* mode);
 	size_t read(void* buffer, size_t length, iFileSystemHandle* h);
 	size_t write(const void* buffer, size_t length, iFileSystemHandle* h);
-	size_t seek(iFileSystemHandle* h, size_t offset, int origin);
+	size_t seek(iFileSystemHandle* h, long int offset, int origin);
 	size_t tell(iFileSystemHandle* h);
 	size_t putc(int character, iFileSystemHandle* h);
 	size_t puts(const char * str, iFileSystemHandle* h);

@@ -30,7 +30,7 @@ public:
 	virtual iFileSystemHandle* open(const char* path, const char* mode) = 0;
 	virtual size_t read(void* buffer, size_t length, iFileSystemHandle* h) = 0;
 	virtual size_t write(const void* buffer, size_t length, iFileSystemHandle* h) = 0;
-	virtual size_t seek(iFileSystemHandle* h, size_t offset, int origin) = 0;
+	virtual size_t seek(iFileSystemHandle* h, long int offset, int origin) = 0;
 	virtual size_t tell(iFileSystemHandle* h) = 0;
 	virtual size_t putc(int character, iFileSystemHandle* h) = 0;
 	virtual size_t puts(const char * str, iFileSystemHandle* h) = 0;
