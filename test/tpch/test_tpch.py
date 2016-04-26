@@ -2,6 +2,7 @@ import shutil
 import os
 import pytest
 import subprocess
+import difflib
 
 @pytest.mark.incremental
 class TestTPCH:
@@ -104,7 +105,7 @@ class TestTPCH:
 		if subprocess.call(["alenka", "q1.sql"]) != 0:
 			raise Exception('query error')
 	
-		r1 = open('a1.result.txt', 'r')
+		r1 = open('q1.result.txt', 'r')
 		r2 = open('q1.txt', 'r')
 		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
 		if diff.ratio != 1.0:
