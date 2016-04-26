@@ -10,7 +10,7 @@ LS1 := SELECT lo_revenue AS lo_revenue, p_brand1 AS p_brand1, lo_orderdate AS lo
        FROM LS JOIN SF on lo_suppkey = s_suppkey;
 
 LS2 := SELECT lo_revenue AS lo_revenue, p_brand1 AS p_brand1, d_year AS d_year
-       FROM LS1 JOIN date on lo_orderdate = d_datekey;	
+       FROM LS1 JOIN date on lo_orderdatekey = d_datekey;	
 
 R := SELECT SUM(lo_revenue) AS lo_revenue, d_year AS d_year1, p_brand1 AS p_brand FROM LS2
      GROUP BY d_year, p_brand1;

@@ -17,8 +17,7 @@ LS2 := SELECT lo_revenue AS lo_revenue, lo_supplycost AS lo_supplycost,
 
 LS3 := SELECT lo_revenue AS lo_revenue, d_year AS d_year, lo_supplycost AS lo_supplycost, s_nation AS s_nation,
 	      p_category AS p_category
-       FROM LS2 JOIN DF on lo_orderdate = d_datekey;
-
+       FROM LS2 JOIN DF on lo_orderdatekey = d_datekey;
 
 R := SELECT d_year AS d_year1, s_nation AS s_nation1, p_category AS p_category1,
             SUM(lo_revenue-lo_supplycost) AS lo_revenue1  FROM LS3

@@ -5,7 +5,7 @@ SF := FILTER supplier BY s_nation == "UNITED STATES";
 LS := SELECT lo_revenue AS lo_revenue, d_year AS d_year, s_city AS s_city, c_city AS c_city
       FROM lineorder JOIN SF on lo_suppkey = s_suppkey
 		     JOIN CF on lo_custkey = c_custkey
-		     JOIN DF on lo_orderdate = d_datekey;
+		     JOIN DF on lo_orderdatekey = d_datekey;
 
 R := SELECT SUM(lo_revenue) AS lo_revenue1, d_year AS d_year1, c_city AS c_city1, s_city AS s_city1 FROM LS
      GROUP BY c_city, s_city, d_year;

@@ -6,7 +6,7 @@ LS := SELECT lo_revenue AS lo_revenue, d_year AS d_year, lo_supplycost AS lo_sup
       FROM lineorder JOIN SF on lo_suppkey = s_suppkey
 		     JOIN CF on lo_custkey = c_custkey
 		     JOIN PF on lo_partkey = p_partkey	
-		     JOIN date on lo_orderdate = d_datekey;
+		     JOIN date on lo_orderdatekey = d_datekey;
 
 R := SELECT SUM(lo_revenue - lo_supplycost) AS lo_profit, d_year AS d_year1, c_nation AS c_nation1  FROM LS
      GROUP BY d_year, c_nation;

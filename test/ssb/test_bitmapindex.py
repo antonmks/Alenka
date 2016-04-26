@@ -150,9 +150,8 @@ class TestSSBBitmapIndex:
 	
 		r1 = open('ss11.result.txt', 'r')
 		r2 = open('ss11.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -163,9 +162,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss12.result.txt', 'r')
 		r2 = open('ss12.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -176,9 +174,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss13.result.txt', 'r')
 		r2 = open('ss13.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -189,9 +186,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss21.result.txt', 'r')
 		r2 = open('ss21.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -202,9 +198,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss22.result.txt', 'r')
 		r2 = open('ss22.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -215,9 +210,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss23.result.txt', 'r')
 		r2 = open('ss23.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -228,9 +222,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss31.result.txt', 'r')
 		r2 = open('ss31.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -241,9 +234,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss32.result.txt', 'r')
 		r2 = open('ss32.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -254,9 +246,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss33.result.txt', 'r')
 		r2 = open('ss33.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -267,9 +258,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss34.result.txt', 'r')
 		r2 = open('ss34.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -280,9 +270,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss41.result.txt', 'r')
 		r2 = open('ss41.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -293,9 +282,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss42.result.txt', 'r')
 		r2 = open('ss42.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
@@ -306,9 +294,8 @@ class TestSSBBitmapIndex:
 
 		r1 = open('ss43.result.txt', 'r')
 		r2 = open('ss43.txt', 'r')
-		diff = difflib.SequenceMatcher(None, r1.read(), r2.read())
-		if diff.ratio != 1.0:
-			raise Exception('query results dont match!')
+		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
+                        raise Exception('query results dont match!')
 
 		r1.close()
 		r2.close()
