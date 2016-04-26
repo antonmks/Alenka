@@ -1,0 +1,1 @@
+../../../benchmark/TPCH_queries/q1.sql

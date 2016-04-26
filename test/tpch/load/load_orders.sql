@@ -1,0 +1,1 @@
+../../../benchmark/TPCH_load/load_orders.sql
