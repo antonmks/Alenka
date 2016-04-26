@@ -161,11 +161,11 @@ class TestTPCH:
 		r2.close()
 
 	def test_query_q6(self):
-		if subprocess.call(["alenka", "a6.sql"]) != 0:
+		if subprocess.call(["alenka", "q6.sql"]) != 0:
 			raise Exception('query error')
 
-		r1 = open('a6.result.txt', 'r')
-		r2 = open('a6.txt', 'r')
+		r1 = open('q6.result.txt', 'r')
+		r2 = open('q6.txt', 'r')
 		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
                         raise Exception('query results dont match!')
 
@@ -176,8 +176,8 @@ class TestTPCH:
 #		if subprocess.call(["alenka", "a7.sql"]) != 0:
 #			raise Exception('query error')
 #
-#		r1 = open('a7.result.txt', 'r')
-#		r2 = open('a7.txt', 'r')
+#		r1 = open('q7.result.txt', 'r')
+#		r2 = open('q7.txt', 'r')
 #		if r1.read().strip('\n\r') != r2.read().strip('\n\r'):
 #                        raise Exception('query results dont match!')
 #
