@@ -30,7 +30,7 @@ iFileSystemHandle* FileSystemLocal::open(const char* path, const char * mode) {
 }
 
 size_t FileSystemLocal::read(void* buffer, size_t length, iFileSystemHandle * h) {
-	return fread(buffer, length, 1, reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
+	return fread(buffer, 1, length, reinterpret_cast<FileSystemHandleLocal*>(h)->_file);
 }
 
 size_t FileSystemLocal::write(const void* buffer, size_t length, iFileSystemHandle * h) {
