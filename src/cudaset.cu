@@ -1190,7 +1190,7 @@ void CudaSet::writeHeader(string file_name, string colname, unsigned int tot_seg
     string str = file_name + "." + colname;
     string ff = str;
     str += ".header";
-    iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+    iFileSystemHandle* f = file_system->open(str.c_str(), "wb");
     file_system->write((char *)&total_count, 8, f);
     file_system->write((char *)&tot_segs, 4, f);
     file_system->write((char *)&total_max, 4, f);
@@ -1203,7 +1203,7 @@ void CudaSet::reWriteHeader(string file_name, string colname, unsigned int tot_s
     string str = file_name + "." + colname;
     string ff = str;
     str += ".header";
-    iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+    iFileSystemHandle* f = file_system->open(str.c_str(), "wb");
     file_system->write((char *)&newRecs, 8, f);
     file_system->write((char *)&tot_segs, 4, f);
     file_system->write((char *)&maxRecs1, 4, f);
@@ -1217,7 +1217,7 @@ void CudaSet::writeSortHeader(string file_name) {
 
     if (!op_sort.empty()) {
         str += ".sort";
-        iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+        iFileSystemHandle* f = file_system->open(str.c_str(), "wb");
         idx = (unsigned int)op_sort.size();
         file_system->write((char *)&idx, 4, f);
         queue<string> os(op_sort);
@@ -1238,7 +1238,7 @@ void CudaSet::writeSortHeader(string file_name) {
 	str = file_name;
     if (!op_presort.empty()) {
         str += ".presort";
-        iFileSystemHandle* f = file_system->open(str.c_str(), "tb");
+        iFileSystemHandle* f = file_system->open(str.c_str(), "wb");
         idx = (unsigned int)op_presort.size();
         file_system->write((char *)&idx, 4, f);
         queue<string> os(op_presort);
@@ -1659,11 +1659,11 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
     h_name = file_no_seg + "." + to_string(segment) + ".hash";
     iFileSystemHandle* b_file;
 
-    iFileSystemHandle* file_h = file_system->open(h_name.c_str(), "tb");//truncate binary
+    iFileSystemHandle* file_h = file_system->open(h_name.c_str(), "wb");/
     file_system->write((char *)&mCount, 4, file_h);
 
 	if (segment == 0) {
-		b_file = file_system->open(file_no_seg.c_str(), "tb"); //truncate binary
+		b_file = file_system->open(file_no_seg.c_str(), "wb"); //truncate binary
     } else {
     	b_file = file_system->open(file_no_seg.c_str(), "ab"); //append binary
     }
