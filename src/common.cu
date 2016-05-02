@@ -943,7 +943,7 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
 
     unsigned int sz = (unsigned int)d_ordered.size();
     // write to a file
-    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "wb");
     file_system->write((char *)&sz, 4, f);
     for (auto it = d_ordered.begin(); it != d_ordered.end(); it++) {
     	file_system->write((char*)(&(it->first)), int_size, f);

@@ -216,7 +216,7 @@ void pfor_delta_compress(void* source, size_t source_len, string file_name, thru
     cnt = cnt*8;
 
     cudaMemcpy(host.data(), (void *)raw_src, cnt, cudaMemcpyDeviceToHost);
-    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "wb");
     file_system->write((char *)&cnt, 4, f);
     file_system->write((char *)&real_lower, 8, f);
     file_system->write((char *)&real_upper, 8, f);
@@ -328,7 +328,7 @@ void pfor_compress(void* source, size_t source_len, string file_name, thrust::ho
     fit_count = 64/bits;
 
     LOG(logDEBUG) << "comp Header " <<  file_name << " " << recCount << " " << bits << " " << orig_lower_val << " " << cnt << " " << fit_count << " " << comp_type << " " << orig_upper_val << " " << start_val;
-    iFileSystemHandle* f = file_system->open(file_name.c_str(), "tb");
+    iFileSystemHandle* f = file_system->open(file_name.c_str(), "wb");
     file_system->write((char *)&cnt, 4, f);
     file_system->write((char *)&orig_lower_val, 8, f);
     file_system->write((char *)&orig_upper_val, 8, f);
