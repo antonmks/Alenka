@@ -2302,7 +2302,7 @@ void emit_store_binary(const char *s, const char *f, const bool append) {
             a->Store(f, "", limit, 1, append);
         }
     }
-    a->writeSortHeader(f);
+	a->writeSortHeader(f);
 
     if (stat[f] == statement_count && !a->keep) {
         a->free();

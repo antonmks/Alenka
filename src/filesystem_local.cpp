@@ -14,6 +14,7 @@
 
 #include <stdarg.h>
 #include <fstream>
+#include <iostream>
 
 #include "filesystem_local.h"
 
@@ -68,7 +69,7 @@ void FileSystemLocal::close(iFileSystemHandle * h) {
 }
 
 int FileSystemLocal::remove(const char* path) {
-	return remove(path);
+	return exist(path) ? remove(path) : -1;
 }
 
 int FileSystemLocal::rename(const char* oldPath, const char* newPath) {
@@ -77,7 +78,9 @@ int FileSystemLocal::rename(const char* oldPath, const char* newPath) {
 
 bool FileSystemLocal::exist(const char* path){
 	std::ifstream infile(path);
-	return infile.good();
+	bool val = infile.good();
+	infile.close();
+	return val;
 }
 
 } // namespace alenka
