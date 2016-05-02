@@ -1659,7 +1659,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
     h_name = file_no_seg + "." + to_string(segment) + ".hash";
     iFileSystemHandle* b_file;
 
-    iFileSystemHandle* file_h = file_system->open(h_name.c_str(), "wb");/
+    iFileSystemHandle* file_h = file_system->open(h_name.c_str(), "wb");
     file_system->write((char *)&mCount, 4, file_h);
 
 	if (segment == 0) {
