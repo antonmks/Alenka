@@ -328,9 +328,9 @@ int execute_file(int ac, char **av) {
     }
     
 #ifdef DATADICT_REDIS_SIMPLE
-	data_dict = new DataDictRedisSimple("localhost", 6739);
+	data_dict = new DataDictRedisSimple("localhost", 6379, true);
 #elif DATADICT_REDIS_HA
-	data_dict = new DataDictRedisHA("sentinel1,sentinel2,sentinel3", "test", 26379);
+	data_dict = new DataDictRedisHA("redis1.home.lan,redis2.home.lan,redis3.home.lan", "redis-cluster", 26379, true);
 #else
 	data_dict = new DataDictLocal("data.dictionary"); 
 #endif
@@ -476,9 +476,9 @@ int execute(char *s) {
     std::clock_t start;
     
 #ifdef DATADICT_REDIS_SIMPLE
-	data_dict = new DataDictRedisSimple("localhost", 6739);
+	data_dict = new DataDictRedisSimple("localhost", 6379, true);
 #elif DATADICT_REDIS_HA
-	data_dict = new DataDictRedisHA("sentinel1,sentinel2,sentinel3", "test", 26379);
+	data_dict = new DataDictRedisHA("redis1.home.lan,redis2.home.lan,redis3.home.lan", "redis-cluster", 26379, true);
 #else
 	data_dict = new DataDictLocal("data.dictionary"); 
 #endif
