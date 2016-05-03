@@ -29,8 +29,10 @@ using namespace mgpu;
 namespace alenka {
 
 void check_used_vars() {
-	for (auto it=data_dict->get_tables().begin() ; it != data_dict->get_tables().end(); ++it) {
-		auto s = data_dict->get_columns(*it);
+	vector<string> tables = data_dict->get_tables();
+	for (auto it=tables.begin() ; it != tables.end(); ++it) {
+		string table = (*it);
+		auto s = data_dict->get_columns(table);
 		auto vars(op_value);
 		while (!vars.empty()) {
 			if (s.count(vars.front()) != 0) {
