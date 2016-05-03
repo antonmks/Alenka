@@ -19,26 +19,28 @@
 #include "alenka.h"
 
 using namespace std;
-using namespace alenka;
 
 int main(int ac, char **av) {
     std::clock_t start;
-    int x;
-    // test QPS via alenkaExecute	-- this section is the only C++ dependency
+
+    //overwrite config - see global.cu for defaults
+    alenka::data_dict_local_name = "alenka.dictonary";
+
+    // test QPS via alenka::execute
     if (ac == 2 && string(av[1]) == "--QPS-test") {
-        init(NULL);
+    	alenka::init(NULL);
         start = std::clock();
-        for (x=0; x< 1000; x++)  {
-            execute("A1 := SELECT  count(n_name) AS col1 FROM nation;\n DISPLAY A1 USING ('|');");
+        for (int x=0; x< 1000; x++)  {
+        	alenka::execute("A1 := SELECT  count(n_name) AS col1 FROM nation;\n DISPLAY A1 USING ('|');");
         }
-        LOG(alenka::logINFO) << "Ave QPS is : " <<  (1000/ ((std::clock() - start) / (double)CLOCKS_PER_SEC));
-        close();
-    } else {  // ordinary alenka file mode
+        cout << "Ave QPS is : " <<  (1000/ ((std::clock() - start) / (double)CLOCKS_PER_SEC)) << endl;
+        alenka::close();
+    } else {  // ordinary alenka::execute_file file mode
         if (ac < 2) {
             cerr << "Usage : alenka [--QPS-test] | [ [-l load size(MB)] [-v] script.sql ]" << endl;
             exit(EXIT_FAILURE);
         } else {
-            return execute_file(ac, av);
+            return alenka::execute_file(ac, av);
         }
     }
 }

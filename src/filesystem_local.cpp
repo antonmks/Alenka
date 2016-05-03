@@ -15,6 +15,8 @@
 #include <stdarg.h>
 #include <fstream>
 #include <iostream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "filesystem_local.h"
 
@@ -22,6 +24,10 @@ namespace alenka {
 
 FileSystemLocal::FileSystemLocal(const char* base_path) {
 	_base_path = base_path;
+
+	//change working directory
+	if(!exist(base_path))
+		mkdir(base_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 iFileSystemHandle* FileSystemLocal::open(const char* path, const char * mode) {

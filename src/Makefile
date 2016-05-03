@@ -13,7 +13,7 @@
 #flags
 CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda --compiler-options '-fPIC' -I ../deps/ -I ../include/ $(REDIS_FLAGS) $(HDFS_FLAGS)
 
-#compute compatibility (https://developer.nvidia.com/cuda-gpus])
+#compute compatibility (https://developer.nvidia.com/cuda-gpus)
 GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
 #GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
 #GENCODE_SM50	:= -gencode arch=compute_50,code=sm_50

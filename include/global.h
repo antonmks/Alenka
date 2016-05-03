@@ -52,6 +52,20 @@ using namespace thrust::system::cuda::experimental;
 
 namespace alenka {
 
+//config
+extern string data_dict_local_name;
+extern string data_dict_redis_simple_host;
+extern unsigned int data_dict_redis_simple_port;
+extern bool data_dict_redis_simple_pool;
+extern string data_dict_redis_ha_sentinel_host;
+extern string data_dict_redis_ha_master_name;
+extern unsigned int ata_dict_redis_ha_sentinel_port;
+extern bool data_dict_redis_ha_pool;
+extern char* file_system_local_base_path;
+extern char* file_system_hfds_host;
+extern unsigned int file_system_hfds_port;
+extern char* file_system_hfds_base_path;
+
 //common
 extern size_t int_size;
 extern size_t float_size;
