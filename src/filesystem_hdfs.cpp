@@ -26,13 +26,14 @@ FileSystemHandleHDFS::FileSystemHandleHDFS() :
 
 FileSystemHDFS::FileSystemHDFS(const char* host, tPort port, const char* base_path) {
 	_fs = hdfsConnect(host, port);
+	_base_path = base_path;
 	hdfsSetWorkingDirectory(_fs, base_path);
 }
 
 FileSystemHDFS::FileSystemHDFS(const char* host, tPort port,  const char *user, const char* base_path) {
 	_fs = hdfsConnectAsUser(host, port, user);
-	hdfsSetWorkingDirectory(_fs, base_path);
 	_base_path = base_path;
+	hdfsSetWorkingDirectory(_fs, base_path);
 }
 
 FileSystemHDFS::~FileSystemHDFS() {
@@ -49,12 +50,10 @@ iFileSystemHandle* FileSystemHDFS::open(const char* path, const char * mode) {
 	for(int i = 0; mode[i]; i++){
 		if(mode[i] == 'a'){
 			flags |= O_APPEND;
-		}else if(mode[i] == 't'){
-			flags |= O_TRUNC;
 		}else if(mode[i] == 'r'){
 			flags |= O_RDONLY;
 		}else if(mode[i] == 'w'){
-			flags |= O_WRONLY;
+			flags |= O_WRONLY | O_TRUNC;
 		}
 	}
 
