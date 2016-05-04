@@ -1058,7 +1058,7 @@ void clean_queues() {
 
 void load_vars() {
     if (used_vars.size() == 0) {
-    	LOG(logERROR) << "Error, no valid column names have been found ";
+    	LOG(logWARNING) << "Error, no valid column names have been found ";
         //exit(0);
     } else {
         for (auto it = used_vars.begin(); it != used_vars.end(); ++it) {

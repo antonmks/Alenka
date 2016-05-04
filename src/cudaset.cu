@@ -892,36 +892,39 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 			total_count = oldCount + mCount;
 		}
 	}
-	string s = file_name + ".interval";
-	iFileSystemHandle* f = file_system->open(s.c_str(), "rb");
-	if (f) {
-    	file_system->seek(f, 0, SEEK_END);
-        long length = file_system->tell(f);
-        file_system->seek(f, 0, SEEK_SET);
-		char* buff = new char[length];
-		file_system->read(buff, length, f);
-		file_system->close(f);
-		char* p = strtok(buff, "|");
-		string s1(p);
-		p = strtok(NULL, "|");
-		string s2(p);
-		delete [] buff;
 
-		s = file_name + ".key";
-		iFileSystemHandle* f1 = file_system->open(s.c_str(), "rb");
-		if (f1) {
-			file_system->seek(f1, 0, SEEK_END);
-			long length = file_system->tell(f1);
-			file_system->seek(f1, 0, SEEK_SET);
-			buff = new char[length+1];
-			buff[length] = 0;
-			file_system->read(buff, length, f1);
-			file_system->close(f1);
-			string s3(buff);
+	string s = file_name + ".interval";
+	if(file_system->exist(s.c_str())){
+		iFileSystemHandle* f = file_system->open(s.c_str(), "rb");
+		if (f) {
+			file_system->seek(f, 0, SEEK_END);
+			long length = file_system->tell(f);
+			file_system->seek(f, 0, SEEK_SET);
+			char* buff = new char[length];
+			file_system->read(buff, length, f);
+			file_system->close(f);
+			char* p = strtok(buff, "|");
+			string s1(p);
+			p = strtok(NULL, "|");
+			string s2(p);
 			delete [] buff;
-			load_file_name = file_name;
-			calc_intervals(s1, s2, s3, total_segments, append);
-			int_check = 1;
+
+			s = file_name + ".key";
+			iFileSystemHandle* f1 = file_system->open(s.c_str(), "rb");
+			if (f1) {
+				file_system->seek(f1, 0, SEEK_END);
+				long length = file_system->tell(f1);
+				file_system->seek(f1, 0, SEEK_SET);
+				buff = new char[length+1];
+				buff[length] = 0;
+				file_system->read(buff, length, f1);
+				file_system->close(f1);
+				string s3(buff);
+				delete [] buff;
+				load_file_name = file_name;
+				calc_intervals(s1, s2, s3, total_segments, append);
+				int_check = 1;
+			}
 		}
 	}
 
