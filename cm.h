@@ -665,13 +665,17 @@ struct parse_functor
     __host__ __device__
     void operator()(const IndexType & i) {
 		unsigned int curr_cnt = 0, dest_curr = 0, j = 0, t, pos;
+		bool open_quotes = 0;
 		pos = src_ind[i]+1;
 		
 		while(dest_curr < *cnt) {
 			if(ind[dest_curr] == curr_cnt) { //process				
 				t = 0;
-				while(source[pos+j] != *separator) {
+				while(source[pos+j] != *separator || open_quotes) {
 					//printf("REG %d ", j);
+					if(source[pos+j] == '"') {						
+						open_quotes = !open_quotes;						
+					};
 					if(source[pos+j] != 0) {
 						dest[dest_curr][dest_len[dest_curr]*i+t] = source[pos+j];
 						t++;
@@ -683,7 +687,10 @@ struct parse_functor
 			}
 			else {
 				//printf("Skip %d \n", j);
-				while(source[pos+j] != *separator) {
+				while(source[pos+j] != *separator || open_quotes) {
+					if(source[pos+j] == '"') {						
+						open_quotes = !open_quotes;						
+					};	
 					j++;
 					//printf("CONT Skip %d \n", j);
 				};	
