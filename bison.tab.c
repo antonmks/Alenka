@@ -2708,7 +2708,7 @@ int execute_file(int ac, char **av)
             script = av[i+1];
         };
     };
-
+	
     load_col_data(data_dict, "data.dictionary");
 	tot_disk = 0;
 
@@ -2716,13 +2716,12 @@ int execute_file(int ac, char **av)
         if((yyin = fopen(av[ac-1], "r")) == nullptr) {
             perror(av[ac-1]);
             exit(1);
-        };
-
+        };		
         if(yyparse()) {
             printf("SQL scan parse failed\n");
             exit(1);
         };
-
+		
         scan_state = 1;
         std::clock_t start1 = std::clock();
 
@@ -2735,10 +2734,7 @@ int execute_file(int ac, char **av)
         yyin = fopen(av[ac-1], "r");
         PROC_FLUSH_BUF ( yyin );
         statement_count = 0;
-
-        extern FILE *yyin;
-        context = CreateCudaDevice(0, nullptr, verbose);
-
+        extern FILE *yyin;		
 		curr_time = time(0)*1000;
         if(!yyparse()) {
             if(verbose)
@@ -2758,7 +2754,7 @@ int execute_file(int ac, char **av)
         };
     }
     else {
-        context = CreateCudaDevice(0, nullptr, verbose);        
+        //context = CreateCudaDevice(0, nullptr, verbose);        
         if(!just_once)
             getline(cin, script);
 

@@ -1066,16 +1066,12 @@ void CudaSet::GroupBy(stack<string> columnRef)
 			}
 		};	
         thrust::transform(d_group, d_group+mRecCount, grp_dev.begin(), grp_dev.begin(), thrust::logical_or<bool>());
-    };
-	
-	grp_count = thrust::count(grp_dev.begin(), grp_dev.end(), 1) + 1;
-	
-	cout << "grp count " << grp_count << endl;
+    };	
+	grp_count = thrust::count(grp_dev.begin(), grp_dev.end(), 1) + 1;	
 	grp.resize(grp_count);
 	thrust::copy_if(thrust::make_counting_iterator((unsigned int)1), thrust::make_counting_iterator((unsigned int)grp_dev.size()),
 	                grp_dev.begin(), grp.begin()+1, thrust::identity<bool>());			
 	grp[0] = 0;
-	
 };
 
 
@@ -2451,9 +2447,8 @@ bool* CudaSet::compare(int_type* column1, int_type d, int_type op_type, unsigned
 {
     thrust::device_ptr<bool> temp = thrust::device_malloc<bool>(mRecCount);
     thrust::device_ptr<int_type> dev_ptr(column1);
-	
 	if(p2)
-		d = d*(unsigned int)pow(10, p2);
+		d = d*(int_type)pow(10, p2);
 
     if (op_type == 2) // >
 		if(!p1)
@@ -2485,8 +2480,7 @@ bool* CudaSet::compare(int_type* column1, int_type d, int_type op_type, unsigned
 			thrust::transform(dev_ptr, dev_ptr+mRecCount, thrust::make_constant_iterator(d), temp, thrust::not_equal_to<int_type>());
 		else
 			thrust::transform(thrust::make_transform_iterator(dev_ptr, power_functor<int_type>(p1)), thrust::make_transform_iterator(dev_ptr+mRecCount, power_functor<int_type>(p1)), thrust::make_constant_iterator(d), temp, thrust::not_equal_to<int_type>());
-
-
+	
     return thrust::raw_pointer_cast(temp);
 
 }
@@ -2651,7 +2645,6 @@ int_type* CudaSet::op(int_type* column1, int_type d, string op_type, bool revers
 	if(alloced_mem.empty()) {								
 		alloc_pool(maxRecs);
 	};
-	//cout << "OP " << d << " " << op_type << " " << p1 << " " << p2 << endl;
 	thrust::device_ptr<int_type> temp((int_type*)alloced_mem.back());								    
     thrust::device_ptr<int_type> dev_ptr1(column1);
 	unsigned int d1 = d;
@@ -2723,7 +2716,6 @@ int_type* CudaSet::op(int_type* column1, int_type* column2, string op_type, bool
     thrust::device_ptr<int_type> dev_ptr1(column1);
     thrust::device_ptr<int_type> dev_ptr2(column2);
 	
-	//cout << "OP " <<  op_type << " " << p1 << " " << p2 << " " << reverse << endl;
 
     if(reverse == 0) {
         if (op_type.compare("MUL") == 0) {
