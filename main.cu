@@ -28,9 +28,12 @@ int main(int ac, char **av)
     std::clock_t start;
     int x;
 
-
+    if(ac < 2) {
+        cout << "Usage : alenka [--QPS-test] | [ [-l load size(MB)] [-v] script.sql ]" << endl;
+        exit(1);	
+    }
     // test QPS via alenkaExecute	-- this section is the only C++ dependency
-    if (string(av[1]) == "--QPS-test") {
+    else if (string(av[1]) == "--QPS-test") {
         alenkaInit(NULL);
         start = std::clock();
         for (x=0; x< 1000; x++)  {
@@ -40,12 +43,8 @@ int main(int ac, char **av)
         alenkaClose();
     }
     else {				// ordinary alenka file mode
-        if (ac < 2) {
-            cout << "Usage : alenka [--QPS-test] | [ [-l load size(MB)] [-v] script.sql ]" << endl;
-            exit(1);
-        }
-        else
-            return execute_file( ac, av) ;
+        cout << "Executing file:" << endl;
+	return execute_file( ac, av) ;
     }
 }
 

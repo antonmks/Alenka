@@ -3,8 +3,9 @@
 # The -D below may have to change to /D on some dos compilers
 CFLAGS=--machine 64 -O3 -std=c++11 --expt-extended-lambda -I moderngpu/src/moderngpu/
 
+GENCODE_SM30	:= -gencode arch=compute_30,code=sm_30
 GENCODE_SM35	:= -gencode arch=compute_35,code=sm_35
-GENCODE_FLAGS	:= $(GENCODE_SM35) 
+GENCODE_FLAGS	:= $(GENCODE_SM35) $(GENCODE_SM30)
 
 alenka : bison.o merge.o \
          MurmurHash2_64.o filter.o \

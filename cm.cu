@@ -27,6 +27,11 @@
 #include "callbacks.h"
 #include "zone_map.h"
 
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef _WIN64
 #define atoll(S) _atoi64(S)
 #define fseek(S, S1, S2) _fseeki64(S, S1, S2)
@@ -4519,6 +4524,18 @@ size_t getTotalSystemMemory()
     status.dwLength = sizeof(status);
     GlobalMemoryStatusEx(&status);
     return status.ullTotalPhys;
+}
+#elif __APPLE__
+size_t getTotalSystemMemory()
+{
+    int mib [] = { CTL_HW, HW_MEMSIZE };
+    size_t value = 0;
+    size_t length = sizeof(value);
+
+    if(-1 == sysctl(mib, 2, &value, &length, NULL, 0))
+    	return 0;
+
+    return value;
 }
 #else
 size_t getTotalSystemMemory()
