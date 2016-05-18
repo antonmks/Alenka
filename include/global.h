@@ -61,10 +61,10 @@ extern string data_dict_redis_ha_sentinel_host;
 extern string data_dict_redis_ha_master_name;
 extern unsigned int ata_dict_redis_ha_sentinel_port;
 extern bool data_dict_redis_ha_pool;
-extern char* file_system_local_base_path;
-extern char* file_system_hdfs_host;
+extern string file_system_local_base_path;
+extern string file_system_hdfs_host;
 extern unsigned int file_system_hdfs_port;
-extern char* file_system_hdfs_base_path;
+extern string file_system_hdfs_base_path;
 
 //common
 extern size_t int_size;

@@ -25,6 +25,7 @@ int main(int ac, char **av) {
 
     //overwrite config - see global.cu for defaults
     alenka::data_dict_local_name = "alenka.dictonary";
+    alenka::file_system_local_base_path = "."; //current directory
 
     // test QPS via alenka::execute
     if (ac == 2 && string(av[1]) == "--QPS-test") {

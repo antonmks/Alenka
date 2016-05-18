@@ -30,10 +30,10 @@ string data_dict_redis_ha_sentinel_host = "redis1,redis2,redis3";
 string data_dict_redis_ha_master_name = "redis-cluster";
 unsigned int data_dict_redis_ha_sentinel_port = 26379;
 bool data_dict_redis_ha_pool = true;
-char* file_system_local_base_path= ".";
-char* file_system_hfds_host = "default";
-unsigned int file_system_hfds_port = 0;
-char* file_system_hfds_base_path = "/tmp/";
+string file_system_local_base_path= ".";
+string file_system_hdfs_host = "default";
+unsigned int file_system_hdfs_port = 0;
+string file_system_hdfs_base_path = "/tmp/";
 
 //common
 size_t int_size = sizeof(int_type);

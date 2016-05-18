@@ -336,9 +336,9 @@ int execute_file(int ac, char **av) {
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS(file_system_hdfs_host, file_system_hdfs_port, file_system_hdfs_base_path);
+	file_system = new FileSystemHDFS(file_system_hdfs_host.c_str(), file_system_hdfs_port, file_system_hdfs_base_path.c_str());
 #else
-	file_system = new FileSystemLocal(file_system_local_base_path);
+	file_system = new FileSystemLocal(file_system_local_base_path.c_str());
 #endif
 
     if (!interactive) {
@@ -483,9 +483,9 @@ int execute(char *s) {
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS(file_system_hdfs_host, file_system_hdfs_port, file_system_hdfs_base_path);
+	file_system = new FileSystemHDFS(file_system_hdfs_host.c_str(), file_system_hdfs_port, file_system_hdfs_base_path.c_str());
 #else
-	file_system = new FileSystemLocal(file_system_local_base_path);
+	file_system = new FileSystemLocal(file_system_local_base_path.c_str());
 #endif
 
     if (verbose)
