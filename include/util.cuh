@@ -235,23 +235,6 @@ struct gpu_interval {
 	}
 };
 
-struct split_int2
-{
-	int *v1;
-    int *v2;
-	const int2 *source;
-
-	split_int2(int *_v1, int *_v2, const int2* _source):
-			  v1(_v1), v2(_v2), source(_source) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-		v1[i] = source[i].x;
-		v2[i] = source[i].y;
-	}
-};
-
 struct gpu_interval_set {
 	const long long int *dt1;
 	long long int *dt2;
@@ -601,55 +584,78 @@ struct gpu_atoll {
 	}
 };
 
-struct parse_functor {
+struct parse_functor
+{
 	const char *source;
-	char **dest;
-	const unsigned int *ind;
+    char **dest;
+    const unsigned int *ind;
 	const unsigned int *cnt;
 	const char *separator;
 	const long long int *src_ind;
 	const unsigned int *dest_len;
 
-	parse_functor(const char* _source, char** _dest, const unsigned int* _ind,
-			const unsigned int* _cnt, const char* _separator,
-			const long long int* _src_ind, const unsigned int* _dest_len) :
-			source(_source), dest(_dest), ind(_ind), cnt(_cnt), separator(
-					_separator), src_ind(_src_ind), dest_len(_dest_len) {
-	}
+    parse_functor(const char* _source, char** _dest, const unsigned int* _ind, const unsigned int* _cnt, const char* _separator,
+				  const long long int* _src_ind, const unsigned int* _dest_len):
+        source(_source), dest(_dest), ind(_ind), cnt(_cnt),  separator(_separator), src_ind(_src_ind), dest_len(_dest_len) {}
 
-	template<typename IndexType>
-	__host__ __device__
-	void operator()(const IndexType & i) {
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {
 		unsigned int curr_cnt = 0, dest_curr = 0, j = 0, t, pos;
-		pos = src_ind[i] + 1;
-
-		while (dest_curr < *cnt) {
-			if (ind[dest_curr] == curr_cnt) { //process
+		bool open_quotes = 0;
+		pos = src_ind[i]+1;
+		
+		while(dest_curr < *cnt) {
+			if(ind[dest_curr] == curr_cnt) { //process				
 				t = 0;
-				while (source[pos + j] != *separator) {
+				while(source[pos+j] != *separator || open_quotes) {
 					//printf("REG %d ", j);
-					if (source[pos + j] != 0) {
-						dest[dest_curr][dest_len[dest_curr] * i + t] =
-								source[pos + j];
+					if(source[pos+j] == '"') {						
+						open_quotes = !open_quotes;						
+					};
+					if(source[pos+j] != 0) {
+						dest[dest_curr][dest_len[dest_curr]*i+t] = source[pos+j];
 						t++;
-					}
-					j++;
-				}
+					};	
+					j++;					
+				};
 				j++;
-				dest_curr++;
-			} else {
+				dest_curr++;				
+			}
+			else {
 				//printf("Skip %d \n", j);
-				while (source[pos + j] != *separator) {
+				while(source[pos+j] != *separator || open_quotes) {
+					if(source[pos+j] == '"') {						
+						open_quotes = !open_quotes;						
+					};	
 					j++;
 					//printf("CONT Skip %d \n", j);
-				}
+				};	
 				j++;
-			}
-			curr_cnt++;
+			};
+			curr_cnt++;			
 			//printf("DEST CURR %d %d %d %d \n" , j, dest_curr, ind[dest_curr], curr_cnt);
 		}
-	}
+		
+    }
 };
+
+struct split_int2
+{
+	int *v1;
+    int *v2;
+	const int2 *source;
+		
+	split_int2(int *_v1, int *_v2, const int2* _source):
+			  v1(_v1), v2(_v2), source(_source) {}
+    template <typename IndexType>
+    __host__ __device__
+    void operator()(const IndexType & i) {	
+	
+		v1[i] = source[i].x;
+		v2[i] = source[i].y;
+	}
+};	
 
 } // namespace alenka
 

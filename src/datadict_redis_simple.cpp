@@ -18,10 +18,12 @@
 namespace alenka {
 
 DataDictRedisSimple::DataDictRedisSimple(const std::string& host, unsigned int port, bool pool) : _is_pool_conn(pool), _pool(simple_pool::create(host, port)){
+	LOG(logDEBUG) << "Redis host : " << host << ":" << port;
 	print_datadict();
 }
 
 DataDictRedisSimple::DataDictRedisSimple(const std::string& path, bool pool) : _is_pool_conn(pool), _pool(simple_pool::create(path)){
+	LOG(logDEBUG) << "Redis path : " << path;
 	print_datadict();
 }
 

@@ -328,17 +328,17 @@ int execute_file(int ac, char **av) {
     }
     
 #ifdef DATADICT_REDIS_SIMPLE
-	data_dict = new DataDictRedisSimple("localhost", 6379, true);
+	data_dict = new DataDictRedisSimple(data_dict_redis_simple_host, data_dict_redis_simple_port, data_dict_redis_simple_pool);
 #elif DATADICT_REDIS_HA
-	data_dict = new DataDictRedisHA("redis1.home.lan,redis2.home.lan,redis3.home.lan", "redis-cluster", 26379, true);
+	data_dict = new DataDictRedisHA(data_dict_redis_ha_sentinel_host, data_dict_redis_ha_master_name, ata_dict_redis_ha_sentinel_port, data_dict_redis_ha_pool);
 #else
-	data_dict = new DataDictLocal("data.dictionary"); 
+	data_dict = new DataDictLocal(data_dict_local_name); 
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS("default", 0, "/tmp");
+	file_system = new FileSystemHDFS(file_system_hdfs_host, file_system_hdfs_port, file_system_hdfs_base_path);
 #else
-	file_system = new FileSystemLocal(".");
+	file_system = new FileSystemLocal(file_system_local_base_path);
 #endif
 
     if (!interactive) {
@@ -364,7 +364,6 @@ int execute_file(int ac, char **av) {
         statement_count = 0;
 
         extern FILE *yyin;
-        //context = CreateCudaDevice(0, nullptr, verbose);
 
 		curr_time = time(0)*1000;
         if (!yyparse()) {
@@ -384,7 +383,7 @@ int execute_file(int ac, char **av) {
         	LOG(logDEBUG) << "disk time: " << (tot_disk / (double)CLOCKS_PER_SEC) << " free mem: " << getFreeMem();
         }
     } else { // interactive mode
-        //context = CreateCudaDevice(0, nullptr, verbose);
+    
         if (!just_once)
             getline(cin, script);
 
@@ -476,17 +475,17 @@ int execute(char *s) {
     std::clock_t start;
     
 #ifdef DATADICT_REDIS_SIMPLE
-	data_dict = new DataDictRedisSimple("localhost", 6379, true);
+	data_dict = new DataDictRedisSimple(data_dict_redis_simple_host, data_dict_redis_simple_port, data_dict_redis_simple_pool);
 #elif DATADICT_REDIS_HA
-	data_dict = new DataDictRedisHA("redis1.home.lan,redis2.home.lan,redis3.home.lan", "redis-cluster", 26379, true);
+	data_dict = new DataDictRedisHA(data_dict_redis_ha_sentinel_host, data_dict_redis_ha_master_name, ata_dict_redis_ha_sentinel_port, data_dict_redis_ha_pool);
 #else
-	data_dict = new DataDictLocal("data.dictionary"); 
+	data_dict = new DataDictLocal(data_dict_local_name); 
 #endif
 
 #ifdef FILESYSTEM_HDFS
-	file_system = new FileSystemHDFS("default", 0, "/tmp/");
+	file_system = new FileSystemHDFS(file_system_hdfs_host, file_system_hdfs_port, file_system_hdfs_base_path);
 #else
-	file_system = new FileSystemLocal(".");
+	file_system = new FileSystemLocal(file_system_local_base_path);
 #endif
 
     if (verbose)

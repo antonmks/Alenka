@@ -19,6 +19,7 @@ namespace alenka {
 
 DataDictRedisHA::DataDictRedisHA(const std::string& sentinel_host, const std::string& master_name, unsigned int sentinel_port, bool pool): _is_pool_conn(pool){
 	 _pool = connection_pool::create_timeout(sentinel_host, master_name, sentinel_port, 0, 500000); //0 sec + 500000 usec [0.5 sec] timeout
+	 LOG(logDEBUG) << "Redis Sentinel host : " << sentinel_host << ":" << sentinel_port;
 	 print_datadict();
 }
 

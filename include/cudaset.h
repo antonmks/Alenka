@@ -58,7 +58,7 @@ public:
     vector<string> columnNames;
 	map<string, bool> compTypes; // pfor delta or not
     map<string, FILE*> filePointers;
-    thrust::device_vector<bool> grp;
+    thrust::device_vector<unsigned int> grp;
     bool not_compressed; // 1 = host recs are not compressed, 0 = compressed
     unsigned int mColumnCount;
     string name, load_file_name, separator, source_name;

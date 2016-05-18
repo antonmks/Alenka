@@ -1,16 +1,16 @@
 # Linux Makefile
 
-#uncomment for redis data dictionary (SIMPLE or HA)
+#uncomment for redis data dictionary [SIMPLE or HA] (default local)
 #REDIS_FLAGS=-I ../deps/redis3m/include/ -DDATADICT_REDIS_SIMPLE=1
 #REDIS_LIBS=../deps/redis3m/libredis3m.a -lhiredis -lboost_regex
 #REDIS_OBJ=datadict_redis_ha.o datadict_redis_simple.o
 
-#uncomment for hdfs filesystem
+#uncomment for hdfs filesystem (default local)
 #HDFS_FLAGS=-DFILESYSTEM_HDFS=1 
 #HDFS_LIBS=-lhdfs
 #HDFS_OBJ=filesystem_hdfs.o
 
-#flags
+#cflags
 CFLAGS=--machine 64 -O2 -g -std=c++11 --expt-extended-lambda --compiler-options '-fPIC' -I ../deps/ -I ../include/ $(REDIS_FLAGS) $(HDFS_FLAGS)
 
 #compute compatibility (https://developer.nvidia.com/cuda-gpus)
@@ -21,7 +21,7 @@ GENCODE_FLAGS	:= $(GENCODE_SM30) $(GENCODE_SM35) $(GENCODE_SM50)
 
 #alenka binary
 alenka : libalenka.a main.o
-	nvcc $(CFLAGS) -L . $< $(REDIS_LIBS) $(HDFS_LIBS) -o $@ main.o
+	nvcc  -L . $< $(REDIS_LIBS) $(HDFS_LIBS) -o $@ main.o
 
 #static library
 libalenka.a : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local.o \
