@@ -58,6 +58,7 @@ unsigned int get_decimals(CudaSet* a, string s1_val, stack<unsigned int>& exe_pr
 int_type* get_host_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
 int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
 void yyerror(char *s, ...);
+void clean_display_results();
 void clean_queues();
 void load_vars();
 void init(char ** av);

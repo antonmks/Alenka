@@ -39,7 +39,7 @@ libalenka.so : alenka.o callbacks.o common.o compress.o cudaset.o datadict_local
 nvcc = nvcc $(CFLAGS) $(GENCODE_FLAGS)
 alenka.o : alenka.cu lex.yy.c
 	$(nvcc) -c $< -o $@
-callbacks.o : callbacks.cpp
+callbacks.o : callbacks.cu
 	$(nvcc) -c $< -o $@
 common.o : common.cu
 	$(nvcc) -c $< -o $@

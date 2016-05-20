@@ -14,6 +14,7 @@
 
 %{
 
+#include "alenka.h"
 #include "global.h"
 #include "common.h"
 #include "operators.h"
@@ -467,7 +468,7 @@ int execute_file(int ac, char **av) {
     return 0;
 }
 
-int execute(char *s) {
+res execute(char *s) {
     YY_BUFFER_STATE bp;
 
     total_buffer_size = 0;
@@ -502,6 +503,7 @@ int execute(char *s) {
     load_vars();
     statement_count = 0;
     clean_queues();
+    clean_display_results();
     bp = yy_scan_string(s);
     yy_switch_to_buffer(bp);
     if (!yyparse()) {
@@ -526,7 +528,11 @@ int execute(char *s) {
 
 	delete data_dict;
 	delete file_system;
-    return ret;
+	
+	res result;
+	result.code = ret; //yyparse() return code
+	result.results = display_results.str(); //query display results
+    return result;
 }
 
 } // namespace alenka

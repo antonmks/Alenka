@@ -127,6 +127,7 @@ extern map<string, unsigned long long int*> idx_vals; // pointer to compressed v
 extern map<string, unsigned int> cnt_counts;
 extern string curr_file;
 extern IFileSystem *file_system;
+extern stringstream display_results;
 
 //operators
 extern queue<string> namevars;

@@ -36,9 +36,15 @@ extern string file_system_hdfs_host;
 extern unsigned int file_system_hdfs_port;
 extern string file_system_hdfs_base_path;
 
+//return structure
+struct res{
+	int code;
+	string results;
+};
+
 // call:
 void init(char ** av);
-int execute(char *s);
+res execute(char *s);
 void close();
 
 // or:

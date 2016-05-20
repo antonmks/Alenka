@@ -1029,6 +1029,10 @@ void yyerror(char *s, ...) {
     error_cb(1, s);
 }
 
+void clean_display_results() {
+	display_results.str("");
+}
+
 void clean_queues() {
     while (!op_type.empty()) op_type.pop();
     while (!op_value.empty()) op_value.pop();

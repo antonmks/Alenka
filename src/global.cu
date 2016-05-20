@@ -96,6 +96,12 @@ map<string, unsigned long long int*> idx_vals; // pointer to compressed values i
 map<string, unsigned int> cnt_counts;
 string curr_file;
 IFileSystem *file_system;
+stringstream display_results;
+
+struct res{
+	int code;
+	string results;
+};
 
 //operators
 queue<string> namevars;
