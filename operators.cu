@@ -37,7 +37,7 @@ queue<string> op_join;
 queue<char> join_type;
 queue<char> join_eq_type;
 unsigned int partition_count;
-map<string,unsigned int> stat;
+map<string,unsigned int> mystat;
 map<unsigned int, unsigned int> join_and_cnt;
 map<string, map<string, bool> > used_vars;
 bool save_dict = 0;
@@ -207,8 +207,6 @@ void emit_day()
 {
     op_type.push("DAY");
 }
-
-
 
 void emit_or()
 {
@@ -793,22 +791,22 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
     //cout << "emit_join " <<  s << " " << join_tab_cnt << " " << op_join.front() <<  endl;
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(j1) == stat.end() && data_dict.count(j1) == 0) {
+        if (mystat.find(j1) == mystat.end() && data_dict.count(j1) == 0) {
             process_error(2, "Join : couldn't find variable " + string(j1) );
         };
-        if (stat.find(op_join.front()) == stat.end() && data_dict.count(op_join.front()) == 0) {
+        if (mystat.find(op_join.front()) == mystat.end() && data_dict.count(op_join.front()) == 0) {
             process_error(2, "Join : couldn't find variable " + op_join.front() );
         };
-        stat[s] = statement_count;
-        stat[j1] = statement_count;
+        mystat[s] = statement_count;
+        mystat[j1] = statement_count;
 		if(filter_var.find(j1) != filter_var.end()) {
-			stat[filter_var[j1]] = statement_count;
+			mystat[filter_var[j1]] = statement_count;
 		};
         check_used_vars();
         while(!op_join.empty()) {
-            stat[op_join.front()] = statement_count;
+            mystat[op_join.front()] = statement_count;
 			if(filter_var.find(op_join.front()) != filter_var.end()) {
-				stat[filter_var[op_join.front()]] = statement_count;
+				mystat[filter_var[op_join.front()]] = statement_count;
 			};			
             op_join.pop();			
         };
@@ -908,13 +906,13 @@ void emit_join(const char *s, const char *j1, const int grp, const int start_seg
 
     clean_queues();
 
-    if(stat[s] == statement_count) {
+    if(mystat[s] == statement_count) {
         varNames[s]->free();
         varNames.erase(s);
     };
 
     if(op_join.size()) {
-        if(stat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
+        if(mystat[op_join.front()] == statement_count && op_join.front().compare(j1) != 0) {
             varNames[op_join.front()]->free();
             varNames.erase(op_join.front());
         };
@@ -1546,12 +1544,12 @@ void emit_multijoin(const string s, const string j1, const string j2, const unsi
         varNames.erase(j2);
     }
     else {
-        if(stat[j2] == statement_count) {
+        if(mystat[j2] == statement_count) {
             right->free();
             varNames.erase(j2);
         };
     };
-    if(stat[j1] == statement_count) {
+    if(mystat[j1] == statement_count) {
         left->free();
         varNames.erase(j1);
     };	
@@ -1638,13 +1636,13 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
         statement_count++;
 	
     if (scan_state == 0 && ll == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end() && data_dict.count(f) == 0) {
             process_error(2, "Order : couldn't find variable " + string(f));
         };
-        stat[s] = statement_count;
-        stat[f] = statement_count;
+        mystat[s] = statement_count;
+        mystat[f] = statement_count;
 		if(filter_var.find(f) != filter_var.end()) 
-			stat[filter_var[f]] = statement_count;
+			mystat[filter_var[f]] = statement_count;
 
         return;
     };
@@ -1785,7 +1783,7 @@ void emit_order(const char *s, const char *f, const int e, const int ll)
     b->not_compressed = 1;
     b->string_map = a->string_map;
 
-    if(stat[f] == statement_count && !a->keep) {
+    if(mystat[f] == statement_count && !a->keep) {
         a->free();
         varNames.erase(f);
     };
@@ -1796,13 +1794,13 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 {	
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end() && data_dict.count(f) == 0) {
             process_error(2, "Select : couldn't find variable " + string(f) );
         };
-        stat[s] = statement_count;
-        stat[f] = statement_count;
+        mystat[s] = statement_count;
+        mystat[f] = statement_count;
 		if(filter_var.find(f) != filter_var.end()) 
-			stat[filter_var[f]] = statement_count;
+			mystat[filter_var[f]] = statement_count;
 		
         check_used_vars();
         clean_queues();
@@ -1937,8 +1935,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
     bool one_liner;	
 	if (grp_cnt != 0)
-		phase_copy = 1;
-	
+		phase_copy = 1;	
 
     for(unsigned int i = 0; i < cycle_count; i++) {          // MAIN CYCLE
         if(verbose)
@@ -1947,25 +1944,24 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 
         cnt = 0;
         copyColumns(a, op_vx, i, cnt);
-
+		
         if(a->mRecCount) {
             if (grp_cnt != 0) {			
-				bool srt = 0;
+				bool not_srt_and_eq = 0;
 				stack<string> op_vv(op_v2);
 				while(!op_vv.empty()) {
 					if(!min_max_eq[op_vv.top()])
-						srt = 1;
+						not_srt_and_eq = 1;
 					op_vv.pop();	
 				};
-				if(srt) {
-					order_inplace(a, op_v2, field_names, 1);																
+				if(not_srt_and_eq) {
+					order_inplace(a, op_v2, field_names, 1);	
 					a->GroupBy(op_v2);				
 				}
 				else {
-					if(a->grp.size() < a->mRecCount)
-						a->grp.resize(a->mRecCount);	
-					thrust::fill(a->grp.begin(),a->grp.begin()+a->mRecCount,0);
-					a->grp[a->mRecCount-1] = 1;
+					if(a->grp.size() != 1)
+						a->grp.resize(1);	
+					a->grp[0] = 1;
 					a->grp_count = 1;	
 				};	
             }
@@ -2059,12 +2055,12 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     b->free();
     varNames[s]->keep = 1;
 
-    if(stat[s] == statement_count) {
+    if(mystat[s] == statement_count) {
         varNames[s]->free();
         varNames.erase(s);
     };
 
-    if(stat[f] == statement_count && a->keep == 0) {
+    if(mystat[f] == statement_count && a->keep == 0) {
         a->free();
         varNames.erase(f);
     };
@@ -2077,15 +2073,15 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 void emit_insert(const char *f, const char* s) {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end() && data_dict.count(f) == 0) {
             process_error(2, "Insert : couldn't find variable " + string(f));
         };
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
+        if (mystat.find(s) == mystat.end() && data_dict.count(s) == 0) {
             process_error(2, "Insert : couldn't find variable " + string(s) );
         };
         check_used_vars();
-        stat[f] = statement_count;
-        stat[s] = statement_count;
+        mystat[f] = statement_count;
+        mystat[s] = statement_count;
         clean_queues();
         return;
     };
@@ -2109,10 +2105,10 @@ void emit_delete(const char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end()  && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end()  && data_dict.count(f) == 0) {
             process_error(2, "Delete : couldn't find variable " + string(f));
         };
-        stat[f] = statement_count;
+        mystat[f] = statement_count;
         check_used_vars();
         clean_queues();
         return;
@@ -2184,8 +2180,8 @@ void emit_create_bitmap_index(const char *index_name, const char *ltable, const 
         emit_name(lid);
         emit_name(rid);
         check_used_vars();
-		stat[rtable] = std::numeric_limits<unsigned int>::max();
-        stat[ltable] = std::numeric_limits<unsigned int>::max();		
+		mystat[rtable] = std::numeric_limits<unsigned int>::max();
+        mystat[ltable] = std::numeric_limits<unsigned int>::max();		
     }
     else {
 		cout << ltable << " " << rtable << " " << rid << " " << lid << endl;
@@ -2261,12 +2257,12 @@ void emit_display(const char *f, const char* sep)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end() && data_dict.count(f) == 0) {
             process_error(2, "Filter : couldn't find variable " + string(f) );
         };
-        stat[f] = statement_count;
+        mystat[f] = statement_count;
    		if(filter_var.find(f) != filter_var.end()) 
-			stat[filter_var[f]] = statement_count;
+			mystat[filter_var[f]] = statement_count;
         clean_queues();
         return;
     };
@@ -2285,7 +2281,7 @@ void emit_display(const char *f, const char* sep)
 
     a->Display(limit, 0, 1);
     clean_queues();
-    if(stat[f] == statement_count  && a->keep == 0) {
+    if(mystat[f] == statement_count  && a->keep == 0) {
         a->free();
         varNames.erase(f);
     };
@@ -2297,18 +2293,18 @@ void emit_filter(char *s, char *f)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(f) == stat.end() && data_dict.count(f) == 0) {
+        if (mystat.find(f) == mystat.end() && data_dict.count(f) == 0) {
             process_error(1, "Filter : couldn't find variable " + string(f));
         };
-        stat[s] = statement_count;
-        stat[f] = statement_count;
+        mystat[s] = statement_count;
+        mystat[f] = statement_count;
 		filter_var[s] = f;
         // check possible use of other variables in filters
         queue<string> op(op_value);
         while(!op.empty()) {
             size_t pos1 = op.front().find_first_of(".", 0);
             if(pos1 != string::npos) {
-                stat[op.front().substr(0,pos1)] = statement_count;
+                mystat[op.front().substr(0,pos1)] = statement_count;
             };
             op.pop();
         };
@@ -2391,7 +2387,7 @@ void emit_filter(char *s, char *f)
         varNames[s]->free();
     varNames[s] = b;
 
-    if(stat[s] == statement_count) {
+    if(mystat[s] == statement_count) {
         b->free();
         varNames.erase(s);
     };
@@ -2401,12 +2397,12 @@ void emit_store(const char *s, const char *f, const char* sep)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
+        if (mystat.find(s) == mystat.end() && data_dict.count(s) == 0) {
             process_error(2, "Store : couldn't find variable " + string(s) );
         };
-        stat[s] = statement_count;
+        mystat[s] = statement_count;
 		if(filter_var.find(f) != filter_var.end()) 
-			stat[filter_var[f]] = statement_count;
+			mystat[filter_var[f]] = statement_count;
         clean_queues();
         return;
     };
@@ -2426,7 +2422,7 @@ void emit_store(const char *s, const char *f, const char* sep)
 
     a->Store(f,sep, limit, 0, 0);
 
-    if(stat[s] == statement_count  && a->keep == 0) {
+    if(mystat[s] == statement_count  && a->keep == 0) {
         a->free();
         varNames.erase(s);
     };
@@ -2437,12 +2433,12 @@ void emit_store_binary(const char *s, const char *f, const bool append)
 {
     statement_count++;
     if (scan_state == 0) {
-        if (stat.find(s) == stat.end() && data_dict.count(s) == 0) {
+        if (mystat.find(s) == mystat.end() && data_dict.count(s) == 0) {
             process_error(2, "Store : couldn't find variable " + string(s));
         };
-        stat[s] = statement_count;
+        mystat[s] = statement_count;
 		if(filter_var.find(f) != filter_var.end()) 
-			stat[filter_var[f]] = statement_count;
+			mystat[filter_var[f]] = statement_count;
         clean_queues();
         return;
     };
@@ -2454,7 +2450,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
 
     CudaSet* a = varNames.find(s)->second;
 
-    if(stat[f] == statement_count)
+    if(mystat[f] == statement_count)
         a->deAllocOnDevice();
 
     printf("STORE: %s %s \n", s, f);
@@ -2497,7 +2493,7 @@ void emit_store_binary(const char *s, const char *f, const bool append)
     };
     a->writeSortHeader(f);
 
-    if(stat[f] == statement_count && !a->keep) {
+    if(mystat[f] == statement_count && !a->keep) {
         a->free();
         varNames.erase(s);
     };
@@ -2510,7 +2506,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
 	
     statement_count++;
     if (scan_state == 0) {				
-        stat[s] = statement_count;
+        mystat[s] = statement_count;
         return;
     };	
 	
@@ -2544,7 +2540,7 @@ void emit_load_binary(const char *s, const char *f, const int d)
     a->name = s;
     varNames[s] = a;
 
-    if(stat[s] == statement_count )  {
+    if(mystat[s] == statement_count )  {
         a->free();
         varNames.erase(s);
     };
@@ -2556,7 +2552,7 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
 {
     statement_count++;
     if (scan_state == 0) {
-        stat[s] = statement_count;
+        mystat[s] = statement_count;
         return;
     };
 
@@ -2572,7 +2568,7 @@ void emit_load(const char *s, const char *f, const int d, const char* sep)
     varNames[s] = a;
     fact_file_loaded = 0;
 
-    if(stat[s] == statement_count)  {
+    if(mystat[s] == statement_count)  {
         a->free();
         varNames.erase(s);
     };
@@ -2708,7 +2704,7 @@ void load_vars()
             while(!typevars.empty()) typevars.pop();
             while(!sizevars.empty()) sizevars.pop();
             while(!cols.empty()) cols.pop();
-            if(stat.count((*it).first) != 0) {
+            if(mystat.count((*it).first) != 0) {
                 auto c = (*it).second;
                 for (auto sit=c.begin() ; sit != c.end(); ++sit ) {
                     //cout << "name " << (*sit).first << " " << data_dict[(*it).first][(*sit).first].col_length << endl;

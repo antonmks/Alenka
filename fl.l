@@ -85,7 +85,6 @@ FROM {return FROM; }
 LIKE {return LIKE; }
 CREATE {return CREATE; }
 INDEX {return INDEX; }
-INTERVAL {return INTERVAL; }
 YEAR {return YEAR; }
 MONTH {return MONTH; }
 DAY {return DAY; }

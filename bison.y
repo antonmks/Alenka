@@ -46,9 +46,6 @@
 %left XOR
 %left AND
 %left DISTINCT
-%left YEAR
-%left MONTH
-%left DAY
 %nonassoc IN IS LIKE REGEXP
 %left NOT '!'
 %left BETWEEN
@@ -314,6 +311,9 @@ int execute_file(int ac, char **av)
         else if(strcmp(av[i],"-ssd") == 0) {
             ssd = 1;
         }		
+        else if(strcmp(av[i],"-precision") == 0) {
+            prs = atoi(av[i+1]);
+        }				
         else if(strcmp(av[i],"-i") == 0) {
             interactive = 1;
             break;
