@@ -1,0 +1,40 @@
+  How to run TPC-H benchmark queries with alenka
+  
+  Get Alenka :
+  https://github.com/antonmks/Alenka
+  Get modernGPU :
+  https://github.com/moderngpu/moderngpu
+  
+  Unpack alenka into a directory, unpack moderngpu into the same directory : /home/alenkatest/alenka/moderngpu
+  Unpack tpch.zip tools into a directory, compile and run dbgen utility to create data files : 
+  make 
+  ./dbgen -s 1
+  
+  Copy created *.tbl files into alenka directory
+  
+  Run load scripts to load the data into alenka data files :
+  unzip tpch_load_scripts.zip
+  ./alenka load_customer.sql
+  ./alenka load_lineitem.sql
+  ./alenka load_nation.sql
+  ./alenka load_orders.sql
+  ./alenka load_part.sql
+  ./alenka load_partsupp.sql
+  ./alenka load_region.sql
+  ./alenka load_supplier.sql
+  
+  If you created data files using large scale parameter or your gpu has insufficient memory you can specify a segment size smaller than default 1GB :
+  ./alenka - l 500 load_lineitem.sql - this would load data at 500MB segments
+  
+  Run the queries :
+  unzip tpch_queries.zip
+  ./alenka -v q1.sql
+  ...
+  ./alenka -v q7.sql
+  
+  The results of queries are either in specified file ( STORE D INTO 'mytest.txt' USING ('|'); )
+  or shown on the screen ( DISPLAY F2 USING ('|'); )
+  
+  
+  
+  
