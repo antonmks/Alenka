@@ -19,6 +19,7 @@
 
 
 using namespace mgpu;
+using namespace thrust::placeholders;
 
 vector<void*> alloced_mem;
 
@@ -283,12 +284,24 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
 
-            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0 || ss.compare("YEAR") == 0 || ss.compare("MONTH") == 0 || ss.compare("DAY") == 0) {
+            if (ss.compare("COUNT") == 0  || ss.compare("SUM") == 0  || ss.compare("AVG") == 0 || ss.compare("MIN") == 0 || ss.compare("MAX") == 0 || ss.compare("DISTINCT") == 0 || ss.compare("YEAR") == 0 || ss.compare("MONTH") == 0 || ss.compare("DAY") == 0 || ss.compare("CAST") == 0) {
 
-                if(!a->grp_count && ss.compare("YEAR") && ss.compare("MONTH") && ss.compare("DAY")) {
+                if(!a->grp_count && ss.compare("YEAR") && ss.compare("MONTH") && ss.compare("DAY") && ss.compare("CAST")) {
                     one_line = 1;
                 };
 
+				if (ss.compare("CAST") == 0) {
+					s1_val = exe_value.top();
+					exe_value.pop();
+					exe_type.pop();
+					thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(a->mRecCount);
+					thrust::transform(a->d_columns_int[s1_val].begin(), a->d_columns_int[s1_val].begin() + a->mRecCount, res, _1/100);
+					exe_precision.push(0);
+					exe_vectors.push(thrust::raw_pointer_cast(res));
+					exe_type.push("NAME");
+					exe_value.push("");
+				}
+				else				
                 if (ss.compare("YEAR") == 0) {
                     s1_val = exe_value.top();
                     exe_value.pop();

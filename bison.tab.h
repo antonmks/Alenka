@@ -89,32 +89,33 @@
      YEAR = 305,
      MONTH = 306,
      DAY = 307,
-     LEFT = 308,
-     RIGHT = 309,
-     OUTER = 310,
-     SEMI = 311,
-     ANTI = 312,
-     SORT = 313,
-     SEGMENTS = 314,
-     PRESORTED = 315,
-     PARTITION = 316,
-     INSERT = 317,
-     WHERE = 318,
-     DISPLAY = 319,
-     CASE = 320,
-     WHEN = 321,
-     THEN = 322,
-     ELSE = 323,
-     END = 324,
-     SHOW = 325,
-     TABLES = 326,
-     TABLE = 327,
-     DESCRIBE = 328,
-     DROP = 329,
-     CREATE = 330,
-     INDEX = 331,
-     INTERVAL = 332,
-     APPEND = 333
+     CAST_TO_INT = 308,
+     LEFT = 309,
+     RIGHT = 310,
+     OUTER = 311,
+     SEMI = 312,
+     ANTI = 313,
+     SORT = 314,
+     SEGMENTS = 315,
+     PRESORTED = 316,
+     PARTITION = 317,
+     INSERT = 318,
+     WHERE = 319,
+     DISPLAY = 320,
+     CASE = 321,
+     WHEN = 322,
+     THEN = 323,
+     ELSE = 324,
+     END = 325,
+     SHOW = 326,
+     TABLES = 327,
+     TABLE = 328,
+     DESCRIBE = 329,
+     DROP = 330,
+     CREATE = 331,
+     INDEX = 332,
+     INTERVAL = 333,
+     APPEND = 334
    };
 #endif
 
@@ -135,7 +136,7 @@ typedef union YYSTYPE
 
 
 /* Line 1676 of yacc.c  */
-#line 139 "bison.tab.h"
+#line 140 "bison.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

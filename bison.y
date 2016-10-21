@@ -85,6 +85,7 @@
 %token YEAR
 %token MONTH
 %token DAY
+%token CAST_TO_INT
 %token LEFT
 %token RIGHT
 %token OUTER
@@ -190,6 +191,7 @@ NAME { emit_name($1); }
 | YEAR '(' expr ')' { emit_year(); }
 | MONTH '(' expr ')' { emit_month(); }
 | DAY '(' expr ')' { emit_day(); }
+| CAST_TO_INT '(' expr ')' { emit_cast(); }
 | NAME '(' STRING ')' { emit_string_grp($1, $3); } 
 ;
 

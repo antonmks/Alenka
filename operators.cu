@@ -208,6 +208,12 @@ void emit_day()
     op_type.push("DAY");
 }
 
+void emit_cast()
+{
+    op_type.push("CAST");
+}
+
+
 void emit_or()
 {
     op_type.push("OR");

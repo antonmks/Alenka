@@ -315,49 +315,8 @@ struct is_break
     }
 };
 
-struct gpu_interval_char
-{
-    const long long int *dt1;
-    long long int *dt2;
-    const char *index;
-    const unsigned int* len;
-
-    gpu_interval_char(const long long int *_dt1, long long int *_dt2, const char* _index, const unsigned int* _len):
-        dt1(_dt1), dt2(_dt2), index(_index), len(_len) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-        bool test = 1;
-        if(dt2[i] == 0) {
-            for(int z = 0; z < *len; z++) {
-                if(index[i*(*len) + z] != index[(i+1)*(*len) + z]) {
-                    test = 0;
-                    break;
-                };
-            };
-        };
-        if(test)
-            dt2[i] = dt1[i+1];
-    }
-};
 
 
-struct gpu_interval
-{
-    const long long int *dt1;
-    long long int *dt2;
-    const long long int *index;
-
-    gpu_interval(const long long int *_dt1, long long int *_dt2, const long long int* _index):
-        dt1(_dt1), dt2(_dt2), index(_index) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        if(dt2[i] == 0 && index[i+1] == index[i])
-            dt2[i] = dt1[i+1];
-    }
-};
 
 struct split_int2
 {
@@ -373,28 +332,6 @@ struct split_int2
 
         v1[i] = source[i].x;
         v2[i] = source[i].y;
-    }
-};
-
-
-struct gpu_interval_set
-{
-    const long long int *dt1;
-    long long int *dt2;
-    const long long int *index1;
-    const long long int *index2;
-    const unsigned int* bs;
-
-    gpu_interval_set(const long long int *_dt1, long long int *_dt2, const long long int* _index1, const long long int* _index2, const unsigned int* _bs):
-        dt1(_dt1), dt2(_dt2), index1(_index1), index2(_index2), bs(_bs) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        //printf("T %d %lld %lld %lld %lld %d %lld \n", i, dt1[i], dt2[i], index1[i], index2[bs[index1[i]]], bs[index1[i]], index2[i]);
-        if(dt2[i] == 0 && index1[i] == index2[bs[i]]) {
-            dt2[i] = dt1[bs[i]];
-        };
     }
 };
 
@@ -653,84 +590,9 @@ struct gpu_atoll
     }
 };
 
-#define MAX_LAT             90.0
-#define MIN_LAT             -90.0
-
 #define MAX_LONG            180.0
 #define MIN_LONG            -180.0
 
-typedef struct IntervalStruct {
-
-    double high;
-    double low;
-
-} Interval;
-
-struct geohash_encode
-{
-    const int_type *lat;
-    const int_type *lng;
-    const unsigned int *precision;
-    unsigned long long int *hash;
-
-    geohash_encode(const int_type *_lat, const int_type *_lng, const unsigned int *_precision, unsigned long long int *_hash):
-        lat(_lat), lng(_lng), precision(_precision), hash(_hash) {}
-    template <typename IndexType>
-    __host__ __device__
-    void operator()(const IndexType & i) {
-
-        auto prc = precision[0];
-        if(prc < 1 || prc > 12)
-            prc = 6;
-
-        hash[i] = 0;
-
-
-        prc *= 5.0;
-
-        Interval lat_interval = {MAX_LAT, MIN_LAT};
-        Interval lng_interval = {MAX_LONG, MIN_LONG};
-
-        Interval *interval;
-        double coord, mid;
-        int is_even = 1;
-        unsigned int hashChar = 0;
-
-        for(int z = 1; z <= prc; z++) {
-
-            if(is_even) {
-
-                interval = &lng_interval;
-                coord = (double)lng[i]/1000000000000000;  //lat and lng are stored as decimals with precision of 15. For now.
-
-            } else {
-
-                interval = &lat_interval;
-                coord = (double)lat[i]/1000000000000000;
-            }
-
-            mid = (interval->low + interval->high) / 2.0;
-            hashChar = hashChar << 1;
-
-            if(coord > mid) {
-
-                interval->low = mid;
-                hashChar |= 0x01;
-
-            } else
-                interval->high = mid;
-
-            if(!(z % 5)) {
-
-                hash[i] = hash[i] << 5;
-                hash[i] |= hashChar;
-                hashChar = 0;
-
-            }
-            is_even = !is_even;
-        }
-    }
-};
 
 
 struct parse_functor
@@ -914,7 +776,6 @@ public:
     float_type* op(int_type* column1, float_type d, string op_type, bool reverse);
     float_type* op(float_type* column1, float_type d, string op_type, bool reverse);
     char loadIndex(const string index_name, const unsigned int segment);
-    void calc_intervals(string dt1, string dt2, string index, unsigned int total_segs, bool append);
     void gpu_perm(queue<string> sf, thrust::device_vector<unsigned int>& permutation);
 
 protected:

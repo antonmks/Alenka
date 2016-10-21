@@ -15,6 +15,7 @@ void emit_mul();
 void emit_add();
 void emit_minus();
 void emit_distinct();
+void emit_cast();
 void emit_year();
 void emit_month();
 void emit_day();

@@ -88,6 +88,7 @@ INDEX {return INDEX; }
 YEAR {return YEAR; }
 MONTH {return MONTH; }
 DAY {return DAY; }
+CAST_TO_INT {return CAST_TO_INT; }
 APPEND {return APPEND; }
 
 -?[0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
