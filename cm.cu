@@ -1087,7 +1087,6 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 		curr_file = str;
 		str += "." + to_string(total_segments-1);
 		new_offset = 0;
-		cout << "compressing " << str << endl;
 
 		if(type[colname] == 0) {
 			thrust::device_ptr<int_type> d_col((int_type*)d);
@@ -1198,7 +1197,6 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 						};
 						delete [] strings;
 					};
-
 				};
 
 				if(!op_sort.empty()) {
@@ -1884,12 +1882,6 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 
 		auto rb = fread(readbuff, 1, process_piece, file_p);
 
-		if(readbuff[rb-1] != '\n') {
-			rb++;
-			readbuff[rb-1] = '\n';
-		};
-
-
 		if(rb < process_piece) {
 			done = 1;
 			finished = 1;
@@ -1897,7 +1889,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		};
 		if(total_processed >= process_count)
 			done = 1;
-
+			
 		thrust::fill(d_readbuff.begin(), d_readbuff.end(),0);
 		thrust::copy(readbuff, readbuff+rb, d_readbuff.begin());
 
@@ -1910,7 +1902,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 				rec_sz++;
 			total_max = curr_cnt;
 		};
-
+		
 
 		if(first_time)	{
 			for(unsigned int i=0; i < columnNames.size(); i++) {
@@ -1998,7 +1990,7 @@ bool CudaSet::LoadBigFile(FILE* file_p, thrust::device_vector<char>& d_readbuff,
 		else {
 			mRecCount = curr_cnt + 1;
 		};
-
+		
 
 		thrust::counting_iterator<unsigned int> begin(0);
 		ind_cnt[0] = mColumnCount;
