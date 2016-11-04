@@ -104,7 +104,7 @@ extern thrust::device_vector<int> ranj;
 extern size_t alloced_sz;
 //extern ContextPtr context;
 extern standard_context_t context;
-extern map<unsigned int, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
+extern map<string, map<unsigned long long int, size_t> > char_hash; // mapping between column's string hashes and string positions
 extern bool scan_state;
 extern unsigned int statement_count;
 extern map<string, map<string, bool> > used_vars;

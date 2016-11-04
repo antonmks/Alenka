@@ -60,7 +60,7 @@ queue<float_type> op_nums_f;
 queue<unsigned int> op_nums_precision;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
-map<unsigned int, map<unsigned long long int, size_t> > char_hash;
+map<string, map<unsigned long long int, size_t> > char_hash;
 
 map<string, char*> index_buffers;
 map<string, unsigned long long int*> idx_vals;
@@ -1183,17 +1183,19 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 			}
 			else { //char
 				//populate char_hash
-				if(append && total_segments == 1) {
+				if(append && char_hash[colname].size() == 0) {
 
 					string s= file_name + "." + colname;
-					ifstream binary_file(s.c_str(),ios::binary);
+					ifstream binary_file(s.c_str(), ios::binary | ios::ate);
 					if(binary_file) {
-						char* strings = new char[oldCount*char_size[colname]];
-						binary_file.read(strings, oldCount*char_size[colname]);
+						auto sz = binary_file.tellg();
+						binary_file.seekg(0, binary_file.beg);
+						char* strings = new char[sz];
+						binary_file.read(strings, sz);
 						binary_file.close();
-						unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
-						for (unsigned int z = 0 ; z < oldCount; z++) {
-							char_hash[ind][MurmurHash64A(&strings[z*char_size[colname]], char_size[colname], hash_seed)/2] = z;
+						//unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
+						for (unsigned int z = 0 ; z < sz/char_size[colname]; z++) {
+							char_hash[colname][MurmurHash64A(&strings[z*char_size[colname]], char_size[colname], hash_seed)/2] = z;
 						};
 						delete [] strings;
 					};
@@ -1557,7 +1559,6 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 
 						}
 						else {
-							//fprintf(file_pr, "%.*s", string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].size(), string_hash[columnNames[j]][h_columns_int[columnNames[j]][i]].c_str());
 							fseek(file_map[string_map[columnNames[j]]], h_columns_int[columnNames[j]][i] * len_map[string_map[columnNames[j]]], SEEK_SET);
 							fread(&bf[0], 1, len_map[string_map[columnNames[j]]], file_map[string_map[columnNames[j]]]);
 							fprintf(file_pr, "%.*s", len_map[string_map[columnNames[j]]], bf.c_str());
@@ -1799,14 +1800,17 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 	size_t  cnt;
 	long long int* hash_array = new long long int[mCount];
 	map<unsigned long long int, size_t>::iterator iter;
-	unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
+	//unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
 
 	for (unsigned int i = 0 ; i < mCount; i++) {
 		hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
-		iter = char_hash[ind].find(hash_array[i]);
-		if(iter == char_hash[ind].end()) {
-			cnt = char_hash[ind].size();
-			char_hash[ind][hash_array[i]] = cnt;
+		if(colname == "cab_type")
+		cout << "Looking for " << hash_array[i] << " in " << char_hash[colname].size() << " " << colname << endl;
+		iter = char_hash[colname].find(hash_array[i]);
+		if(iter == char_hash[colname].end()) {
+			cout << "didn't find, adding " << endl;
+			cnt = char_hash[colname].size();
+			char_hash[colname][hash_array[i]] = cnt;
 			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
 			h_columns_int[colname][i] = cnt;
 		}
