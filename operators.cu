@@ -373,14 +373,14 @@ void order_inplace(CudaSet* a, stack<string> exe_type, set<string> field_names, 
 	if(a->grp.size() < a->mRecCount*8)
 		a->grp.resize(a->mRecCount*8);
  	unsigned int bits;
-	
+		
     for(; !exe_type.empty(); exe_type.pop()) {	
 	
 		if(cpy_bits.empty())
 			bits = 0;
 		else	
 			bits = cpy_bits[exe_type.top()];			
-
+			
         if (a->type[exe_type.top()] != 1) {
             update_permutation(a->d_columns_int[exe_type.top()], raw_ptr, a->mRecCount, "ASC", (int_type*)thrust::raw_pointer_cast(a->grp.data()), bits);
 		}	
@@ -1862,6 +1862,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     queue<string> op_v(op_value);
     queue<string> op_vx;
     set<string> field_names;
+	set<string> order_field_names;
     map<string,string> aliases;
     string tt;
 
@@ -1890,6 +1891,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
     while(!op_v.empty()) {
         if(std::find(a->columnNames.begin(), a->columnNames.end(), op_v.front()) != a->columnNames.end()) {
             field_names.insert(op_v.front());
+			order_field_names.insert(op_v.front());
         };
         op_v.pop();
     };
@@ -1953,6 +1955,7 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 		
         if(a->mRecCount) {
             if (grp_cnt != 0) {			
+				make_calc_columns(op_type, op_value, a, order_field_names);				
 				bool not_srt_and_eq = 0;
 				stack<string> op_vv(op_v2);
 				while(!op_vv.empty()) {
@@ -1961,8 +1964,8 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
 					op_vv.pop();	
 				};
 				if(not_srt_and_eq) {
-					order_inplace(a, op_v2, field_names, 1);	
-					a->GroupBy(op_v2);				
+					order_inplace(a, op_v2, order_field_names, 1);	
+					a->GroupBy(op_v2);			
 				}
 				else {
 					if(a->grp.size() != 1)
@@ -1973,10 +1976,13 @@ void emit_select(const char *s, const char *f, const int grp_cnt)
             }
 			else
 				a->grp_count = 0;			
+
+			queue<string> op_vx1;
+			for (auto it=order_field_names.begin(); it!=order_field_names.end(); ++it)  {
+				op_vx1.push(*it);
+			};				
+			copyFinalize(a, op_vx1,0);
 			
-			copyFinalize(a, op_vx,0);
-			
-					
             one_liner = select(op_type,op_value,op_nums, op_nums_f, op_nums_precision, a,b, distinct_tmp);	
 
             if(i == 0)

@@ -103,11 +103,13 @@ void add(CudaSet* c, CudaSet* b, queue<string> op_v3, map<string,string> aliases
 
 	vector<string> opv;
 	for(unsigned int z = 0; z < cycle_sz; z++) {
-		if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { //sanity check
-			cout << "Syntax error: alias " << op_v3.front() << endl;
-			exit(0);
-		};
-		opv.push_back(aliases[op_v3.front()]);
+		if(std::find(b->columnNames.begin(), b->columnNames.end(), aliases[op_v3.front()]) == b->columnNames.end()) { 
+			//cout << "Syntax error: alias " << op_v3.front() << endl;
+			//exit(0);
+			opv.push_back(op_v3.front());
+		}
+		else
+			opv.push_back(aliases[op_v3.front()]);
 		op_v3.pop();
 	};
 

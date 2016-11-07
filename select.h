@@ -17,5 +17,6 @@
 */
 #include "cm.h"
 
+void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a, set<string>& order_field_names);
 bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
             CudaSet* b, vector<thrust::device_vector<int_type> >& distinct_tmp);

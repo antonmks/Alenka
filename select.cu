@@ -251,6 +251,104 @@ struct gpu_getday
     }
 };
 
+void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a, set<string>& order_field_names)
+{
+	string ss, s1_val;
+    stack<string> exe_type, exe_value;
+	string op_t, op_v;
+	unsigned int bits;
+	
+	for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
+        ss = op_type.front();
+		
+		if (ss.compare("NAME") == 0) {
+			if(!op_value.empty())
+				exe_value.push(op_value.front());
+			op_value.pop();	
+        }
+		else if (ss.compare("CAST") == 0 || ss.compare("YEAR") == 0) {
+			op_v = exe_value.top();
+			exe_value.pop();
+			op_t = ss;			
+		}
+		else if (ss.compare("emit sel_name") == 0) {
+			if(!op_t.empty()) {
+				
+				if(cpy_bits.empty())
+					bits = 0;
+				else	
+					bits = cpy_bits[op_v];			
+				cpy_bits[op_value.front()] = bits;
+				
+				if(order_field_names.find(op_value.front()) == order_field_names.end()) {
+					order_field_names.insert(op_value.front());
+					order_field_names.erase(op_v);
+				};	
+
+				a->columnNames.push_back(op_value.front());
+				a->cols[a->cols.size()+1] = op_value.front();
+				a->type[op_value.front()] = 0;
+				a->decimal[op_value.front()] = 0;
+				a->decimal_zeroes[op_value.front()] = 0;
+				
+				
+				a->h_columns_int[op_value.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >(a->mRecCount);
+				a->d_columns_int[op_value.front()] = thrust::device_vector<int_type>(a->mRecCount);
+				if (op_t.compare("CAST") == 0) {
+					cpy_init_val[op_value.front()] = cpy_init_val[op_v]/100;
+					if(bits == 8) {
+						thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned char> dest((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, dest, _1/100);
+					}
+					else if(bits == 16) {
+						thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned short int> dest((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, dest, _1/100);
+					
+					}
+					else if(bits == 32) {
+						thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned int> dest((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, dest, _1/100);					
+					}
+					else
+						thrust::transform(a->d_columns_int[op_v].begin(), a->d_columns_int[op_v].begin() + a->mRecCount, a->d_columns_int[op_value.front()].begin(), _1/100);					
+				}
+				else {
+					cpy_init_val[op_value.front()] = cpy_init_val[op_v]/10000;
+					if(bits == 8) {
+						thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned char> dest((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<char>());
+					}
+					else if(bits == 16) {
+						thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned short int> dest((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned short int>());
+					
+					}
+					else if(bits == 32) {
+						thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
+						thrust::device_ptr<unsigned int> dest((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
+						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned int>());
+					
+					}
+					else				
+						thrust::transform(a->d_columns_int[op_v].begin(), a->d_columns_int[op_v].begin() + a->mRecCount, thrust::make_constant_iterator(10000), a->d_columns_int[op_value.front()].begin(), thrust::divides<int_type>());															
+				};
+				op_t.clear();
+			};	
+			op_value.pop();		
+		}
+		else  if (ss.compare("MUL") == 0  || ss.compare("ADD") == 0 || ss.compare("DIV") == 0 || ss.compare("MINUS") == 0) {
+			exe_value.pop();
+            exe_value.pop();
+		};	
+		
+	};	
+}
+
 bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
             CudaSet* b, vector<thrust::device_vector<int_type> >& distinct_tmp)
 {
@@ -291,18 +389,10 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                 };
 
 				if (ss.compare("CAST") == 0) {
-					s1_val = exe_value.top();
-					exe_value.pop();
-					exe_type.pop();
-					thrust::device_ptr<int_type> res = thrust::device_malloc<int_type>(a->mRecCount);
-					thrust::transform(a->d_columns_int[s1_val].begin(), a->d_columns_int[s1_val].begin() + a->mRecCount, res, _1/100);
-					exe_precision.push(0);
-					exe_vectors.push(thrust::raw_pointer_cast(res));
-					exe_type.push("NAME");
-					exe_value.push("");
+					exe_type.push(ss);
+					exe_value.push(op_value.front());
 				}
-				else				
-                if (ss.compare("YEAR") == 0) {
+				else if (ss.compare("YEAR") == 0) {
                     s1_val = exe_value.top();
                     exe_value.pop();
                     exe_type.pop();
@@ -312,14 +402,15 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                         gpu_getyear ff((const int_type*)thrust::raw_pointer_cast(a->d_columns_int[s1_val].data()),	thrust::raw_pointer_cast(res));
                         thrust::for_each(begin, begin + a->mRecCount, ff);
                         exe_precision.push(0);
+						exe_vectors.push(thrust::raw_pointer_cast(res));
+						exe_type.push("NAME");
+						exe_value.push("");						
                     }
                     else {
-                        thrust::transform(a->d_columns_int[s1_val].begin(), a->d_columns_int[s1_val].begin() + a->mRecCount, thrust::make_constant_iterator(10000), res, thrust::divides<int_type>());
+						exe_type.push(ss);
+						exe_value.push(op_value.front());						
                         exe_precision.push(a->decimal_zeroes[s1_val]);
                     };
-                    exe_vectors.push(thrust::raw_pointer_cast(res));
-                    exe_type.push("NAME");
-                    exe_value.push("");
                 }
                 else
                     if (ss.compare("MONTH") == 0) {
