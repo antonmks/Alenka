@@ -1804,7 +1804,6 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 
 	for (unsigned int i = 0 ; i < mCount; i++) {
 		hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
-		if(colname == "cab_type")
 		iter = char_hash[colname].find(hash_array[i]);
 		if(iter == char_hash[colname].end()) {
 			cnt = char_hash[colname].size();
