@@ -31,6 +31,8 @@ struct distinct : public binary_function<T,T,T>
     }
 };
 
+
+
 struct gpu_getyear
 {
     const int_type *source;
@@ -278,8 +280,7 @@ void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a
 					bits = 0;
 				else	
 					bits = cpy_bits[op_v];			
-				cpy_bits[op_value.front()] = bits;
-				
+			
 				if(order_field_names.find(op_value.front()) == order_field_names.end()) {
 					order_field_names.insert(op_value.front());
 					order_field_names.erase(op_v);
@@ -295,6 +296,8 @@ void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a
 				a->h_columns_int[op_value.front()] = thrust::host_vector<int_type, pinned_allocator<int_type> >(a->mRecCount);
 				a->d_columns_int[op_value.front()] = thrust::device_vector<int_type>(a->mRecCount);
 				if (op_t.compare("CAST") == 0) {
+					cpy_bits[op_value.front()] = bits;
+					
 					cpy_init_val[op_value.front()] = cpy_init_val[op_v]/100;
 					if(bits == 8) {
 						thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
@@ -316,23 +319,24 @@ void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a
 						thrust::transform(a->d_columns_int[op_v].begin(), a->d_columns_int[op_v].begin() + a->mRecCount, a->d_columns_int[op_value.front()].begin(), _1/100);					
 				}
 				else {
-					cpy_init_val[op_value.front()] = cpy_init_val[op_v]/10000;
+					cpy_init_val[op_value.front()] = 0;
+					cpy_bits[op_value.front()] = 0;
 					if(bits == 8) {
 						thrust::device_ptr<unsigned char> src((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
 						thrust::device_ptr<unsigned char> dest((unsigned char*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
-						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<char>());
+						thrust::copy(src, src + a->mRecCount, a->d_columns_int[op_value.front()].begin());
+						thrust::transform(a->d_columns_int[op_value.front()].begin(), a->d_columns_int[op_value.front()].begin() + a->mRecCount, thrust::make_constant_iterator(cpy_init_val[op_v]), a->d_columns_int[op_value.front()].begin(), thrust::plus<int_type>());
+						thrust::transform(a->d_columns_int[op_value.front()].begin(), a->d_columns_int[op_value.front()].begin() + a->mRecCount, a->d_columns_int[op_value.front()].begin(), _1/10000);
 					}
 					else if(bits == 16) {
 						thrust::device_ptr<unsigned short int> src((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
 						thrust::device_ptr<unsigned short int> dest((unsigned short int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
-						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned short int>());
-					
+						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned short int>());					
 					}
 					else if(bits == 32) {
 						thrust::device_ptr<unsigned int> src((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_v].data()));
 						thrust::device_ptr<unsigned int> dest((unsigned int*)thrust::raw_pointer_cast(a->d_columns_int[op_value.front()].data()));
-						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned int>());
-					
+						thrust::transform(src, src + a->mRecCount, thrust::make_constant_iterator(10000), dest, thrust::divides<unsigned int>());				
 					}
 					else				
 						thrust::transform(a->d_columns_int[op_v].begin(), a->d_columns_int[op_v].begin() + a->mRecCount, thrust::make_constant_iterator(10000), a->d_columns_int[op_value.front()].begin(), thrust::divides<int_type>());															
