@@ -60,7 +60,7 @@ queue<float_type> op_nums_f;
 queue<unsigned int> op_nums_precision;
 queue<string> col_aliases;
 map<string, map<string, col_data> > data_dict;
-map<string, map<unsigned long long int, size_t> > char_hash;
+unordered_map<string, unordered_map<unsigned long long int, size_t> > char_hash;
 
 map<string, char*> index_buffers;
 map<string, unsigned long long int*> idx_vals;
@@ -1770,7 +1770,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 	i_name = file_no_seg + "." + to_string(segment) + ".idx";
 	h_name = file_no_seg + "." + to_string(segment) + ".hash";
 	fstream b_file_str, loc_hashes;
-
+	
 	fstream binary_file_h(h_name.c_str(),ios::out|ios::binary|ios::trunc);
 	binary_file_h.write((char *)&mCount, 4);
 
@@ -1798,10 +1798,10 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 
 
 	size_t  cnt;
-	long long int* hash_array = new long long int[mCount];
-	map<unsigned long long int, size_t>::iterator iter;
-	//unsigned int ind = std::find(columnNames.begin(), columnNames.end(), colname) - columnNames.begin();
-
+	long long int* hash_array = new long long int[mCount];	
+	unordered_map<unsigned long long int, size_t>::iterator iter;
+	vector<int_type> test(mCount);
+		
 	for (unsigned int i = 0 ; i < mCount; i++) {
 		hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
 		iter = char_hash[colname].find(hash_array[i]);
@@ -1809,13 +1809,15 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 			cnt = char_hash[colname].size();
 			char_hash[colname][hash_array[i]] = cnt;
 			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
-			h_columns_int[colname][i] = cnt;
+			//h_columns_int[colname][i] = cnt;
+			test[i] = cnt;
 		}
 		else {
-			h_columns_int[colname][i] = iter->second;
+			//h_columns_int[colname][i] = iter->second;
+			test[i] = iter->second;
 		};
 	};
-
+	memcpy(h_columns_int[colname].data(), test.data(), mCount*8);
 	binary_file_h.write((char *)hash_array, 8*mCount);
 	delete [] hash_array;
 
