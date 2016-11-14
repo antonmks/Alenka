@@ -114,6 +114,7 @@ extern bool phase_copy;
 extern map<string,bool> min_max_eq;
 extern vector<void*> alloced_mem;
 extern map<string, string> filter_var;
+extern map<string, char> varencoding;
 
 struct gpu_tdate
 {
@@ -686,7 +687,7 @@ public:
     map<string, thrust::device_vector<int_type > > d_columns_int;
     map<string, thrust::device_vector<float_type > > d_columns_float;
     map<string, char*> d_columns_char;
-    map<string, size_t> char_size;
+    map<string, size_t> char_size;	
     thrust::device_vector<unsigned int> prm_d;
     map<string, string> string_map; //maps char column names to string files, only a select operator changes the original mapping
     char prm_index; // A - all segments values match, N - none match, R - some may match

@@ -113,6 +113,8 @@
 %token INDEX
 %token INTERVAL
 %token APPEND
+%token NO
+%token ENCODING
 
 %type <intval> load_list  opt_where opt_limit sort_def
 %type <intval> val_list opt_val_list expr_list opt_group_list join_list
@@ -178,7 +180,8 @@ NAME { emit_name($1); }
 | APPROXNUM { emit_float($1); }
 | BOOL1 { emit("BOOL %d", $1); }
 | NAME '{' INTNUM '}' ':' NAME '(' INTNUM ',' INTNUM ')' { emit_vardecimal($1, $3, $6,  $8, $10);}
-| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", "");}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' NO ENCODING { emit_varchar($1, $3, $6, $8, "", "", "N");}
+| NAME '{' INTNUM '}' ':' NAME '(' INTNUM ')' { emit_varchar($1, $3, $6, $8, "", "", "");}
 | NAME '{' INTNUM '}' ':' NAME  { emit_var($1, $3, $6, "", "");}
 | NAME ASC { emit_var_asc($1);}
 | NAME DESC { emit_var_desc($1);}

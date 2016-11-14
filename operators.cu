@@ -47,6 +47,7 @@ map<string, string> filter_var;
 thrust::device_vector<int> ranj;
 unsigned long long int currtime;
 standard_context_t context;	
+map<string, char> varencoding;
 
 
 void check_used_vars()
@@ -267,12 +268,13 @@ void emit_presort(const char *s)
 }
 
 
-void emit_varchar(const char *s, const int c, const char *f, const int d, const char *ref, const char* ref_name)
+void emit_varchar(const char *s, const int c, const char *f, const int d, const char *ref, const char* ref_name, const char* encoding)
 {
     namevars.push(s);
     typevars.push(f);
     sizevars.push(d);
     cols.push(c);
+	varencoding[s] = encoding[0];
 }
 
 void emit_vardecimal(const char *s, const int c, const char *f, const int scale, const int precision)

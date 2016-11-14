@@ -41,7 +41,7 @@ void emit_decimal(const char* str);
 void emit_sel_name(const char* name);
 void emit_limit(const int val);
 void emit_union(const char *s, const char *f1, const char *f2);
-void emit_varchar(const char *s, const int c, const char *f, const int d, const char *ref, const char* ref_name);
+void emit_varchar(const char *s, const int c, const char *f, const int d, const char *ref, const char* ref_name, const char* encoding);
 void emit_vardecimal(const char *s, const int c, const char *f, const int scale, const int precision);
 void emit_load(const char *s, const char *f, const int d, const char* sep);
 void emit_load_binary(const char *s, const char *f, const int d);

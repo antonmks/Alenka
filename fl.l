@@ -90,6 +90,8 @@ MONTH {return MONTH; }
 DAY {return DAY; }
 CAST_TO_INT {return CAST_TO_INT; }
 APPEND {return APPEND; }
+NO {return NO; }
+ENCODING {return ENCODING; }
 
 -?[0-9]+ { yylval.intval = atoll(yytext);  return INTNUM; }
 -?[0-9]+"."[0-9]* |

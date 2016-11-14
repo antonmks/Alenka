@@ -1183,7 +1183,7 @@ void CudaSet::compress(string file_name, size_t offset, unsigned int check_type,
 			}
 			else { //char
 				//populate char_hash
-				if(append && char_hash[colname].size() == 0) {
+				if(append && char_hash[colname].size() == 0 && varencoding[colname] != 'N') {
 
 					string s= file_name + "." + colname;
 					ifstream binary_file(s.c_str(), ios::binary | ios::ate);
@@ -1765,7 +1765,7 @@ void CudaSet::Store(const string file_name, const char* sep, const unsigned int 
 void CudaSet::compress_char(const string file_name, const string colname, const size_t mCount, const size_t offset, const unsigned int segment)
 {
 	unsigned int len = char_size[colname];
-
+	
 	string h_name, i_name, file_no_seg = file_name.substr(0, file_name.find_last_of("."));
 	i_name = file_no_seg + "." + to_string(segment) + ".idx";
 	h_name = file_no_seg + "." + to_string(segment) + ".hash";
@@ -1801,22 +1801,37 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 	long long int* hash_array = new long long int[mCount];	
 	unordered_map<unsigned long long int, size_t>::iterator iter;
 	vector<int_type> test(mCount);
+	
+	if(char_hash[colname].size() == 0)
+		char_hash[colname][0] = 0;
 		
-	for (unsigned int i = 0 ; i < mCount; i++) {
-		hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
-		iter = char_hash[colname].find(hash_array[i]);
-		if(iter == char_hash[colname].end()) {
-			cnt = char_hash[colname].size();
-			char_hash[colname][hash_array[i]] = cnt;
-			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
-			//h_columns_int[colname][i] = cnt;
-			test[i] = cnt;
-		}
-		else {
-			//h_columns_int[colname][i] = iter->second;
-			test[i] = iter->second;
+	if(varencoding[colname] != 'N') {	
+		for (unsigned int i = 0 ; i < mCount; i++) {
+			hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
+			iter = char_hash[colname].find(hash_array[i]);
+			if(iter == char_hash[colname].end()) {
+				cnt = char_hash[colname].size();
+				char_hash[colname][hash_array[i]] = cnt;
+				b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
+				test[i] = cnt;
+			}
+			else {
+				test[i] = iter->second;
+			};
 		};
-	};
+	}
+	else {
+		auto cnt = 	char_hash[colname][0];
+		for (unsigned int i = 0 ; i < mCount; i++) {
+			hash_array[i] = MurmurHash64A(h_columns_char[colname] + (i+offset)*len, len, hash_seed)/2;
+			//cnt = char_hash[colname][0];
+			//char_hash[colname][0]++;
+			cnt++;
+			b_file_str.write((char *)h_columns_char[colname] + (i+offset)*len, len);
+			test[i] = cnt;
+		};
+		char_hash[colname][0] = cnt;
+	};	
 	memcpy(h_columns_int[colname].data(), test.data(), mCount*8);
 	binary_file_h.write((char *)hash_array, 8*mCount);
 	delete [] hash_array;
