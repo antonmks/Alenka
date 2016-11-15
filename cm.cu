@@ -1802,7 +1802,7 @@ void CudaSet::compress_char(const string file_name, const string colname, const 
 	unordered_map<unsigned long long int, size_t>::iterator iter;
 	vector<int_type> test(mCount);
 	
-	if(char_hash[colname].size() == 0)
+	if(char_hash[colname].size() == 0 && varencoding[colname] == 'N')
 		char_hash[colname][0] = 0;
 		
 	if(varencoding[colname] != 'N') {	
