@@ -4335,13 +4335,15 @@ void compress_int(const string file_name, const thrust::host_vector<int_type>& r
 	binary_file.close();
 };
 
-int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors) {
+int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors, bool& free_mem) {
 	int_type* t;
 	if(std::find(a->columnNames.begin(), a->columnNames.end(), s1_val) != a->columnNames.end())
 		t = a->get_int_by_name(s1_val);
+		free_mem = 0;
 	else {
 		t = exe_vectors.top();
 		exe_vectors.pop();
+		free_mem = 1;
 	}
 	return t;
 };

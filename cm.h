@@ -823,7 +823,7 @@ void filter_op(const char *s, const char *f, unsigned int segment);
 void update_char_permutation(CudaSet* a, string colname, unsigned int* raw_ptr, string ord, void* temp, bool host);
 void alloc_pool(unsigned int maxRecs);
 void compress_int(const string file_name, const thrust::host_vector<int_type>& res);
-int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
+int_type* get_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors, bool& free_mem);
 int_type* get_host_vec(CudaSet* a, string s1_val, stack<int_type*>& exe_vectors);
 unsigned int get_decimals(CudaSet* a, string s1_val, stack<unsigned int>& exe_precision);
 

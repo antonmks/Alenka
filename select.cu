@@ -369,7 +369,7 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     stack<float_type*> exe_vectors1_d;
     stack<unsigned int> exe_precision, exe_precision1;
     stack<bool> exe_ts;
-    bool one_line = 0, ts;
+    bool one_line = 0, ts, free_mem, free_mem1;
 
     //thrust::device_ptr<bool> d_di(thrust::raw_pointer_cast(a->grp.data()));
 
@@ -749,12 +749,14 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                             auto p1 = exe_precision.top();
                             exe_precision.pop();
                             auto p2 = get_decimals(a, s1_val, exe_precision);
-                            int_type* t = get_vec(a, s1_val, exe_vectors);
+                            int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
                             auto pres = precision_func(p2, p1, ss);
                             exe_precision.push(pres);
                             exe_type.push("NAME");
                             exe_value.push("");
                             exe_vectors.push(a->op(t,n1,ss,1, p2, p1));
+							if(free_mem)
+								cudaFree(t);								
                         }
                         else
                             if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
@@ -765,12 +767,15 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                 auto p1 = exe_precision.top();
                                 exe_precision.pop();
                                 auto p2 = get_decimals(a, s1_val, exe_precision);
-                                int_type* t = get_vec(a, s1_val, exe_vectors);
+                                int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
                                 auto pres = precision_func(p2, p1, ss);
                                 exe_precision.push(pres);
                                 exe_type.push("NAME");
                                 exe_value.push("");
                                 exe_vectors.push(a->op(t,n1,ss,0, p2, p1));
+								if(free_mem)
+									cudaFree(t);
+
                             }
                             else
                                 if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
@@ -778,8 +783,8 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                     exe_value.pop();
                                     s2_val = exe_value.top();
                                     exe_value.pop();
-                                    int_type* t1 = get_vec(a, s1_val, exe_vectors);
-                                    int_type* t = get_vec(a, s2_val, exe_vectors);
+                                    int_type* t1 = get_vec(a, s1_val, exe_vectors, free_mem);
+                                    int_type* t = get_vec(a, s2_val, exe_vectors, free_mem1);
                                     auto p1 = get_decimals(a, s1_val, exe_precision);
                                     auto p2 = get_decimals(a, s2_val, exe_precision);
                                     auto pres = precision_func(p1, p2, ss);
@@ -787,6 +792,10 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
                                     exe_type.push("NAME");
                                     exe_value.push("");
                                     exe_vectors.push(a->op(t,t1,ss,0,p2,p1));
+									if(free_mem)
+										cudaFree(t1);
+									if(free_mem1)
+										cudaFree(t);
 
                                 }
                 }

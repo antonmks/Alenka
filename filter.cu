@@ -142,6 +142,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 	stack<bool*> bool_vectors;
 	string  s1, s2, s1_val, s2_val;
 	int_type n1, n2, res;
+	bool free_mem, free_mem1;
 
 	for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
@@ -193,11 +194,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 					s2_val = exe_value.top();
 					exe_value.pop();
 
-					int_type* t = get_vec(a, s1_val, exe_vectors);
+					int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
 					exe_type.push("NAME");
 					exe_value.push("");
-					exe_precision.push(0);
-
+					exe_precision.push(0);					
 				}
 				else
 					if (s2.compare("NAME") == 0 && s1.compare("STRING") == 0) {
@@ -205,7 +205,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 						exe_value.pop();
 						s1_val = exe_value.top();
 						exe_value.pop();
-						int_type* t = get_vec(a, s1_val, exe_vectors);
+						int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
 						exe_type.push("NAME");
 						exe_value.push("");
 						exe_precision.push(0);
@@ -217,7 +217,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 							s2_val = exe_value.top();
 							exe_value.pop();
 
-							int_type* t = get_vec(a, s1_val, exe_vectors);
+							int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
 
 							exe_type.push("NAME");
 							exe_value.push("");
@@ -230,7 +230,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 								s2_val = exe_value.top();
 								exe_value.pop();
 
-								int_type* t = get_vec(a, s2_val, exe_vectors);
+								int_type* t = get_vec(a, s2_val, exe_vectors, free_mem);
 
 								exe_type.push("NAME");
 								exe_value.push("");
@@ -282,13 +282,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										exe_precision.pop();
 										auto p2 = get_decimals(a, s1_val, exe_precision);
 
-										int_type* t = get_vec(a, s1_val, exe_vectors);
+										int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
 										auto pres = precision_func(p1, p2, ss);
 										exe_precision.push(pres);
 										exe_type.push("NAME");
 										exe_value.push("");
 										exe_vectors.push(a->op(t,n1,ss,1, p1, p2));
-
+										if(free_mem)
+											cudaFree(t);	
 									}
 									else
 										if (s1.compare("NUMBER") == 0 && s2.compare("NAME") == 0) {
@@ -300,13 +301,14 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 											exe_precision.pop();
 											auto p2 = get_decimals(a, s2_val, exe_precision);
 
-											int_type* t = get_vec(a, s2_val, exe_vectors);
+											int_type* t = get_vec(a, s2_val, exe_vectors, free_mem);
 											auto pres = precision_func(p2, p1, ss);
 											exe_precision.push(pres);
 											exe_type.push("NAME");
 											exe_value.push("");
 											exe_vectors.push(a->op(t,n1,ss,0, p2, p1));
-
+											if(free_mem)
+												cudaFree(t);	
 										}
 										else
 											if (s1.compare("NAME") == 0 && s2.compare("NAME") == 0) {
@@ -316,8 +318,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 												exe_value.pop();
 
 												if (a->type[s1_val] == 0) {
-													int_type* t1 = get_vec(a, s1_val, exe_vectors);
-													int_type* t = get_vec(a, s2_val, exe_vectors);
+													int_type* t1 = get_vec(a, s1_val, exe_vectors, free_mem);
+													int_type* t = get_vec(a, s2_val, exe_vectors, free_mem1);
 													auto p1 = get_decimals(a, s1_val, exe_precision);
 													auto p2 = get_decimals(a, s2_val, exe_precision);
 													auto pres = precision_func(p1, p2, ss);
@@ -325,6 +327,10 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 													exe_type.push("NAME");
 													exe_value.push("");
 													exe_vectors.push(a->op(t,t1,ss,0,p2,p1));
+													if(free_mem)
+														cudaFree(t1);	
+													if(free_mem1)
+														cudaFree(t);	
 												}
 											}
 			}
@@ -530,16 +536,17 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 									cudaFree(d_v);
 								}
 								else {
-									int_type* t = get_vec(a, s1_val, exe_vectors);
+									int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
 									thrust::device_ptr<int_type> bp((int_type*)t);
 									auto p2 = exe_precision.top();
 									exe_precision.pop();
 									auto p1 = get_decimals(a, s1_val, exe_precision);
 									auto pres = std::max(p1, p2);
 									exe_precision.push(pres);
-
 									exe_type.push("NAME");
 									bool_vectors.push(a->compare(t,n1,cmp_type, pres-p1, pres-p2));
+									if(free_mem)
+										cudaFree(t);	
 								};
 							}
 							else
@@ -573,7 +580,7 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										cudaFree(d_v);
 									}
 									else {
-										int_type* t = get_vec(a, s2_val, exe_vectors);
+										int_type* t = get_vec(a, s2_val, exe_vectors, free_mem);
 										auto p2 = exe_precision.top();
 										exe_precision.pop();
 										auto p1 = get_decimals(a, s2_val, exe_precision);
@@ -581,6 +588,8 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										exe_precision.push(pres);
 										exe_type.push("NAME");
 										bool_vectors.push(a->compare(t,n1,cmp_type, p1, p2));
+										if(free_mem)
+											cudaFree(t);	
 									};
 								}
 
@@ -592,13 +601,17 @@ bool* filter(queue<string> op_type, queue<string> op_value, queue<int_type> op_n
 										exe_value.pop();
 										exe_type.push("NAME");
 
-										int_type* t = get_vec(a, s1_val, exe_vectors);
-										int_type* t1 = get_vec(a, s2_val, exe_vectors);
+										int_type* t = get_vec(a, s1_val, exe_vectors, free_mem);
+										int_type* t1 = get_vec(a, s2_val, exe_vectors, free_mem1);
 										auto p1 = get_decimals(a, s1_val, exe_precision);
 										auto p2 = get_decimals(a, s2_val, exe_precision);
 										auto pres = max(p1, p2);
 										exe_precision.push(pres);
 										bool_vectors.push(a->compare(t1,t,cmp_type, p2, p1));
+										if(free_mem)
+											cudaFree(t);	
+										if(free_mem1)
+											cudaFree(t1);	
 									}
 				}
 
