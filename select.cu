@@ -264,10 +264,11 @@ void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a
         ss = op_type.front();
 		
 		if (ss.compare("NAME") == 0) {
-			if(!op_value.empty())
+			if(!op_value.empty()) {
 				exe_value.push(op_value.front());
-			op_value.pop();	
-        }
+				op_value.pop();	
+			};
+                }
 		else if (ss.compare("CAST") == 0 || ss.compare("YEAR") == 0) {
 			op_v = exe_value.top();
 			exe_value.pop();
@@ -346,11 +347,13 @@ void make_calc_columns(queue<string> op_type, queue<string> op_value, CudaSet* a
 			op_value.pop();		
 		}
 		else  if (ss.compare("MUL") == 0  || ss.compare("ADD") == 0 || ss.compare("DIV") == 0 || ss.compare("MINUS") == 0) {
-			exe_value.pop();
-            exe_value.pop();
+			if(!exe_value.empty())
+			    exe_value.pop();
+			if(!exe_value.empty())
+                            exe_value.pop();
 		};	
 		
-	};	
+	};
 }
 
 bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nums, queue<float_type> op_nums_f, queue<unsigned int> op_nums_precision, CudaSet* a,
@@ -381,7 +384,7 @@ bool select(queue<string> op_type, queue<string> op_value, queue<int_type> op_nu
     for(int i=0; !op_type.empty(); ++i, op_type.pop()) {
 
         string ss = op_type.front();
-        //cout << ss << endl;
+        cout << ss << endl;
 
         if(ss.compare("emit sel_name") != 0) {
             grp_type = "NULL";
