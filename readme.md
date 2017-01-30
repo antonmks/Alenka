@@ -80,3 +80,6 @@ Run your queries from a command prompt or use Alenka [JDBC driver](https://githu
 `STORE RES INTO 'results.txt' USING ('|') LIMIT 10;`
 
 
+####Alenka is licensed under Apache 2.0 license.
+
+
